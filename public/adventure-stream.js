@@ -23,7 +23,9 @@ if (streamEl) {
   const connectionEl = streamEl.querySelector('[data-testid="stream-connection"]');
   const errorEl = streamEl.querySelector('[data-testid="stream-error"]');
   const seen = new Set();
+  let socket = null;
   let source = null;
+  let reconnectTimer = null;
 
   function showError(message = '') {
     errorEl.textContent = message;
@@ -33,6 +35,11 @@ if (streamEl) {
   function timeLabel(value) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function setConnection(label, { live = false } = {}) {
+    connectionEl.textContent = label;
+    connectionEl.classList.toggle('is-live', live);
   }
 
   function appendEntry(entry, { initial = false } = {}) {
@@ -76,6 +83,15 @@ if (streamEl) {
     }
   }
 
+  function handleRealtimePayload(payload) {
+    if (payload.type === 'connected') {
+      const transport = payload.transport === 'websocket' ? 'WebSocket live' : 'Live';
+      setConnection(transport, { live: true });
+      return;
+    }
+    if (payload.type === 'stream_entry') appendEntry(payload.entry);
+  }
+
   async function loadInitial() {
     const response = await fetch('/api/stream?limit=100', { headers: { Accept: 'application/json' } });
     const payload = await response.json();
@@ -110,36 +126,67 @@ if (streamEl) {
     }
   });
 
-  function connect() {
+  function connectSseFallback() {
     if (!('EventSource' in window)) {
-      connectionEl.textContent = 'Polling fallback';
+      setConnection('Polling fallback');
       return;
     }
     source?.close();
     source = new EventSource('/api/events');
-    source.onopen = () => {
-      connectionEl.textContent = 'Live';
-      connectionEl.classList.add('is-live');
-    };
+    source.onopen = () => setConnection('SSE live', { live: true });
     source.onmessage = (event) => {
       let payload;
       try { payload = JSON.parse(event.data); } catch { return; }
-      if (payload.type === 'connected') {
-        connectionEl.textContent = 'Live';
-        connectionEl.classList.add('is-live');
-        return;
-      }
-      if (payload.type === 'stream_entry') appendEntry(payload.entry);
+      handleRealtimePayload(payload);
     };
-    source.onerror = () => {
-      connectionEl.textContent = 'Reconnecting…';
-      connectionEl.classList.remove('is-live');
-    };
+    source.onerror = () => setConnection('Reconnecting…');
   }
 
-  window.addEventListener('beforeunload', () => source?.close());
-  loadInitial().then(connect).catch((error) => {
-    connectionEl.textContent = 'Unavailable';
+  async function connectWebSocket() {
+    if (!('WebSocket' in window)) return connectSseFallback();
+    clearTimeout(reconnectTimer);
+    setConnection('Connecting…');
+    try {
+      const response = await fetch('/api/realtime-token', { headers: { Accept: 'application/json' } });
+      const payload = await response.json();
+      if (!response.ok || !payload.token) throw new Error(payload.message || 'Realtime token unavailable.');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket?.close();
+      socket = new WebSocket(`${protocol}//${window.location.host}/ws?token=${encodeURIComponent(payload.token)}`);
+      let opened = false;
+      socket.addEventListener('open', () => {
+        opened = true;
+        source?.close();
+        source = null;
+        setConnection('WebSocket live', { live: true });
+      });
+      socket.addEventListener('message', (event) => {
+        let realtimePayload;
+        try { realtimePayload = JSON.parse(event.data); } catch { return; }
+        handleRealtimePayload(realtimePayload);
+      });
+      socket.addEventListener('close', () => {
+        setConnection('Reconnecting…');
+        if (!opened) connectSseFallback();
+        reconnectTimer = setTimeout(() => connectWebSocket().catch(() => connectSseFallback()), 1500);
+      });
+      socket.addEventListener('error', () => {
+        if (!opened) connectSseFallback();
+      });
+    } catch {
+      connectSseFallback();
+      reconnectTimer = setTimeout(() => connectWebSocket().catch(() => {}), 3000);
+    }
+  }
+
+  window.addEventListener('beforeunload', () => {
+    clearTimeout(reconnectTimer);
+    socket?.close();
+    source?.close();
+  });
+
+  loadInitial().then(connectWebSocket).catch((error) => {
+    setConnection('Unavailable');
     showError(error.message);
   });
 }
