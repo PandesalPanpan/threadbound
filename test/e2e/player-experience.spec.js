@@ -138,7 +138,7 @@ test('PX-36/45 Flaky Co-op Partner: one player can disconnect, leader continues,
     const started = confirmedRunSnapshot(await dashboard(leaderContext));
 
     await partner.reload();
-    await expect(partner.getByTestId('run-state')).toContainText('2 players');
+    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
     expect((await dashboard(partnerContext)).activeRun.id).toBe(started.id);
 
     await partnerContext.setOffline(true);
@@ -150,7 +150,7 @@ test('PX-36/45 Flaky Co-op Partner: one player can disconnect, leader continues,
     await partnerContext.setOffline(false);
     await partner.reload();
     await expect(partner.getByTestId('app-status')).toHaveText('Ready');
-    await expect(partner.getByTestId('run-state')).toContainText('2 players');
+    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
     const partnerRestored = confirmedRunSnapshot(await dashboard(partnerContext));
     expect(partnerRestored).toEqual(whilePartnerAway);
 
