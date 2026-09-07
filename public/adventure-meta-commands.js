@@ -1,3 +1,5 @@
+import { enemySprite, weaverSprite } from './sprite-catalog.js';
+
 const stream = document.querySelector('#stream');
 
 if (stream) {
@@ -127,10 +129,10 @@ if (stream) {
   }
 
   function knownEnemySprite(metadata = {}) {
-    if (metadata.defeatedBoss || metadata.enemy?.isBoss) return '/sprites/boss.svg';
-    const enemyId = String(metadata.enemyId || metadata.defeatedEnemyId || '');
-    if (['frayed-wisp', 'hollow-stalker', 'silkbound-guard'].includes(enemyId)) return `/sprites/${enemyId}.svg`;
-    return '/sprites/frayed-wisp.svg';
+    return enemySprite({
+      id: String(metadata.enemyId || metadata.defeatedEnemyId || ''),
+      isBoss: Boolean(metadata.defeatedBoss || metadata.enemy?.isBoss),
+    });
   }
 
   function resultChip(text, tone = '') {
@@ -140,7 +142,7 @@ if (stream) {
     return chip;
   }
 
-  function healthUnit({ label, name, hp, maxHp, enemy = false, testId = null, sprite = '/sprites/weaver.svg' }) {
+  function healthUnit({ label, name, hp, maxHp, enemy = false, testId = null, sprite = '/sprites/kenney/weaver-arcane.png' }) {
     const value = numberValue(hp);
     const max = numberValue(maxHp);
     if (value === null || max === null || max <= 0) return null;
@@ -217,6 +219,7 @@ if (stream) {
       hp: metadata.actorHp,
       maxHp: metadata.actorMaxHp,
       testId: 'stream-actor-hp',
+      sprite: weaverSprite(metadata.playerId || entry.actorId || entry.actorName),
     });
     if (actor) grid.append(actor);
     if (metadata.phase !== 'upgrade' && metadata.phase !== 'complete') {

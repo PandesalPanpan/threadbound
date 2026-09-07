@@ -15,6 +15,11 @@ async function submitComposer(page, value) {
   await expect(page.getByTestId('stream-message')).toHaveValue('');
 }
 
+async function expectLoadedPixelSprite(locator) {
+  await expect(locator).toBeVisible();
+  expect(await locator.evaluate((image) => image.complete && image.naturalWidth === 16 && image.naturalHeight === 16)).toBeTruthy();
+}
+
 test('players chat, inspect state, and exchange discrete game results in one realtime thread', async ({ browser }) => {
   const anonymousContext = await browser.newContext();
   const unauthenticatedToken = await anonymousContext.request.get('/api/realtime-token');
@@ -30,6 +35,16 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     await loginLocal(first, 'c', 'Local Weaver C');
     await loginLocal(second, 'd', 'Local Weaver D');
 
+    const firstCharacterSprite = first.getByTestId('weaver-character-sprite');
+    const secondCharacterSprite = second.getByTestId('weaver-character-sprite');
+    await expectLoadedPixelSprite(firstCharacterSprite);
+    await expectLoadedPixelSprite(secondCharacterSprite);
+    const firstCharacterSrc = await firstCharacterSprite.getAttribute('src');
+    const secondCharacterSrc = await secondCharacterSprite.getAttribute('src');
+    expect(firstCharacterSrc).toMatch(/^\/sprites\/kenney\/weaver-/);
+    expect(secondCharacterSrc).toMatch(/^\/sprites\/kenney\/weaver-/);
+    expect(firstCharacterSrc).not.toBe(secondCharacterSrc);
+
     await expect(first.getByTestId('adventure-stream')).toBeVisible();
     await expect(first.getByTestId('stream-composer')).toBeVisible();
     await expect(first.getByTestId('stream-suggestions')).toContainText('Status');
@@ -43,7 +58,7 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     await expect(first.getByTestId('stream-command-card')).toBeVisible();
     await expect(first.getByTestId('stream-command-card')).toContainText('Current adventure');
     await expect(first.getByTestId('stream-command-card')).toContainText('Local Weaver C');
-    await expect(first.getByTestId('stream-command-card').locator('img[src="/sprites/weaver.svg"]')).toBeVisible();
+    await expectLoadedPixelSprite(first.getByTestId('stream-command-card').locator('img[src^="/sprites/kenney/weaver-"]'));
     await expect(second.getByTestId('stream-command-card')).toBeHidden();
 
     await submitComposer(first, '/gear');
@@ -77,13 +92,13 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     await expect(startReceipt).toContainText('DUNGEON ENTERED');
     await expect(startReceipt.getByTestId('stream-actor-hp')).toHaveText('40 / 40 HP');
     await expect(startReceipt.getByTestId('stream-enemy-hp')).toHaveText('12 / 12 HP');
-    await expect(startReceipt.locator('img[src="/sprites/weaver.svg"]')).toBeVisible();
-    await expect(startReceipt.locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
+    await expectLoadedPixelSprite(startReceipt.locator('img[src^="/sprites/kenney/weaver-"]'));
+    await expectLoadedPixelSprite(startReceipt.locator('img[src="/sprites/kenney/frayed-wisp.png"]'));
     expect(await first.getByTestId('adventure-stream-log').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 
     // The timeline + contextual row are the game UI; the old persistent combat HUD is gone.
     await expect(first.getByTestId('stream-combat-dock')).toBeHidden();
-    await expect(first.getByTestId('enemy-card').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
+    await expectLoadedPixelSprite(first.getByTestId('enemy-card').locator('img[src="/sprites/kenney/frayed-wisp.png"]'));
     const attack = first.getByTestId('stream-attack');
     const guard = first.getByTestId('stream-guard');
     await expect(attack).toBeVisible();

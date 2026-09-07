@@ -52,7 +52,7 @@ test('mobile combat is tap-first, message-driven, and never auto-attacks', async
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
   await expect(page.getByTestId('enemy-card')).toBeVisible();
-  await expect(page.getByTestId('enemy-card').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
+  await expect(page.getByTestId('enemy-card').locator('img[src="/sprites/kenney/frayed-wisp.png"]')).toBeVisible();
   await expect(page.getByTestId('stream-combat-dock')).toBeHidden();
   const attack = page.getByTestId('stream-attack');
   const guard = page.getByTestId('stream-guard');

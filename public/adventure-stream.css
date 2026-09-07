@@ -16,10 +16,10 @@
 /* Real persistent sprite files replace the old CSS-only placeholders. */
 .combat-sprite { background-position:center !important; background-repeat:no-repeat !important; background-size:contain !important; image-rendering:pixelated; }
 .combat-sprite > span { display:none !important; }
-.combat-sprite.sprite-frayed-wisp { background-image:url('/sprites/frayed-wisp.svg') !important; }
-.combat-sprite.sprite-hollow-stalker { background-image:url('/sprites/hollow-stalker.svg') !important; }
-.combat-sprite.sprite-silkbound-guard { background-image:url('/sprites/silkbound-guard.svg') !important; }
-.combat-sprite.sprite-boss { background-image:url('/sprites/boss.svg') !important; }
+.combat-sprite.sprite-frayed-wisp { background-image:url('/sprites/kenney/frayed-wisp.png') !important; }
+.combat-sprite.sprite-hollow-stalker { background-image:url('/sprites/kenney/hollow-stalker.png') !important; }
+.combat-sprite.sprite-silkbound-guard { background-image:url('/sprites/kenney/silkbound-guard.png') !important; }
+.combat-sprite.sprite-boss { background-image:url('/sprites/kenney/boss.png') !important; }
 .gear-icon { background:url('/sprites/relic.svg') center/contain no-repeat !important; color:transparent !important; image-rendering:pixelated; }
 
 .adventure-stream-log {
