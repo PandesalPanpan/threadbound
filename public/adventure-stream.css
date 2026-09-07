@@ -35,6 +35,15 @@
   border-radius: 15px;
   background: rgba(4,8,16,.7);
   scroll-behavior: smooth;
+  transition: min-height .18s ease, height .18s ease;
+}
+
+/* A brand-new player should see the shared thread first without having to scroll
+   past a large empty log before reaching the first dungeon CTA. As soon as the
+   first chat/system entry arrives, the normal live-log dimensions take over. */
+.adventure-stream-log:empty {
+  height: min(20vh, 180px);
+  min-height: 120px;
 }
 
 .stream-entry {
@@ -133,6 +142,7 @@
   #stream { padding: 12px; }
   .stream-hint { display: none; }
   .adventure-stream-log { height: 31vh; min-height: 210px; padding: 6px; }
+  .adventure-stream-log:empty { height: 15vh; min-height: 110px; }
   .stream-entry { grid-template-columns: 30px minmax(0,1fr); gap: 7px; padding: 7px 6px; }
   .stream-avatar { width: 28px; height: 28px; border-radius: 9px; }
   .stream-entry-system { margin-block: 4px; }
