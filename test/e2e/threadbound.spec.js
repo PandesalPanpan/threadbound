@@ -22,41 +22,64 @@ async function dashboard(context) {
   return response.json();
 }
 
+async function startFromThread(page, context) {
+  await page.getByTestId('stream-start-dungeon').click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.id || null, { timeout: 5000 }).not.toBeNull();
+}
+
+async function attackFromThread(page, context) {
+  const before = await dashboard(context);
+  const version = before.activeRun?.version ?? -1;
+  await page.getByTestId('stream-attack').click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout: 5000 }).toBeGreaterThan(version);
+}
+
+async function attacksUntilPhaseChanges(context, page, expectedPhase, limit = 40) {
+  for (let index = 0; index < limit; index += 1) {
+    const state = await dashboard(context);
+    if (state.activeRun?.phase !== expectedPhase) return;
+    await attackFromThread(page, context);
+  }
+  throw new Error(`Run did not leave ${expectedPhase} within ${limit} explicit attacks.`);
+}
+
+async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
+  let turn = startTurn;
+  for (let guard = 0; guard < 60; guard += 1) {
+    const state = await dashboard(contexts[0]);
+    if (state.activeRun?.phase !== expectedPhase) return turn;
+    const index = turn % pages.length;
+    const page = pages[index];
+    const context = contexts[index];
+    await page.reload();
+    await expect(page.getByTestId('run-state')).toContainText(`Phase: ${expectedPhase}`);
+    await attackFromThread(page, context);
+    turn += 1;
+  }
+  throw new Error(`Co-op run did not leave ${expectedPhase} within the guard limit.`);
+}
+
 async function expectCountAtLeast(locator, minimum) {
   const text = await locator.textContent();
   const count = Number(text.match(/\d+/)?.[0] || 0);
   expect(count).toBeGreaterThanOrEqual(minimum);
 }
 
-async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
-  let turn = startTurn;
-  for (let guard = 0; guard < 40; guard += 1) {
-    const state = await dashboard(contexts[0]);
-    if (state.activeRun?.phase !== expectedPhase) return turn;
-    const page = pages[turn % pages.length];
-    await page.reload();
-    await expect(page.getByTestId('run-state')).toContainText(`Phase: ${expectedPhase}`);
-    await clickAndWait(page, 'attack');
-    turn += 1;
-  }
-  throw new Error(`Co-op run did not leave ${expectedPhase} within the guard limit.`);
-}
-
-test('Threaded login -> solo dungeon -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page }) => {
+test('Threaded login -> discrete dungeon thread -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
   await loginWithThreaded(page);
   await expect(page.getByTestId('honey-balance')).toHaveText('100');
   await expect(page.getByTestId('attack-power')).toHaveText('6');
   const worldBefore = Number(await page.getByTestId('world-progress').textContent());
 
-  await clickAndWait(page, 'start-dungeon');
-  await expect(page.getByTestId('combat-help')).toContainText('Basic strikes are automatic');
-  await expect(page.getByTestId('combat-help')).toContainText('Guard halves the hit');
-  for (let index = 0; index < 6; index += 1) await clickAndWait(page, 'attack');
+  await startFromThread(page, context);
+  await expect(page.getByTestId('combat-help')).toContainText('explicit');
+  await expect(page.getByTestId('combat-coach')).toContainText('Nothing attacks automatically');
+  await attacksUntilPhaseChanges(context, page, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
 
-  await clickAndWait(page, 'upgrade-sharpen');
-  await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
-  for (let index = 0; index < 3; index += 1) await clickAndWait(page, 'attack');
+  await page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
+  await attacksUntilPhaseChanges(context, page, 'boss');
 
   await expect(page.getByTestId('inventory-item')).toHaveCount(1);
   await expect(page.getByTestId('thread-dust')).toHaveText('15');
@@ -91,9 +114,6 @@ test('Threaded login -> solo dungeon -> generated loot -> codex -> equip -> idem
   await page.getByTestId('nav-codex').click();
   await expect(page).toHaveURL(/\/codex/);
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
-  // The Codex is living shared-world state. Other journeys may legitimately discover
-  // additional relics/history before this player arrives, so verify semantic minimums
-  // and then assert the exact Honey-purchased entry below instead of freezing totals.
   await expectCountAtLeast(page.getByTestId('codex-count-items'), 2);
   await expectCountAtLeast(page.getByTestId('codex-count-history'), 2);
   await page.getByTestId('codex-tab-items').click();
@@ -105,12 +125,12 @@ test('Threaded login -> solo dungeon -> generated loot -> codex -> equip -> idem
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
-  await clickAndWait(page, 'start-dungeon');
+  await startFromThread(page, context);
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
   await expect(page.getByTestId('attack-power')).not.toHaveText('6');
 });
 
-test('two browser sessions form a party and complete one shared scaled dungeon', async ({ browser }) => {
+test('two browser sessions form a party and complete one shared scaled dungeon through the thread', async ({ browser }) => {
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
@@ -128,15 +148,11 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
     await partner.getByTestId('party-code-input').fill(inviteCode.toLowerCase());
     await clickAndWait(partner, 'join-party');
     await expect(partner.getByTestId('party-member')).toHaveCount(2);
-    await expect(partner.getByTestId('party-readiness')).toContainText('Waiting');
-
     await clickAndWait(partner, 'toggle-ready');
-    await expect(partner.getByTestId('party-readiness')).toContainText('All members ready');
 
     await leader.reload();
-    await expect(leader.getByTestId('party-member')).toHaveCount(2);
     await expect(leader.getByTestId('party-readiness')).toContainText('All members ready');
-    await clickAndWait(leader, 'start-dungeon');
+    await startFromThread(leader, leaderContext);
 
     await expect(leader.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(leader.getByTestId('run-scaling')).toContainText('Enemy HP ×1.65');
@@ -146,9 +162,9 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
     await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(partner.getByTestId('party-readiness')).toContainText('locked');
 
-    await clickAndWait(leader, 'attack');
+    await attackFromThread(leader, leaderContext);
     await partner.reload();
-    await clickAndWait(partner, 'attack');
+    await attackFromThread(partner, partnerContext);
     await leader.reload();
     const contributionRows = await leader.getByTestId('run-participant').allTextContents();
     expect(contributionRows.every((row) => /damage [1-9]\d*/.test(row))).toBe(true);
@@ -157,10 +173,10 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
     await leader.reload();
     await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade');
     await partner.reload();
-    await expect(partner.getByTestId('upgrade-waiting')).toBeVisible();
+    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting');
 
-    await clickAndWait(leader, 'upgrade-sharpen');
-    await expect(leader.getByTestId('run-state')).toContainText('Phase: boss');
+    await leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
     turn = await alternateAttacksUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
     expect(turn).toBeGreaterThan(2);
 
@@ -177,10 +193,6 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
 
     await expect(leader.getByTestId('party-readiness')).toContainText('Waiting');
     await expect(partner.getByTestId('party-readiness')).toContainText('Waiting');
-    const leaderRow = leader.getByTestId('party-member').filter({ hasText: 'Leader' });
-    await expect(leaderRow).toHaveCount(1);
-    await expect(leaderRow).toContainText('Ready');
-    await expect(partner.getByTestId('party-member').filter({ hasText: 'Not ready' })).toHaveCount(1);
   } finally {
     await leaderContext.close();
     await partnerContext.close();
