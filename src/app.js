@@ -5,6 +5,7 @@ import { createCodeChallenge, createCodeVerifier, createOAuthState } from './oau
 import { ThreadedApiError } from './threaded/ThreadedGateway.js';
 import { EventBus } from './application/EventBus.js';
 import { AchievementProjector } from './application/AchievementProjector.js';
+import { ArcAchievementProjector } from './application/ArcAchievementProjector.js';
 import { WorldHistoryProjector } from './application/WorldHistoryProjector.js';
 import { CodexService } from './application/CodexService.js';
 import { ArcManifestService } from './application/ArcManifestService.js';
@@ -53,11 +54,13 @@ function homePage({ connected, authMode }) {
 export function createApp({ config, threadedGateway, repository, codexRepository, manifestRepository }) {
   const app = express();
   const eventBus = new EventBus();
+  const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
   const achievements = new AchievementProjector(repository);
+  const arcAchievements = new ArcAchievementProjector({ gameRepository: repository, manifestRepository, arcManifestService });
   const history = new WorldHistoryProjector({ gameRepository: repository, codexRepository });
   eventBus.subscribe((event) => achievements.handle(event));
+  eventBus.subscribe((event) => arcAchievements.handle(event));
   eventBus.subscribe((event) => history.handle(event));
-  const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
   const partyService = new PartyService({ repository });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
