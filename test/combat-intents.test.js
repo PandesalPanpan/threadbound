@@ -6,58 +6,142 @@ function soloRun() {
   return DungeonRun.start({
     id: 'intent-run',
     ownerType: 'player',
-    ownerId: 'a',
-    startedByPlayerId: 'a',
+    ownerId: 'p1',
+    startedByPlayerId: 'p1',
     dungeonId: 'frayed-hollow',
-    participants: [{ playerId: 'a', maxHealth: 80 }],
-    now: '2026-09-07T00:00:00.000Z',
+    participants: [{ playerId: 'p1', maxHealth: 40 }],
+    now: '2026-01-01T00:00:00.000Z',
   });
 }
 
-test('enemy telegraphs a heavy action after a short run of ordinary attacks', () => {
-  const run = soloRun();
-  run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-07T00:00:00.000Z' });
-  run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-07T00:00:00.300Z' });
-  const third = run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-07T00:00:00.600Z' });
+function defeatCurrent(run, attackPower = 99) {
+  const result = run.attack({ playerId: 'p1', attackPower, now: '2026-01-01T00:00:00.000Z' });
+  assert.ok(result.events.some((event) => event.type === 'EnemyDefeated'));
+  return result;
+}
 
-  assert.equal(run.toJSON().enemyIntent.name, 'Fraying Blow');
-  assert.equal(run.toJSON().enemyIntent.damage, 4);
-  assert.equal(third.events.some((event) => event.type === 'EnemyIntentTelegraphed'), true);
+function advanceToStalker(run) {
+  defeatCurrent(run);
+  run.chooseUpgrade('sharpen');
+  assert.equal(run.state.enemy.id, 'hollow-stalker');
+}
+
+function advanceToGuard(run) {
+  advanceToStalker(run);
+  defeatCurrent(run);
+  run.chooseUpgrade('quicken');
+  assert.equal(run.state.enemy.id, 'silkbound-guard');
+}
+
+function advanceToBoss(run) {
+  advanceToGuard(run);
+  defeatCurrent(run);
+  run.chooseUpgrade('riposte');
+  assert.equal(run.state.phase, 'boss');
+  assert.equal(run.state.enemy.id, 'first-needle');
+}
+
+test('Frayed Wisp teaches Interrupt through Soul Flare after two ordinary actions', () => {
+  const run = soloRun();
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  const second = run.attack({ playerId: 'p1', attackPower: 3 });
+
+  assert.equal(run.state.enemy.hp, 12);
+  assert.equal(run.state.enemyIntent.name, 'Soul Flare');
+  assert.equal(run.state.enemyIntent.counter, 'interrupt');
+  assert.equal(run.state.enemyIntent.damage, 5);
+  assert.ok(second.events.some((event) => event.type === 'EnemyIntentTelegraphed'));
 });
 
-test('Interrupt cancels a telegraphed heavy action without applying its damage', () => {
+test('Interrupt cancels Soul Flare, grants Focus, and staggers the next hit', () => {
   const run = soloRun();
-  for (let i = 0; i < 3; i += 1) run.attack({ playerId: 'a', attackPower: 1, now: `2026-09-07T00:00:0${i}.000Z` });
-  const hpBefore = run.participant('a').hp;
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  const hpBefore = run.participant('p1').hp;
 
-  const result = run.interrupt({ playerId: 'a' });
+  const interrupt = run.interrupt({ playerId: 'p1' });
+  assert.equal(run.state.enemyIntent, null);
+  assert.equal(run.participant('p1').hp, hpBefore);
+  assert.equal(run.participant('p1').focus, 3);
+  assert.equal(run.state.enemy.staggeredHits, 1);
+  assert.ok(interrupt.events.some((event) => event.type === 'EnemyInterrupted'));
+  assert.ok(interrupt.events.some((event) => event.type === 'EnemyStaggered'));
 
-  assert.equal(run.toJSON().enemyIntent, null);
-  assert.equal(run.participant('a').hp, hpBefore);
-  assert.equal(result.events[0].type, 'EnemyInterrupted');
+  const staggeredHit = run.attack({ playerId: 'p1', attackPower: 3 });
+  assert.equal(staggeredHit.damage, 5);
+  assert.equal(run.state.enemy.staggeredHits, 0);
 });
 
-test('Guard converts a pending heavy action into a reduced hit', () => {
+test("Hollow Stalker teaches Guard by turning Predator's Pounce into a Riposte opportunity", () => {
   const run = soloRun();
-  for (let i = 0; i < 3; i += 1) run.attack({ playerId: 'a', attackPower: 1, now: `2026-09-07T00:00:0${i}.000Z` });
-  const hpBefore = run.participant('a').hp;
+  advanceToStalker(run);
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  assert.equal(run.state.enemyIntent.name, "Predator's Pounce");
+  assert.equal(run.state.enemyIntent.counter, 'guard');
 
-  const result = run.guard({ playerId: 'a', now: '2026-09-07T00:00:02.100Z' });
-  const damaged = result.events.find((event) => event.type === 'PlayerDamaged');
-
-  assert.equal(damaged.rawDamage, 4);
-  assert.equal(damaged.damage, 2);
-  assert.equal(run.participant('a').hp, hpBefore - 2);
-  assert.equal(run.toJSON().enemyIntent, null);
+  const hpBefore = run.participant('p1').hp;
+  const result = run.guard({ playerId: 'p1' });
+  assert.equal(result.countered, true);
+  assert.equal(result.retaliation, 4);
+  assert.equal(run.participant('p1').hp, hpBefore - 4);
+  assert.equal(run.participant('p1').riposteBonus, 3);
+  assert.ok(result.events.some((event) => event.type === 'EnemyIntentCountered' && event.counter === 'guard'));
+  assert.ok(result.events.some((event) => event.type === 'RipostePrimed'));
 });
 
-test('an expired telegraph resolves before the next normal attack', () => {
+test('Silkbound Guard teaches Power Strike by breaking Silken Brace before fortification', () => {
   const run = soloRun();
-  for (let i = 0; i < 3; i += 1) run.attack({ playerId: 'a', attackPower: 1, now: `2026-09-07T00:00:0${i}.000Z` });
-  const hpBefore = run.participant('a').hp;
+  advanceToGuard(run);
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  assert.equal(run.state.enemyIntent.name, 'Silken Brace');
+  assert.equal(run.state.enemyIntent.counter, 'power-strike');
+  assert.ok(run.participant('p1').focus >= run.state.runModifiers.powerStrikeCost);
 
-  const result = run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-07T00:00:06.000Z' });
+  const result = run.powerStrike({ playerId: 'p1', attackPower: 3 });
+  assert.equal(result.countered, true);
+  assert.equal(run.state.enemyIntent, null);
+  assert.equal(run.state.enemy?.fortifiedHits ?? 0, 0);
+  assert.ok(result.events.some((event) => event.type === 'EnemyIntentCountered' && event.counter === 'power-strike'));
+});
 
-  assert.equal(result.events.some((event) => event.type === 'EnemyIntentResolved'), true);
-  assert.ok(run.participant('a').hp < hpBefore);
+test('ignoring a telegraph with Attack resolves the enemy mechanic before the attack', () => {
+  const run = soloRun();
+  advanceToGuard(run);
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  run.attack({ playerId: 'p1', attackPower: 3 });
+  const hpBefore = run.participant('p1').hp;
+
+  const ignored = run.attack({ playerId: 'p1', attackPower: 3 });
+  assert.equal(ignored.intentResolved, true);
+  assert.equal(ignored.retaliation, 3);
+  assert.equal(ignored.damage, 2);
+  assert.equal(run.participant('p1').hp, hpBefore - 3);
+  assert.equal(run.state.enemy.fortifiedHits, 1);
+  assert.ok(ignored.events.some((event) => event.type === 'EnemyFortified'));
+});
+
+test('The First Needle rotates Interrupt, Guard, and Power Strike counters learned in prior encounters', () => {
+  const run = soloRun();
+  advanceToBoss(run);
+
+  run.attack({ playerId: 'p1', attackPower: 1 });
+  run.attack({ playerId: 'p1', attackPower: 1 });
+  assert.equal(run.state.enemyIntent.name, 'Needle Break');
+  assert.equal(run.state.enemyIntent.counter, 'interrupt');
+  run.interrupt({ playerId: 'p1' });
+
+  run.attack({ playerId: 'p1', attackPower: 1 });
+  run.attack({ playerId: 'p1', attackPower: 1 });
+  assert.equal(run.state.enemyIntent.name, 'Thread Sever');
+  assert.equal(run.state.enemyIntent.counter, 'guard');
+  const guard = run.guard({ playerId: 'p1' });
+  assert.equal(guard.countered, true);
+
+  if (run.state.enemy?.hp < 12) run.state.enemy.hp = 12;
+  run.attack({ playerId: 'p1', attackPower: 1 });
+  run.attack({ playerId: 'p1', attackPower: 1 });
+  assert.equal(run.state.enemyIntent.name, 'Loom Ward');
+  assert.equal(run.state.enemyIntent.counter, 'power-strike');
 });
