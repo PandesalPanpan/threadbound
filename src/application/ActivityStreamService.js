@@ -61,33 +61,36 @@ export class ActivityStreamService {
   #combatResult(event, actorName) {
     const action = String(event.action || 'action').toLowerCase();
     const actorHp = event.actorHp === null || event.actorHp === undefined ? '' : `❤️ ${event.actorHp}/${event.actorMaxHp}`;
+    const focus = event.actorFocus === null || event.actorFocus === undefined ? '' : `✦ ${event.actorFocus}/${event.actorMaxFocus} Focus`;
     const enemyName = event.enemyName || (event.enemyId ? titleize(event.enemyId) : 'enemy');
     const enemyHp = event.enemyHp === null || event.enemyHp === undefined ? '' : `👾 ${enemyName} ${event.enemyHp}/${event.enemyMaxHp}`;
     const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
     const retaliation = event.retaliation > 0
       ? ` · ${targetName && event.targetPlayerId !== event.playerId ? `${targetName} took ${event.retaliation}` : `took ${event.retaliation}`}`
       : '';
-    const intent = event.enemyIntent ? ` · ⚠ ${event.enemyIntent.name} incoming (${event.enemyIntent.damage})` : '';
-    const phase = event.phase === 'upgrade' ? ' · ✦ Choose the run upgrade.' : event.phase === 'complete' ? ' · ✦ Dungeon cleared.' : '';
+    const counter = event.counteredIntentId ? ' · Countered!' : '';
+    const intent = event.enemyIntent ? ` · ⚠ ${event.enemyIntent.name} incoming — ${event.enemyIntent.counterLabel || titleize(event.enemyIntent.counter)} it` : '';
+    const phase = event.phase === 'upgrade' ? ' · ✦ Choose the next run upgrade.' : event.phase === 'complete' ? ' · ✦ Dungeon cleared.' : '';
 
     let result;
-    if (action === 'attack') {
+    if (action === 'attack' || action === 'power-strike') {
+      const verb = action === 'power-strike' ? 'Power Struck' : 'attacked';
       if (event.defeatedEnemyId) {
         const defeated = titleize(event.defeatedEnemyId);
-        result = `${actorName} attacked ${defeated} for ${event.damage} and defeated it.`;
+        result = `${actorName} ${verb} ${defeated} for ${event.damage} and defeated it${counter}.`;
         if (event.enemyHp !== null && event.enemyHp !== undefined && event.phase !== 'complete') result += ` Next: ${enemyHp}.`;
-      } else result = `${actorName} attacked ${enemyName} for ${event.damage} damage${retaliation}.`;
+      } else result = `${actorName} ${verb} ${enemyName} for ${event.damage} damage${counter}${retaliation}.`;
     } else if (action === 'guard') {
-      result = `${actorName} guarded${event.prevented > 0 ? ` and prevented ${event.prevented} damage` : ''}${retaliation}.`;
+      result = `${actorName} guarded${event.prevented > 0 ? ` and prevented ${event.prevented} damage` : ''}${event.ripostePrimed > 0 ? `, priming +${event.ripostePrimed} Riposte` : ''}${counter}${retaliation}.`;
     } else if (action === 'interrupt') {
-      result = `${actorName} interrupted ${enemyName}'s heavy attack.`;
+      result = `${actorName} interrupted ${enemyName}'s heavy action${event.staggered ? ' and staggered it' : ''}.`;
     } else if (action === 'mend') {
       result = `${actorName} mended ${targetName || 'an ally'} for ${event.healed} HP${retaliation}.`;
     } else if (action === 'revive') {
       result = `${actorName} revived ${targetName || 'an ally'} with ${event.restoredHp} HP${retaliation}.`;
     } else result = `${actorName} used ${titleize(action)}.`;
 
-    const state = [actorHp, event.phase === 'upgrade' || event.phase === 'complete' ? '' : enemyHp].filter(Boolean).join(' · ');
+    const state = [actorHp, focus, event.phase === 'upgrade' || event.phase === 'complete' ? '' : enemyHp].filter(Boolean).join(' · ');
     return `${result}${state ? ` ${state}.` : ''}${intent}${phase}`;
   }
 
@@ -101,7 +104,8 @@ export class ActivityStreamService {
         const foe = event.enemyName || enemyName || 'an enemy';
         const enemyState = event.enemyHp === null || event.enemyHp === undefined ? '' : ` 👾 ${foe} ${event.enemyHp}/${event.enemyMaxHp} HP.`;
         const playerState = event.actorHp === null || event.actorHp === undefined ? '' : ` ❤️ ${event.actorHp}/${event.actorMaxHp} HP.`;
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} entered ${dungeonName}.${enemyState}${playerState} Choose your first action.` };
+        const focusState = ` ✦ ${event.actorFocus || 0}/${event.actorMaxFocus || 3} Focus.`;
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} entered ${dungeonName}.${enemyState}${playerState}${focusState} Choose your first action.` };
       }
       case 'CombatActionResolved':
         return { actorPlayerId: event.playerId, actorName, body: this.#combatResult(event, actorName) };
@@ -113,6 +117,11 @@ export class ActivityStreamService {
       case 'PlayerGuarded':
       case 'EnemyIntentTelegraphed':
       case 'EnemyInterrupted':
+      case 'EnemyStaggered':
+      case 'EnemyFortified':
+      case 'EnemyIntentCountered':
+      case 'RipostePrimed':
+      case 'RiposteConsumed':
       case 'PlayerHealed':
       case 'PlayerRevived':
       case 'EnemyDefeated':
@@ -121,9 +130,10 @@ export class ActivityStreamService {
 
       case 'RunUpgradeChosen': {
         const run = event.runId ? this.gameRepository.getRun(event.runId) : null;
-        const boss = run?.enemy;
-        const bossState = boss ? ` ${boss.name} awakens — ${boss.hp}/${boss.maxHp} HP.` : '';
-        return { actorPlayerId: event.playerId || null, actorName: actorName || 'SYSTEM', body: `${actorName || 'The party'} chose ${titleize(event.upgradeId)}.${bossState}` };
+        const next = run?.enemy;
+        const nextState = next ? ` Next: ${next.name} — ${next.hp}/${next.maxHp} HP.` : '';
+        const count = Array.isArray(event.selectedUpgrades) ? ` Upgrade ${event.selectedUpgrades.length}.` : '';
+        return { actorPlayerId: event.playerId || null, actorName: actorName || 'SYSTEM', body: `${actorName || 'The party'} chose ${titleize(event.upgradeId)}.${count}${nextState}` };
       }
       case 'DungeonFailed': {
         const names = (event.participantIds || []).map((id) => this.#playerName(id));
@@ -140,7 +150,7 @@ export class ActivityStreamService {
       }
       case 'ItemEquipped': {
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}${item ? ` (+${item.attackBonus} Attack)` : ''}.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}${item ? ` (+${item.attackBonus} Attack · ${item.effect?.name || 'No effect'})` : ''}.` };
       }
       case 'ItemSalvaged':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} salvaged ${event.itemName || 'a relic'} into ${event.threadDust} Thread Dust.` };
