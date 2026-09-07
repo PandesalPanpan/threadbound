@@ -23,6 +23,12 @@ if (stream) {
     .stream-suggestions::before { content: 'YOUR NEXT ACTION'; position: absolute; top: 2px; left: 2px; font-size: 10px; font-weight: 800; letter-spacing: .12em; opacity: .66; }
     .stream-entry-system .stream-entry-content > p { font-weight: 650; line-height: 1.48; }
     .stream-entry-system:last-of-type { box-shadow: 0 0 0 1px rgba(255,255,255,.04), 0 12px 30px rgba(0,0,0,.14); }
+    .thread-dungeon-list { display:grid; gap:8px; }
+    .thread-dungeon-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px; border:1px solid var(--line-soft); border-radius:12px; background:rgba(5,10,20,.58); }
+    .thread-dungeon-row strong, .thread-dungeon-row small { display:block; }
+    .thread-dungeon-row small { margin-top:3px; color:var(--muted); font-size:.73rem; }
+    .thread-dungeon-row button { min-height:44px; margin:0 !important; }
+    @media (max-width:520px) { .thread-dungeon-row { grid-template-columns:1fr; } .thread-dungeon-row button { width:100%; } }
   `;
   document.head.append(style);
 
@@ -87,6 +93,54 @@ if (stream) {
     fill.style.width = `${percent}%`;
     track.append(fill);
     return track;
+  }
+
+  async function renderDungeons() {
+    const data = await api('/api/dashboard');
+    const reply = openReply('dungeons', 'Available adventures', data.activeRun ? 'Finish your current adventure before entering another.' : 'Choose where the thread goes next.');
+    const list = document.createElement('div');
+    list.className = 'thread-dungeon-list';
+    list.dataset.testid = 'stream-dungeon-list';
+
+    for (const dungeon of data.dungeons || []) {
+      const row = document.createElement('article');
+      row.className = 'thread-dungeon-row';
+      const copy = document.createElement('div');
+      const name = document.createElement('strong');
+      name.textContent = dungeon.name;
+      const meta = document.createElement('small');
+      meta.textContent = dungeon.arcName || dungeon.sourceManifestTitle || 'Threadbound adventure';
+      copy.append(name, meta);
+
+      const enter = document.createElement('button');
+      enter.type = 'button';
+      enter.className = 'primary-action';
+      enter.dataset.testid = `stream-enter-${dungeon.id}`;
+      enter.textContent = `Enter ${dungeon.name}`;
+      enter.disabled = Boolean(data.activeRun);
+      enter.addEventListener('click', async () => {
+        enter.disabled = true;
+        showError('');
+        try {
+          await api(`/api/dungeons/${encodeURIComponent(dungeon.id)}/start`, { method: 'POST' });
+          card.hidden = true;
+          card.innerHTML = '';
+        } catch (caught) {
+          showError(caught.message);
+          enter.disabled = false;
+        }
+      });
+      row.append(copy, enter);
+      list.append(row);
+    }
+
+    if (!list.children.length) {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = 'No adventures are currently available.';
+      list.append(empty);
+    }
+    reply.append(list);
   }
 
   async function renderWorld() {
@@ -172,6 +226,10 @@ if (stream) {
   }
 
   async function executeMetaCommand(command) {
+    if (command === '/dungeons' || command === '/adventures') {
+      await renderDungeons();
+      return true;
+    }
     if (command === '/world' || command === '/achievements') {
       await renderWorld();
       return true;
@@ -185,7 +243,7 @@ if (stream) {
 
   form?.addEventListener('submit', async (event) => {
     const command = input.value.trim().toLowerCase().split(/\s+/)[0];
-    if (!['/world', '/achievements', '/honey', '/wallet'].includes(command)) return;
+    if (!['/dungeons', '/adventures', '/world', '/achievements', '/honey', '/wallet'].includes(command)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     input.value = '';
@@ -196,7 +254,7 @@ if (stream) {
     input.focus();
   }, true);
 
-  function addSuggestion(label, command, testId) {
+  function addSuggestion(label, command, testId, { prepend = false } = {}) {
     if (!suggestions || suggestions.querySelector(`[data-meta-command="${command}"]`)) return;
     const button = document.createElement('button');
     button.type = 'button';
@@ -204,7 +262,8 @@ if (stream) {
     button.dataset.metaCommand = command;
     button.dataset.testid = testId;
     button.addEventListener('click', () => executeMetaCommand(command).catch((caught) => showError(caught.message)));
-    suggestions.append(button);
+    if (prepend && suggestions.firstChild) suggestions.insertBefore(button, suggestions.firstChild);
+    else suggestions.append(button);
   }
 
   function normalizeSuggestions() {
@@ -212,6 +271,7 @@ if (stream) {
       if (button.dataset.command === '/attack') button.textContent = 'Attack';
       if (button.dataset.command === '/guard') button.textContent = 'Guard';
     }
+    addSuggestion('Dungeons', '/dungeons', 'stream-dungeons', { prepend: true });
     addSuggestion('World', '/world', 'stream-world');
     addSuggestion('Honey', '/honey', 'stream-honey');
   }
