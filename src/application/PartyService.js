@@ -17,6 +17,7 @@ export class PartyService {
   }
 
   createParty(playerId) {
+    if (this.repository.getActiveRun(playerId)) throw new Error('Finish the active dungeon before creating a party.');
     if (this.repository.getPartyForPlayer(playerId)) throw new Error('Player is already in a party.');
     const party = new Party({
       id: this.idFactory(),
@@ -29,6 +30,7 @@ export class PartyService {
   }
 
   joinParty(playerId, joinCode) {
+    if (this.repository.getActiveRun(playerId)) throw new Error('Finish the active dungeon before joining a party.');
     if (this.repository.getPartyForPlayer(playerId)) throw new Error('Player is already in a party.');
     const stored = this.repository.getPartyByJoinCode(String(joinCode || '').trim().toUpperCase());
     if (!stored) throw new Error('Party invite code was not found.');
