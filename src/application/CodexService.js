@@ -62,8 +62,15 @@ function achievementEntries(gameRepository, playerId) {
   }));
 }
 
-function narrativeEntries(codexRepository) {
-  const canonical = allCanonicalNarrativeEntries().map((entry) => ({ ...entry, category: 'lore' }));
+function narrativeEntries(gameRepository, codexRepository) {
+  const world = gameRepository.getWorldState();
+  const canonical = allCanonicalNarrativeEntries().map((entry) => ({
+    ...entry,
+    category: 'lore',
+    mechanics: entry.id === world.arcId
+      ? { currentClears: world.frayedHollowClears, targetClears: world.target }
+      : undefined,
+  }));
   const published = codexRepository.listPublishedContentEntries().map((entry) => ({
     id: entry.id,
     category: 'lore',
@@ -129,7 +136,7 @@ export class CodexService {
       items: itemEntries(this.codexRepository),
       enemies: enemyEntries(),
       bosses: bossEntries(),
-      lore: narrativeEntries(this.codexRepository),
+      lore: narrativeEntries(this.gameRepository, this.codexRepository),
       achievements: achievementEntries(this.gameRepository, playerId),
       history: historyEntries(this.codexRepository),
     };
