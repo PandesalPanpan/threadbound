@@ -15,7 +15,7 @@ async function sendMessage(page, message) {
   await expect(page.getByTestId('stream-message')).toHaveValue('');
 }
 
-test('mobile and desktop players share realtime chat and separate dungeon activity over WebSocket', async ({ browser }) => {
+test('mobile and desktop players share chat and play reactively through the realtime stream', async ({ browser }) => {
   const anonymousContext = await browser.newContext();
   const unauthenticatedToken = await anonymousContext.request.get('/api/realtime-token');
   expect(unauthenticatedToken.status()).toBe(401);
@@ -34,11 +34,16 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
 
     await expect(first.getByTestId('adventure-stream')).toBeVisible();
     await expect(first.getByTestId('stream-composer')).toBeVisible();
+    await expect(first.getByTestId('stream-empty')).toBeVisible();
+    const quietLog = await first.getByTestId('adventure-stream-log').boundingBox();
+    expect(quietLog).not.toBeNull();
+    expect(quietLog.height).toBeLessThan(180);
     const sendBox = await first.getByTestId('stream-send').boundingBox();
     expect(sendBox).not.toBeNull();
     expect(sendBox.height).toBeGreaterThanOrEqual(44);
 
     await sendMessage(first, 'heal or attack?');
+    await expect(first.getByTestId('stream-empty')).toHaveCount(0);
     const messageOnSecond = second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' });
     await expect(messageOnSecond).toBeVisible();
     await expect(messageOnSecond).toContainText('Local Weaver C');
@@ -62,6 +67,18 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
     await expect(firstEntered).toBeVisible();
     await expect(firstEntered).toContainText('DUNGEON STARTED');
     await expect(second.getByTestId('party-code-input')).toHaveValue('ABC123');
+
+    // On mobile the stream itself becomes the reactive control surface. It delegates to
+    // the existing domain-backed controls rather than creating a second combat path.
+    await expect(first.getByTestId('stream-combat-dock')).toBeVisible();
+    await expect(first.getByTestId('stream-combat-status')).toContainText('Auto Strike ON');
+    await expect(first.getByTestId('stream-guard')).toBeVisible();
+    const streamGuardBox = await first.getByTestId('stream-guard').boundingBox();
+    expect(streamGuardBox).not.toBeNull();
+    expect(streamGuardBox.height).toBeGreaterThanOrEqual(44);
+    await expect(first.getByTestId('guard')).toBeHidden();
+    await first.getByTestId('stream-guard').click();
+    await expect(second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C raised Guard.' }).first()).toBeVisible();
 
     await second.getByTestId('start-dungeon').first().click();
     await expect(second.getByTestId('run-state')).toContainText('Phase: combat');
