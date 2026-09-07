@@ -7,7 +7,7 @@ test.use({
   isMobile: true,
 });
 
-const reviewDir = 'test-results/ux-review';
+const reviewDir = 'ux-review';
 
 async function reviewShot(page, name, locator = null) {
   mkdirSync(reviewDir, { recursive: true });
