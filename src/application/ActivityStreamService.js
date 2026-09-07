@@ -93,7 +93,6 @@ export class ActivityStreamService {
 
   #project(event) {
     const actorName = event.playerId ? this.#playerName(event.playerId) : null;
-    const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
     const enemyName = event.enemyId ? titleize(event.enemyId) : null;
     const dungeonName = event.dungeonId ? titleize(event.dungeonId) : null;
 
@@ -107,9 +106,8 @@ export class ActivityStreamService {
       case 'CombatActionResolved':
         return { actorPlayerId: event.playerId, actorName, body: this.#combatResult(event, actorName) };
 
-      // These fine-grained domain events remain useful to achievements/history and
-      // realtime invalidation, but the social timeline receives the resolved turn
-      // above so one player action does not explode into several bot messages.
+      // Fine-grained domain events still drive achievements/history/realtime state,
+      // but one explicit player command becomes one public result message.
       case 'EnemyDamaged':
       case 'PlayerDamaged':
       case 'PlayerGuarded':
@@ -131,8 +129,11 @@ export class ActivityStreamService {
         const names = (event.participantIds || []).map((id) => this.#playerName(id));
         return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} fell in ${dungeonName}.` };
       }
-      case 'DungeonCompleted':
-        return null;
+      case 'DungeonCompleted': {
+        if (event.playerId) return null;
+        const names = (event.participantIds || []).map((id) => this.#playerName(id));
+        return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} cleared ${dungeonName}.` };
+      }
       case 'ItemGenerated': {
         const item = this.gameRepository.getItem(event.itemId);
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}. Open Gear to equip, compare, or salvage it.` };
