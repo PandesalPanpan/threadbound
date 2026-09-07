@@ -5,12 +5,13 @@ import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { ALLOWED_ENEMY_ABILITIES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 
 export class ArcManifestService {
-  constructor({ gameRepository, codexRepository, manifestRepository, validator = new ArcManifestValidator(), idFactory = randomUUID }) {
+  constructor({ gameRepository, codexRepository, manifestRepository, validator = new ArcManifestValidator(), idFactory = randomUUID, rng = Math.random }) {
     this.gameRepository = gameRepository;
     this.codexRepository = codexRepository;
     this.manifestRepository = manifestRepository;
     this.validator = validator;
     this.idFactory = idFactory;
+    this.rng = rng;
   }
 
   worldContext() {
@@ -45,9 +46,7 @@ export class ArcManifestService {
     };
   }
 
-  validate(manifest) {
-    return this.validator.validate(manifest);
-  }
+  validate(manifest) { return this.validator.validate(manifest); }
 
   saveDraft(manifest, { source = 'upload' } = {}) {
     const validation = this.validate(manifest);
@@ -93,15 +92,25 @@ export class ArcManifestService {
       entityId: `generated-arc:${published.arcId}`,
       createdAt: published.publishedAt,
     });
+    for (const consequence of published.manifest.historicalConsequences.filter((entry) => entry.trigger === 'arc_started')) {
+      this.codexRepository.recordWorldHistory({
+        id: `manifest-history:${published.arcId}:r${published.revision}:${consequence.id}`,
+        eventType: 'arc_started',
+        title: consequence.title,
+        summary: consequence.body,
+        body: consequence.body,
+        entityType: 'lore',
+        entityId: `generated-arc:${published.arcId}`,
+        createdAt: published.publishedAt,
+      });
+    }
     return published;
   }
 
   publishedAchievements() {
     const entries = [];
     for (const record of this.manifestRepository.listPublished()) {
-      for (const achievement of record.manifest.achievements) {
-        entries.push({ ...achievement, arcId: record.arcId, manifestId: record.id, revision: record.revision });
-      }
+      for (const achievement of record.manifest.achievements) entries.push({ ...achievement, arcId: record.arcId, manifestId: record.id, revision: record.revision });
     }
     return entries;
   }
@@ -139,6 +148,30 @@ export class ArcManifestService {
   resolveDungeon(id) {
     if (DUNGEONS[id]) return structuredClone(DUNGEONS[id]);
     return this.runtimeDungeons().find((dungeon) => dungeon.id === id) || null;
+  }
+
+  generateReward(dungeonId) {
+    for (const record of this.manifestRepository.listPublished()) {
+      const dungeon = record.manifest.dungeons.find((entry) => entry.id === dungeonId);
+      if (!dungeon) continue;
+      const pool = record.manifest.itemPools.find((entry) => entry.id === dungeon.rewardPoolId);
+      if (!pool?.items?.length) return null;
+      const template = pool.items[Math.floor(this.rng() * pool.items.length) % pool.items.length];
+      const effectCode = template.effects[0] || 'none';
+      const effect = ITEM_EFFECTS[effectCode] || ITEM_EFFECTS.none;
+      return {
+        id: this.idFactory(),
+        definitionId: template.id,
+        name: template.namePattern.replaceAll('{suffix}', 'the Loom').replaceAll('{arc}', record.manifest.arc.title),
+        slot: 'weapon',
+        rarity: template.rarity,
+        attackBonus: template.attackBonus,
+        effectCode,
+        effect,
+        source: dungeonId,
+      };
+    }
+    return null;
   }
 
   #projectCodex(record) {
