@@ -60,7 +60,7 @@ test('first 60 seconds explain themselves and keep the core loop inside the adve
   await reviewShot(page, '02-combat-feedback', page.locator('#stream'));
 
   await streamGuard.click();
-  await expect(page.getByTestId('combat-feedback')).toContainText(/Guard|absorbed/i);
+  await expect(page.getByTestId('stream-system-entry').filter({ hasText: /raised Guard/i }).last()).toBeVisible();
 
   await waitUntilPhaseChanges(context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
