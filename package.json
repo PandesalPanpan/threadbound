@@ -1,6 +1,6 @@
 {
   "name": "threadbound",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Persistent cooperative roguelite RPG integrated with Threaded through OAuth2 + versioned APIs.",
@@ -8,7 +8,9 @@
     "start": "node src/server.js",
     "check": "node --check src/server.js && node --check src/app.js && node --check src/application/GameService.js && node --check src/application/PartyService.js && node --check src/domain/DungeonRun.js && node --check src/domain/Party.js && node --check src/infrastructure/SQLiteGameRepository.js",
     "test": "node --test test/*.test.js test/**/*.test.js",
-    "test:e2e": "playwright test"
+    "test:e2e": "npm run test:e2e:threaded && npm run test:e2e:local",
+    "test:e2e:threaded": "playwright test --config=playwright.config.js",
+    "test:e2e:local": "playwright test --config=playwright.local.config.js"
   },
   "engines": {
     "node": ">=22.5"
