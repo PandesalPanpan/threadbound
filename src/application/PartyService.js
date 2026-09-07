@@ -6,8 +6,9 @@ function defaultJoinCode() {
 }
 
 export class PartyService {
-  constructor({ repository, idFactory = randomUUID, joinCodeFactory = defaultJoinCode }) {
+  constructor({ repository, eventBus = null, idFactory = randomUUID, joinCodeFactory = defaultJoinCode }) {
     this.repository = repository;
+    this.eventBus = eventBus;
     this.idFactory = idFactory;
     this.joinCodeFactory = joinCodeFactory;
   }
@@ -26,6 +27,7 @@ export class PartyService {
       members: [{ playerId, ready: true }],
     });
     this.repository.createParty(party);
+    this.#publish('PartyCreated', party.id, playerId);
     return this.repository.getParty(party.id);
   }
 
@@ -37,6 +39,7 @@ export class PartyService {
     const party = new Party(stored);
     party.addMember(playerId);
     this.repository.addPartyMember(party.id, playerId, false);
+    this.#publish('PartyMemberJoined', party.id, playerId);
     return this.repository.getParty(party.id);
   }
 
@@ -46,6 +49,7 @@ export class PartyService {
     const party = new Party(stored);
     party.setReady(playerId, ready);
     this.repository.setPartyMemberReady(party.id, playerId, Boolean(ready));
+    this.#publish('PartyReadyChanged', party.id, playerId);
     return this.repository.getParty(party.id);
   }
 
@@ -56,12 +60,18 @@ export class PartyService {
     if (party.leaderPlayerId === playerId) {
       if (party.status === 'in_run') throw new Error('The leader cannot disband a party during an active dungeon.');
       this.repository.deleteParty(party.id);
+      this.#publish('PartyDisbanded', party.id, playerId);
       return null;
     }
     if (party.status === 'in_run') throw new Error('Players cannot leave a party during an active dungeon.');
     party.removeMember(playerId);
     this.repository.removePartyMember(party.id, playerId);
+    this.#publish('PartyMemberLeft', party.id, playerId);
     return null;
+  }
+
+  #publish(type, partyId, playerId) {
+    this.eventBus?.publish({ type, partyId, playerId });
   }
 
   #uniqueJoinCode() {
