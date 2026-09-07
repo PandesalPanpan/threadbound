@@ -31,7 +31,7 @@ async function expectTouchTarget(locator, minimum = 44) {
   }, { timeout: 5000 }).toBeGreaterThanOrEqual(minimum);
 }
 
-test('mobile player shell is touch-friendly and combat-first', async ({ page }) => {
+test('mobile player shell is touch-friendly and stream-first during combat', async ({ page }) => {
   await loginWithThreaded(page);
 
   await expect(page.getByTestId('mobile-game-nav')).toBeVisible();
@@ -48,10 +48,17 @@ test('mobile player shell is touch-friendly and combat-first', async ({ page }) 
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
   await expect(page.getByTestId('enemy-card')).toBeVisible();
-  await expect(page.getByTestId('combat-actions')).toBeVisible();
-  await expect(page.getByTestId('auto-attack-status')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-dock')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-actions')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-status')).toContainText('Auto Strike ON');
+  await expectTouchTarget(page.getByTestId('stream-guard'), 48);
+
+  // The expedition card still shows authoritative combat state, but duplicate controls
+  // move out of the way on phones so chat + reactive play remain one surface.
+  await expect(page.getByTestId('combat-actions')).toBeHidden();
+  await expect(page.getByTestId('auto-attack-status')).toBeHidden();
   await expect(page.getByTestId('attack')).toBeHidden();
-  await expectTouchTarget(page.getByTestId('guard'), 48);
+  await expect(page.getByTestId('guard')).toBeHidden();
   await expectNoHorizontalOverflow(page);
 
   const enemyBefore = await page.getByTestId('enemy-card').textContent();
