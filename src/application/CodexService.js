@@ -24,7 +24,7 @@ function enemyEntries() {
         category: 'enemies',
         title: enemy.name,
         summary: `Encountered in ${dungeon.name}.`,
-        body: `${enemy.name} is a standard enemy documented directly from the live dungeon definition. Base HP ${enemy.hp}; base retaliation ${enemy.retaliation}. Actual combat values scale with party size.`,
+        body: `${enemy.name} is documented directly from the live dungeon definition. Base HP ${enemy.hp}; base retaliation ${enemy.retaliation}. Actual combat values scale with party size.`,
         mechanics: { baseHp: enemy.hp, baseRetaliation: enemy.retaliation, dungeonId: dungeon.id },
         source: 'domain-model',
         tags: [dungeon.id, 'enemy'],
@@ -40,15 +40,15 @@ function bossEntries() {
     category: 'bosses',
     title: dungeon.boss.name,
     summary: `Boss of ${dungeon.name}.`,
-    body: `${dungeon.boss.name} is the boss documented directly from the live dungeon definition. Base HP ${dungeon.boss.hp}; base retaliation ${dungeon.boss.retaliation}. Party-size scaling is applied at run start.`,
+    body: `${dungeon.boss.name} is documented directly from the live dungeon definition. Base HP ${dungeon.boss.hp}; base retaliation ${dungeon.boss.retaliation}. Party-size scaling is applied at run start.`,
     mechanics: { baseHp: dungeon.boss.hp, baseRetaliation: dungeon.boss.retaliation, dungeonId: dungeon.id },
     source: 'domain-model',
     tags: [dungeon.id, 'boss'],
   }));
 }
 
-function achievementEntries(repository, playerId) {
-  const unlocked = new Map(repository.listAchievements(playerId).map((achievement) => [achievement.id, achievement]));
+function achievementEntries(gameRepository, playerId) {
+  const unlocked = new Map(gameRepository.listAchievements(playerId).map((achievement) => [achievement.id, achievement]));
   return Object.values(ACHIEVEMENTS).map((achievement) => ({
     id: achievement.id,
     category: 'achievements',
@@ -58,16 +58,13 @@ function achievementEntries(repository, playerId) {
     unlocked: unlocked.has(achievement.id),
     unlockedAt: unlocked.get(achievement.id)?.unlockedAt ?? null,
     source: 'achievement-catalog',
-    tags: ['achievement'],
+    tags: ['achievement', unlocked.has(achievement.id) ? 'unlocked' : 'locked'],
   }));
 }
 
-function narrativeEntries(repository) {
-  const canonical = allCanonicalNarrativeEntries().map((entry) => ({
-    ...entry,
-    category: entry.type === 'world-arc' ? 'lore' : 'lore',
-  }));
-  const published = repository.listPublishedContentEntries().map((entry) => ({
+function narrativeEntries(codexRepository) {
+  const canonical = allCanonicalNarrativeEntries().map((entry) => ({ ...entry, category: 'lore' }));
+  const published = codexRepository.listPublishedContentEntries().map((entry) => ({
     id: entry.id,
     category: 'lore',
     title: entry.title,
@@ -84,13 +81,13 @@ function narrativeEntries(repository) {
   return [...byId.values()];
 }
 
-function itemEntries(repository) {
-  return repository.listCodexItems().map((item) => ({
+function itemEntries(codexRepository) {
+  return codexRepository.listCodexItems().map((item) => ({
     id: item.id,
     category: 'items',
     title: item.name,
     summary: `${item.rarity} ${item.slot} · +${item.attackBonus} attack · ${item.effect.name}`,
-    body: item.loreText || `${item.name} was recovered from ${item.source}. ${item.effect.description}`,
+    body: `${item.name} was recovered from ${item.source}. ${item.effect.description}`,
     mechanics: {
       attackBonus: item.attackBonus,
       rarity: item.rarity,
@@ -105,8 +102,8 @@ function itemEntries(repository) {
   }));
 }
 
-function historyEntries(repository) {
-  return repository.listWorldHistory(250).map((entry) => ({
+function historyEntries(codexRepository) {
+  return codexRepository.listWorldHistory(250).map((entry) => ({
     id: entry.id,
     category: 'history',
     title: entry.title,
@@ -121,32 +118,28 @@ function historyEntries(repository) {
 }
 
 export class CodexService {
-  constructor({ repository }) {
-    this.repository = repository;
+  constructor({ gameRepository, codexRepository }) {
+    this.gameRepository = gameRepository;
+    this.codexRepository = codexRepository;
   }
 
   browse(playerId, { category = 'all', query = '' } = {}) {
     const q = normalize(query);
     const groups = {
-      items: itemEntries(this.repository),
+      items: itemEntries(this.codexRepository),
       enemies: enemyEntries(),
       bosses: bossEntries(),
-      lore: narrativeEntries(this.repository),
-      achievements: achievementEntries(this.repository, playerId),
-      history: historyEntries(this.repository),
+      lore: narrativeEntries(this.codexRepository),
+      achievements: achievementEntries(this.gameRepository, playerId),
+      history: historyEntries(this.codexRepository),
     };
-
-    const entries = category === 'all'
-      ? Object.values(groups).flat()
-      : (groups[category] || []);
-
+    const entries = category === 'all' ? Object.values(groups).flat() : (groups[category] || []);
     const filtered = entries
       .filter((entry) => matchesQuery(entry, q))
       .sort((a, b) => {
         if (a.category === 'history' && b.category === 'history') return String(b.createdAt).localeCompare(String(a.createdAt));
         return a.title.localeCompare(b.title);
       });
-
     return {
       category,
       query,
@@ -157,7 +150,6 @@ export class CodexService {
   }
 
   detail(playerId, category, id) {
-    const result = this.browse(playerId, { category });
-    return result.entries.find((entry) => entry.id === id) || null;
+    return this.browse(playerId, { category }).entries.find((entry) => entry.id === id) || null;
   }
 }
