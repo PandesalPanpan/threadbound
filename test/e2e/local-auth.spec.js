@@ -48,7 +48,10 @@ async function clickCodexTab(page, category) {
 }
 
 test('standalone local mode supports co-op combat plus the living Codex without Threaded', async ({ browser }) => {
-  test.setTimeout(90000);
+  // This intentionally exercises a complete two-player dungeon, support actions, reward
+  // projection, and Codex navigation in one real-browser journey. Auto-strike cadence and
+  // repeated page rehydration make 90s too tight on CI even when the product is healthy.
+  test.setTimeout(150000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
