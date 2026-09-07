@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 test.use({
@@ -5,6 +6,15 @@ test.use({
   hasTouch: true,
   isMobile: true,
 });
+
+const reviewDir = 'test-results/ux-review';
+
+async function reviewShot(page, name, locator = null) {
+  mkdirSync(reviewDir, { recursive: true });
+  const options = { path: `${reviewDir}/${name}.png` };
+  if (locator) await locator.screenshot(options);
+  else await page.screenshot(options);
+}
 
 async function loginWithThreaded(page) {
   await page.goto('/');
@@ -41,6 +51,7 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await expect(page.getByTestId('first-run-guide')).toBeVisible();
   await expect(page.getByTestId('first-run-guide')).toContainText('Enter Frayed Hollow');
   await expect(page.getByTestId('start-dungeon')).toHaveText('Enter Frayed Hollow');
+  await reviewShot(page, '01-first-run');
 
   await clickAndWait(page, 'start-dungeon');
   await expect(page.getByTestId('combat-coach')).toBeVisible();
@@ -51,6 +62,7 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await expect(page.getByTestId('combat-feedback')).toContainText('damage');
   await expect(page.getByTestId('damage-feedback')).toHaveCount(1);
   await expect(page.getByTestId('retaliation-feedback')).toHaveCount(1);
+  await reviewShot(page, '02-combat-feedback', page.locator('#dungeon'));
 
   await clickAndWait(page, 'guard');
   await expect(page.getByTestId('combat-feedback')).toContainText(/Guard|absorbed/i);
@@ -62,6 +74,7 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await expect(page.getByTestId('upgrade-reinforce')).toHaveText('Choose +12 HP');
   await expect(page.getByText('+3 attack for every strike this run.')).toBeVisible();
   await expect(page.getByText('Restore 12 HP to every party member before the boss.')).toBeVisible();
+  await reviewShot(page, '03-upgrade-choice', page.locator('#dungeon'));
 
   await clickAndWait(page, 'upgrade-sharpen');
   await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
@@ -71,6 +84,7 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await expect(page.getByTestId('reward-name')).not.toHaveText('');
   await expect(page.getByTestId('reward-equip')).toBeVisible();
   await expect(page.getByTestId('run-again')).toBeVisible();
+  await reviewShot(page, '04-reward-reveal', page.locator('#dungeon'));
 
   const attackBeforeEquip = Number(await page.getByTestId('attack-power').textContent());
   await clickAndWait(page, 'reward-equip');
@@ -78,6 +92,7 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   expect(attackAfterEquip).toBeGreaterThan(attackBeforeEquip);
   await expect(page.getByTestId('reward-power-gain')).toContainText(`Attack ${attackBeforeEquip}`);
   await expect(page.getByTestId('reward-equip')).toHaveCount(0);
+  await reviewShot(page, '05-equipped-reward', page.locator('#dungeon'));
 
   await clickAndWait(page, 'run-again');
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
