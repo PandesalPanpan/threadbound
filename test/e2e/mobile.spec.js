@@ -48,11 +48,13 @@ test('mobile player shell is touch-friendly and combat-first', async ({ page }) 
 
   await expect(page.getByTestId('enemy-card')).toBeVisible();
   await expect(page.getByTestId('combat-actions')).toBeVisible();
-  await expectTouchTarget(page.getByTestId('attack'), 48);
+  await expect(page.getByTestId('auto-attack-status')).toBeVisible();
+  await expect(page.getByTestId('attack')).toBeHidden();
   await expectTouchTarget(page.getByTestId('guard'), 48);
   await expectNoHorizontalOverflow(page);
 
-  await page.getByTestId('attack').click();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  const enemyBefore = await page.getByTestId('enemy-card').textContent();
+  await expect.poll(async () => page.getByTestId('enemy-card').textContent(), { timeout: 5000 }).not.toBe(enemyBefore);
+  await expect(page.getByTestId('combat-feedback')).toBeVisible();
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
 });
