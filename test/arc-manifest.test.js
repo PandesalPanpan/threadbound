@@ -5,6 +5,7 @@ import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexReposito
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
 import { ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
+import { ArcAchievementProjector } from '../src/application/ArcAchievementProjector.js';
 import { DungeonRun } from '../src/domain/DungeonRun.js';
 
 function validManifest() {
@@ -21,7 +22,7 @@ function validManifest() {
     bosses: [{ id: 'test-loomkeeper', name: 'Test Loomkeeper', baseHp: 18, retaliation: 2, abilities: ['basic_retaliation'] }],
     dungeons: [{ id: 'test-cinder-vault', name: 'Test Cinder Vault', recommendedPlayers: 2, encounters: ['test-ashling'], bossId: 'test-loomkeeper', rewardPoolId: 'test-cinder-relics' }],
     itemPools: [{ id: 'test-cinder-relics', items: [{ id: 'test-ember-needle', namePattern: 'Test Ember Needle of {suffix}', rarity: 'rare', attackBonus: 3, effects: ['boss_bane'] }] }],
-    achievements: [{ id: 'test-cinder-cleared', title: 'Test Through the Cinders', description: 'Complete the test vault.', event: 'dungeon_completed', threshold: 1 }],
+    achievements: [{ id: 'test-cinder-cleared', title: 'Test Through the Cinders', description: 'Complete the test vault.', event: 'dungeon_completed', targetId: 'test-cinder-vault', threshold: 1 }],
     historicalConsequences: [{ id: 'test-ashen-begins', trigger: 'arc_started', title: 'Test Ashen Thread begins', body: 'The test arc entered world history.' }],
   };
 }
@@ -36,18 +37,20 @@ function setup() {
   return { gameRepository, codexRepository, manifestRepository, service };
 }
 
-test('validator rejects canonical collisions, unsupported mechanics, and broken references', () => {
+test('validator rejects canonical collisions, unsupported mechanics, broken references, and bad achievement targets', () => {
   const validator = new ArcManifestValidator();
   const manifest = validManifest();
   manifest.arc.id = 'arc-1';
   manifest.itemPools[0].items[0].effects = ['instant_kill'];
   manifest.dungeons[0].bossId = 'missing-boss';
+  manifest.achievements[0].targetId = 'missing-dungeon';
 
   const result = validator.validate(manifest);
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((error) => error.code === 'canonical_id_collision'));
   assert.ok(result.errors.some((error) => error.code === 'unsupported_item_effect'));
   assert.ok(result.errors.some((error) => error.code === 'unknown_boss_reference'));
+  assert.ok(result.errors.some((error) => error.code === 'unknown_achievement_target'));
 });
 
 test('valid manifests save as draft, publish explicitly, and supersede old revisions', () => {
@@ -131,5 +134,23 @@ test('world context exports supported mechanics and current published arc metada
   assert.deepEqual(context.allowedMechanics.enemyAbilities, ['basic_retaliation']);
   assert.equal(context.publishedGeneratedArcs[0].arcId, 'ashen-thread-test');
   assert.ok(context.generationRules.some((rule) => /Return JSON only/i.test(rule)));
+  gameRepository.close();
+});
+
+test('published scoped achievements progress from matching domain events and ignore other dungeons', () => {
+  const { gameRepository, manifestRepository, service } = setup();
+  service.publish(service.saveDraft(validManifest()).id);
+  const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'manifest-achiever', displayName: 'Manifest Achiever' });
+  const projector = new ArcAchievementProjector({ gameRepository, manifestRepository, arcManifestService: service });
+
+  projector.handle({ type: 'DungeonCompleted', playerId: player.id, runId: 'other-run', dungeonId: 'other-dungeon' });
+  assert.equal(manifestRepository.getAchievementProgress(player.id, 'test-cinder-cleared'), 0);
+  assert.equal(gameRepository.listAchievements(player.id).some((entry) => entry.id === 'test-cinder-cleared'), false);
+
+  const matching = { type: 'DungeonCompleted', playerId: player.id, runId: 'cinder-run', dungeonId: 'test-cinder-vault' };
+  projector.handle(matching);
+  projector.handle(matching);
+  assert.equal(manifestRepository.getAchievementProgress(player.id, 'test-cinder-cleared'), 1);
+  assert.equal(gameRepository.listAchievements(player.id).find((entry) => entry.id === 'test-cinder-cleared').name, 'Test Through the Cinders');
   gameRepository.close();
 });
