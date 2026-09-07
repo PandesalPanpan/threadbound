@@ -1,15 +1,16 @@
 export class WorldHistoryProjector {
-  constructor(repository) {
-    this.repository = repository;
+  constructor({ gameRepository, codexRepository }) {
+    this.gameRepository = gameRepository;
+    this.codexRepository = codexRepository;
   }
 
   handle(event) {
     if (event.type === 'DungeonCompleted') {
       const participantNames = (event.participantIds || [])
-        .map((playerId) => this.repository.getPlayer(playerId)?.displayName)
+        .map((playerId) => this.gameRepository.getPlayer(playerId)?.displayName)
         .filter(Boolean);
       const partyText = participantNames.length > 0 ? participantNames.join(', ') : 'Unknown Weavers';
-      this.repository.recordWorldHistory({
+      this.codexRepository.recordWorldHistory({
         id: `run:${event.runId}:completed`,
         eventType: 'DungeonCompleted',
         title: 'Frayed Hollow cleared',
@@ -22,15 +23,15 @@ export class WorldHistoryProjector {
     }
 
     if (event.type === 'ItemGenerated') {
-      const item = this.repository.getItem(event.itemId);
+      const item = this.gameRepository.getItem(event.itemId);
       if (!item) return;
-      const player = this.repository.getPlayer(event.playerId);
-      this.repository.recordWorldHistory({
+      const player = this.gameRepository.getPlayer(event.playerId);
+      this.codexRepository.recordWorldHistory({
         id: `item:${item.id}:discovered`,
         eventType: 'ItemGenerated',
         title: `Relic discovered: ${item.name}`,
         summary: `${player?.displayName || 'A Weaver'} recovered ${item.name} from ${item.source}.`,
-        body: item.loreText || `${item.name} entered the known Threadbound record with the effect ${item.effect.name}.`,
+        body: `${item.name} entered the known Threadbound record with the effect ${item.effect.name}. ${item.effect.description}`,
         entityType: 'item',
         entityId: item.id,
         createdAt: item.createdAt || new Date().toISOString(),
