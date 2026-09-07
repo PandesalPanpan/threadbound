@@ -70,7 +70,7 @@ test('service layer persists reward, progression, achievements, and equipment po
   repository.close();
 });
 
-test('Honey retries call Threaded again but grant exactly once', async () => {
+test('Honey sequential retries call Threaded again but grant exactly once', async () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-1' });
   const player = repository.getOrCreatePlayer({ threadedUserId: '1001', displayName: 'Tester' });
   let calls = 0;
@@ -90,5 +90,32 @@ test('Honey retries call Threaded again but grant exactly once', async () => {
   assert.equal(second.grantApplied, false);
   assert.equal(calls, 2);
   assert.equal(repository.listItems(player.id).length, 1);
+  repository.close();
+});
+
+test('Honey concurrent retries converge on one durable grant', async () => {
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-1' });
+  const player = repository.getOrCreatePlayer({ threadedUserId: '1001', displayName: 'Tester' });
+  let arrivals = 0;
+  let release;
+  const bothArrived = new Promise((resolve) => { release = resolve; });
+  const gateway = {
+    async spendPoints() {
+      arrivals += 1;
+      if (arrivals === 2) release();
+      await bothArrived;
+      return { transaction_id: 'txn-concurrent-1', balance: 75 };
+    },
+  };
+  const service = new HoneyPurchaseService({ repository, threadedGateway: gateway });
+  const input = { playerId: player.id, threadedUserId: '1001', accessToken: 'token', idempotencyKey: 'concurrent-key-123' };
+  const results = await Promise.all([
+    service.purchaseTrainingCache(input),
+    service.purchaseTrainingCache(input),
+  ]);
+
+  assert.equal(results.filter((result) => result.grantApplied).length, 1);
+  assert.equal(repository.listItems(player.id).length, 1);
+  assert.equal(repository.getPurchaseGrant(player.id, input.idempotencyKey).threadedTransactionId, 'txn-concurrent-1');
   repository.close();
 });
