@@ -42,7 +42,12 @@ async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase,
   throw new Error(`Local co-op run did not leave ${expectedPhase} within the guard limit.`);
 }
 
-test('standalone local mode supports full co-op UI including guard, mend and revive without Threaded', async ({ browser }) => {
+async function clickCodexTab(page, category) {
+  await page.getByTestId(`codex-tab-${category}`).click();
+  await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
+}
+
+test('standalone local mode supports co-op combat plus the living Codex without Threaded', async ({ browser }) => {
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
@@ -55,6 +60,7 @@ test('standalone local mode supports full co-op UI including guard, mend and rev
     for (const heading of ['Character', 'Party', 'Dungeon', 'Inventory', 'Achievements', 'World Arc', 'Honey integration']) {
       await expect(leader.getByRole('heading', { name: heading })).toBeVisible();
     }
+    await expect(leader.getByTestId('nav-codex')).toBeVisible();
 
     const honeyAttempt = await leaderContext.request.post('/api/honey/purchases/training-cache', { headers: { 'Idempotency-Key': 'local-mode-key-123' } });
     expect(honeyAttempt.status()).toBe(409);
@@ -131,6 +137,55 @@ test('standalone local mode supports full co-op UI including guard, mend and rev
     await expect(leader.getByTestId('thread-dust')).toHaveText('15');
     await expect(partner.getByTestId('thread-dust')).toHaveText('15');
     await expect(leader.getByTestId('party-readiness')).toContainText('Waiting');
+
+    const leaderItemName = (await leader.getByTestId('inventory-item').first().locator('strong').textContent()).trim();
+    await leader.getByTestId('nav-codex').click();
+    await expect(leader).toHaveURL(/\/codex/);
+    await expect(leader.getByRole('heading', { name: 'Threadbound Codex' })).toBeVisible();
+    await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
+    await expect(leader.getByTestId('codex-count-enemies')).toHaveText('Enemies 3');
+    await expect(leader.getByTestId('codex-count-bosses')).toHaveText('Bosses 1');
+    await expect(leader.getByTestId('codex-count-lore')).toHaveText('Lore 4');
+    await expect(leader.getByTestId('codex-count-achievements')).toHaveText('Achievements 3');
+    await expect(leader.getByTestId('codex-count-items')).toHaveText('Items 2');
+    await expect(leader.getByTestId('codex-count-history')).toHaveText('History 3');
+
+    await clickCodexTab(leader, 'bosses');
+    await expect(leader.getByTestId('codex-entry')).toHaveCount(1);
+    await expect(leader.getByTestId('codex-detail-title')).toHaveText('The First Needle');
+    await expect(leader.getByTestId('codex-mechanics')).toContainText('Base Hp');
+    await expect(leader.getByTestId('codex-mechanics')).toContainText('24');
+
+    await clickCodexTab(leader, 'lore');
+    await leader.getByTestId('codex-search').fill('hidden structure');
+    await expect(leader.getByTestId('codex-entry')).toHaveCount(1);
+    await expect(leader.getByTestId('codex-detail-title')).toHaveText('The Loom');
+    await leader.getByTestId('codex-search').fill('');
+
+    await clickCodexTab(leader, 'achievements');
+    const hollowAchievement = leader.getByTestId('codex-entry').filter({ hasText: 'Hollow Cleared' });
+    await hollowAchievement.click();
+    await expect(leader.getByTestId('codex-detail')).toContainText('Status: Unlocked');
+
+    await clickCodexTab(leader, 'items');
+    await leader.getByTestId('codex-search').fill(leaderItemName);
+    await expect(leader.getByTestId('codex-entry')).toHaveCount(1);
+    await expect(leader.getByTestId('codex-detail-title')).toHaveText(leaderItemName);
+    await expect(leader.getByTestId('codex-detail-body')).toContainText('recovered from frayed-hollow');
+    await leader.getByTestId('codex-search').fill('');
+
+    await clickCodexTab(leader, 'history');
+    await expect(leader.getByTestId('codex-entry').filter({ hasText: 'Frayed Hollow cleared' })).toHaveCount(1);
+    const relicHistory = leader.getByTestId('codex-entry').filter({ hasText: 'Relic discovered:' }).first();
+    await relicHistory.click();
+    await expect(leader.getByTestId('codex-related-item')).toBeVisible();
+    await leader.getByTestId('codex-related-item').click();
+    await expect(leader.getByTestId('codex-tab-items')).toHaveAttribute('aria-pressed', 'true');
+    await expect(leader.getByTestId('codex-detail-title')).toContainText(/.+/);
+
+    await leader.getByTestId('nav-game').click();
+    await expect(leader).toHaveURL(/\/game$/);
+    await expect(leader.getByTestId('app-status')).toHaveText('Ready');
 
     await partner.getByRole('button', { name: 'Sign out' }).click();
     await expect(partner).toHaveURL(/\/$/);

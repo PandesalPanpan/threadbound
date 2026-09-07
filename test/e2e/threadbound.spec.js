@@ -36,7 +36,7 @@ async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase,
   throw new Error(`Co-op run did not leave ${expectedPhase} within the guard limit.`);
 }
 
-test('Threaded login -> solo dungeon -> generated loot -> equip -> idempotent Honey spend', async ({ page }) => {
+test('Threaded login -> solo dungeon -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page }) => {
   await loginWithThreaded(page);
   await expect(page.getByTestId('honey-balance')).toHaveText('100');
   await expect(page.getByTestId('attack-power')).toHaveText('6');
@@ -80,6 +80,20 @@ test('Threaded login -> solo dungeon -> generated loot -> equip -> idempotent Ho
   await page.reload();
   await expect(page.getByTestId('honey-balance')).toHaveText('75');
   await expect(page.getByTestId('inventory-item')).toHaveCount(2);
+
+  await page.getByTestId('nav-codex').click();
+  await expect(page).toHaveURL(/\/codex/);
+  await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
+  await expect(page.getByTestId('codex-count-items')).toHaveText('Items 2');
+  await expect(page.getByTestId('codex-count-history')).toHaveText('History 2');
+  await page.getByTestId('codex-tab-items').click();
+  await page.getByTestId('codex-search').fill('Demo Training Sword');
+  await expect(page.getByTestId('codex-entry')).toHaveCount(1);
+  await expect(page.getByTestId('codex-detail-title')).toHaveText('Demo Training Sword');
+  await expect(page.getByTestId('codex-detail')).toContainText('honey-purchase');
+  await page.getByTestId('nav-game').click();
+  await expect(page).toHaveURL(/\/game$/);
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
   await clickAndWait(page, 'start-dungeon');
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');

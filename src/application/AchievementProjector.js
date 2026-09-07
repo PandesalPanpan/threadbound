@@ -1,7 +1,7 @@
-const ACHIEVEMENTS = Object.freeze({
-  first_blood: { id: 'first_blood', name: 'First Blood', description: 'Defeat your first enemy.' },
-  hollow_cleared: { id: 'hollow_cleared', name: 'Hollow Cleared', description: 'Complete Frayed Hollow.' },
-  armed_and_threaded: { id: 'armed_and_threaded', name: 'Armed and Threaded', description: 'Equip your first Threadbound item.' },
+export const ACHIEVEMENTS = Object.freeze({
+  first_blood: Object.freeze({ id: 'first_blood', name: 'First Blood', description: 'Defeat your first enemy.' }),
+  hollow_cleared: Object.freeze({ id: 'hollow_cleared', name: 'Hollow Cleared', description: 'Complete Frayed Hollow.' }),
+  armed_and_threaded: Object.freeze({ id: 'armed_and_threaded', name: 'Armed and Threaded', description: 'Equip your first Threadbound item.' }),
 });
 
 export class AchievementProjector {

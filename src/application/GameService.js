@@ -165,8 +165,15 @@ export class GameService {
       outcome.state = completion.state;
       if (completion.applied) {
         rewards = Object.entries(rewardsByPlayer).map(([participantId, item]) => ({ playerId: participantId, item }));
+        const participantIds = completion.state.participants.map((participant) => participant.playerId);
         for (const participant of completion.state.participants) {
-          this.eventBus.publish({ type: 'DungeonCompleted', playerId: participant.playerId, runId: completion.state.id, dungeonId: completion.state.dungeonId });
+          this.eventBus.publish({
+            type: 'DungeonCompleted',
+            playerId: participant.playerId,
+            participantIds,
+            runId: completion.state.id,
+            dungeonId: completion.state.dungeonId,
+          });
           this.eventBus.publish({ type: 'ItemGenerated', playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
         }
       }
