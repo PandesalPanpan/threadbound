@@ -39,6 +39,8 @@ test('Mend heals a wounded ally once per encounter and records support contribut
   assert.equal(result.healed, 3);
   assert.equal(run.participant('a').healingDone, 3);
   assert.equal(run.participant('a').mendCharges, 0);
+
+  run.participant('b').hp = 30;
   assert.throws(() => run.mend({ playerId: 'a', targetPlayerId: 'b' }), /already been used this encounter/i);
 });
 
@@ -61,7 +63,7 @@ test('optimistic run versions reject a stale second write instead of losing an a
   let id = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++id}` });
   const a = repository.getOrCreatePlayer({ threadedUserId: 'local:a', displayName: 'A' });
-  const b = repository.getOrCreatePlayer({ threadedUserId: 'local:b', displayName: 'B' });
+  repository.getOrCreatePlayer({ threadedUserId: 'local:b', displayName: 'B' });
   const run = DungeonRun.start({
     id: 'versioned-run',
     ownerType: 'player',
