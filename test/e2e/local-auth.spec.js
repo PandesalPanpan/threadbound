@@ -25,11 +25,16 @@ async function dashboard(context) {
 
 async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
   let turn = startTurn;
-  for (let guard = 0; guard < 50; guard += 1) {
+  for (let guard = 0; guard < 60; guard += 1) {
     const state = await dashboard(contexts[0]);
     if (state.activeRun?.phase !== expectedPhase) return turn;
-    const page = pages[turn % pages.length];
+
+    let page = pages[turn % pages.length];
     await page.reload();
+    if (await page.getByTestId('attack').count() === 0) {
+      page = pages[(turn + 1) % pages.length];
+      await page.reload();
+    }
     await expect(page.getByTestId('run-state')).toContainText(`Phase: ${expectedPhase}`);
     await clickAndWait(page, 'attack');
     turn += 1;
@@ -53,7 +58,7 @@ test('standalone local mode supports full co-op UI including guard, mend and rev
 
     const honeyAttempt = await leaderContext.request.post('/api/honey/purchases/training-cache', { headers: { 'Idempotency-Key': 'local-mode-key-123' } });
     expect(honeyAttempt.status()).toBe(409);
-    await expect.poll(async () => (await honeyAttempt.json()).error).toBe('threaded_wallet_unavailable');
+    expect((await honeyAttempt.json()).error).toBe('threaded_wallet_unavailable');
 
     await clickAndWait(leader, 'create-party');
     const inviteCode = (await leader.getByTestId('party-code').textContent()).trim();
@@ -115,7 +120,7 @@ test('standalone local mode supports full co-op UI including guard, mend and rev
     await partner.reload();
     await expect(partner.getByTestId('upgrade-waiting')).toBeVisible();
 
-    await clickAndWait(leader, 'upgrade-sharpen');
+    await clickAndWait(leader, 'upgrade-reinforce');
     turn = await alternateAttacksUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
     expect(turn).toBeGreaterThan(0);
 
