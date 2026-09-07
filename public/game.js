@@ -27,6 +27,18 @@ function button(label, onClick, testId) {
   return element;
 }
 
+function targetSelect(candidates, testId) {
+  const select = document.createElement('select');
+  select.dataset.testid = testId;
+  for (const participant of candidates) {
+    const option = document.createElement('option');
+    option.value = participant.playerId;
+    option.textContent = `${participant.displayName} · HP ${participant.hp}/${participant.maxHp}`;
+    select.append(option);
+  }
+  return select;
+}
+
 function renderParty(data) {
   partyEl.innerHTML = '<h2>Party</h2>';
   if (!data.party) {
@@ -74,6 +86,41 @@ function renderParty(data) {
   }
 }
 
+function renderSupportActions(run) {
+  const viewer = run.viewer;
+  const allies = run.participants.filter((participant) => participant.playerId !== viewer.playerId);
+  if (allies.length === 0) return;
+
+  const wounded = allies.filter((participant) => participant.hp > 0 && participant.hp < participant.maxHp);
+  const downed = allies.filter((participant) => participant.hp === 0);
+  const support = document.createElement('div');
+  support.dataset.testid = 'support-actions';
+
+  if (wounded.length > 0 && viewer.mendCharges > 0) {
+    const select = targetSelect(wounded, 'mend-target');
+    support.append(select);
+    support.append(button(`Mend · ${viewer.mendCharges} charge`, async () => {
+      await api(`/api/runs/${run.id}/mend`, { method: 'POST', body: JSON.stringify({ targetPlayerId: select.value }) });
+      await refresh();
+    }, 'mend'));
+  } else {
+    support.insertAdjacentHTML('beforeend', `<span class="muted" data-testid="mend-unavailable">${viewer.mendCharges > 0 ? 'No ally currently needs Mend.' : 'Mend used for this encounter.'}</span>`);
+  }
+
+  if (downed.length > 0 && viewer.reviveCharges > 0) {
+    const select = targetSelect(downed, 'revive-target');
+    support.append(select);
+    support.append(button(`Revive · ${viewer.reviveCharges} charge`, async () => {
+      await api(`/api/runs/${run.id}/revive`, { method: 'POST', body: JSON.stringify({ targetPlayerId: select.value }) });
+      await refresh();
+    }, 'revive'));
+  } else {
+    support.insertAdjacentHTML('beforeend', `<span class="muted" data-testid="revive-unavailable">${viewer.reviveCharges > 0 ? 'No ally is down.' : 'Revive used for this run.'}</span>`);
+  }
+
+  dungeonEl.append(support);
+}
+
 function renderDungeon(data) {
   dungeonEl.innerHTML = '<h2>Dungeon</h2>';
   if (!data.activeRun) {
@@ -94,7 +141,7 @@ function renderDungeon(data) {
   const run = data.activeRun;
   const summary = document.createElement('p');
   summary.dataset.testid = 'run-state';
-  summary.textContent = `Phase: ${run.phase} · ${run.participants.length} player${run.participants.length === 1 ? '' : 's'}${run.enemy ? ` · ${run.enemy.name} ${run.enemy.hp}/${run.enemy.maxHp}` : ''}`;
+  summary.textContent = `Phase: ${run.phase} · v${run.version} · ${run.participants.length} player${run.participants.length === 1 ? '' : 's'}${run.enemy ? ` · ${run.enemy.name} ${run.enemy.hp}/${run.enemy.maxHp}` : ''}`;
   dungeonEl.append(summary);
   dungeonEl.insertAdjacentHTML('beforeend', `<p data-testid="run-scaling">Enemy HP ×${run.scaling.enemyHealthMultiplier} · retaliation ×${run.scaling.retaliationMultiplier}</p>`);
 
@@ -102,14 +149,26 @@ function renderDungeon(data) {
     const row = document.createElement('div');
     row.className = 'member';
     row.dataset.testid = 'run-participant';
-    row.textContent = `${participant.displayName} · HP ${participant.hp}/${participant.maxHp} · contribution ${participant.contributionDamage}`;
+    row.dataset.playerId = participant.playerId;
+    row.textContent = `${participant.displayName} · HP ${participant.hp}/${participant.maxHp} · damage ${participant.contributionDamage} · healing ${participant.healingDone} · revives ${participant.revives} · prevented ${participant.damagePrevented} · threat ${participant.threat}${participant.guarding ? ' · GUARDING' : ''}`;
     dungeonEl.append(row);
   }
 
   if (['combat', 'boss'].includes(run.phase)) {
-    if (run.viewer?.hp > 0) dungeonEl.append(button('Strike', async () => { await api(`/api/runs/${run.id}/attack`, { method: 'POST' }); await refresh(); }, 'attack'));
-    else dungeonEl.insertAdjacentHTML('beforeend', '<p data-testid="defeated-player">You are down. Your party can still finish the encounter.</p>');
+    if (run.viewer?.hp > 0) {
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      actions.dataset.testid = 'combat-actions';
+      actions.append(button('Strike', async () => { await api(`/api/runs/${run.id}/attack`, { method: 'POST' }); await refresh(); }, 'attack'));
+      actions.append(button('Guard', async () => { await api(`/api/runs/${run.id}/guard`, { method: 'POST' }); await refresh(); }, 'guard'));
+      dungeonEl.append(actions);
+      renderSupportActions(run);
+      dungeonEl.insertAdjacentHTML('beforeend', '<p class="muted" data-testid="combat-help">Guard adds threat and halves the next retaliation that hits you. Mend heals an ally once per encounter. Revive restores a downed ally once per run.</p>');
+    } else {
+      dungeonEl.insertAdjacentHTML('beforeend', '<p data-testid="defeated-player">You are down. An ally can Revive you, or your party can continue without you.</p>');
+    }
   }
+
   if (run.phase === 'upgrade') {
     if (run.isLeader) {
       for (const upgrade of data.runUpgrades) dungeonEl.append(button(upgrade.name, async () => { await api(`/api/runs/${run.id}/upgrade`, { method: 'POST', body: JSON.stringify({ upgradeId: upgrade.id }) }); await refresh(); }, `upgrade-${upgrade.id}`));
@@ -122,7 +181,9 @@ function renderDungeon(data) {
 async function refresh() {
   const data = await api('/api/dashboard');
   statusEl.textContent = 'Ready';
-  identityEl.innerHTML = `<h2>Threaded</h2><p data-testid="threaded-user">${data.threadedUser.name || data.threadedUser.username || data.threadedUser.id}</p><p>Honey: <strong data-testid="honey-balance">${data.wallet.balance}</strong></p>`;
+  const sourceLabel = data.authSource === 'local' ? 'Local development identity' : 'Threaded';
+  const walletText = data.authSource === 'local' ? 'Honey unavailable in local mode' : `Honey: <strong data-testid="honey-balance">${data.wallet.balance}</strong>`;
+  identityEl.innerHTML = `<h2>${sourceLabel}</h2><p data-testid="threaded-user">${data.threadedUser.name || data.threadedUser.username || data.threadedUser.id}</p><p data-testid="auth-source">${data.authSource}</p><p>${walletText}</p>`;
   characterEl.innerHTML = `<h2>Character</h2><p>${data.character.displayName}</p><p>Attack: <strong data-testid="attack-power">${data.character.attackPower}</strong> · HP: ${data.character.maxHealth} · Thread Dust: <span data-testid="thread-dust">${data.character.threadDust}</span></p><p>Equipped: <span data-testid="equipped-item">${data.character.equippedItem?.name || 'None'}</span></p>`;
 
   renderParty(data);
@@ -142,12 +203,18 @@ async function refresh() {
 
   achievementsEl.innerHTML = `<h2>Achievements</h2>${data.achievements.length ? `<ul>${data.achievements.map((a) => `<li data-testid="achievement"><strong>${a.name}</strong> — ${a.description}</li>`).join('')}</ul>` : '<p>No achievements yet.</p>'}`;
   worldEl.innerHTML = `<h2>World Arc</h2><p>${data.world.arcName}</p><p>Community Frayed Hollow clears: <strong data-testid="world-progress">${data.world.frayedHollowClears}</strong> / ${data.world.target}</p>`;
-  honeyEl.innerHTML = '<h2>Honey integration</h2><p>Honey remains authoritative in Threaded. This purchase continuously verifies idempotent cross-app spending.</p>';
-  honeyEl.append(button('Buy Training Cache · 25 Honey', async () => {
-    const key = `ui-${crypto.randomUUID()}`;
-    await api('/api/honey/purchases/training-cache', { method: 'POST', headers: { 'Idempotency-Key': key } });
-    await refresh();
-  }, 'buy-training-cache'));
+
+  honeyEl.innerHTML = '<h2>Honey integration</h2>';
+  if (data.authSource === 'local') {
+    honeyEl.insertAdjacentHTML('beforeend', '<p data-testid="local-honey-disabled">Disabled in standalone local mode. Threaded stays the only authoritative owner of Honey.</p>');
+  } else {
+    honeyEl.insertAdjacentHTML('beforeend', '<p>Honey remains authoritative in Threaded. This purchase continuously verifies idempotent cross-app spending.</p>');
+    honeyEl.append(button('Buy Training Cache · 25 Honey', async () => {
+      const key = `ui-${crypto.randomUUID()}`;
+      await api('/api/honey/purchases/training-cache', { method: 'POST', headers: { 'Idempotency-Key': key } });
+      await refresh();
+    }, 'buy-training-cache'));
+  }
 }
 
 refresh().catch((error) => { statusEl.textContent = error.message; });

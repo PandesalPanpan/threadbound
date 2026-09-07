@@ -7,12 +7,13 @@ async function loginWithThreaded(page) {
   await page.getByRole('button', { name: 'Authorize Threadbound' }).click();
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.getByTestId('threaded-user')).toContainText('E2E Weaver');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.getByTestId('auth-source')).toHaveText('threaded');
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
 async function clickAndWait(page, testId) {
   await page.getByTestId(testId).click();
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
 async function dashboard(context) {
@@ -42,6 +43,7 @@ test('Threaded login -> solo dungeon -> generated loot -> equip -> idempotent Ho
   const worldBefore = Number(await page.getByTestId('world-progress').textContent());
 
   await clickAndWait(page, 'start-dungeon');
+  await expect(page.getByTestId('combat-help')).toContainText('Guard adds threat');
   for (let index = 0; index < 6; index += 1) await clickAndWait(page, 'attack');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
 
@@ -125,7 +127,7 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
     await clickAndWait(partner, 'attack');
     await leader.reload();
     const contributionRows = await leader.getByTestId('run-participant').allTextContents();
-    expect(contributionRows.every((row) => /contribution [1-9]\d*/.test(row))).toBe(true);
+    expect(contributionRows.every((row) => /damage [1-9]\d*/.test(row))).toBe(true);
 
     let turn = await alternateAttacksUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', 2);
     await leader.reload();

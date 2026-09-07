@@ -4,11 +4,11 @@ import { SQLiteGameRepository } from './infrastructure/SQLiteGameRepository.js';
 import { ThreadedGateway } from './threaded/ThreadedGateway.js';
 
 const repository = new SQLiteGameRepository({ filename: config.databasePath });
-const threadedGateway = new ThreadedGateway(config.threaded);
+const threadedGateway = config.authMode === 'threaded' ? new ThreadedGateway(config.threaded) : null;
 const app = createApp({ config, threadedGateway, repository });
 
 const server = app.listen(config.port, '127.0.0.1', () => {
-  console.log(`Threadbound listening on http://127.0.0.1:${config.port}`);
+  console.log(`Threadbound listening on http://127.0.0.1:${config.port} (${config.authMode} auth)`);
 });
 
 function shutdown() {

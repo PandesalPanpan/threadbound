@@ -12,10 +12,10 @@ export class GameService {
     this.idFactory = idFactory;
   }
 
-  ensurePlayer(threadedProfile) {
+  ensurePlayer(identityProfile) {
     return this.repository.getOrCreatePlayer({
-      threadedUserId: threadedProfile.id,
-      displayName: threadedProfile.name || threadedProfile.username || `Threaded ${threadedProfile.id}`,
+      threadedUserId: identityProfile.id,
+      displayName: identityProfile.name || identityProfile.username || `Weaver ${identityProfile.id}`,
     });
   }
 
@@ -82,57 +82,30 @@ export class GameService {
       participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth })),
       dungeonId,
     });
-    this.repository.createRun(run.toJSON());
-    this.eventBus.publish({ type: 'DungeonStarted', playerId, runId: run.state.id, dungeonId, ownerType, ownerId });
-    return this.#decorateRun(run.toJSON(), playerId);
+    const persisted = this.repository.createRun(run.toJSON());
+    this.eventBus.publish({ type: 'DungeonStarted', playerId, runId: persisted.id, dungeonId, ownerType, ownerId });
+    return this.#decorateRun(persisted, playerId);
   }
 
   attack(playerId, runId) {
-    const runState = this.repository.getRun(runId);
-    if (!runState) throw new Error('Run not found.');
-    const run = new DungeonRun(runState);
-    if (!run.hasParticipant(playerId)) throw new Error('Run not found.');
-
-    const player = this.repository.getPlayer(playerId);
-    const equipped = player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null;
-    const character = new Character({ ...player, equippedItem: equipped });
+    const { run, character, equipped } = this.#combatContext(playerId, runId);
     const outcome = run.attack({ playerId, attackPower: character.attackPower, equipmentEffect: equipped?.effectCode ?? 'none' });
-    this.repository.saveRun(outcome.state);
-    this.eventBus.publishAll(outcome.events);
+    return this.#persistCombatOutcome(playerId, run, outcome);
+  }
 
-    let rewards = null;
-    if (outcome.state.phase === 'complete' && !outcome.state.rewardsGranted) {
-      const rewardsByPlayer = {};
-      const rewardItemIds = {};
-      for (const participant of outcome.state.participants) {
-        const reward = this.itemGenerator.generateReward({ source: outcome.state.dungeonId });
-        rewardsByPlayer[participant.playerId] = reward;
-        rewardItemIds[participant.playerId] = reward.id;
-      }
+  guard(playerId, runId) {
+    const { run } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId }));
+  }
 
-      run.markRewards(rewardItemIds);
-      const completedState = run.toJSON();
-      const completion = this.repository.completeRunWithRewards(completedState, rewardsByPlayer, {
-        threadDust: 15,
-        worldProgressKey: 'arc-1-frayed-hollow-clears',
-      });
+  mend(playerId, runId, targetPlayerId) {
+    const { run } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId }));
+  }
 
-      outcome.state = completion.state;
-      if (completion.applied) {
-        rewards = Object.entries(rewardsByPlayer).map(([participantId, item]) => ({ playerId: participantId, item }));
-        for (const participant of completion.state.participants) {
-          this.eventBus.publish({ type: 'DungeonCompleted', playerId: participant.playerId, runId, dungeonId: completion.state.dungeonId });
-          this.eventBus.publish({ type: 'ItemGenerated', playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
-        }
-      }
-    }
-
-    return {
-      ...outcome,
-      state: this.#decorateRun(outcome.state, playerId),
-      rewards,
-      reward: rewards?.find((entry) => entry.playerId === playerId)?.item ?? null,
-    };
+  revive(playerId, runId, targetPlayerId) {
+    const { run } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId }));
   }
 
   chooseUpgrade(playerId, runId, upgradeId) {
@@ -145,7 +118,7 @@ export class GameService {
       if (!party || party.leaderPlayerId !== playerId) throw new Error('Only the party leader can choose the shared run upgrade.');
     }
     const outcome = run.chooseUpgrade(upgradeId);
-    this.repository.saveRun(outcome.state);
+    outcome.state = this.repository.saveRun(outcome.state);
     this.eventBus.publishAll(outcome.events.map((event) => ({ ...event, playerId })));
     return this.#decorateRun(outcome.state, playerId);
   }
@@ -156,6 +129,55 @@ export class GameService {
     this.repository.equipItem(playerId, itemId);
     this.eventBus.publish({ type: 'ItemEquipped', playerId, itemId });
     return this.dashboard(playerId);
+  }
+
+  #combatContext(playerId, runId) {
+    const runState = this.repository.getRun(runId);
+    if (!runState) throw new Error('Run not found.');
+    const run = new DungeonRun(runState);
+    if (!run.hasParticipant(playerId)) throw new Error('Run not found.');
+    const player = this.repository.getPlayer(playerId);
+    const equipped = player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null;
+    return { run, player, equipped, character: new Character({ ...player, equippedItem: equipped }) };
+  }
+
+  #persistCombatOutcome(playerId, run, outcome) {
+    outcome.state = this.repository.saveRun(outcome.state);
+    this.eventBus.publishAll(outcome.events);
+
+    let rewards = null;
+    if (outcome.state.phase === 'complete' && !outcome.state.rewardsGranted) {
+      const rewardsByPlayer = {};
+      const rewardItemIds = {};
+      for (const participant of outcome.state.participants) {
+        const reward = this.itemGenerator.generateReward({ source: outcome.state.dungeonId });
+        rewardsByPlayer[participant.playerId] = reward;
+        rewardItemIds[participant.playerId] = reward.id;
+      }
+
+      const completedRun = new DungeonRun(outcome.state);
+      completedRun.markRewards(rewardItemIds);
+      const completion = this.repository.completeRunWithRewards(completedRun.toJSON(), rewardsByPlayer, {
+        threadDust: 15,
+        worldProgressKey: 'arc-1-frayed-hollow-clears',
+      });
+
+      outcome.state = completion.state;
+      if (completion.applied) {
+        rewards = Object.entries(rewardsByPlayer).map(([participantId, item]) => ({ playerId: participantId, item }));
+        for (const participant of completion.state.participants) {
+          this.eventBus.publish({ type: 'DungeonCompleted', playerId: participant.playerId, runId: completion.state.id, dungeonId: completion.state.dungeonId });
+          this.eventBus.publish({ type: 'ItemGenerated', playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
+        }
+      }
+    }
+
+    return {
+      ...outcome,
+      state: this.#decorateRun(outcome.state, playerId),
+      rewards,
+      reward: rewards?.find((entry) => entry.playerId === playerId)?.item ?? null,
+    };
   }
 
   #decorateParty(party, viewerPlayerId) {
