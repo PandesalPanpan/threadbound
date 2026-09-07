@@ -52,11 +52,19 @@ function renderValidation(validation) {
   saveButton.disabled = !validation?.valid;
 }
 
+function names(entries, field = 'name') {
+  return (entries || []).map((entry) => entry?.[field]).filter(Boolean).map(escapeHtml).join(' · ');
+}
+
 function renderPreview(manifest) {
   if (!manifest?.arc) {
     previewNode.innerHTML = '<p class="muted">No manifest loaded.</p>';
     return;
   }
+  const dungeonNames = names(manifest.dungeons);
+  const enemyNames = names(manifest.enemies);
+  const bossNames = names(manifest.bosses);
+  const achievementNames = names(manifest.achievements, 'title');
   previewNode.innerHTML = `
     <h3>${escapeHtml(manifest.arc.title)}</h3>
     <p>${escapeHtml(manifest.arc.premise)}</p>
@@ -68,6 +76,10 @@ function renderPreview(manifest) {
       <div><strong>${manifest.lore?.length || 0}</strong><span>Lore pages</span></div>
       <div><strong>${manifest.achievements?.length || 0}</strong><span>Achievements</span></div>
     </div>
+    ${dungeonNames ? `<p><strong>Dungeons:</strong> ${dungeonNames}</p>` : ''}
+    ${enemyNames ? `<p><strong>Enemies:</strong> ${enemyNames}</p>` : ''}
+    ${bossNames ? `<p><strong>Bosses:</strong> ${bossNames}</p>` : ''}
+    ${achievementNames ? `<p><strong>Achievements:</strong> ${achievementNames}</p>` : ''}
   `;
 }
 
