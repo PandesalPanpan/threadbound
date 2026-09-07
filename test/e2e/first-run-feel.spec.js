@@ -11,6 +11,7 @@ const reviewDir = 'ux-review';
 
 async function reviewShot(page, name, locator = null) {
   mkdirSync(reviewDir, { recursive: true });
+  await page.waitForTimeout(450);
   const options = { path: `${reviewDir}/${name}.png` };
   if (locator) await locator.screenshot(options);
   else await page.screenshot(options);
