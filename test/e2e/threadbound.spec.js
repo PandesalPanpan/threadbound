@@ -25,6 +25,7 @@ test('Threaded login -> dungeon -> generated loot -> equip -> idempotent Honey s
   await expect(page.getByTestId('achievement')).toHaveCount(2);
 
   await page.getByRole('button', { name: 'Equip' }).first().click();
+  await expect(page.getByTestId('attack-power')).not.toHaveText('6');
   const upgradedAttack = Number(await page.getByTestId('attack-power').textContent());
   expect(upgradedAttack).toBeGreaterThan(6);
   await expect(page.getByTestId('achievement')).toHaveCount(3);
