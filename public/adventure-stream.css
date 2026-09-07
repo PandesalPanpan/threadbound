@@ -5,245 +5,169 @@
   background: linear-gradient(180deg,rgba(12,20,39,.96),rgba(8,13,26,.96));
 }
 
-.stream-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 12px;
-}
+.stream-heading { display:flex; align-items:end; justify-content:space-between; gap:12px; }
+.stream-heading > div > span { color:var(--cyan); font-size:.7rem; font-weight:900; letter-spacing:.14em; }
+.stream-heading h2 { margin:3px 0 0; }
+.stream-heading small { color:var(--muted); font-weight:800; }
+.stream-heading small.is-live { color:var(--green); }
+.stream-heading small.is-live::before { content:'● '; }
+.stream-hint { margin:3px 0 10px; color:var(--muted); font-size:.84rem; }
 
-.stream-heading > div > span {
-  color: var(--cyan);
-  font-size: .7rem;
-  font-weight: 900;
-  letter-spacing: .14em;
-}
-
-.stream-heading h2 { margin: 3px 0 0; }
-.stream-heading small { color: var(--muted); font-weight: 800; }
-.stream-heading small.is-live { color: var(--green); }
-.stream-heading small.is-live::before { content: '● '; }
-.stream-hint { margin: 3px 0 10px; color: var(--muted); font-size: .84rem; }
+/* Real persistent sprite files replace the old CSS-only placeholders. */
+.combat-sprite { background-position:center !important; background-repeat:no-repeat !important; background-size:contain !important; image-rendering:pixelated; }
+.combat-sprite > span { display:none !important; }
+.combat-sprite.sprite-frayed-wisp { background-image:url('/sprites/frayed-wisp.svg') !important; }
+.combat-sprite.sprite-hollow-stalker { background-image:url('/sprites/hollow-stalker.svg') !important; }
+.combat-sprite.sprite-silkbound-guard { background-image:url('/sprites/silkbound-guard.svg') !important; }
+.combat-sprite.sprite-boss { background-image:url('/sprites/boss.svg') !important; }
+.gear-icon { background:url('/sprites/relic.svg') center/contain no-repeat !important; color:transparent !important; image-rendering:pixelated; }
 
 .stream-combat-dock {
-  margin: 8px 0 10px;
-  padding: 10px;
-  border: 1px solid rgba(255,209,102,.26);
-  border-radius: 14px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(255,209,102,.09), transparent 12rem),
-    rgba(8,13,26,.88);
-  box-shadow: inset 3px 0 0 rgba(255,209,102,.68);
+  margin:8px 0 10px;
+  padding:10px;
+  border:1px solid rgba(255,209,102,.26);
+  border-radius:14px;
+  background:radial-gradient(circle at 100% 0%,rgba(255,209,102,.09),transparent 12rem),rgba(8,13,26,.88);
+  box-shadow:inset 3px 0 0 rgba(255,209,102,.68);
 }
-
-.stream-combat-dock[hidden] { display: none !important; }
-.stream-combat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.stream-combat-header > div { min-width: 0; }
-.stream-combat-header span {
-  display: block;
-  color: var(--gold);
-  font-size: .62rem;
-  font-weight: 950;
-  letter-spacing: .1em;
-}
-.stream-combat-header strong {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.stream-combat-header small {
-  color: var(--muted);
-  font-size: .75rem;
-  text-align: right;
-}
-.stream-combat-actions {
-  display: grid;
-  grid-template-columns: repeat(4,minmax(0,1fr));
-  gap: 7px;
-  margin-top: 9px;
-}
-.stream-action-group { min-width: 0; }
-.stream-target-select {
-  width: 100%;
-  min-height: 36px;
-  margin-bottom: 5px;
-  font-size: .72rem;
-}
-.stream-combat-action {
-  width: 100%;
-  min-height: 46px;
-  margin: 0 !important;
-  padding: 8px 10px;
-  font-size: .8rem;
-  font-weight: 900;
-}
-.stream-combat-action-interrupt {
-  border-color: rgba(255,112,126,.55);
-  background: rgba(255,112,126,.12);
-}
-.stream-combat-action-mend,
-.stream-combat-action-revive {
-  border-color: rgba(81,214,157,.42);
-  background: rgba(81,214,157,.1);
-}
+.stream-combat-dock[hidden] { display:none !important; }
+.stream-combat-header { display:grid; grid-template-columns:54px minmax(0,1fr); gap:10px; align-items:center; }
+.stream-enemy-sprite { width:54px; height:54px; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 7px 10px rgba(0,0,0,.35)); }
+.stream-combat-header span { display:block; color:var(--gold); font-size:.62rem; font-weight:950; letter-spacing:.1em; }
+.stream-combat-header strong { display:block; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.stream-combat-header small { display:block; margin-top:3px; color:var(--muted); font-size:.75rem; }
+.stream-intent { margin-top:8px; padding:7px 9px; border-radius:10px; color:#ffd9d4; background:rgba(255,100,124,.1); font-size:.78rem; font-weight:800; }
+.stream-combat-actions { display:flex; gap:7px; margin-top:9px; overflow-x:auto; scrollbar-width:none; }
+.stream-combat-actions::-webkit-scrollbar { display:none; }
+.stream-combat-actions button { flex:0 0 auto; min-height:44px; margin:0 !important; padding:8px 12px; font-size:.8rem; font-weight:900; }
 
 .adventure-stream-log {
-  height: min(46vh, 430px);
-  min-height: 260px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 10px;
-  border: 1px solid var(--line-soft);
-  border-radius: 15px;
-  background: rgba(4,8,16,.7);
-  scroll-behavior: smooth;
+  height:min(46vh,430px);
+  min-height:260px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:10px;
+  border:1px solid var(--line-soft);
+  border-radius:15px;
+  background:rgba(4,8,16,.7);
+  scroll-behavior:smooth;
 }
+.adventure-stream-log.is-empty { height:auto; min-height:118px; }
+.stream-empty { min-height:96px; display:grid; place-content:center; gap:4px; padding:14px; color:var(--muted); text-align:center; }
+.stream-empty strong { color:var(--text); }
+.stream-empty span { max-width:34rem; font-size:.82rem; line-height:1.4; }
 
-.adventure-stream-log.is-empty {
-  height: auto;
-  min-height: 132px;
+.stream-entry { display:grid; grid-template-columns:34px minmax(0,1fr); gap:9px; align-items:start; padding:9px 8px; border-radius:12px; }
+.stream-entry + .stream-entry { margin-top:3px; }
+.stream-entry-chat:hover { background:rgba(255,255,255,.025); }
+.stream-avatar { width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:rgba(85,214,255,.11); color:var(--cyan); font-size:.8rem; font-weight:950; }
+.stream-entry-meta { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.stream-entry-meta strong { font-size:.86rem; }
+.stream-entry-meta time { color:var(--muted); font-size:.68rem; }
+.stream-entry p { margin:3px 0 0; overflow-wrap:anywhere; line-height:1.42; }
+.stream-entry-system { margin:6px 0; border:1px solid rgba(255,209,102,.22); background:linear-gradient(90deg,rgba(255,209,102,.1),rgba(179,109,255,.06)); box-shadow:inset 3px 0 0 rgba(255,209,102,.7); }
+.stream-entry-system .stream-avatar { color:var(--gold); background:rgba(255,209,102,.12); }
+.stream-entry-system .stream-entry-meta strong { color:var(--gold); letter-spacing:.08em; font-size:.72rem; }
+.stream-entry-system p { font-weight:760; }
+.stream-system-tag { display:inline-flex; margin-top:5px; padding:2px 6px; border-radius:999px; color:var(--muted); background:rgba(255,255,255,.045); font-size:.6rem; font-weight:900; letter-spacing:.08em; }
+
+/* Private slash-command replies are replaceable, not durable timeline entries. */
+.stream-command-card {
+  margin-top:9px;
+  padding:11px;
+  border:1px solid rgba(85,214,255,.25);
+  border-radius:14px;
+  background:linear-gradient(145deg,rgba(18,38,58,.93),rgba(10,16,30,.98));
+  box-shadow:inset 3px 0 0 rgba(85,214,255,.62);
 }
+.stream-command-card[hidden] { display:none !important; }
+.thread-reply-header { display:flex; justify-content:space-between; gap:10px; align-items:start; margin-bottom:10px; }
+.thread-reply-header > div { min-width:0; }
+.thread-reply-header span { display:block; color:var(--cyan); font-size:.6rem; font-weight:950; letter-spacing:.1em; }
+.thread-reply-header strong { display:block; margin-top:2px; font-size:1rem; }
+.thread-reply-header small { display:block; margin-top:3px; color:var(--muted); font-size:.75rem; }
+.thread-reply-close { width:36px; min-width:36px; height:36px; min-height:36px; padding:0; border-radius:10px; font-size:1.25rem; }
 
-.stream-empty {
-  min-height: 110px;
-  display: grid;
-  place-content: center;
-  gap: 4px;
-  padding: 14px;
-  color: var(--muted);
-  text-align: center;
-}
-.stream-empty strong { color: var(--text); }
-.stream-empty span { max-width: 34rem; font-size: .82rem; line-height: 1.4; }
+.thread-status-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.thread-status-unit { display:grid; grid-template-columns:50px minmax(0,1fr); gap:9px; align-items:center; padding:9px; border:1px solid var(--line-soft); border-radius:12px; background:rgba(5,10,20,.58); }
+.thread-status-unit.enemy { border-color:rgba(255,100,124,.22); }
+.thread-sprite { width:50px; height:50px; object-fit:contain; image-rendering:pixelated; }
+.thread-sprite.small { width:42px; height:42px; }
+.thread-status-unit span, .thread-loadout-line span { display:block; color:var(--muted); font-size:.61rem; font-weight:900; letter-spacing:.08em; }
+.thread-status-unit strong, .thread-loadout-line strong { display:block; margin-top:1px; }
+.thread-status-unit small, .thread-loadout-line small { display:block; margin-top:3px; color:var(--muted); font-size:.74rem; line-height:1.35; }
+.thread-loadout-line { display:grid; grid-template-columns:46px minmax(0,1fr); gap:9px; align-items:center; margin-top:8px; padding:9px; border-radius:12px; background:rgba(255,209,102,.07); }
+.thread-loadout-line img { width:42px; height:42px; image-rendering:pixelated; }
 
-.stream-entry {
-  display: grid;
-  grid-template-columns: 34px minmax(0,1fr);
-  gap: 9px;
-  align-items: start;
-  padding: 9px 8px;
-  border-radius: 12px;
-}
+.thread-gear-list { display:grid; gap:7px; max-height:330px; overflow:auto; }
+.thread-gear-row { --rarity-color:var(--common); display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:9px; align-items:center; padding:9px; border:1px solid color-mix(in srgb,var(--rarity-color) 42%,var(--line-soft)); border-radius:12px; background:color-mix(in srgb,var(--rarity-color) 7%,rgba(5,10,20,.72)); }
+.thread-gear-row.rarity-uncommon { --rarity-color:var(--uncommon); }
+.thread-gear-row.rarity-rare { --rarity-color:var(--rare); }
+.thread-gear-row.rarity-epic { --rarity-color:var(--epic); }
+.thread-gear-row.rarity-legendary { --rarity-color:var(--legendary); }
+.thread-gear-copy { min-width:0; }
+.thread-gear-copy > div { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.thread-gear-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.thread-gear-copy span { color:var(--rarity-color); font-size:.62rem; font-weight:950; white-space:nowrap; }
+.thread-gear-copy small { display:block; margin-top:3px; color:var(--muted); font-size:.73rem; }
+.thread-gear-actions { display:flex; gap:5px; align-items:center; }
+.thread-gear-actions button { min-height:40px; margin:0 !important; padding:7px 9px; font-size:.72rem; }
+.salvage-action { border-color:rgba(255,159,90,.38); color:#ffc693; }
+.thread-equipped-badge { max-width:140px; color:var(--green); font-size:.68rem; text-align:right; }
 
-.stream-entry + .stream-entry { margin-top: 3px; }
-.stream-entry-chat:hover { background: rgba(255,255,255,.025); }
+.thread-card-actions, .thread-party-join { display:flex; gap:7px; flex-wrap:wrap; margin-top:9px; }
+.thread-party-join input { min-height:44px; flex:1 1 140px; }
+.thread-party-member { padding:7px 9px; border-bottom:1px solid var(--line-soft); color:var(--muted); font-size:.8rem; }
+.thread-codex-search { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; }
+.thread-codex-search input, .thread-codex-search button { min-height:44px; }
+.thread-codex-results { display:grid; gap:6px; margin-top:8px; max-height:280px; overflow:auto; }
+.thread-codex-results article { display:grid; gap:2px; padding:8px; border:1px solid var(--line-soft); border-radius:10px; background:rgba(5,10,20,.55); }
+.thread-codex-results span { color:var(--cyan); font-size:.58rem; font-weight:950; }
+.thread-codex-results small { color:var(--muted); line-height:1.35; }
 
-.stream-avatar {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: rgba(85,214,255,.11);
-  color: var(--cyan);
-  font-size: .8rem;
-  font-weight: 950;
-}
+.stream-suggestions { display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding:1px 0 3px; scrollbar-width:none; }
+.stream-suggestions::-webkit-scrollbar { display:none; }
+.stream-suggestions button { flex:0 0 auto; min-height:40px; margin:0 !important; padding:7px 11px; border-radius:999px; font-size:.75rem; font-weight:850; }
+.stream-suggestions button.is-primary { color:#07111d; background:var(--cyan); border-color:var(--cyan); }
+.stream-suggestions.command-mode { opacity:.72; }
 
-.stream-entry-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
+.adventure-stream-composer { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:7px; }
+.adventure-stream-composer input { min-width:0; min-height:48px; border-radius:13px; }
+.adventure-stream-composer button { min-height:48px; padding-inline:18px; color:#07111d; background:var(--cyan); border-color:var(--cyan); font-weight:900; }
+.stream-error { margin:7px 0 0; color:#ff8e9d; font-size:.82rem; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-.stream-entry-meta strong { font-size: .86rem; }
-.stream-entry-meta time { color: var(--muted); font-size: .68rem; }
-.stream-entry p { margin: 3px 0 0; overflow-wrap: anywhere; line-height: 1.42; }
+@media (max-width:720px) {
+  body[data-game-view="play"] #stream { display:block; }
+  body[data-game-view="play"] #stream .stream-combat-dock:not([hidden]),
+  body[data-game-view="play"] #stream .stream-command-card:not([hidden]) { display:block !important; }
+  #stream { padding:11px; }
+  .stream-hint { display:none; }
+  .stream-combat-dock { margin-top:6px; padding:8px; }
+  .stream-combat-header { grid-template-columns:46px minmax(0,1fr); }
+  .stream-enemy-sprite { width:46px; height:46px; }
+  .stream-combat-header small { font-size:.68rem; }
+  .adventure-stream-log { height:29vh; min-height:190px; padding:6px; }
+  .adventure-stream-log.is-empty { height:auto; min-height:92px; }
+  .stream-empty { min-height:74px; padding:7px; }
+  .stream-entry { grid-template-columns:30px minmax(0,1fr); gap:7px; padding:7px 6px; }
+  .stream-avatar { width:28px; height:28px; border-radius:9px; }
+  .stream-entry-system { margin-block:4px; }
+  .stream-command-card { padding:9px; }
+  .thread-status-grid { grid-template-columns:1fr; }
+  .thread-gear-row { grid-template-columns:40px minmax(0,1fr); }
+  .thread-gear-actions { grid-column:1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .thread-gear-actions button { min-height:44px; }
+  .thread-equipped-badge { grid-column:1 / -1; max-width:none; text-align:left; }
+  .stream-suggestions button { min-height:42px; }
+  .adventure-stream-composer { position:sticky; bottom:calc(65px + env(safe-area-inset-bottom)); z-index:20; padding-top:6px; background:linear-gradient(180deg,transparent,rgba(8,13,26,.98) 28%); }
+  .adventure-stream-composer button { padding-inline:14px; }
 
-.stream-entry-system {
-  margin: 6px 0;
-  border: 1px solid rgba(255,209,102,.22);
-  background: linear-gradient(90deg,rgba(255,209,102,.1),rgba(179,109,255,.06));
-  box-shadow: inset 3px 0 0 rgba(255,209,102,.7);
-}
-
-.stream-entry-system .stream-avatar {
-  color: var(--gold);
-  background: rgba(255,209,102,.12);
-}
-
-.stream-entry-system .stream-entry-meta strong {
-  color: var(--gold);
-  letter-spacing: .08em;
-  font-size: .72rem;
-}
-
-.stream-entry-system p { font-weight: 760; }
-.stream-system-tag {
-  display: inline-flex;
-  margin-top: 5px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  color: var(--muted);
-  background: rgba(255,255,255,.045);
-  font-size: .6rem;
-  font-weight: 900;
-  letter-spacing: .08em;
-}
-
-.adventure-stream-composer {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
-  gap: 8px;
-  margin-top: 9px;
-}
-
-.adventure-stream-composer input {
-  min-width: 0;
-  min-height: 48px;
-  border-radius: 13px;
-}
-
-.adventure-stream-composer button {
-  min-height: 48px;
-  padding-inline: 18px;
-  color: #07111d;
-  background: var(--cyan);
-  border-color: var(--cyan);
-  font-weight: 900;
-}
-
-.stream-error { margin: 7px 0 0; color: #ff8e9d; font-size: .82rem; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-
-@media (max-width: 720px) {
-  body[data-game-view="play"] #stream { display: block; }
-  body[data-game-view="play"] #stream .stream-combat-dock:not([hidden]) { display: block !important; }
-  #stream { padding: 12px; }
-  .stream-hint { display: none; }
-  .stream-combat-dock { margin-top: 7px; padding: 9px; }
-  .stream-combat-header { align-items: start; }
-  .stream-combat-header small { max-width: 48%; font-size: .68rem; }
-  .stream-combat-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .stream-combat-action { min-height: 48px; }
-  .adventure-stream-log { height: 31vh; min-height: 210px; padding: 6px; }
-  .adventure-stream-log.is-empty { height: auto; min-height: 108px; }
-  .stream-empty { min-height: 88px; padding: 8px; }
-  .stream-entry { grid-template-columns: 30px minmax(0,1fr); gap: 7px; padding: 7px 6px; }
-  .stream-avatar { width: 28px; height: 28px; border-radius: 9px; }
-  .stream-entry-system { margin-block: 4px; }
-  .adventure-stream-composer { position: sticky; bottom: calc(65px + env(safe-area-inset-bottom)); z-index: 20; padding-top: 6px; background: linear-gradient(180deg,transparent,rgba(8,13,26,.98) 28%); }
-  .adventure-stream-composer button { padding-inline: 14px; }
-
-  /* On phones the Adventure Stream is the primary combat surface. The full
-     expedition card remains the authoritative visual state, but its duplicate
-     reactive controls move out of the way. */
+  /* The Adventure Stream is the mobile game surface; duplicate dungeon controls stay hidden. */
   body[data-game-view="play"] #dungeon .combat-dock,
   body[data-game-view="play"] #dungeon .support-actions,
   body[data-game-view="play"] #dungeon .enemy-intent > button,
-  body[data-game-view="play"] #dungeon .auto-attack-cadence {
-    display: none !important;
-  }
+  body[data-game-view="play"] #dungeon .auto-attack-cadence { display:none !important; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .adventure-stream-log { scroll-behavior: auto; }
-}
+@media (prefers-reduced-motion:reduce) { .adventure-stream-log { scroll-behavior:auto; } }
