@@ -15,20 +15,26 @@ async function sendMessage(page, message) {
   await expect(page.getByTestId('stream-message')).toHaveValue('');
 }
 
-test('two independent players share realtime chat and system activity over WebSocket without refreshing', async ({ browser }) => {
+test('mobile and desktop players share realtime chat and separate dungeon activity over WebSocket', async ({ browser }) => {
   const anonymousContext = await browser.newContext();
   const unauthenticatedToken = await anonymousContext.request.get('/api/realtime-token');
   expect(unauthenticatedToken.status()).toBe(401);
   await anonymousContext.close();
 
-  const firstContext = await browser.newContext();
-  const secondContext = await browser.newContext();
+  const firstContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const first = await firstContext.newPage();
   const second = await secondContext.newPage();
 
   try {
     await loginLocal(first, 'a', 'Local Weaver A');
     await loginLocal(second, 'b', 'Local Weaver B');
+
+    await expect(first.getByTestId('adventure-stream')).toBeVisible();
+    await expect(first.getByTestId('stream-composer')).toBeVisible();
+    const sendBox = await first.getByTestId('stream-send').boundingBox();
+    expect(sendBox).not.toBeNull();
+    expect(sendBox.height).toBeGreaterThanOrEqual(44);
 
     await sendMessage(first, 'heal or attack?');
     const messageOnSecond = second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' });
