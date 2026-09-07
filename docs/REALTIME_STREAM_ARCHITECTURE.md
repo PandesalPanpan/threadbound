@@ -22,7 +22,9 @@ Threadbound's shared adventure stream is intentionally modeled as application/do
 5. **Realtime transport is replaceable.** `RealtimeHub` owns connection lifecycle and fan-out. The rest of the application publishes payloads without depending on browser socket APIs.
 6. **Optimistic concurrency remains authoritative for co-op combat.** Two clients acting at nearly the same time cannot silently overwrite one another; stale run versions are rejected and the client refreshes authoritative state.
 7. **Rendering is safe by construction.** User chat is rendered with DOM `textContent`, never interpolated into HTML.
-8. **Reconnect is expected behavior.** The client loads recent persisted entries first, then joins realtime delivery. Reconnects can therefore recover without manual page refresh.
+8. **Reconnect is expected behavior.** The client establishes realtime delivery first, buffers incoming stream entries, then loads the durable recent snapshot and deduplicates by entry ID. This removes the blind window between snapshot loading and subscribing.
+9. **Global social visibility does not imply global UI invalidation.** Stream entries are intentionally broadcast to everyone, but `state_changed` invalidations are targeted only to players affected by the domain event (for example, the run participants or party members). Unrelated combat must never replace another player's in-progress form input or force an unnecessary dashboard rerender.
+10. **Audience is application context, not transport logic.** Domain/application events carry stable identifiers such as `playerId`, `participantIds`, `partyId`, and `runId`; the composition layer resolves the affected player audience and asks `RealtimeHub` to fan out only to those authenticated connections.
 
 ## Stream semantics
 
@@ -32,4 +34,4 @@ System/combat entries are deliberately more visually prominent than normal playe
 
 ## Realtime protocol
 
-WebSocket is the preferred low-latency transport for the shared feed, with authenticated short-lived connection tokens. SSE remains a valid fallback during rollout and for environments where WebSocket upgrades are unavailable. Both transports consume the same broadcast payloads and neither owns domain state.
+WebSocket is the preferred low-latency transport for the shared feed, with authenticated short-lived connection tokens. SSE remains a valid fallback during rollout and for environments where WebSocket upgrades are unavailable. Both transports consume the same broadcast payloads, honor the same optional player audience, and neither owns domain state.
