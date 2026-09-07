@@ -31,12 +31,13 @@ async function expectTouchTarget(locator, minimum = 44) {
   }, { timeout: 5000 }).toBeGreaterThanOrEqual(minimum);
 }
 
-test('mobile player shell is touch-friendly and chat-first during combat', async ({ page }) => {
+test('mobile combat is tap-first, message-driven, and never auto-attacks', async ({ page }) => {
   await loginWithThreaded(page);
 
   await expect(page.getByTestId('mobile-game-nav')).toBeVisible();
   await expect(page.getByTestId('stream-suggestions')).toBeVisible();
   await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message your party…');
+  await expect(page.locator('.stream-hint')).toContainText('result of every action');
   await expectTouchTarget(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Status' }), 44);
   await expectTouchTarget(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Gear' }), 44);
   await expectNoHorizontalOverflow(page);
@@ -51,28 +52,33 @@ test('mobile player shell is touch-friendly and chat-first during combat', async
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
   await expect(page.getByTestId('enemy-card')).toBeVisible();
-  await expect(page.getByTestId('stream-combat-dock')).toBeVisible();
-  await expect(page.getByTestId('stream-combat-actions')).toBeVisible();
-  await expect(page.getByTestId('stream-combat-status')).toContainText('Auto Strike ON');
-  await expect(page.getByTestId('stream-combat-dock').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
-  await expectTouchTarget(page.locator('[data-testid="stream-guard"]:visible').first(), 44);
-  await expectTouchTarget(page.locator('[data-testid="stream-attack"]:visible').first(), 44);
+  await expect(page.getByTestId('enemy-card').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-dock')).toBeHidden();
+  const attack = page.getByTestId('stream-attack');
+  const guard = page.getByTestId('stream-guard');
+  await expectTouchTarget(attack, 44);
+  await expectTouchTarget(guard, 44);
 
-  // The expedition card remains the authoritative state projection, but its duplicate
-  // action controls stay out of the way so the thread is the interaction surface.
   await expect(page.getByTestId('combat-actions')).toBeHidden();
   await expect(page.getByTestId('auto-attack-status')).toBeHidden();
   await expect(page.getByTestId('attack')).toBeHidden();
   await expect(page.getByTestId('guard')).toBeHidden();
+  await expect(page.getByTestId('combat-coach')).toContainText('Nothing attacks automatically');
   await expectNoHorizontalOverflow(page);
+
+  const enemyBeforeIdle = await page.getByTestId('enemy-card').textContent();
+  await page.waitForTimeout(2300);
+  await expect(page.getByTestId('enemy-card')).toHaveText(enemyBeforeIdle);
+
+  await attack.click();
+  const result = page.getByTestId('stream-system-entry').filter({ hasText: /attacked Frayed Wisp/i }).last();
+  await expect(result).toBeVisible();
+  await expect(result).toContainText(/Frayed Wisp \d+\/12/);
+  await expect.poll(async () => page.getByTestId('enemy-card').textContent(), { timeout: 5000 }).not.toBe(enemyBeforeIdle);
 
   await page.getByTestId('stream-message').fill('/status');
   await page.getByTestId('stream-send').click();
   await expect(page.getByTestId('stream-command-card')).toContainText('Current adventure');
   await expect(page.getByTestId('stream-command-card')).toContainText('HP');
-
-  const enemyBefore = await page.getByTestId('enemy-card').textContent();
-  await expect.poll(async () => page.getByTestId('enemy-card').textContent(), { timeout: 5000 }).not.toBe(enemyBefore);
-  await expect(page.getByTestId('combat-feedback')).toBeVisible();
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
 });
