@@ -156,7 +156,7 @@ export class GameService {
       const rewardsByPlayer = {};
       const rewardItemIds = {};
       for (const participant of outcome.state.participants) {
-        const reward = this.itemGenerator.generateReward({ source: outcome.state.dungeonId });
+        const reward = this.arcManifestService?.generateReward(outcome.state.dungeonId) || this.itemGenerator.generateReward({ source: outcome.state.dungeonId });
         rewardsByPlayer[participant.playerId] = reward;
         rewardItemIds[participant.playerId] = reward.id;
       }
