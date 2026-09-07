@@ -30,13 +30,14 @@ test('Threaded login -> dungeon -> generated loot -> equip -> idempotent Honey s
   await expect(page.getByTestId('achievement')).toHaveCount(3);
 
   const key = 'e2e-retry-same-key';
-  const first = await page.request.post('/api/honey/purchases/training-cache', { headers: { 'Idempotency-Key': key } });
+  const request = page.context().request;
+  const first = await request.post('/api/honey/purchases/training-cache', { headers: { 'Idempotency-Key': key } });
   expect(first.status()).toBe(201);
   const firstBody = await first.json();
   expect(firstBody.grant_applied).toBe(true);
   expect(firstBody.wallet.balance).toBe(75);
 
-  const retry = await page.request.post('/api/honey/purchases/training-cache', { headers: { 'Idempotency-Key': key } });
+  const retry = await request.post('/api/honey/purchases/training-cache', { headers: { 'Idempotency-Key': key } });
   expect(retry.status()).toBe(200);
   const retryBody = await retry.json();
   expect(retryBody.grant_applied).toBe(false);
