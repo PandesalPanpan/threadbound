@@ -20,13 +20,20 @@ jobs:
         shell: bash
         run: |
           message="$(jq -r '.head_commit.message // ""' "$GITHUB_EVENT_PATH")"
-          if [[ "$message" != "Run one-shot combat v2 patcher" ]]; then
+          if [[ "$message" != "Retry one-shot combat v2 patcher" ]]; then
             echo "No patch requested for: $message"
             exit 0
           fi
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/apply-combat-v2-patches.mjs')
+          text = path.read_text()
+          text = text.replace('${run.enemyIntent.name}', "${'${'}run.enemyIntent.name}", 1)
+          path.write_text(text)
+          PY
           node scripts/apply-combat-v2-patches.mjs
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/app.js public/adventure-stream.js public/game.js public/adventure-meta-commands.js
+          git add src/app.js public/adventure-stream.js public/game.js public/adventure-meta-commands.js scripts/apply-combat-v2-patches.mjs
           git commit -m 'Wire combat v2 into the realtime thread UI'
           git push origin HEAD:feature/frayed-hollow-combat-v2
