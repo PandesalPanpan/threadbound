@@ -38,7 +38,22 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
     expect(sendBox).not.toBeNull();
     expect(sendBox.height).toBeGreaterThanOrEqual(44);
 
+    // The social feed is the first gameplay surface, but an empty first-run feed must not
+    // push the actual dungeon CTA below the usable mobile viewport.
+    const emptyLogBox = await first.getByTestId('adventure-stream-log').boundingBox();
+    expect(emptyLogBox).not.toBeNull();
+    expect(emptyLogBox.height).toBeLessThanOrEqual(150);
+    const firstDungeonIsReachable = await first.getByTestId('start-dungeon').first().evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top < window.innerHeight - 64;
+    });
+    expect(firstDungeonIsReachable).toBe(true);
+
     await sendMessage(first, 'heal or attack?');
+    const populatedLogBox = await first.getByTestId('adventure-stream-log').boundingBox();
+    expect(populatedLogBox).not.toBeNull();
+    expect(populatedLogBox.height).toBeGreaterThanOrEqual(200);
+
     const messageOnSecond = second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' });
     await expect(messageOnSecond).toBeVisible();
     await expect(messageOnSecond).toContainText('Local Weaver C');
