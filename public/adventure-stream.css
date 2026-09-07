@@ -127,9 +127,16 @@
 
 .stream-suggestions { display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding:1px 0 3px; scrollbar-width:none; }
 .stream-suggestions::-webkit-scrollbar { display:none; }
-.stream-suggestions button { flex:0 0 auto; min-height:40px; margin:0 !important; padding:7px 11px; border-radius:999px; font-size:.75rem; font-weight:850; }
+.stream-suggestions button { flex:0 0 auto; min-height:44px; margin:0 !important; padding:8px 12px; border-radius:999px; font-size:.75rem; font-weight:850; }
 .stream-suggestions button.is-primary { color:#07111d; background:var(--cyan); border-color:var(--cyan); }
 .stream-suggestions.command-mode { opacity:.72; }
+/* Combat has one obvious action row: the live encounter dock. These hidden command
+   seeds are still used to build it, but do not create a second visible row. */
+.stream-suggestions button[data-command^="/attack"],
+.stream-suggestions button[data-command^="/guard"],
+.stream-suggestions button[data-command^="/interrupt"],
+.stream-suggestions button[data-command^="/mend"],
+.stream-suggestions button[data-command^="/revive"] { display:none !important; }
 
 .adventure-stream-composer { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:7px; }
 .adventure-stream-composer input { min-width:0; min-height:48px; border-radius:13px; }
@@ -159,7 +166,7 @@
   .thread-gear-actions { grid-column:1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .thread-gear-actions button { min-height:44px; }
   .thread-equipped-badge { grid-column:1 / -1; max-width:none; text-align:left; }
-  .stream-suggestions button { min-height:42px; }
+  .stream-suggestions button { min-height:44px; }
   .adventure-stream-composer { position:sticky; bottom:calc(65px + env(safe-area-inset-bottom)); z-index:20; padding-top:6px; background:linear-gradient(180deg,transparent,rgba(8,13,26,.98) 28%); }
   .adventure-stream-composer button { padding-inline:14px; }
 
