@@ -64,8 +64,12 @@ function button(label, onClick, testId) {
   element.addEventListener('click', async () => {
     element.disabled = true;
     element.setAttribute('aria-busy', 'true');
+    statusEl.classList.remove('is-ready');
     statusEl.textContent = 'Working…';
-    try { await onClick(); } catch (error) { statusEl.textContent = error.message; } finally {
+    try { await onClick(); } catch (error) {
+      statusEl.classList.remove('is-ready');
+      statusEl.textContent = error.message;
+    } finally {
       element.disabled = false;
       element.removeAttribute('aria-busy');
     }
@@ -315,6 +319,7 @@ function renderDungeon(data) {
     }
 
     renderRewardReveal(data);
+    if (recentReward) return;
 
     const canStart = !data.party || data.party.canStart;
     if (data.party && !data.party.canStart) {
@@ -418,6 +423,7 @@ async function refresh() {
   const data = await api('/api/dashboard');
   lastDashboard = data;
   statusEl.textContent = 'Ready';
+  statusEl.classList.add('is-ready');
   const sourceLabel = data.authSource === 'local' ? 'Local development identity' : 'Threaded';
   const walletText = data.authSource === 'local' ? 'Honey unavailable in local mode' : `Honey: <strong data-testid="honey-balance">${data.wallet.balance}</strong>`;
   identityEl.innerHTML = `<h2>${sourceLabel}</h2><p data-testid="threaded-user">${data.threadedUser.name || data.threadedUser.username || data.threadedUser.id}</p><p data-testid="auth-source">${data.authSource}</p><p>${walletText}</p>`;
@@ -454,4 +460,7 @@ async function refresh() {
   }
 }
 
-refresh().catch((error) => { statusEl.textContent = error.message; });
+refresh().catch((error) => {
+  statusEl.classList.remove('is-ready');
+  statusEl.textContent = error.message;
+});
