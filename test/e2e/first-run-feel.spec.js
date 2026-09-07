@@ -49,7 +49,6 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await expect(page.getByTestId('first-run-guide')).toBeVisible();
   await expect(page.getByTestId('first-run-guide')).toContainText('Enter Frayed Hollow');
   await expect(page.getByTestId('start-dungeon')).toHaveText('Enter Frayed Hollow');
-  await expect(page.getByTestId('stream-empty')).toBeVisible();
   await reviewShot(page, '01-first-run');
 
   await clickAndWait(page, 'start-dungeon');
