@@ -1,0 +1,145 @@
+.threadbound-game-page > #stream { grid-column: 1 / -1; }
+
+#stream {
+  border: 1px solid rgba(85,214,255,.2);
+  background: linear-gradient(180deg,rgba(12,20,39,.96),rgba(8,13,26,.96));
+}
+
+.stream-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stream-heading > div > span {
+  color: var(--cyan);
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.stream-heading h2 { margin: 3px 0 0; }
+.stream-heading small { color: var(--muted); font-weight: 800; }
+.stream-heading small.is-live { color: var(--green); }
+.stream-heading small.is-live::before { content: '● '; }
+.stream-hint { margin: 3px 0 10px; color: var(--muted); font-size: .84rem; }
+
+.adventure-stream-log {
+  height: min(46vh, 430px);
+  min-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 15px;
+  background: rgba(4,8,16,.7);
+  scroll-behavior: smooth;
+}
+
+.stream-entry {
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 9px 8px;
+  border-radius: 12px;
+}
+
+.stream-entry + .stream-entry { margin-top: 3px; }
+.stream-entry-chat:hover { background: rgba(255,255,255,.025); }
+
+.stream-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(85,214,255,.11);
+  color: var(--cyan);
+  font-size: .8rem;
+  font-weight: 950;
+}
+
+.stream-entry-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stream-entry-meta strong { font-size: .86rem; }
+.stream-entry-meta time { color: var(--muted); font-size: .68rem; }
+.stream-entry p { margin: 3px 0 0; overflow-wrap: anywhere; line-height: 1.42; }
+
+.stream-entry-system {
+  margin: 6px 0;
+  border: 1px solid rgba(255,209,102,.22);
+  background: linear-gradient(90deg,rgba(255,209,102,.1),rgba(179,109,255,.06));
+  box-shadow: inset 3px 0 0 rgba(255,209,102,.7);
+}
+
+.stream-entry-system .stream-avatar {
+  color: var(--gold);
+  background: rgba(255,209,102,.12);
+}
+
+.stream-entry-system .stream-entry-meta strong {
+  color: var(--gold);
+  letter-spacing: .08em;
+  font-size: .72rem;
+}
+
+.stream-entry-system p { font-weight: 760; }
+.stream-system-tag {
+  display: inline-flex;
+  margin-top: 5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.045);
+  font-size: .6rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.adventure-stream-composer {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.adventure-stream-composer input {
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 13px;
+}
+
+.adventure-stream-composer button {
+  min-height: 48px;
+  padding-inline: 18px;
+  color: #07111d;
+  background: var(--cyan);
+  border-color: var(--cyan);
+  font-weight: 900;
+}
+
+.stream-error { margin: 7px 0 0; color: #ff8e9d; font-size: .82rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@media (max-width: 720px) {
+  body[data-game-view="play"] #stream { display: block; }
+  #stream { padding: 12px; }
+  .stream-hint { display: none; }
+  .adventure-stream-log { height: 31vh; min-height: 210px; padding: 6px; }
+  .stream-entry { grid-template-columns: 30px minmax(0,1fr); gap: 7px; padding: 7px 6px; }
+  .stream-avatar { width: 28px; height: 28px; border-radius: 9px; }
+  .stream-entry-system { margin-block: 4px; }
+  .adventure-stream-composer { position: sticky; bottom: calc(65px + env(safe-area-inset-bottom)); z-index: 20; padding-top: 6px; background: linear-gradient(180deg,transparent,rgba(8,13,26,.98) 28%); }
+  .adventure-stream-composer button { padding-inline: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adventure-stream-log { scroll-behavior: auto; }
+}
