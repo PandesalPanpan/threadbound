@@ -9,6 +9,11 @@ if (stream) {
   const error = stream.querySelector('[data-testid="stream-error"]');
   const hint = stream.querySelector('.stream-hint');
 
+  // The legacy encounter dock used to duplicate Attack/Guard controls. Remove it from
+  // the presentation DOM entirely; adventure-stream.js may retain a detached reference
+  // during this migration, but only the contextual suggestion row is user-facing.
+  stream.querySelector('[data-testid="stream-combat-dock"]')?.remove();
+
   const style = document.createElement('style');
   style.textContent = `
     body.threadbound-player[data-game-view="play"] #stream .stream-combat-dock,
