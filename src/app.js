@@ -65,11 +65,31 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const achievements = new AchievementProjector(repository);
   const arcAchievements = new ArcAchievementProjector({ gameRepository: repository, manifestRepository, arcManifestService });
   const history = new WorldHistoryProjector({ gameRepository: repository, codexRepository });
+
+  const affectedPlayerIds = (event) => {
+    const ids = new Set(Array.isArray(event.participantIds) ? event.participantIds : []);
+    if (event.playerId) ids.add(event.playerId);
+    if (event.targetPlayerId) ids.add(event.targetPlayerId);
+    if (event.runId) {
+      const run = repository.getRun(event.runId);
+      for (const participant of run?.participants || []) ids.add(participant.playerId);
+    }
+    if (event.partyId) {
+      const party = repository.getParty(event.partyId);
+      for (const member of party?.members || []) ids.add(member.playerId);
+    }
+    return [...ids];
+  };
+
   eventBus.subscribe((event) => achievements.handle(event));
   eventBus.subscribe((event) => arcAchievements.handle(event));
   eventBus.subscribe((event) => history.handle(event));
   eventBus.subscribe((event) => {
-    realtimeHub.broadcast({ type: 'state_changed', eventType: event.type });
+    const playerIds = affectedPlayerIds(event);
+    realtimeHub.broadcast(
+      { type: 'state_changed', eventType: event.type },
+      playerIds.length > 0 ? { playerIds } : {},
+    );
     try {
       const entry = activityStream.recordDomainEvent(event);
       if (entry) realtimeHub.broadcast({ type: 'stream_entry', entry });
@@ -156,7 +176,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     response.json({ authSource: connection.source || 'threaded', threadedUser: connection.profile, wallet: connection.wallet, ...gameService.dashboard(connection.playerId) });
   });
 
-  app.get('/api/events', requireConnection, (_request, response) => realtimeHub.attach(response));
+  app.get('/api/events', requireConnection, (request, response) => realtimeHub.attach(response, { playerId: request.session.threaded.playerId }));
   app.get('/api/realtime-token', requireConnection, (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     return response.json(realtimeHub.issueWebSocketToken(request.session.threaded.playerId));
@@ -249,7 +269,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     try {
       const result = await purchaseService.purchaseTrainingCache({ playerId: connection.playerId, threadedUserId: connection.profile.id, accessToken: connection.accessToken, idempotencyKey });
       request.session.threaded.wallet = { ...connection.wallet, balance: result.spend.balance };
-      realtimeHub.broadcast({ type: 'state_changed', eventType: 'HoneyPurchaseCompleted' });
+      realtimeHub.broadcast({ type: 'state_changed', eventType: 'HoneyPurchaseCompleted' }, { playerIds: [connection.playerId] });
       return response.status(result.grantApplied ? 201 : 200).json({ ok: true, item: result.item || repository.getItem(result.grant.itemInstanceId), wallet: request.session.threaded.wallet, threaded_transaction_id: result.spend.transaction_id, grant_applied: result.grantApplied, grant_count: 1 });
     } catch (caught) {
       if (caught instanceof ThreadedApiError) return response.status(caught.status || 502).json({ error: caught.code || 'threaded_api_error', message: caught.message });
