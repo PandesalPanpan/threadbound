@@ -27,7 +27,9 @@ export class PartyService {
       members: [{ playerId, ready: true }],
     });
     this.repository.createParty(party);
-    this.#publish('PartyCreated', party.id, playerId);
+    // The creator refreshes from the command response immediately. Broadcasting PartyCreated
+    // globally only invalidates unrelated players' UI and can replace in-progress form input.
+    // Party mutations that affect multiple members still publish below for live co-op sync.
     return this.repository.getParty(party.id);
   }
 
