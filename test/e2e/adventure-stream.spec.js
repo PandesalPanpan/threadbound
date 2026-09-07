@@ -53,11 +53,15 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
     await expect(safeMessage.locator('img')).toHaveCount(0);
     expect(await second.evaluate(() => window.chatInjected)).toBeUndefined();
 
+    // Social activity is global, but another player's combat must not invalidate this
+    // player's private UI state or replace text they are actively entering.
+    await second.getByTestId('party-code-input').fill('ABC123');
     await first.getByTestId('start-dungeon').first().click();
     await expect(first.getByTestId('run-state')).toContainText('Phase: combat');
     const firstEntered = second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C entered Frayed Hollow.' });
     await expect(firstEntered).toBeVisible();
     await expect(firstEntered).toContainText('DUNGEON STARTED');
+    await expect(second.getByTestId('party-code-input')).toHaveValue('ABC123');
 
     await second.getByTestId('start-dungeon').first().click();
     await expect(second.getByTestId('run-state')).toContainText('Phase: combat');
