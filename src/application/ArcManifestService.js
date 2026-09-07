@@ -96,6 +96,16 @@ export class ArcManifestService {
     return published;
   }
 
+  publishedAchievements() {
+    const entries = [];
+    for (const record of this.manifestRepository.listPublished()) {
+      for (const achievement of record.manifest.achievements) {
+        entries.push({ ...achievement, arcId: record.arcId, manifestId: record.id, revision: record.revision });
+      }
+    }
+    return entries;
+  }
+
   runtimeDungeons() {
     const result = [];
     for (const record of this.manifestRepository.listPublished()) {
