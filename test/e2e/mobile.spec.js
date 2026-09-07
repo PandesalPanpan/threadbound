@@ -36,6 +36,9 @@ test('mobile player shell is touch-friendly and chat-first during combat', async
 
   await expect(page.getByTestId('mobile-game-nav')).toBeVisible();
   await expect(page.getByTestId('stream-suggestions')).toBeVisible();
+  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message your party…');
+  await expectTouchTarget(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Status' }), 44);
+  await expectTouchTarget(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Gear' }), 44);
   await expectNoHorizontalOverflow(page);
 
   for (const label of ['Play', 'Gear', 'Party', 'World', 'Codex']) {
