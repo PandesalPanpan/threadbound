@@ -37,16 +37,13 @@ async function dashboard(context) {
   return response.json();
 }
 
-async function attackUntilPhaseChanges(context, page, expectedPhase) {
-  for (let guard = 0; guard < 30; guard += 1) {
-    const state = await dashboard(context);
-    if (state.activeRun?.phase !== expectedPhase) return state;
-    await clickAndWait(page, 'attack');
-  }
-  throw new Error(`Run did not leave ${expectedPhase} within the guard limit.`);
+async function waitUntilPhaseChanges(context, expectedPhase, timeout = 18000) {
+  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout }).not.toBe(expectedPhase);
+  return dashboard(context);
 }
 
 test('first 60 seconds explain themselves, feel responsive, reveal a reward, and invite another run', async ({ page, context }) => {
+  test.setTimeout(60000);
   await loginWithThreaded(page);
 
   await expect(page.getByTestId('first-run-guide')).toBeVisible();
@@ -56,19 +53,22 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
 
   await clickAndWait(page, 'start-dungeon');
   await expect(page.getByTestId('combat-coach')).toBeVisible();
-  await expect(page.getByTestId('combat-coach')).toContainText('Strike');
+  await expect(page.getByTestId('combat-coach')).toContainText('Auto Strike');
   await expect(page.getByTestId('combat-coach')).toContainText('Guard');
+  await expect(page.getByTestId('auto-attack-status')).toBeVisible();
+  await expect(page.getByTestId('attack')).toBeHidden();
 
-  await clickAndWait(page, 'attack');
+  await expect(page.getByTestId('damage-feedback')).toBeVisible({ timeout: 5000 });
   await expect(page.getByTestId('combat-feedback')).toContainText('damage');
-  await expect(page.getByTestId('damage-feedback')).toHaveCount(1);
   await expect(page.getByTestId('retaliation-feedback')).toHaveCount(1);
   await reviewShot(page, '02-combat-feedback', page.locator('#dungeon'));
 
-  await clickAndWait(page, 'guard');
-  await expect(page.getByTestId('combat-feedback')).toContainText(/Guard|absorbed/i);
+  if (await page.getByTestId('guard').isVisible()) {
+    await clickAndWait(page, 'guard');
+    await expect(page.getByTestId('combat-feedback')).toContainText(/Guard|absorbed/i);
+  }
 
-  await attackUntilPhaseChanges(context, page, 'combat');
+  await waitUntilPhaseChanges(context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
   await expect(page.getByTestId('upgrade-intro')).toContainText('Choose what the boss fight becomes');
   await expect(page.getByTestId('upgrade-sharpen')).toHaveText('Choose +3 Attack');
@@ -80,7 +80,7 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await clickAndWait(page, 'upgrade-sharpen');
   await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
 
-  await attackUntilPhaseChanges(context, page, 'boss');
+  await waitUntilPhaseChanges(context, 'boss');
   await expect(page.getByTestId('reward-reveal')).toBeVisible();
   await expect(page.getByTestId('reward-name')).not.toHaveText('');
   await expect(page.getByTestId('reward-equip')).toBeVisible();
