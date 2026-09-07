@@ -122,7 +122,7 @@ a { color: #9fd9ff; }
 .section-heading h2 { margin: 3px 0 0; font-size: 1.24rem; }
 
 .panel,
-.threadbound-game-page section,
+.threadbound-game-page > section,
 .codex-list,
 .codex-detail {
   border: 1px solid var(--line-soft);
@@ -130,7 +130,7 @@ a { color: #9fd9ff; }
   background: linear-gradient(180deg, rgba(20,29,51,.96), rgba(11,16,30,.96));
   box-shadow: 0 13px 38px rgba(0,0,0,.23);
 }
-.threadbound-game-page section { padding: 17px; margin: 12px 0; }
+.threadbound-game-page > section { padding: 17px; margin: 12px 0; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 button, .primary-link {
   min-height: 48px;
@@ -416,7 +416,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .threadbound-game-page > #dungeon,
   .threadbound-game-page > #inventory,
   .threadbound-game-page > .signout { grid-column: 1 / -1; }
-  .threadbound-game-page section { margin: 0; }
+  .threadbound-game-page > section { margin: 0; }
   #inventory .gear-grid { grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); }
 }
 
@@ -429,7 +429,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .page-hero p { font-size: .86rem; }
   .threadbound-game-page .page-hero { display: none; }
   .threadbound-game-page > #identity { display: none !important; }
-  .threadbound-game-page section { display: none; margin: 9px 0; padding: 14px; }
+  .threadbound-game-page > section { display: none; margin: 9px 0; padding: 14px; }
   body[data-game-view="play"] #character,
   body[data-game-view="play"] #dungeon,
   body[data-game-view="gear"] #character,
