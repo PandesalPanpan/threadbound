@@ -47,7 +47,11 @@ if (stream) {
     .stream-rich-heading { min-width:0; }
     .stream-rich-kicker { display:block; color:var(--cyan); font-size:.59rem; font-weight:950; letter-spacing:.12em; }
     .stream-action-attack .stream-rich-kicker { color:#ff8e9d; }
-    .stream-action-interrupt .stream-rich-kicker { color:var(--gold); }
+    .stream-action-interrupt .stream-rich-kicker, .stream-action-power-strike .stream-rich-kicker { color:var(--gold); }
+    .stream-action-power-strike { border-color:rgba(255,209,102,.32); box-shadow:inset 3px 0 0 rgba(255,209,102,.82),0 8px 24px rgba(0,0,0,.14); }
+    .stream-action-state { flex:1 0 100%; padding:4px 7px; border-radius:8px; color:var(--cyan); background:rgba(85,214,255,.07); font-size:.63rem; font-weight:900; letter-spacing:.06em; }
+    .stream-suggestions button.is-counter { box-shadow:0 0 0 2px rgba(255,209,102,.38),0 7px 18px rgba(0,0,0,.2); }
+    .stream-suggestions button:disabled { opacity:.46; cursor:not-allowed; }
     .stream-action-mend .stream-rich-kicker, .stream-action-revive .stream-rich-kicker { color:var(--green); }
     .stream-rich-summary { display:block; margin-top:2px; color:var(--text); font-size:.91rem; line-height:1.33; }
     .stream-rich-summary strong { color:inherit; }
@@ -193,6 +197,7 @@ if (stream) {
     const defeated = Boolean(metadata.defeatedEnemyId);
     const labels = {
       attack: ['⚔', 'ATTACK'],
+      'power-strike': ['✹', 'POWER STRIKE'],
       guard: ['🛡', 'GUARD'],
       interrupt: ['⚡', 'INTERRUPT'],
       mend: ['✚', 'MEND'],
@@ -201,6 +206,7 @@ if (stream) {
     const [icon, kicker] = labels[action] || ['✦', titleize(action).toUpperCase()];
     let summary;
     if (action === 'attack') summary = defeated ? `${actor} attacked ${titleize(metadata.defeatedEnemyId)} for ${damage} and defeated it.` : `${actor} attacked ${enemy} for ${damage} damage.`;
+    else if (action === 'power-strike') summary = defeated ? `${actor} Power Struck ${titleize(metadata.defeatedEnemyId)} for ${damage} and defeated it.` : `${actor} Power Struck ${enemy} for ${damage} damage.`;
     else if (action === 'guard') summary = `${actor} guarded${prevented > 0 ? ` and blocked ${prevented} damage` : ''}.`;
     else if (action === 'interrupt') summary = `${actor} interrupted ${enemy}'s heavy attack.`;
     else if (action === 'mend') summary = `${actor} mended ${metadata.targetPlayerId === metadata.playerId ? 'themself' : 'an ally'} for ${healed} HP.`;
@@ -269,13 +275,19 @@ if (stream) {
 
     const chips = document.createElement('div');
     chips.className = 'stream-result-chips';
-    if (presentation.action === 'attack' && presentation.damage > 0) chips.append(resultChip(`⚔ −${presentation.damage} ENEMY HP`, 'damage'));
+    if (['attack', 'power-strike'].includes(presentation.action) && presentation.damage > 0) chips.append(resultChip(`${presentation.action === 'power-strike' ? '✹' : '⚔'} −${presentation.damage} ENEMY HP`, 'damage'));
     const retaliation = numberValue(metadata.retaliation) || 0;
     if (retaliation > 0) chips.append(resultChip(`💥 −${retaliation} HP`, 'damage'));
     if (presentation.prevented > 0) chips.append(resultChip(`🛡 ${presentation.prevented} BLOCKED`, 'guard'));
     if (presentation.healed > 0) chips.append(resultChip(`✚ +${presentation.healed} HP`, 'heal'));
     if (presentation.restored > 0) chips.append(resultChip(`✦ +${presentation.restored} HP`, 'heal'));
+    if (metadata.focusGained > 0) chips.append(resultChip(`✦ +${metadata.focusGained} FOCUS`, 'guard'));
+    if (metadata.focusSpent > 0) chips.append(resultChip(`✹ −${metadata.focusSpent} FOCUS`, 'special'));
     if (metadata.interruptedIntentId || presentation.action === 'interrupt') chips.append(resultChip('⚡ INTERRUPTED', 'special'));
+    if (metadata.counteredIntentId) chips.append(resultChip(`✓ COUNTERED${metadata.counterAction ? ` · ${String(metadata.counterAction).toUpperCase()}` : ''}`, 'special'));
+    if (metadata.staggered || metadata.enemyStaggeredHits > 0) chips.append(resultChip('✦ STAGGERED · NEXT HIT BOOSTED', 'special'));
+    if (metadata.ripostePrimed > 0) chips.append(resultChip(`↩ RIPOSTE +${metadata.ripostePrimed}`, 'guard'));
+    if (metadata.enemyFortifiedHits > 0) chips.append(resultChip(`🛡 ENEMY FORTIFIED ×${metadata.enemyFortifiedHits}`, 'guard'));
     if (presentation.defeated) chips.append(resultChip('☠ DEFEATED', 'special'));
     if (chips.children.length) receipt.append(chips);
 
@@ -287,7 +299,7 @@ if (stream) {
       intent.className = 'stream-intent-receipt';
       intent.dataset.testid = 'stream-enemy-intent';
       const intentDamage = numberValue(metadata.enemyIntent.damage);
-      intent.textContent = `⚠ ${metadata.enemyIntent.name || 'Heavy attack'} incoming${intentDamage === null ? '' : ` · ${intentDamage} DMG`}`;
+      intent.textContent = `⚠ ${metadata.enemyIntent.name || 'Heavy action'} · ${metadata.enemyIntent.kind === 'fortify' ? 'ARMOR' : `${intentDamage ?? '?'} DMG`} · COUNTER: ${(metadata.enemyIntent.counterLabel || titleize(metadata.enemyIntent.counter)).toUpperCase()}`;
       receipt.append(intent);
     }
 

@@ -177,15 +177,16 @@ function renderIntent(run) {
   intentTicker = null;
   if (!run.enemyIntent) return;
   const intent = document.createElement('div');
-  intent.className = 'enemy-intent';
+  intent.className = `enemy-intent counter-${run.enemyIntent.counter || 'interrupt'}`;
   intent.dataset.testid = 'enemy-intent';
-  intent.innerHTML = `<div><span>ENEMY TELEGRAPH</span><strong>${run.enemyIntent.name}</strong><small>${run.enemyIntent.damage} incoming damage · answer from the thread</small></div><div class="intent-timer" data-testid="intent-timer"></div>`;
+  const payload = run.enemyIntent.kind === 'fortify' ? 'fortifies for the next hits' : `${run.enemyIntent.damage} incoming damage`;
+  intent.innerHTML = `<div><span>ENEMY TELEGRAPH</span><strong>${run.enemyIntent.name}</strong><small>${payload} · <b>Counter: ${run.enemyIntent.counterLabel || run.enemyIntent.counter}</b></small><em>${run.enemyIntent.hint || 'Answer from the thread.'}</em></div><div class="intent-timer" data-testid="intent-timer"></div>`;
   dungeonEl.append(intent);
   const timer = intent.querySelector('[data-testid="intent-timer"]');
   const draw = () => {
     const left = Math.max(0, new Date(run.enemyIntent.dueAt).getTime() - Date.now());
     timer.textContent = `${(left / 1000).toFixed(1)}s`;
-    timer.style.setProperty('--intent-progress', `${Math.min(100, (left / 3000) * 100)}%`);
+    timer.style.setProperty('--intent-progress', `${Math.min(100, (left / 4500) * 100)}%`);
   };
   draw();
   intentTicker = setInterval(draw, 100);
@@ -256,14 +257,14 @@ function renderDungeon(data) {
     row.className = `member participant-card ${participant.playerId === run.viewer?.playerId ? 'is-you' : ''}`;
     row.dataset.testid = 'run-participant';
     row.dataset.playerId = participant.playerId;
-    row.innerHTML = `<div class="participant-head"><span></span><span>HP ${participant.hp}/${participant.maxHp}</span></div>${progressBar(participant.hp, participant.maxHp)}<div class="participant-stats">damage ${participant.contributionDamage} · healing ${participant.healingDone} · revives ${participant.revives} · prevented ${participant.damagePrevented}</div>`;
+    row.innerHTML = `<div class="participant-head"><span></span><span>HP ${participant.hp}/${participant.maxHp}</span></div>${progressBar(participant.hp, participant.maxHp)}<div class="participant-stats">Focus ${participant.focus}/${participant.maxFocus} · damage ${participant.contributionDamage} · healing ${participant.healingDone} · revives ${participant.revives} · prevented ${participant.damagePrevented}${participant.riposteBonus ? ` · Riposte +${participant.riposteBonus}` : ''}</div>`;
     row.querySelector('.participant-head span').textContent = `${participant.displayName}${participant.guarding ? ' · GUARDING' : ''}`;
     partyStrip.append(row);
   }
   dungeonEl.append(partyStrip);
 
   if (['combat', 'boss'].includes(run.phase)) {
-    if (run.viewer?.hp > 0) dungeonEl.insertAdjacentHTML('beforeend', '<div class="combat-coach" data-testid="combat-coach"><strong>Your turn is waiting in the thread.</strong><span>Attack, Guard, Interrupt, Mend, or Revive there. Nothing attacks automatically.</span></div><p class="muted" data-testid="combat-help">Every combat action is explicit and server-authoritative; the shared thread records the result.</p>');
+    if (run.viewer?.hp > 0) dungeonEl.insertAdjacentHTML('beforeend', '<div class="combat-coach" data-testid="combat-coach"><strong>Your turn is waiting in the thread.</strong><span>Attack builds Focus. Spend it on Power Strike, or answer telegraphs with Guard and Interrupt. Mend and Revive keep the party moving. Nothing attacks automatically.</span></div><p class="muted" data-testid="combat-help">Every combat action is explicit and server-authoritative; the shared thread records the result.</p>');
     else dungeonEl.insertAdjacentHTML('beforeend', '<p data-testid="defeated-player">You are down. An ally can Revive you from the thread.</p>');
   }
 

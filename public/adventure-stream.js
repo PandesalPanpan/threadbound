@@ -202,7 +202,7 @@ if (streamEl) {
     hero.className = 'thread-status-unit';
     hero.innerHTML = `<img src="${weaverSprite(dashboard.character.id)}" alt="" class="thread-sprite" data-testid="stream-weaver-sprite"><div><span>YOU</span><strong></strong><small></small></div>`;
     hero.querySelector('strong').textContent = dashboard.character.displayName;
-    hero.querySelector('small').textContent = `HP ${viewer?.hp ?? dashboard.character.maxHealth}/${viewer?.maxHp ?? dashboard.character.maxHealth} · ATK ${dashboard.character.attackPower}`;
+    hero.querySelector('small').textContent = `HP ${viewer?.hp ?? dashboard.character.maxHealth}/${viewer?.maxHp ?? dashboard.character.maxHealth} · ATK ${dashboard.character.attackPower}${viewer ? ` · FOCUS ${viewer.focus}/${viewer.maxFocus}` : ''}`;
     grid.append(hero);
 
     if (enemy) {
@@ -396,12 +396,14 @@ if (streamEl) {
     await refreshContext({ rerenderCommand: activeLocalCommand === 'status' });
   }
 
-  function addSuggestion(label, command, { primary = false, testId = null } = {}) {
+  function addSuggestion(label, command, { primary = false, testId = null, disabled = false, counter = false, title = '' } = {}) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
-    button.className = primary ? 'is-primary' : '';
+    button.className = [primary ? 'is-primary' : '', counter ? 'is-counter' : ''].filter(Boolean).join(' ');
     button.dataset.command = command;
+    button.disabled = disabled;
+    if (title) button.title = title;
     if (testId) button.dataset.testid = testId;
     button.addEventListener('click', () => executeCommand(command));
     suggestionsEl.append(button);
@@ -415,11 +417,33 @@ if (streamEl) {
       const dungeon = dashboard.dungeons?.[0];
       if (dungeon && (!dashboard.party || dashboard.party.canStart)) addSuggestion(`Enter ${dungeon.name}`, `/run ${dungeon.id}`, { primary: true, testId: 'stream-start-dungeon' });
     } else if (['combat', 'boss'].includes(run.phase) && run.viewer?.hp > 0) {
-      addSuggestion('Attack now', '/attack', { primary: true, testId: 'stream-attack' });
-      addSuggestion(run.enemyIntent ? 'Guard heavy' : 'Guard', '/guard', { testId: 'stream-guard' });
-      if (run.enemyIntent) addSuggestion(`Interrupt ${run.enemyIntent.name}`, '/interrupt', { primary: true, testId: 'stream-interrupt' });
-      if (run.viewer.mendCharges > 0 && run.participants.some((p) => p.hp > 0 && p.hp < p.maxHp)) addSuggestion('Mend ally', '/mend');
-      if (run.viewer.reviveCharges > 0 && run.participants.some((p) => p.hp <= 0)) addSuggestion('Revive ally', '/revive');
+      const viewer = run.viewer;
+      const cooldowns = viewer.cooldowns || {};
+      const powerCost = Math.max(1, Number(run.runModifiers?.powerStrikeCost || 2));
+      const counter = run.enemyIntent?.counter || null;
+      const state = document.createElement('span');
+      state.className = 'stream-action-state';
+      state.dataset.testid = 'combat-resource-state';
+      const cooling = Object.entries(cooldowns).filter(([, value]) => Number(value) > 0).map(([skill, value]) => `${skill === 'powerStrike' ? 'Power' : skill} ${value}`).join(' · ');
+      state.textContent = `FOCUS ${viewer.focus}/${viewer.maxFocus}${cooling ? ` · CD ${cooling}` : ''}`;
+      suggestionsEl.append(state);
+
+      addSuggestion('Attack · +1 Focus', '/attack', { primary: !counter, testId: 'stream-attack' });
+      addSuggestion(`Power Strike · ${powerCost} Focus${cooldowns.powerStrike ? ` · CD ${cooldowns.powerStrike}` : ''}`, '/power', {
+        primary: counter === 'power-strike', counter: counter === 'power-strike', testId: 'stream-power-strike',
+        disabled: Number(viewer.focus) < powerCost || Number(cooldowns.powerStrike || 0) > 0,
+        title: Number(viewer.focus) < powerCost ? `Build ${powerCost} Focus first.` : '',
+      });
+      addSuggestion(`${counter === 'guard' ? 'Counter: ' : ''}Guard${cooldowns.guard ? ` · CD ${cooldowns.guard}` : ''}`, '/guard', {
+        primary: counter === 'guard', counter: counter === 'guard', testId: 'stream-guard', disabled: Number(cooldowns.guard || 0) > 0,
+      });
+      if (run.enemyIntent?.counter === 'interrupt') addSuggestion(`Counter: Interrupt ${run.enemyIntent.name}${cooldowns.interrupt ? ` · CD ${cooldowns.interrupt}` : ''}`, '/interrupt', {
+        primary: true, counter: true, testId: 'stream-interrupt', disabled: Number(cooldowns.interrupt || 0) > 0,
+      });
+      if (run.participants.some((p) => p.hp > 0 && p.hp < p.maxHp)) addSuggestion(`Mend ally${cooldowns.mend ? ` · CD ${cooldowns.mend}` : ''}`, '/mend', {
+        testId: 'stream-mend', disabled: Number(cooldowns.mend || 0) > 0,
+      });
+      if (viewer.reviveCharges > 0 && run.participants.some((p) => p.hp <= 0)) addSuggestion('Revive ally', '/revive', { testId: 'stream-revive' });
     } else if (run.phase === 'upgrade' && run.isLeader) {
       for (const upgrade of dashboard.runUpgrades || []) addSuggestion(upgrade.name, `/upgrade ${upgrade.id}`, { primary: true });
     }
@@ -452,7 +476,7 @@ if (streamEl) {
     const hp = document.createElement('small');
     hp.dataset.testid = 'stream-combat-status';
     hp.textContent = run.viewer?.hp > 0
-      ? `You ${run.viewer.hp}/${run.viewer.maxHp} HP · ${run.enemy?.hp ?? 0}/${run.enemy?.maxHp ?? 0} enemy HP · Auto Strike ON`
+      ? `You ${run.viewer.hp}/${run.viewer.maxHp} HP · Focus ${run.viewer.focus}/${run.viewer.maxFocus} · ${run.enemy?.hp ?? 0}/${run.enemy?.maxHp ?? 0} enemy HP · explicit actions only`
       : 'Waiting for an ally to revive you.';
     title.append(kicker, name, hp);
     header.append(visual, title);
@@ -460,13 +484,13 @@ if (streamEl) {
     if (run.enemyIntent) {
       const intent = document.createElement('div');
       intent.className = 'stream-intent';
-      intent.textContent = `${run.enemyIntent.name} incoming · ${run.enemyIntent.damage} damage`;
+      intent.textContent = `${run.enemyIntent.name} incoming · ${run.enemyIntent.kind === 'fortify' ? 'armor stance' : `${run.enemyIntent.damage} damage`} · Counter with ${run.enemyIntent.counterLabel || run.enemyIntent.counter}`;
       combatDockEl.append(intent);
     }
     const actions = document.createElement('div');
     actions.className = 'stream-combat-actions';
     actions.dataset.testid = 'stream-combat-actions';
-    const matching = suggestionsEl.querySelectorAll('button[data-command^="/attack"], button[data-command^="/guard"], button[data-command^="/interrupt"], button[data-command^="/mend"], button[data-command^="/revive"]');
+    const matching = suggestionsEl.querySelectorAll('button[data-command^="/attack"], button[data-command^="/power"], button[data-command^="/guard"], button[data-command^="/interrupt"], button[data-command^="/mend"], button[data-command^="/revive"]');
     for (const suggestion of matching) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -502,7 +526,7 @@ if (streamEl) {
         case '/':
         case '/help':
           openCommandCard('help', 'Thread commands', 'Tap a suggestion or type one directly.');
-          commandCardEl.insertAdjacentHTML('beforeend', '<p><strong>/status</strong> HP + enemy · <strong>/gear</strong> equip/salvage · <strong>/party</strong> co-op · <strong>/codex</strong> search · <strong>/attack</strong> <strong>/guard</strong> <strong>/interrupt</strong> during combat.</p>');
+          commandCardEl.insertAdjacentHTML('beforeend', '<p><strong>/status</strong> HP + Focus + enemy · <strong>/gear</strong> equip/salvage · <strong>/party</strong> co-op · <strong>/codex</strong> search · <strong>/attack</strong> <strong>/power</strong> <strong>/guard</strong> <strong>/interrupt</strong> during combat.</p>');
           break;
         case '/status': renderStatusCard(); break;
         case '/gear':
@@ -510,6 +534,8 @@ if (streamEl) {
         case '/party': renderPartyCard(); break;
         case '/codex': await renderCodexCard(args.join(' ')); break;
         case '/attack': await runCombatAction('attack'); break;
+        case '/power':
+        case '/power-strike': await runCombatAction('power-strike'); break;
         case '/guard': await runCombatAction('guard'); break;
         case '/interrupt': await runCombatAction('interrupt'); break;
         case '/mend': {
