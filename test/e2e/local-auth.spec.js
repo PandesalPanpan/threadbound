@@ -157,8 +157,8 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await expect(leader.getByTestId('codex-mechanics')).toContainText('24');
 
     await clickCodexTab(leader, 'lore');
-    await leader.getByTestId('codex-search').fill('Loom');
-    await expect(leader.getByTestId('codex-status')).toContainText('record');
+    await leader.getByTestId('codex-search').fill('hidden structure');
+    await expect(leader.getByTestId('codex-entry')).toHaveCount(1);
     await expect(leader.getByTestId('codex-detail-title')).toHaveText('The Loom');
     await leader.getByTestId('codex-search').fill('');
 
