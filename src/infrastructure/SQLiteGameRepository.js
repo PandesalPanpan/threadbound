@@ -51,9 +51,7 @@ export class SQLiteGameRepository {
   getItem(itemId) { return decodeItem(this.db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)); }
 
   addItem(playerId, item) {
-    this.db.prepare('INSERT OR IGNORE INTO items (id, player_id, definition_id, name, slot, rarity, attack_bonus, effect_code, effect_json, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      item.id, playerId, item.definitionId, item.name, item.slot, item.rarity, item.attackBonus, item.effectCode, JSON.stringify(item.effect), item.source,
-    );
+    this.#insertItem(playerId, item, true);
     return this.getItem(item.id);
   }
 
@@ -67,10 +65,68 @@ export class SQLiteGameRepository {
     this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(amount, playerId);
   }
 
+  createParty(party) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.prepare('INSERT INTO parties (id, leader_player_id, join_code, status) VALUES (?, ?, ?, ?)').run(party.id, party.leaderPlayerId, party.joinCode, party.status);
+      const insertMember = this.db.prepare('INSERT INTO party_members (party_id, player_id, ready) VALUES (?, ?, ?)');
+      for (const member of party.members) insertMember.run(party.id, member.playerId, member.ready ? 1 : 0);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  getParty(partyId) {
+    const row = this.db.prepare('SELECT * FROM parties WHERE id = ?').get(partyId);
+    return row ? this.#decodeParty(row) : null;
+  }
+
+  getPartyByJoinCode(joinCode) {
+    const row = this.db.prepare('SELECT * FROM parties WHERE join_code = ?').get(joinCode);
+    return row ? this.#decodeParty(row) : null;
+  }
+
+  getPartyForPlayer(playerId) {
+    const row = this.db.prepare('SELECT p.* FROM parties p JOIN party_members pm ON pm.party_id = p.id WHERE pm.player_id = ? LIMIT 1').get(playerId);
+    return row ? this.#decodeParty(row) : null;
+  }
+
+  addPartyMember(partyId, playerId, ready = false) {
+    this.db.prepare('INSERT INTO party_members (party_id, player_id, ready) VALUES (?, ?, ?)').run(partyId, playerId, ready ? 1 : 0);
+  }
+
+  setPartyMemberReady(partyId, playerId, ready) {
+    this.db.prepare('UPDATE party_members SET ready = ? WHERE party_id = ? AND player_id = ?').run(ready ? 1 : 0, partyId, playerId);
+  }
+
+  removePartyMember(partyId, playerId) {
+    this.db.prepare('DELETE FROM party_members WHERE party_id = ? AND player_id = ?').run(partyId, playerId);
+  }
+
+  deleteParty(partyId) {
+    this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId);
+  }
+
+  setPartyStatus(partyId, status) {
+    this.db.prepare('UPDATE parties SET status = ? WHERE id = ?').run(status, partyId);
+  }
+
   createRun(state) {
-    this.db.prepare('INSERT INTO dungeon_runs (id, player_id, dungeon_id, phase, state_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      state.id, state.playerId, state.dungeonId, state.phase, JSON.stringify(state), state.createdAt, new Date().toISOString(),
-    );
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.prepare('INSERT INTO dungeon_runs (id, player_id, dungeon_id, phase, state_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        state.id, state.startedByPlayerId, state.dungeonId, state.phase, JSON.stringify(state), state.createdAt, new Date().toISOString(),
+      );
+      const insertParticipant = this.db.prepare('INSERT INTO dungeon_run_participants (run_id, player_id) VALUES (?, ?)');
+      for (const participant of state.participants) insertParticipant.run(state.id, participant.playerId);
+      if (state.ownerType === 'party') this.db.prepare("UPDATE parties SET status = 'in_run' WHERE id = ?").run(state.ownerId);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   getRun(runId) {
@@ -83,8 +139,39 @@ export class SQLiteGameRepository {
   }
 
   getActiveRun(playerId) {
-    const row = this.db.prepare("SELECT state_json FROM dungeon_runs WHERE player_id = ? AND phase IN ('combat', 'upgrade', 'boss') ORDER BY created_at DESC LIMIT 1").get(playerId);
+    const row = this.db.prepare("SELECT dr.state_json FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
     return row ? JSON.parse(row.state_json) : null;
+  }
+
+  completeRunWithRewards(state, rewardsByPlayer, { threadDust = 15, worldProgressKey }) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const storedRow = this.db.prepare('SELECT state_json FROM dungeon_runs WHERE id = ?').get(state.id);
+      if (!storedRow) throw new Error('Run not found while applying completion rewards.');
+      const stored = JSON.parse(storedRow.state_json);
+      if (stored.rewardsGranted) {
+        this.db.exec('ROLLBACK');
+        return { applied: false, state: stored };
+      }
+
+      for (const [playerId, item] of Object.entries(rewardsByPlayer)) {
+        this.#insertItem(playerId, item, false);
+        this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(threadDust, playerId);
+      }
+      this.db.prepare('INSERT INTO world_progress (progress_key, amount) VALUES (?, 1) ON CONFLICT(progress_key) DO UPDATE SET amount = amount + 1').run(worldProgressKey);
+      this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, updated_at = ? WHERE id = ?').run(state.phase, JSON.stringify(state), new Date().toISOString(), state.id);
+
+      if (state.ownerType === 'party') {
+        this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(state.ownerId);
+        this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(state.ownerId, state.ownerId);
+      }
+
+      this.db.exec('COMMIT');
+      return { applied: true, state };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
   }
 
   unlockAchievement(playerId, achievement) {
@@ -116,8 +203,27 @@ export class SQLiteGameRepository {
     return { grant: this.getPurchaseGrant(playerId, idempotencyKey), created: result.changes === 1 };
   }
 
+  #insertItem(playerId, item, ignoreExisting) {
+    const verb = ignoreExisting ? 'INSERT OR IGNORE' : 'INSERT';
+    this.db.prepare(`${verb} INTO items (id, player_id, definition_id, name, slot, rarity, attack_bonus, effect_code, effect_json, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      item.id, playerId, item.definitionId, item.name, item.slot, item.rarity, item.attackBonus, item.effectCode, JSON.stringify(item.effect), item.source,
+    );
+  }
+
   #decodePlayer(row) {
     return { id: row.id, threadedUserId: row.threaded_user_id, displayName: row.display_name, baseAttack: row.base_attack, maxHealth: row.max_health, threadDust: row.thread_dust, equippedItemId: row.equipped_item_id };
+  }
+
+  #decodeParty(row) {
+    const members = this.db.prepare('SELECT pm.player_id, pm.ready, p.display_name FROM party_members pm JOIN players p ON p.id = pm.player_id WHERE pm.party_id = ? ORDER BY CASE WHEN pm.player_id = ? THEN 0 ELSE 1 END, pm.joined_at ASC').all(row.id, row.leader_player_id);
+    return {
+      id: row.id,
+      leaderPlayerId: row.leader_player_id,
+      joinCode: row.join_code,
+      status: row.status,
+      members: members.map((member) => ({ playerId: member.player_id, displayName: member.display_name, ready: Boolean(member.ready) })),
+      createdAt: row.created_at,
+    };
   }
 
   #decodeGrant(row) {
@@ -148,6 +254,20 @@ export class SQLiteGameRepository {
         source TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS parties (
+        id TEXT PRIMARY KEY,
+        leader_player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        join_code TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL CHECK(status IN ('forming', 'in_run')),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS party_members (
+        party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+        player_id TEXT NOT NULL UNIQUE REFERENCES players(id) ON DELETE CASCADE,
+        ready INTEGER NOT NULL DEFAULT 0 CHECK(ready IN (0, 1)),
+        joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (party_id, player_id)
+      );
       CREATE TABLE IF NOT EXISTS dungeon_runs (
         id TEXT PRIMARY KEY,
         player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -157,6 +277,12 @@ export class SQLiteGameRepository {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS dungeon_run_participants (
+        run_id TEXT NOT NULL REFERENCES dungeon_runs(id) ON DELETE CASCADE,
+        player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        PRIMARY KEY (run_id, player_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_run_participants_player ON dungeon_run_participants(player_id);
       CREATE TABLE IF NOT EXISTS player_achievements (
         player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
         achievement_id TEXT NOT NULL,
