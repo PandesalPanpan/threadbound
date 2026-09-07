@@ -6,9 +6,10 @@ import { EventBus } from './application/EventBus.js';
 import { AchievementProjector } from './application/AchievementProjector.js';
 import { GameService } from './application/GameService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
+import { PartyService } from './application/PartyService.js';
 
 function gamePage() {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Threadbound</title><style>body{font-family:system-ui,sans-serif;max-width:900px;margin:32px auto;padding:0 16px;background:#111;color:#eee}button{padding:10px 14px;margin:4px;cursor:pointer}section{border:1px solid #444;border-radius:10px;padding:16px;margin:14px 0}.muted{color:#aaa}.item{padding:10px;border:1px solid #555;border-radius:8px;margin:8px 0}.rare{border-color:#ddd}a{color:#9ecbff}</style></head><body><h1>Threadbound</h1><p class="muted">Persistent roguelite vertical slice — the world remembers.</p><div id="status">Loading…</div><section id="identity"></section><section id="character"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form action="/disconnect" method="post"><button type="submit">Disconnect Threaded</button></form><script type="module" src="/game.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Threadbound</title><style>body{font-family:system-ui,sans-serif;max-width:900px;margin:32px auto;padding:0 16px;background:#111;color:#eee}button,input{padding:10px 14px;margin:4px}button{cursor:pointer}section{border:1px solid #444;border-radius:10px;padding:16px;margin:14px 0}.muted{color:#aaa}.item,.member{padding:10px;border:1px solid #555;border-radius:8px;margin:8px 0}.rare{border-color:#ddd}a{color:#9ecbff}</style></head><body><h1>Threadbound</h1><p class="muted">Persistent roguelite vertical slice — now with party-owned cooperative dungeons.</p><div id="status">Loading…</div><section id="identity"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form action="/disconnect" method="post"><button type="submit">Disconnect Threaded</button></form><script type="module" src="/game.js"></script></body></html>`;
 }
 
 function homePage(connected) {
@@ -21,6 +22,7 @@ export function createApp({ config, threadedGateway, repository }) {
   const achievements = new AchievementProjector(repository);
   eventBus.subscribe((event) => achievements.handle(event));
   const gameService = new GameService({ repository, eventBus });
+  const partyService = new PartyService({ repository });
   const purchaseService = new HoneyPurchaseService({ repository, threadedGateway });
 
   app.disable('x-powered-by');
@@ -71,6 +73,24 @@ export function createApp({ config, threadedGateway, repository }) {
   });
 
   app.get('/api/dashboard', requireConnection, (request, response) => response.json({ threadedUser: request.session.threaded.profile, wallet: request.session.threaded.wallet, ...gameService.dashboard(request.session.threaded.playerId) }));
+
+  app.post('/api/party/create', requireConnection, (request, response) => {
+    const party = partyService.createParty(request.session.threaded.playerId);
+    response.status(201).json({ party });
+  });
+  app.post('/api/party/join', requireConnection, (request, response) => {
+    const party = partyService.joinParty(request.session.threaded.playerId, request.body?.joinCode);
+    response.json({ party });
+  });
+  app.post('/api/party/ready', requireConnection, (request, response) => {
+    const party = partyService.setReady(request.session.threaded.playerId, Boolean(request.body?.ready));
+    response.json({ party });
+  });
+  app.post('/api/party/leave', requireConnection, (request, response) => {
+    partyService.leaveParty(request.session.threaded.playerId);
+    response.json({ party: null });
+  });
+
   app.post('/api/dungeons/:dungeonId/start', requireConnection, (request, response) => response.status(201).json({ run: gameService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/upgrade', requireConnection, (request, response) => response.json({ run: gameService.chooseUpgrade(request.session.threaded.playerId, request.params.runId, String(request.body?.upgradeId || '')) }));
@@ -98,7 +118,7 @@ export function createApp({ config, threadedGateway, repository }) {
   app.use((error, _request, response, _next) => {
     console.error(error);
     const knownMessage = error instanceof Error ? error.message : 'Unknown error';
-    const status = /not found|Unknown|active run|only be chosen|not currently in combat/i.test(knownMessage) ? 409 : 500;
+    const status = /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot attack|only be chosen|not currently in combat|full/i.test(knownMessage) ? 409 : 500;
     response.status(status).json({ error: status === 409 ? 'game_rule_violation' : 'internal_error', message: knownMessage });
   });
 
