@@ -5,9 +5,10 @@ import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { Party } from '../domain/Party.js';
 
 export class GameService {
-  constructor({ repository, eventBus, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
+  constructor({ repository, eventBus, arcManifestService = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
+    this.arcManifestService = arcManifestService;
     this.itemGenerator = itemGenerator;
     this.idFactory = idFactory;
   }
@@ -26,6 +27,8 @@ export class GameService {
     const character = new Character({ ...row, equippedItem });
     const party = this.repository.getPartyForPlayer(playerId);
     const activeRun = this.repository.getActiveRun(playerId);
+    const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
+    const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
 
     return {
       character: {
@@ -42,7 +45,7 @@ export class GameService {
       activeRun: activeRun ? this.#decorateRun(activeRun, playerId) : null,
       achievements: this.repository.listAchievements(playerId),
       world: this.repository.getWorldState(),
-      dungeons: Object.values(DUNGEONS).map(({ id, name, recommendedPlayers, minPlayers, maxPlayers }) => ({ id, name, recommendedPlayers, minPlayers, maxPlayers })),
+      dungeons: allDungeons.map(({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId, arcTitle, sourceManifestRevision }) => ({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId: arcId || 'arc-1', arcTitle: arcTitle || 'The First Unraveling', sourceManifestRevision: sourceManifestRevision || null })),
       runUpgrades: Object.values(RUN_UPGRADES),
     };
   }
@@ -51,6 +54,8 @@ export class GameService {
     if (this.repository.getActiveRun(playerId)) throw new Error('Finish or fail the active run before starting another.');
     const player = this.repository.getPlayer(playerId);
     if (!player) throw new Error('Player not found.');
+    const dungeonDefinition = DUNGEONS[dungeonId] || this.arcManifestService?.resolveDungeon(dungeonId);
+    if (!dungeonDefinition) throw new Error(`Unknown dungeon: ${dungeonId}`);
 
     const storedParty = this.repository.getPartyForPlayer(playerId);
     let participantPlayers;
@@ -81,6 +86,7 @@ export class GameService {
       startedByPlayerId: playerId,
       participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth })),
       dungeonId,
+      dungeonDefinition,
     });
     const persisted = this.repository.createRun(run.toJSON());
     this.eventBus.publish({ type: 'DungeonStarted', playerId, runId: persisted.id, dungeonId, ownerType, ownerId });
@@ -157,9 +163,10 @@ export class GameService {
 
       const completedRun = new DungeonRun(outcome.state);
       completedRun.markRewards(rewardItemIds);
+      const generatedArcId = outcome.state.dungeonDefinition?.arcId;
       const completion = this.repository.completeRunWithRewards(completedRun.toJSON(), rewardsByPlayer, {
         threadDust: 15,
-        worldProgressKey: 'arc-1-frayed-hollow-clears',
+        worldProgressKey: generatedArcId ? `arc:${generatedArcId}:${outcome.state.dungeonId}:clears` : 'arc-1-frayed-hollow-clears',
       });
 
       outcome.state = completion.state;
