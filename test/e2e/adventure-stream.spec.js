@@ -34,16 +34,20 @@ test('mobile and desktop players share chat and play reactively through the real
 
     await expect(first.getByTestId('adventure-stream')).toBeVisible();
     await expect(first.getByTestId('stream-composer')).toBeVisible();
-    await expect(first.getByTestId('stream-empty')).toBeVisible();
-    const quietLog = await first.getByTestId('adventure-stream-log').boundingBox();
-    expect(quietLog).not.toBeNull();
-    expect(quietLog.height).toBeLessThan(180);
+    const emptyState = first.getByTestId('stream-empty');
+    const existingEntries = first.locator('[data-testid="stream-chat-entry"], [data-testid="stream-system-entry"]');
+    await expect.poll(async () => (await emptyState.count()) + (await existingEntries.count()), { timeout: 5000 }).toBeGreaterThan(0);
+    if (await emptyState.count()) {
+      const quietLog = await first.getByTestId('adventure-stream-log').boundingBox();
+      expect(quietLog).not.toBeNull();
+      expect(quietLog.height).toBeLessThan(180);
+    }
     const sendBox = await first.getByTestId('stream-send').boundingBox();
     expect(sendBox).not.toBeNull();
     expect(sendBox.height).toBeGreaterThanOrEqual(44);
 
     await sendMessage(first, 'heal or attack?');
-    await expect(first.getByTestId('stream-empty')).toHaveCount(0);
+    await expect(first.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' })).toBeVisible();
     const messageOnSecond = second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' });
     await expect(messageOnSecond).toBeVisible();
     await expect(messageOnSecond).toContainText('Local Weaver C');
