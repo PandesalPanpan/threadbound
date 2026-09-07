@@ -1,0 +1,234 @@
+.first-run-guide,
+.choice-intro,
+.reward-reveal,
+.combat-coach,
+.combat-feedback,
+.loop-prompt {
+  border: 1px solid rgba(158,203,255,.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(28,39,54,.86), rgba(17,22,30,.94));
+}
+
+.first-run-guide,
+.choice-intro,
+.reward-reveal {
+  padding: 16px;
+  margin: 10px 0 14px;
+}
+
+.first-run-guide > span,
+.choice-intro > span,
+.reward-kicker {
+  display: block;
+  color: var(--accent);
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.first-run-guide > strong,
+.choice-intro > strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 1.12rem;
+}
+
+.first-run-guide p,
+.choice-intro p,
+.reward-reveal p {
+  margin-bottom: 0;
+}
+
+.loop-prompt {
+  padding: 12px 14px;
+  color: var(--muted);
+}
+.loop-prompt strong { color: var(--text); }
+
+.enemy-card,
+.participant-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.enemy-name small {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255,119,119,.14);
+  color: #ffc1bc;
+  font-size: .62rem;
+  letter-spacing: .1em;
+  vertical-align: middle;
+}
+
+.combat-coach {
+  margin: 12px 0 2px;
+  padding: 11px 13px;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: .9rem;
+}
+.combat-coach strong { color: var(--text); }
+
+.combat-feedback {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 12px;
+  align-items: center;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-color: rgba(255,255,255,.12);
+}
+.combat-feedback strong { font-size: .94rem; }
+.combat-feedback span { color: var(--muted); font-size: .84rem; }
+.combat-feedback.attack strong { color: #ffd9d4; }
+.combat-feedback.guard strong { color: var(--warning); }
+.combat-feedback.support strong { color: var(--success); }
+.combat-feedback.upgrade strong,
+.combat-feedback.reward strong { color: var(--accent-strong); }
+
+.damage-pop,
+.retaliation-pop {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  font-weight: 900;
+  letter-spacing: -.03em;
+  text-shadow: 0 2px 8px #000;
+  animation: threadbound-pop .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.damage-pop {
+  right: 18px;
+  top: 38px;
+  color: #ffd0ca;
+  font-size: 1.65rem;
+}
+.retaliation-pop {
+  right: 14px;
+  top: 38px;
+  color: var(--danger);
+  font-size: 1rem;
+}
+
+.enemy-card.impact-hit {
+  animation: threadbound-impact .18s ease-out both;
+}
+.enemy-card.impact-hit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(255,210,205,.11);
+  animation: threadbound-flash .28s ease-out both;
+}
+
+.choice-intro { margin-top: 14px; }
+.upgrade-grid { margin-top: 10px; }
+.upgrade-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 164px;
+  padding: 15px;
+  border: 1px solid #3d4658;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #171c26, #11151d);
+}
+.upgrade-card h3 { margin: 0 0 7px; font-size: 1.03rem; }
+.upgrade-card p { margin: 0 0 14px; color: var(--muted); line-height: 1.45; }
+.upgrade-card button { width: 100%; margin: auto 0 0 !important; }
+
+.reward-reveal {
+  position: relative;
+  overflow: hidden;
+  border-color: #596f91;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(184,220,255,.16), transparent 16rem),
+    linear-gradient(180deg, #1b2635, #111720);
+  box-shadow: 0 18px 52px rgba(0,0,0,.28);
+  animation: threadbound-reveal .38s cubic-bezier(.16,.8,.25,1) both;
+}
+.reward-reveal::before {
+  content: '';
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  right: -55px;
+  top: -80px;
+  border-radius: 50%;
+  background: rgba(158,203,255,.12);
+  filter: blur(5px);
+}
+.reward-reveal.rare {
+  border-color: #a5b9e8;
+  box-shadow: 0 18px 58px rgba(86,118,179,.18);
+}
+.reward-reveal h3 {
+  position: relative;
+  margin: 5px 0 4px;
+  font-size: clamp(1.35rem, 5vw, 1.8rem);
+  letter-spacing: -.025em;
+}
+.power-gain {
+  font-size: 1.04rem;
+  color: var(--success);
+}
+.power-gain strong { font-size: 1.2em; }
+.reward-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 15px;
+}
+.reward-actions button { margin: 0 !important; min-height: 54px; }
+.reward-actions [data-testid="reward-equip"] {
+  border-color: #6a8fb8;
+  background: linear-gradient(180deg, #28527a, #1d3e5f);
+}
+
+@keyframes threadbound-impact {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(5px) scale(.995); }
+  70% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+@keyframes threadbound-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes threadbound-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(.85); }
+  28% { opacity: 1; transform: translateY(-5px) scale(1.08); }
+  100% { opacity: 0; transform: translateY(-22px) scale(1); }
+}
+@keyframes threadbound-reveal {
+  0% { opacity: 0; transform: translateY(12px) scale(.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 720px) {
+  .first-run-guide,
+  .choice-intro,
+  .reward-reveal { padding: 14px; }
+  .combat-feedback { grid-template-columns: 1fr; gap: 2px; }
+  .reward-actions { grid-template-columns: 1fr; }
+  .upgrade-card { min-height: 0; }
+  .damage-pop { right: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enemy-card.impact-hit,
+  .enemy-card.impact-hit::after,
+  .damage-pop,
+  .retaliation-pop,
+  .reward-reveal {
+    animation: none !important;
+  }
+  .damage-pop,
+  .retaliation-pop {
+    opacity: 1;
+    transform: none;
+  }
+}
