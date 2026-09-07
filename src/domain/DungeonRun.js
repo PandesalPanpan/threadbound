@@ -25,7 +25,10 @@ const GUARD_THREAT = 10;
 const MEND_AMOUNT = 8;
 const MEND_THREAT = 2;
 const REVIVE_THREAT = 4;
+const INTERRUPT_THREAT = 3;
 const THREAT_DECAY = 2;
+const INTENT_AFTER_ATTACKS = 3;
+const INTENT_WINDOW_MS = 3000;
 
 export function scalingForPlayerCount(playerCount) {
   if (!Number.isInteger(playerCount) || playerCount < 1 || playerCount > 4) {
@@ -111,6 +114,8 @@ export class DungeonRun {
       runAttackBonus: 0,
       selectedUpgrade: null,
       enemy: cloneEnemy(dungeon.encounters[0], participantStates.length),
+      enemyIntent: null,
+      attacksSinceIntent: 0,
       rewardsGranted: false,
       rewardItemIds: {},
       createdAt: now,
@@ -123,8 +128,9 @@ export class DungeonRun {
 
   attack({ playerId, attackPower, equipmentEffect = 'none', now = new Date().toISOString() }) {
     this.#assertCombat();
-    const participant = this.#actingParticipant(playerId);
     const events = [];
+    this.#resolveDueIntent(events, now);
+    const participant = this.#actingParticipant(playerId);
     let damage = attackPower + this.state.runAttackBonus;
     if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) damage += 2;
     if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) damage += 2;
@@ -145,17 +151,34 @@ export class DungeonRun {
     }
 
     const retaliation = this.#retaliate(events);
+    if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
     return { state: this.toJSON(), events, damage: effectiveDamage, retaliation };
   }
 
-  guard({ playerId }) {
+  guard({ playerId, now = new Date().toISOString() }) {
     this.#assertCombat();
     const participant = this.#actingParticipant(playerId);
     participant.guarding = true;
     participant.threat += GUARD_THREAT;
     const events = [{ type: 'PlayerGuarded', playerId, runId: this.state.id, threatAdded: GUARD_THREAT }];
-    const retaliation = this.#retaliate(events);
+    let retaliation;
+    if (this.state.enemyIntent) retaliation = this.#resolveIntent(events, now);
+    else retaliation = this.#retaliate(events);
     return { state: this.toJSON(), events, retaliation };
+  }
+
+  interrupt({ playerId }) {
+    this.#assertCombat();
+    const participant = this.#actingParticipant(playerId);
+    if (!this.state.enemyIntent) throw new Error('There is no enemy action to interrupt.');
+    const interrupted = structuredClone(this.state.enemyIntent);
+    this.state.enemyIntent = null;
+    participant.threat += INTERRUPT_THREAT;
+    return {
+      state: this.toJSON(),
+      events: [{ type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interrupted.id, enemyId: this.state.enemy.id }],
+      interrupted,
+    };
   }
 
   mend({ playerId, targetPlayerId }) {
@@ -209,6 +232,8 @@ export class DungeonRun {
     }
     this.state.phase = 'boss';
     this.state.enemy = cloneEnemy(this.#dungeon().boss, this.state.participants.length, true);
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
     return { state: this.toJSON(), events: [{ type: 'RunUpgradeChosen', runId: this.state.id, upgradeId }] };
   }
 
@@ -238,11 +263,11 @@ export class DungeonRun {
     return participant;
   }
 
-  #retaliate(events) {
+  #retaliate(events, forcedDamage = null) {
     const alive = this.state.participants.filter((participant) => participant.hp > 0);
     if (alive.length === 0) return 0;
     const target = alive.reduce((best, candidate) => candidate.threat > best.threat ? candidate : best, alive[0]);
-    const rawDamage = this.state.enemy.retaliation;
+    const rawDamage = forcedDamage ?? this.state.enemy.retaliation;
     const damage = target.guarding ? Math.max(1, Math.ceil(rawDamage / 2)) : rawDamage;
     if (target.guarding) target.damagePrevented += rawDamage - damage;
     target.guarding = false;
@@ -251,8 +276,39 @@ export class DungeonRun {
     for (const participant of this.state.participants) participant.threat = Math.max(0, participant.threat - THREAT_DECAY);
     if (this.state.participants.every((candidate) => candidate.hp === 0)) {
       this.state.phase = 'failed';
+      this.state.enemyIntent = null;
       events.push({ type: 'DungeonFailed', runId: this.state.id, dungeonId: this.state.dungeonId, participantIds: this.state.participants.map((candidate) => candidate.playerId) });
     }
+    return damage;
+  }
+
+  #maybeTelegraphIntent(events, now) {
+    if (this.state.enemyIntent || !this.state.enemy || this.state.enemy.hp <= 0) return;
+    this.state.attacksSinceIntent = (this.state.attacksSinceIntent || 0) + 1;
+    if (this.state.attacksSinceIntent < INTENT_AFTER_ATTACKS) return;
+    this.state.attacksSinceIntent = 0;
+    const dueAt = new Date(new Date(now).getTime() + INTENT_WINDOW_MS).toISOString();
+    this.state.enemyIntent = {
+      id: this.state.enemy.isBoss ? 'needle-break' : 'fraying-blow',
+      name: this.state.enemy.isBoss ? 'Needle Break' : 'Fraying Blow',
+      damage: Math.max(this.state.enemy.retaliation + 2, this.state.enemy.retaliation * 2),
+      dueAt,
+    };
+    events.push({ type: 'EnemyIntentTelegraphed', runId: this.state.id, enemyId: this.state.enemy.id, intent: structuredClone(this.state.enemyIntent) });
+  }
+
+  #resolveDueIntent(events, now) {
+    if (!this.state.enemyIntent) return 0;
+    if (new Date(now).getTime() < new Date(this.state.enemyIntent.dueAt).getTime()) return 0;
+    return this.#resolveIntent(events, now);
+  }
+
+  #resolveIntent(events, _now) {
+    if (!this.state.enemyIntent) return 0;
+    const intent = structuredClone(this.state.enemyIntent);
+    this.state.enemyIntent = null;
+    const damage = this.#retaliate(events, intent.damage);
+    events.push({ type: 'EnemyIntentResolved', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, damage });
     return damage;
   }
 
@@ -265,6 +321,8 @@ export class DungeonRun {
 
   #advanceAfterDefeat(events, now) {
     const dungeon = this.#dungeon();
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
     if (this.state.phase === 'boss') {
       this.state.phase = 'complete';
       this.state.enemy = null;
