@@ -4,6 +4,9 @@ export const ITEM_EFFECTS = Object.freeze({
   none: Object.freeze({ code: 'none', name: 'Plain Weave', description: 'No special combat effect.' }),
   opening_strike: Object.freeze({ code: 'opening_strike', name: 'Opening Stitch', description: '+2 damage on the first strike of every encounter.' }),
   boss_bane: Object.freeze({ code: 'boss_bane', name: 'Severing', description: '+2 damage against bosses.' }),
+  mender: Object.freeze({ code: 'mender', name: 'Mercy Knot', description: 'Mend restores +3 additional HP.' }),
+  interrupt_refund: Object.freeze({ code: 'interrupt_refund', name: 'Static Thread', description: 'A successful Interrupt immediately readies Power Strike.' }),
+  riposte_edge: Object.freeze({ code: 'riposte_edge', name: 'Barbed Hem', description: 'Guard-primed Ripostes deal +3 additional damage.' }),
 });
 
 export const ITEM_RARITIES = Object.freeze({
