@@ -25,6 +25,75 @@
 .stream-heading small.is-live::before { content: '● '; }
 .stream-hint { margin: 3px 0 10px; color: var(--muted); font-size: .84rem; }
 
+.stream-combat-dock {
+  margin: 8px 0 10px;
+  padding: 10px;
+  border: 1px solid rgba(255,209,102,.26);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255,209,102,.09), transparent 12rem),
+    rgba(8,13,26,.88);
+  box-shadow: inset 3px 0 0 rgba(255,209,102,.68);
+}
+
+.stream-combat-dock[hidden] { display: none !important; }
+.stream-combat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.stream-combat-header > div { min-width: 0; }
+.stream-combat-header span {
+  display: block;
+  color: var(--gold);
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .1em;
+}
+.stream-combat-header strong {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stream-combat-header small {
+  color: var(--muted);
+  font-size: .75rem;
+  text-align: right;
+}
+.stream-combat-actions {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+.stream-action-group { min-width: 0; }
+.stream-target-select {
+  width: 100%;
+  min-height: 36px;
+  margin-bottom: 5px;
+  font-size: .72rem;
+}
+.stream-combat-action {
+  width: 100%;
+  min-height: 46px;
+  margin: 0 !important;
+  padding: 8px 10px;
+  font-size: .8rem;
+  font-weight: 900;
+}
+.stream-combat-action-interrupt {
+  border-color: rgba(255,112,126,.55);
+  background: rgba(255,112,126,.12);
+}
+.stream-combat-action-mend,
+.stream-combat-action-revive {
+  border-color: rgba(81,214,157,.42);
+  background: rgba(81,214,157,.1);
+}
+
 .adventure-stream-log {
   height: min(46vh, 430px);
   min-height: 260px;
@@ -36,6 +105,23 @@
   background: rgba(4,8,16,.7);
   scroll-behavior: smooth;
 }
+
+.adventure-stream-log.is-empty {
+  height: auto;
+  min-height: 132px;
+}
+
+.stream-empty {
+  min-height: 110px;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  padding: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+.stream-empty strong { color: var(--text); }
+.stream-empty span { max-width: 34rem; font-size: .82rem; line-height: 1.4; }
 
 .stream-entry {
   display: grid;
@@ -132,12 +218,29 @@
   body[data-game-view="play"] #stream { display: block; }
   #stream { padding: 12px; }
   .stream-hint { display: none; }
+  .stream-combat-dock { margin-top: 7px; padding: 9px; }
+  .stream-combat-header { align-items: start; }
+  .stream-combat-header small { max-width: 48%; font-size: .68rem; }
+  .stream-combat-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .stream-combat-action { min-height: 48px; }
   .adventure-stream-log { height: 31vh; min-height: 210px; padding: 6px; }
+  .adventure-stream-log.is-empty { height: auto; min-height: 108px; }
+  .stream-empty { min-height: 88px; padding: 8px; }
   .stream-entry { grid-template-columns: 30px minmax(0,1fr); gap: 7px; padding: 7px 6px; }
   .stream-avatar { width: 28px; height: 28px; border-radius: 9px; }
   .stream-entry-system { margin-block: 4px; }
   .adventure-stream-composer { position: sticky; bottom: calc(65px + env(safe-area-inset-bottom)); z-index: 20; padding-top: 6px; background: linear-gradient(180deg,transparent,rgba(8,13,26,.98) 28%); }
   .adventure-stream-composer button { padding-inline: 14px; }
+
+  /* On phones the Adventure Stream is the primary combat surface. The full
+     expedition card remains the authoritative visual state, but its duplicate
+     reactive controls move out of the way. */
+  body[data-game-view="play"] #dungeon .combat-dock,
+  body[data-game-view="play"] #dungeon .support-actions,
+  body[data-game-view="play"] #dungeon .enemy-intent > button,
+  body[data-game-view="play"] #dungeon .auto-attack-cadence {
+    display: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
