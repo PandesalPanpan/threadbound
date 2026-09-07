@@ -1,32 +1,67 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Character } from '../src/domain/Character.js';
-import { DungeonRun } from '../src/domain/DungeonRun.js';
+import { DungeonRun, scalingForPlayerCount } from '../src/domain/DungeonRun.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../src/domain/ItemGenerator.js';
+import { Party } from '../src/domain/Party.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 import { EventBus } from '../src/application/EventBus.js';
 import { AchievementProjector } from '../src/application/AchievementProjector.js';
 import { GameService } from '../src/application/GameService.js';
 import { HoneyPurchaseService } from '../src/application/HoneyPurchaseService.js';
+import { PartyService } from '../src/application/PartyService.js';
 
-test('character and dungeon domain rules form the complete first run loop', () => {
+test('character and solo dungeon domain rules preserve the complete first run loop', () => {
   const character = new Character({ id: 'p1', threadedUserId: '42', displayName: 'Tester', equippedItem: { attackBonus: 3 } });
   assert.equal(character.attackPower, 9);
 
-  const run = DungeonRun.start({ id: 'r1', playerId: 'p1', dungeonId: 'frayed-hollow', playerMaxHealth: 40 });
+  const run = DungeonRun.start({
+    id: 'r1', ownerType: 'player', ownerId: 'p1', startedByPlayerId: 'p1', dungeonId: 'frayed-hollow',
+    participants: [{ playerId: 'p1', maxHealth: 40 }],
+  });
   for (let encounter = 0; encounter < 3; encounter += 1) {
-    run.attack({ attackPower: 6 });
-    const result = run.attack({ attackPower: 6 });
+    run.attack({ playerId: 'p1', attackPower: 6 });
+    const result = run.attack({ playerId: 'p1', attackPower: 6 });
     assert.ok(result.events.some((event) => event.type === 'EnemyDefeated'));
   }
   assert.equal(run.state.phase, 'upgrade');
   run.chooseUpgrade('sharpen');
   assert.equal(run.state.phase, 'boss');
-  run.attack({ attackPower: 6 });
-  run.attack({ attackPower: 6 });
-  const final = run.attack({ attackPower: 6 });
+  run.attack({ playerId: 'p1', attackPower: 6 });
+  run.attack({ playerId: 'p1', attackPower: 6 });
+  const final = run.attack({ playerId: 'p1', attackPower: 6 });
   assert.equal(run.state.phase, 'complete');
   assert.ok(final.events.some((event) => event.type === 'DungeonCompleted'));
+});
+
+test('co-op scaling is sub-linear and contribution is tracked per participant', () => {
+  const scaling = scalingForPlayerCount(2);
+  assert.equal(scaling.enemyHealthMultiplier, 1.65);
+  assert.ok(scaling.enemyHealthMultiplier < 2);
+
+  const run = DungeonRun.start({
+    id: 'coop-1', ownerType: 'party', ownerId: 'party-1', startedByPlayerId: 'p1', dungeonId: 'frayed-hollow',
+    participants: [{ playerId: 'p1', maxHealth: 40 }, { playerId: 'p2', maxHealth: 40 }],
+  });
+  assert.equal(run.state.enemy.maxHp, 20);
+  run.attack({ playerId: 'p1', attackPower: 6 });
+  run.attack({ playerId: 'p2', attackPower: 6 });
+  assert.equal(run.participant('p1').contributionDamage, 6);
+  assert.equal(run.participant('p2').contributionDamage, 6);
+});
+
+test('party domain enforces readiness, leadership, and four-player capacity', () => {
+  const party = new Party({ id: 'party', leaderPlayerId: 'p1', joinCode: 'ABC123', members: [{ playerId: 'p1', ready: true }] });
+  party.addMember('p2');
+  party.addMember('p3');
+  party.addMember('p4');
+  assert.throws(() => party.addMember('p5'), /full/i);
+  assert.equal(party.canStart('p1'), false);
+  party.setReady('p2', true);
+  party.setReady('p3', true);
+  party.setReady('p4', true);
+  assert.equal(party.canStart('p1'), true);
+  assert.equal(party.canStart('p2'), false);
 });
 
 test('generated rewards only use registered effect vocabulary', () => {
@@ -38,7 +73,7 @@ test('generated rewards only use registered effect vocabulary', () => {
   assert.ok(item.attackBonus >= 1 && item.attackBonus <= 3);
 });
 
-test('service layer persists reward, progression, achievements, and equipment power', () => {
+test('service layer preserves solo reward, progression, achievements, and equipment power', () => {
   let id = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++id}` });
   const bus = new EventBus();
@@ -67,6 +102,68 @@ test('service layer persists reward, progression, achievements, and equipment po
   service.equipItem(player.id, 'reward-1');
   assert.ok(service.dashboard(player.id).character.attackPower > 6);
   assert.ok(repository.listAchievements(player.id).some((achievement) => achievement.id === 'armed_and_threaded'));
+  repository.close();
+});
+
+test('two-player party owns one run and both players receive shared completion rewards', () => {
+  let playerSequence = 0;
+  let rewardSequence = 0;
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++playerSequence}` });
+  const bus = new EventBus();
+  const projector = new AchievementProjector(repository);
+  bus.subscribe((event) => projector.handle(event));
+  const game = new GameService({
+    repository,
+    eventBus: bus,
+    idFactory: () => 'party-run-1',
+    itemGenerator: new ItemGenerator({ rng: () => 0.1, idFactory: () => `coop-reward-${++rewardSequence}` }),
+  });
+  const parties = new PartyService({ repository, idFactory: () => 'party-1', joinCodeFactory: () => 'ABC123' });
+  const leader = game.ensurePlayer({ id: 2001, name: 'Leader' });
+  const partner = game.ensurePlayer({ id: 2002, name: 'Partner' });
+
+  parties.createParty(leader.id);
+  parties.joinParty(partner.id, 'abc123');
+  assert.throws(() => game.startDungeon(leader.id, 'frayed-hollow'), /ready party leader/i);
+  parties.setReady(partner.id, true);
+
+  const run = game.startDungeon(leader.id, 'frayed-hollow');
+  assert.equal(run.ownerType, 'party');
+  assert.equal(run.ownerId, 'party-1');
+  assert.equal(run.participants.length, 2);
+  assert.equal(game.dashboard(partner.id).activeRun.id, run.id);
+
+  let turn = 0;
+  const players = [leader.id, partner.id];
+  while (repository.getRun(run.id).phase === 'combat') {
+    game.attack(players[turn % 2], run.id);
+    turn += 1;
+  }
+  assert.equal(repository.getRun(run.id).phase, 'upgrade');
+  assert.throws(() => game.chooseUpgrade(partner.id, run.id, 'sharpen'), /party leader/i);
+  game.chooseUpgrade(leader.id, run.id, 'sharpen');
+
+  while (repository.getRun(run.id).phase === 'boss') {
+    game.attack(players[turn % 2], run.id);
+    turn += 1;
+  }
+
+  const completed = repository.getRun(run.id);
+  assert.equal(completed.phase, 'complete');
+  assert.equal(completed.rewardsGranted, true);
+  assert.ok(completed.participants.every((participant) => participant.contributionDamage > 0));
+  assert.equal(repository.listItems(leader.id).length, 1);
+  assert.equal(repository.listItems(partner.id).length, 1);
+  assert.equal(repository.getPlayer(leader.id).threadDust, 15);
+  assert.equal(repository.getPlayer(partner.id).threadDust, 15);
+  assert.equal(repository.getWorldState().frayedHollowClears, 1);
+  assert.ok(repository.listAchievements(leader.id).some((achievement) => achievement.id === 'hollow_cleared'));
+  assert.ok(repository.listAchievements(partner.id).some((achievement) => achievement.id === 'hollow_cleared'));
+
+  const partyAfterRun = repository.getParty('party-1');
+  assert.equal(partyAfterRun.status, 'forming');
+  assert.equal(partyAfterRun.members.find((member) => member.playerId === leader.id).ready, true);
+  assert.equal(partyAfterRun.members.find((member) => member.playerId === partner.id).ready, false);
   repository.close();
 });
 
