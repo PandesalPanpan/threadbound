@@ -22,6 +22,12 @@ async function dashboard(context) {
   return response.json();
 }
 
+async function expectCountAtLeast(locator, minimum) {
+  const text = await locator.textContent();
+  const count = Number(text.match(/\d+/)?.[0] || 0);
+  expect(count).toBeGreaterThanOrEqual(minimum);
+}
+
 async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
   let turn = startTurn;
   for (let guard = 0; guard < 40; guard += 1) {
@@ -84,8 +90,11 @@ test('Threaded login -> solo dungeon -> generated loot -> codex -> equip -> idem
   await page.getByTestId('nav-codex').click();
   await expect(page).toHaveURL(/\/codex/);
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
-  await expect(page.getByTestId('codex-count-items')).toHaveText('Items 2');
-  await expect(page.getByTestId('codex-count-history')).toHaveText('History 2');
+  // The Codex is living shared-world state. Other journeys may legitimately discover
+  // additional relics/history before this player arrives, so verify semantic minimums
+  // and then assert the exact Honey-purchased entry below instead of freezing totals.
+  await expectCountAtLeast(page.getByTestId('codex-count-items'), 2);
+  await expectCountAtLeast(page.getByTestId('codex-count-history'), 2);
   await page.getByTestId('codex-tab-items').click();
   await page.getByTestId('codex-search').fill('Demo Training Sword');
   await expect(page.getByTestId('codex-entry')).toHaveCount(1);
