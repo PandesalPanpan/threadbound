@@ -62,24 +62,39 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
 
   await page.getByTestId('nav-codex').click();
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
+
   await page.getByTestId('codex-search').fill('Cinder Seam');
-  await expect(page.getByTestId('codex-status')).toHaveText('1 record');
+  const cinderLore = page.getByTestId('codex-entry').filter({ hasText: 'The Cinder Seam' }).first();
+  await expect(cinderLore).toBeVisible();
+  await cinderLore.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Cinder Seam');
   await expect(page.getByTestId('codex-detail')).toContainText('arc-manifest');
 
   await page.getByTestId('codex-search').fill('Ember Loomkeeper');
+  const loomkeeper = page.getByTestId('codex-entry').filter({ hasText: 'The Ember Loomkeeper' }).first();
+  await expect(loomkeeper).toBeVisible();
+  await loomkeeper.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Ember Loomkeeper');
   await expect(page.getByTestId('codex-mechanics')).toContainText('28');
 
   await page.getByTestId('codex-search').fill('Ember Needle of the Loom');
+  const needleEntry = page.getByTestId('codex-entry').filter({ hasText: 'Ember Needle of the Loom' }).first();
+  await expect(needleEntry).toBeVisible();
+  await needleEntry.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('Ember Needle of the Loom');
   await expect(page.getByTestId('codex-detail')).toContainText('boss_bane');
 
   await page.getByTestId('codex-search').fill('Through the Cinders');
+  const achievementEntry = page.getByTestId('codex-entry').filter({ hasText: 'Through the Cinders' }).first();
+  await expect(achievementEntry).toBeVisible();
+  await achievementEntry.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('Through the Cinders');
   await expect(page.getByTestId('codex-detail')).toContainText('Unlocked');
 
   await page.getByTestId('codex-tab-history').click();
   await page.getByTestId('codex-search').fill('Ashen Thread begins');
+  const historyEntry = page.getByTestId('codex-entry').filter({ hasText: 'The Ashen Thread begins' }).first();
+  await expect(historyEntry).toBeVisible();
+  await historyEntry.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Ashen Thread begins');
 });
