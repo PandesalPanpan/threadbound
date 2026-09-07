@@ -52,6 +52,33 @@ export class SQLiteArcManifestRepository {
     }
   }
 
+  recordAchievementEvent({ eventId, playerId, achievementId }) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const inserted = this.db.prepare('INSERT OR IGNORE INTO arc_achievement_events (event_id, player_id, achievement_id) VALUES (?, ?, ?)').run(eventId, playerId, achievementId);
+      if (inserted.changes === 0) {
+        const existing = this.db.prepare('SELECT amount FROM arc_achievement_progress WHERE player_id = ? AND achievement_id = ?').get(playerId, achievementId);
+        this.db.exec('ROLLBACK');
+        return { applied: false, amount: existing?.amount ?? 0 };
+      }
+      this.db.prepare(`
+        INSERT INTO arc_achievement_progress (player_id, achievement_id, amount, updated_at)
+        VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT(player_id, achievement_id) DO UPDATE SET amount = amount + 1, updated_at = CURRENT_TIMESTAMP
+      `).run(playerId, achievementId);
+      const progress = this.db.prepare('SELECT amount FROM arc_achievement_progress WHERE player_id = ? AND achievement_id = ?').get(playerId, achievementId);
+      this.db.exec('COMMIT');
+      return { applied: true, amount: progress.amount };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
+  }
+
+  getAchievementProgress(playerId, achievementId) {
+    return this.db.prepare('SELECT amount FROM arc_achievement_progress WHERE player_id = ? AND achievement_id = ?').get(playerId, achievementId)?.amount ?? 0;
+  }
+
   #decode(row) {
     return {
       id: row.id,
@@ -84,6 +111,20 @@ export class SQLiteArcManifestRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_arc_manifests_arc ON arc_manifests(arc_id, revision DESC);
       CREATE INDEX IF NOT EXISTS idx_arc_manifests_status ON arc_manifests(status, published_at DESC);
+      CREATE TABLE IF NOT EXISTS arc_achievement_progress (
+        player_id TEXT NOT NULL,
+        achievement_id TEXT NOT NULL,
+        amount INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (player_id, achievement_id)
+      );
+      CREATE TABLE IF NOT EXISTS arc_achievement_events (
+        event_id TEXT NOT NULL,
+        player_id TEXT NOT NULL,
+        achievement_id TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (event_id, player_id, achievement_id)
+      );
     `);
   }
 }
