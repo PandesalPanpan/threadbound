@@ -14,6 +14,12 @@
   transform: translateY(-6px);
 }
 
+.run-summary > span:not(.phase-chip),
+[data-testid="run-scaling"],
+.participant-stats {
+  display: none !important;
+}
+
 .first-run-guide,
 .choice-intro,
 .reward-reveal {
@@ -55,6 +61,12 @@
 .participant-card {
   position: relative;
   overflow: hidden;
+}
+
+.participant-card:has(.guarding-badge) {
+  border-color: rgba(255,210,122,.55) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,210,122,.14), 0 0 22px rgba(255,210,122,.08);
+  animation: threadbound-guard .32s ease-out both;
 }
 
 .enemy-name small {
@@ -212,6 +224,10 @@
   0% { opacity: 0; transform: translateY(12px) scale(.985); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes threadbound-guard {
+  0% { transform: scale(.992); filter: brightness(1.16); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
 
 @media (max-width: 720px) {
   body.threadbound-player > h1 + p,
@@ -234,6 +250,7 @@
 @media (prefers-reduced-motion: reduce) {
   .enemy-card.impact-hit,
   .enemy-card.impact-hit::after,
+  .participant-card:has(.guarding-badge),
   .damage-pop,
   .retaliation-pop,
   .reward-reveal {
