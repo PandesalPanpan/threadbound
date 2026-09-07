@@ -1,0 +1,26 @@
+name: kenney-asset-probe
+
+on:
+  push:
+    branches:
+      - feature/kenney-character-sprites
+
+jobs:
+  inspect-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Tiny Dungeon
+        run: |
+          mkdir -p /tmp/kenney
+          curl -fL 'https://kenney.nl/media/pages/assets/tiny-dungeon/f8422efb44-1674742415/kenney_tiny-dungeon.zip' -o /tmp/kenney/tiny-dungeon.zip
+          unzip -q /tmp/kenney/tiny-dungeon.zip -d /tmp/kenney/extracted
+          find /tmp/kenney/extracted -maxdepth 4 -type f | sort | tee /tmp/kenney/file-list.txt
+      - name: Upload asset probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: kenney-tiny-dungeon-probe
+          path: |
+            /tmp/kenney/extracted/
+            /tmp/kenney/file-list.txt
+          retention-days: 1
