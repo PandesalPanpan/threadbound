@@ -1,114 +1,69 @@
 # Threadbound
 
-Threadbound is a separate game application for the Threaded ecosystem. It has its own repository and will eventually own its own game data. Threaded remains the authority for identity and Honey.
+Threadbound is a separate persistent RPG that authenticates through Threaded and treats Threaded as the authoritative owner of Honey.
 
-This first branch is deliberately only an integration spike. It proves that Threadbound can:
+## Current vertical slice
 
-1. Redirect a player to Threaded.
-2. Authenticate with OAuth2 Authorization Code + PKCE (S256).
-3. Receive an access token without storing a client secret.
-4. Read the authenticated Threaded profile.
-5. Read the authoritative Honey balance.
+The first playable foundation proves this loop:
 
-The browser flow requests only `profile:read` and `wallet:read`. A `spendPoints` gateway method is present and contract-tested for later work, but this spike does not expose any UI or route that spends Honey.
+1. Authenticate with Threaded via OAuth2 Authorization Code + PKCE.
+2. Create/recover the persistent Threadbound character for that Threaded user.
+3. Enter **Frayed Hollow**.
+4. Clear three encounters.
+5. Choose a temporary run upgrade.
+6. Defeat **The First Needle**.
+7. Receive a generated weapon assembled only from registered item/effect vocabulary.
+8. Equip it and increase permanent attack power.
+9. Unlock achievements and contribute to shared world-arc progress.
+10. Retry a Honey purchase safely without a duplicate Threadbound grant or duplicate Threaded spend.
 
-## Architecture boundary
+## Architecture
 
-Game-domain code should not call Threaded endpoints directly. `src/threaded/ThreadedGateway.js` is the single integration Gateway for OAuth and the versioned Threaded API.
+Threadbound intentionally starts as a **modular monolith**. Fowler-style enterprise application patterns are used where they solve real game-backend problems, without premature microservices or full event sourcing.
 
-Threadbound must never connect directly to the Threaded database and must never treat a cached Honey balance as authoritative for purchases.
+- **Service Layer** — `GameService` and `HoneyPurchaseService` coordinate use cases.
+- **Domain Model** — `Character` and `DungeonRun` own game rules and state transitions instead of HTTP controllers.
+- **Repository** — persistence is behind `SQLiteGameRepository`; application and HTTP code do not issue SQL.
+- **Gateway** — Threaded OAuth/API calls remain behind `ThreadedGateway`, an explicit boundary between the applications.
+- **Domain Events** — facts such as `EnemyDefeated`, `DungeonCompleted`, and `ItemEquipped` are published. Achievements consume those events. Threadbound is deliberately not fully event-sourced yet.
+- **Idempotency** — Honey spending is authoritative in Threaded. Threadbound stores the resulting grant keyed by player + idempotency key and verifies retry transaction identity before granting again.
 
-## Local end-to-end connection test
+### Ownership boundary
 
-### 1. Run the Threaded integration branch
+Threadbound does **not** maintain a second Honey balance. The wallet held in the session is only the most recently observed Threaded value. Every spend goes through `ThreadedGateway`; Threaded remains the source of truth.
 
-In your existing Threaded checkout:
+### Generated-content rule
 
-```bash
-git checkout feature/threadbound-integration-foundation
-composer install
-php artisan migrate
-```
+Generated items are data assembled from a controlled effect vocabulary. Generators cannot invent arbitrary executable behavior or unbounded stats. The implemented effects are:
 
-If Passport keys have not yet been generated for that local environment, generate them once:
+- `none`
+- `opening_strike` — +2 on the first strike of each encounter
+- `boss_bane` — +2 against bosses
 
-```bash
-php artisan passport:keys
-```
+This is the base pattern for later generated weapons, armor, enemies, and lore: generation chooses from rules we can validate, test, balance, and version.
 
-Create a local public OAuth client:
+## Persistence
 
-```bash
-php artisan threadbound:oauth-client \
-  --name="Threadbound Local" \
-  --redirect="http://127.0.0.1:3001/oauth/callback"
-```
+Node 22's built-in SQLite adapter stores players, generated/purchased items, equipped items, dungeon runs, achievements, shared world progress, and idempotent purchase grants.
 
-Copy the printed **Client ID**, then run Threaded on port 8000 (or use the URL of your already-running Threaded instance):
+The HTTP session store is still in-memory. That is acceptable for this vertical slice but must be replaced by a durable/shared session strategy before multi-instance production deployment.
 
-```bash
-php artisan serve --host=127.0.0.1 --port=8000
-```
-
-The Threaded account used for the test must have a verified email because the integration API rejects unverified accounts.
-
-### 2. Run Threadbound
+## Tests
 
 ```bash
-git checkout spike/threaded-integration
 npm install
-cp .env.example .env
-```
-
-Set the generated Client ID in `.env`:
-
-```dotenv
-PORT=3001
-SESSION_SECRET=use-a-long-random-local-value
-THREADED_BASE_URL=http://127.0.0.1:8000
-THREADED_CLIENT_ID=<client-id-from-threaded>
-THREADED_REDIRECT_URI=http://127.0.0.1:3001/oauth/callback
-```
-
-Then start Threadbound:
-
-```bash
-npm start
-```
-
-Open `http://127.0.0.1:3001` and choose **Connect with Threaded**.
-
-A successful test ends at `/connected` with JSON shaped roughly like:
-
-```json
-{
-  "connected": true,
-  "threaded_user": {
-    "id": "42",
-    "display_name": "Player",
-    "avatar_url": "..."
-  },
-  "wallet": {
-    "currency": "honey",
-    "balance": 130
-  }
-}
-```
-
-That result proves the two independent repositories can communicate through the intended authentication and API boundary.
-
-## Automated tests
-
-```bash
+npm run check
 npm test
+npx playwright install chromium
+npm run test:e2e
 ```
 
-The tests cover the RFC 7636 S256 challenge, OAuth request construction, public-client token exchange, bearer-authenticated profile/wallet reads, idempotent purchase request shape, and stable Threaded API error codes.
+The Node suite covers domain rules, persistence, service orchestration, PKCE, Threaded gateway contracts, generated-item constraints, and Honey grant idempotency.
 
-## Current limitations
+The Playwright suite starts a deterministic fake Threaded OAuth/API provider and performs the user journey end-to-end: OAuth authorization, character creation, dungeon combat, upgrade choice, boss victory, generated loot, equipment progression, achievements, world progression, and retry-safe Honey spending.
 
-This is intentionally not production-ready yet. Sessions use Express's in-memory store, there is no persistent Threadbound database, token refresh is not implemented, and no game systems exist. Those should be added only after this integration boundary is proven.
+GitHub Actions runs both the Node suite and Chromium Playwright E2E on pushes and pull requests.
 
-## Secrets
+## Next architectural increments
 
-Never commit `.env`, OAuth access tokens, Passport keys, session secrets, or deployment secrets.
+This is deliberately a vertical slice, not the finished game. The next systems should build on these boundaries rather than bypass them: co-op party/run ownership, player-count difficulty scaling, richer effect composition, item rarity/sets, world-arc milestones, and eventually constrained lore generation.
