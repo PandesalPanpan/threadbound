@@ -9,6 +9,11 @@
   background: linear-gradient(180deg, rgba(28,39,54,.86), rgba(17,22,30,.94));
 }
 
+#status.is-ready {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
 .first-run-guide,
 .choice-intro,
 .reward-reveal {
@@ -209,9 +214,17 @@
 }
 
 @media (max-width: 720px) {
+  body.threadbound-player > h1 + p,
+  body.threadbound-player #identity,
+  body.threadbound-player #character > p:first-of-type {
+    display: none !important;
+  }
+  body.threadbound-player #character { gap: 4px; }
+  body.threadbound-player #character .muted { margin: 4px 0 0; }
   .first-run-guide,
   .choice-intro,
   .reward-reveal { padding: 14px; }
+  .first-run-guide p { margin-top: 8px; }
   .combat-feedback { grid-template-columns: 1fr; gap: 2px; }
   .reward-actions { grid-template-columns: 1fr; }
   .upgrade-card { min-height: 0; }
