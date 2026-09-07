@@ -27,8 +27,10 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
   const second = await secondContext.newPage();
 
   try {
-    await loginLocal(first, 'a', 'Local Weaver A');
-    await loginLocal(second, 'b', 'Local Weaver B');
+    // C/D are reserved for the independent-adventure social scenario so its intentionally
+    // persistent dungeon state cannot contaminate the A/B co-op journey in the next test.
+    await loginLocal(first, 'c', 'Local Weaver C');
+    await loginLocal(second, 'd', 'Local Weaver D');
 
     await expect(first.getByTestId('adventure-stream')).toBeVisible();
     await expect(first.getByTestId('stream-composer')).toBeVisible();
@@ -39,7 +41,7 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
     await sendMessage(first, 'heal or attack?');
     const messageOnSecond = second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' });
     await expect(messageOnSecond).toBeVisible();
-    await expect(messageOnSecond).toContainText('Local Weaver A');
+    await expect(messageOnSecond).toContainText('Local Weaver C');
 
     await sendMessage(second, 'attack, I am full HP');
     await expect(first.getByTestId('stream-chat-entry').filter({ hasText: 'attack, I am full HP' })).toBeVisible();
@@ -53,13 +55,13 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
 
     await first.getByTestId('start-dungeon').first().click();
     await expect(first.getByTestId('run-state')).toContainText('Phase: combat');
-    const firstEntered = second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver A entered Frayed Hollow.' });
+    const firstEntered = second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C entered Frayed Hollow.' });
     await expect(firstEntered).toBeVisible();
     await expect(firstEntered).toContainText('DUNGEON STARTED');
 
     await second.getByTestId('start-dungeon').first().click();
     await expect(second.getByTestId('run-state')).toContainText('Phase: combat');
-    await expect(first.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver B entered Frayed Hollow.' })).toBeVisible();
+    await expect(first.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver D entered Frayed Hollow.' })).toBeVisible();
 
     const firstDashboard = await firstContext.request.get('/api/dashboard');
     const secondDashboard = await secondContext.request.get('/api/dashboard');
@@ -69,7 +71,7 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
     expect(firstState.activeRun.ownerType).toBe('player');
     expect(secondState.activeRun.ownerType).toBe('player');
 
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver A struck Frayed Wisp/ }).first()).toBeVisible({ timeout: 7000 });
+    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C struck Frayed Wisp/ }).first()).toBeVisible({ timeout: 7000 });
 
     const tooLong = await firstContext.request.post('/api/stream/messages', { data: { body: 'x'.repeat(501) } });
     expect(tooLong.status()).toBe(422);
@@ -78,7 +80,7 @@ test('mobile and desktop players share realtime chat and separate dungeon activi
     await second.reload();
     await expect(second.getByTestId('stream-connection')).toHaveText('WebSocket live');
     await expect(second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' })).toBeVisible();
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver A entered Frayed Hollow.' })).toBeVisible();
+    await expect(second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C entered Frayed Hollow.' })).toBeVisible();
   } finally {
     await firstContext.close();
     await secondContext.close();
