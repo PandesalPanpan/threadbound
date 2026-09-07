@@ -27,6 +27,18 @@ function button(label, onClick, testId) {
   return element;
 }
 
+function targetSelect(candidates, testId) {
+  const select = document.createElement('select');
+  select.dataset.testid = testId;
+  for (const participant of candidates) {
+    const option = document.createElement('option');
+    option.value = participant.playerId;
+    option.textContent = `${participant.displayName} · HP ${participant.hp}/${participant.maxHp}`;
+    select.append(option);
+  }
+  return select;
+}
+
 function renderParty(data) {
   partyEl.innerHTML = '<h2>Party</h2>';
   if (!data.party) {
@@ -74,17 +86,39 @@ function renderParty(data) {
   }
 }
 
-function supportTargetSelect(run) {
-  const select = document.createElement('select');
-  select.dataset.testid = 'support-target';
-  for (const participant of run.participants) {
-    if (participant.playerId === run.viewer?.playerId) continue;
-    const option = document.createElement('option');
-    option.value = participant.playerId;
-    option.textContent = `${participant.displayName} · HP ${participant.hp}/${participant.maxHp}`;
-    select.append(option);
+function renderSupportActions(run) {
+  const viewer = run.viewer;
+  const allies = run.participants.filter((participant) => participant.playerId !== viewer.playerId);
+  if (allies.length === 0) return;
+
+  const wounded = allies.filter((participant) => participant.hp > 0 && participant.hp < participant.maxHp);
+  const downed = allies.filter((participant) => participant.hp === 0);
+  const support = document.createElement('div');
+  support.dataset.testid = 'support-actions';
+
+  if (wounded.length > 0 && viewer.mendCharges > 0) {
+    const select = targetSelect(wounded, 'mend-target');
+    support.append(select);
+    support.append(button(`Mend · ${viewer.mendCharges} charge`, async () => {
+      await api(`/api/runs/${run.id}/mend`, { method: 'POST', body: JSON.stringify({ targetPlayerId: select.value }) });
+      await refresh();
+    }, 'mend'));
+  } else {
+    support.insertAdjacentHTML('beforeend', `<span class="muted" data-testid="mend-unavailable">${viewer.mendCharges > 0 ? 'No ally currently needs Mend.' : 'Mend used for this encounter.'}</span>`);
   }
-  return select;
+
+  if (downed.length > 0 && viewer.reviveCharges > 0) {
+    const select = targetSelect(downed, 'revive-target');
+    support.append(select);
+    support.append(button(`Revive · ${viewer.reviveCharges} charge`, async () => {
+      await api(`/api/runs/${run.id}/revive`, { method: 'POST', body: JSON.stringify({ targetPlayerId: select.value }) });
+      await refresh();
+    }, 'revive'));
+  } else {
+    support.insertAdjacentHTML('beforeend', `<span class="muted" data-testid="revive-unavailable">${viewer.reviveCharges > 0 ? 'No ally is down.' : 'Revive used for this run.'}</span>`);
+  }
+
+  dungeonEl.append(support);
 }
 
 function renderDungeon(data) {
@@ -128,19 +162,7 @@ function renderDungeon(data) {
       actions.append(button('Strike', async () => { await api(`/api/runs/${run.id}/attack`, { method: 'POST' }); await refresh(); }, 'attack'));
       actions.append(button('Guard', async () => { await api(`/api/runs/${run.id}/guard`, { method: 'POST' }); await refresh(); }, 'guard'));
       dungeonEl.append(actions);
-
-      if (run.participants.length > 1) {
-        const select = supportTargetSelect(run);
-        dungeonEl.append(select);
-        dungeonEl.append(button(`Mend · ${run.viewer.mendCharges} charge`, async () => {
-          await api(`/api/runs/${run.id}/mend`, { method: 'POST', body: JSON.stringify({ targetPlayerId: select.value }) });
-          await refresh();
-        }, 'mend'));
-        dungeonEl.append(button(`Revive · ${run.viewer.reviveCharges} charge`, async () => {
-          await api(`/api/runs/${run.id}/revive`, { method: 'POST', body: JSON.stringify({ targetPlayerId: select.value }) });
-          await refresh();
-        }, 'revive'));
-      }
+      renderSupportActions(run);
       dungeonEl.insertAdjacentHTML('beforeend', '<p class="muted" data-testid="combat-help">Guard adds threat and halves the next retaliation that hits you. Mend heals an ally once per encounter. Revive restores a downed ally once per run.</p>');
     } else {
       dungeonEl.insertAdjacentHTML('beforeend', '<p data-testid="defeated-player">You are down. An ally can Revive you, or your party can continue without you.</p>');
