@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testMatch: '**/local-auth.spec.js',
+  testMatch: ['**/local-auth.spec.js', '**/adventure-stream.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
