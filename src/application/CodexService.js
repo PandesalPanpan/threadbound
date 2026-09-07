@@ -84,7 +84,7 @@ function narrativeEntries(gameRepository, codexRepository) {
     publishedAt: entry.publishedAt,
   }));
   const byId = new Map();
-  for (const entry of [...canonical, ...published]) byId.set(entry.id, entry);
+  for (const entry of [...published, ...canonical]) byId.set(entry.id, entry);
   return [...byId.values()];
 }
 
