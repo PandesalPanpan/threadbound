@@ -82,15 +82,21 @@ test('first 60 seconds explain themselves and keep the core loop inside the adve
   const gearCard = page.getByTestId('stream-command-card');
   await expect(gearCard).toContainText(rewardName);
   await expect(gearCard.locator('img[src="/sprites/relic.svg"]').first()).toBeVisible();
-  const attackBeforeEquip = Number(await page.getByTestId('attack-power').textContent());
+  const attackBeforeEquip = (await dashboard(context)).character.attackPower;
   await gearCard.getByRole('button', { name: 'Equip' }).first().click();
   await expect(gearCard).toContainText('EQUIPPED');
-  const attackAfterEquip = Number(await page.getByTestId('attack-power').textContent());
-  expect(attackAfterEquip).toBeGreaterThan(attackBeforeEquip);
+  await expect.poll(async () => (await dashboard(context)).character.attackPower).toBeGreaterThan(attackBeforeEquip);
+  const attackAfterEquip = (await dashboard(context)).character.attackPower;
+
+  // The primary presentation must reflect the authoritative equip immediately too.
+  await page.getByTestId('stream-message').fill('/status');
+  await page.getByTestId('stream-send').click();
+  await expect(page.getByTestId('stream-command-card')).toContainText(`ATK ${attackAfterEquip}`);
+  await expect(page.getByTestId('stream-command-card')).toContainText(rewardName);
   await reviewShot(page, '05-equipped-reward', page.locator('#stream'));
 
   // Start the next loop from the same thread rather than returning to a separate dungeon UI.
   await page.getByTestId('stream-start-dungeon').click();
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
-  await expect(page.getByTestId('attack-power')).toHaveText(String(attackAfterEquip));
+  await expect.poll(async () => (await dashboard(context)).character.attackPower).toBe(attackAfterEquip);
 });
