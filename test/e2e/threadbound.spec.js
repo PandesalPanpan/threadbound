@@ -177,7 +177,9 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
 
     await expect(leader.getByTestId('party-readiness')).toContainText('Waiting');
     await expect(partner.getByTestId('party-readiness')).toContainText('Waiting');
-    await expect(leader.getByTestId('party-member').filter({ hasText: 'Leader · Ready' })).toHaveCount(1);
+    const leaderRow = leader.getByTestId('party-member').filter({ hasText: 'Leader' });
+    await expect(leaderRow).toHaveCount(1);
+    await expect(leaderRow).toContainText('Ready');
     await expect(partner.getByTestId('party-member').filter({ hasText: 'Not ready' })).toHaveCount(1);
   } finally {
     await leaderContext.close();
