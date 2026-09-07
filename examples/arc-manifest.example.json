@@ -63,6 +63,7 @@
       "title": "Through the Cinders",
       "description": "Complete Cinder Vault once.",
       "event": "dungeon_completed",
+      "targetId": "cinder-vault",
       "threshold": 1
     }
   ],
