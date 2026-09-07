@@ -57,7 +57,7 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await loginLocal(leader, 'a', 'Local Weaver A');
     await loginLocal(partner, 'b', 'Local Weaver B');
 
-    for (const heading of ['Character', 'Party', 'Dungeon', 'Inventory', 'Achievements', 'World Arc', 'Honey integration']) {
+    for (const heading of ['Weaver', 'Dungeon', 'Party', 'Gear', 'Achievements', 'World Arc', 'Honey']) {
       await expect(leader.getByRole('heading', { name: heading })).toBeVisible();
     }
     await expect(leader.getByTestId('nav-codex')).toBeVisible();
