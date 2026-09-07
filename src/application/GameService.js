@@ -104,6 +104,8 @@ export class GameService {
       enemyMaxHp: persisted.enemy?.maxHp ?? null,
       actorHp: actor?.hp ?? null,
       actorMaxHp: actor?.maxHp ?? null,
+      actorFocus: actor?.focus ?? 0,
+      actorMaxFocus: actor?.maxFocus ?? 3,
       phase: persisted.phase,
     });
     return this.#decorateRun(persisted, playerId);
@@ -115,19 +117,25 @@ export class GameService {
     return this.#persistCombatOutcome(playerId, run, outcome, 'attack');
   }
 
+  powerStrike(playerId, runId) {
+    const { run, character, equipped } = this.#combatContext(playerId, runId);
+    const outcome = run.powerStrike({ playerId, attackPower: character.attackPower, equipmentEffect: equipped?.effectCode ?? 'none' });
+    return this.#persistCombatOutcome(playerId, run, outcome, 'power-strike');
+  }
+
   guard(playerId, runId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId }), 'guard');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId, equipmentEffect: equipped?.effectCode ?? 'none' }), 'guard');
   }
 
   interrupt(playerId, runId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId }), 'interrupt');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId, equipmentEffect: equipped?.effectCode ?? 'none' }), 'interrupt');
   }
 
   mend(playerId, runId, targetPlayerId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId }), 'mend');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId, equipmentEffect: equipped?.effectCode ?? 'none' }), 'mend');
   }
 
   revive(playerId, runId, targetPlayerId) {
@@ -146,7 +154,7 @@ export class GameService {
     }
     const outcome = run.chooseUpgrade(upgradeId);
     outcome.state = this.repository.saveRun(outcome.state);
-    this.eventBus.publishAll(outcome.events.map((event) => ({ ...event, playerId })));
+    this.eventBus.publishAll(outcome.events.map((event) => ({ ...event, playerId, participantIds: outcome.state.participants.map((participant) => participant.playerId) })));
     return this.#decorateRun(outcome.state, playerId);
   }
 
@@ -177,6 +185,11 @@ export class GameService {
     const healed = outcome.events.find((event) => event.type === 'PlayerHealed') || null;
     const revived = outcome.events.find((event) => event.type === 'PlayerRevived') || null;
     const interrupted = outcome.events.find((event) => event.type === 'EnemyInterrupted') || null;
+    const countered = outcome.events.find((event) => event.type === 'EnemyIntentCountered') || null;
+    const staggered = outcome.events.find((event) => event.type === 'EnemyStaggered') || null;
+    const fortified = outcome.events.find((event) => event.type === 'EnemyFortified') || null;
+    const ripostePrimed = outcome.events.find((event) => event.type === 'RipostePrimed') || null;
+    const riposteConsumed = outcome.events.find((event) => event.type === 'RiposteConsumed') || null;
     const prevented = damaged ? Math.max(0, Number(damaged.rawDamage || 0) - Number(damaged.damage || 0)) : 0;
 
     this.eventBus.publish({
@@ -191,21 +204,37 @@ export class GameService {
       prevented,
       healed: Number(outcome.healed || healed?.amount || 0),
       restoredHp: Number(outcome.restoredHp || revived?.restoredHp || 0),
+      focusGained: Number(outcome.focusGained || 0),
+      focusSpent: Number(outcome.focusSpent || 0),
       targetPlayerId: healed?.targetPlayerId || revived?.targetPlayerId || damaged?.playerId || null,
       actorHp: actor?.hp ?? null,
       actorMaxHp: actor?.maxHp ?? null,
+      actorFocus: actor?.focus ?? 0,
+      actorMaxFocus: actor?.maxFocus ?? 3,
+      actorCooldowns: structuredClone(actor?.cooldowns || {}),
+      actorRiposteBonus: actor?.riposteBonus ?? 0,
+      powerStrikeCost: state.runModifiers?.powerStrikeCost ?? 2,
       targetHp: damagedTarget?.hp ?? null,
       targetMaxHp: damagedTarget?.maxHp ?? null,
       enemyId: state.enemy?.id || defeated?.enemyId || null,
       enemyName: state.enemy?.name || null,
       enemyHp: state.enemy?.hp ?? null,
       enemyMaxHp: state.enemy?.maxHp ?? null,
+      enemyFortifiedHits: state.enemy?.fortifiedHits ?? 0,
+      enemyStaggeredHits: state.enemy?.staggeredHits ?? 0,
       defeatedEnemyId: defeated?.enemyId || null,
       defeatedBoss: Boolean(defeated?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
+      counteredIntentId: countered?.intentId || null,
+      counterAction: countered?.counter || null,
+      staggered: Boolean(staggered || outcome.staggered),
+      fortified: Boolean(fortified),
+      ripostePrimed: Number(ripostePrimed?.bonusDamage || 0),
+      riposteConsumed: Number(riposteConsumed?.bonusDamage || 0),
       enemyIntent: state.enemyIntent ? structuredClone(state.enemyIntent) : null,
       phase: state.phase,
       encounterIndex: state.encounterIndex,
+      selectedUpgrades: structuredClone(state.selectedUpgrades || []),
     });
   }
 
