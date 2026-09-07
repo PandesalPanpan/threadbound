@@ -110,10 +110,10 @@ export class SQLiteGameRepository {
   }
 
   recordPurchaseGrant({ playerId, threadedUserId, idempotencyKey, threadedTransactionId, itemInstanceId }) {
-    this.db.prepare('INSERT INTO purchase_grants (player_id, threaded_user_id, idempotency_key, threaded_transaction_id, item_instance_id) VALUES (?, ?, ?, ?, ?)').run(
+    const result = this.db.prepare('INSERT OR IGNORE INTO purchase_grants (player_id, threaded_user_id, idempotency_key, threaded_transaction_id, item_instance_id) VALUES (?, ?, ?, ?, ?)').run(
       playerId, threadedUserId, idempotencyKey, threadedTransactionId, itemInstanceId,
     );
-    return this.getPurchaseGrant(playerId, idempotencyKey);
+    return { grant: this.getPurchaseGrant(playerId, idempotencyKey), created: result.changes === 1 };
   }
 
   #decodePlayer(row) {
