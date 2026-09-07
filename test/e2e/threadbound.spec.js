@@ -49,7 +49,8 @@ test('Threaded login -> solo dungeon -> generated loot -> codex -> equip -> idem
   const worldBefore = Number(await page.getByTestId('world-progress').textContent());
 
   await clickAndWait(page, 'start-dungeon');
-  await expect(page.getByTestId('combat-help')).toContainText('Guard adds threat');
+  await expect(page.getByTestId('combat-help')).toContainText('Basic strikes are automatic');
+  await expect(page.getByTestId('combat-help')).toContainText('Guard halves the hit');
   for (let index = 0; index < 6; index += 1) await clickAndWait(page, 'attack');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
 
@@ -137,12 +138,12 @@ test('two browser sessions form a party and complete one shared scaled dungeon',
     await expect(leader.getByTestId('party-readiness')).toContainText('All members ready');
     await clickAndWait(leader, 'start-dungeon');
 
-    await expect(leader.getByTestId('run-state')).toContainText('2 players');
+    await expect(leader.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(leader.getByTestId('run-scaling')).toContainText('Enemy HP ×1.65');
     await expect(leader.getByTestId('run-participant')).toHaveCount(2);
 
     await partner.reload();
-    await expect(partner.getByTestId('run-state')).toContainText('2 players');
+    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(partner.getByTestId('party-readiness')).toContainText('locked');
 
     await clickAndWait(leader, 'attack');
