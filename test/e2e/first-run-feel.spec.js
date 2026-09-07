@@ -39,7 +39,12 @@ async function attackUntilPhaseChanges(page, context, expectedPhase, maxActions 
     const attack = page.getByTestId('stream-attack');
     await expect(attack).toBeVisible();
     await attack.click();
-    await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout: 5000 }).toBeGreaterThan(state.activeRun.version);
+    await expect.poll(async () => {
+      const after = await dashboard(context);
+      if (!after.activeRun) return true;
+      if (after.activeRun.id !== state.activeRun.id) return true;
+      return after.activeRun.version > state.activeRun.version;
+    }, { timeout: 5000 }).toBe(true);
   }
   throw new Error(`Run stayed in ${expectedPhase} after ${maxActions} explicit attacks.`);
 }
