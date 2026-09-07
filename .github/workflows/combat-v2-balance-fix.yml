@@ -1,0 +1,114 @@
+name: combat-v2-balance-fix
+
+on:
+  push:
+    branches:
+      - feature/frayed-hollow-combat-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'Apply combat v2 decision-state balance'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/frayed-hollow-combat-v2
+          fetch-depth: 0
+      - name: Make telegraphs meaningful decision states
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/domain/DungeonRun.js')
+          text = p.read_text()
+          text = text.replace("id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2", "id: 'frayed-wisp', name: 'Frayed Wisp', hp: 18, retaliation: 2")
+          text = text.replace("id: 'hollow-stalker', name: 'Hollow Stalker', hp: 16, retaliation: 3", "id: 'hollow-stalker', name: 'Hollow Stalker', hp: 24, retaliation: 3")
+          text = text.replace("id: 'silkbound-guard', name: 'Silkbound Guard', hp: 20, retaliation: 3", "id: 'silkbound-guard', name: 'Silkbound Guard', hp: 24, retaliation: 3")
+          old = """    const events = [];
+    this.#resolveDueIntent(events, now);
+    const participant = this.#actingParticipant(playerId);
+    let damage = attackPower + this.state.runAttackBonus;"""
+          new = """    const events = [];
+    const participant = this.#actingParticipant(playerId);
+    let intentRetaliation = this.#resolveDueIntent(events, now);
+    if (!intentRetaliation && this.state.enemyIntent) intentRetaliation = this.#resolveIntent(events, now);
+    if (participant.hp <= 0 || this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: intentRetaliation, focusGained: 0, intentResolved: true };
+    let damage = attackPower + this.state.runAttackBonus;"""
+          if old not in text: raise SystemExit('attack anchor missing')
+          text = text.replace(old, new, 1)
+          old = """    const retaliation = this.#retaliate(events);
+    if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
+    return { state: this.toJSON(), events, damage: dealt, retaliation, focusGained: 1 };
+  }
+
+  powerStrike"""
+          new = """    const retaliation = intentRetaliation || this.#retaliate(events);
+    if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
+    return { state: this.toJSON(), events, damage: dealt, retaliation, focusGained: 1, intentResolved: Boolean(intentRetaliation) };
+  }
+
+  powerStrike"""
+          if old not in text: raise SystemExit('attack retaliation anchor missing')
+          text = text.replace(old, new, 1)
+
+          old = """    const events = [];
+    this.#resolveDueIntent(events, now);
+    const participant = this.#actingParticipant(playerId);
+    this.#assertReady(participant, 'powerStrike');
+    const cost = Math.max(1, this.state.runModifiers.powerStrikeCost);
+    if (participant.focus < cost) throw new Error(`Power Strike requires ${cost} Focus.`);
+
+    participant.focus -= cost;
+    let countered = false;
+    if (this.state.enemyIntent?.counter === 'power-strike') {"""
+          new = """    const events = [];
+    const participant = this.#actingParticipant(playerId);
+    let intentRetaliation = this.#resolveDueIntent(events, now);
+    if (participant.hp <= 0 || this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: intentRetaliation, focusSpent: 0, intentResolved: true };
+    this.#assertReady(participant, 'powerStrike');
+    const cost = Math.max(1, this.state.runModifiers.powerStrikeCost);
+    if (participant.focus < cost) throw new Error(`Power Strike requires ${cost} Focus.`);
+
+    let countered = false;
+    if (this.state.enemyIntent?.counter === 'power-strike') {"""
+          if old not in text: raise SystemExit('power anchor missing')
+          text = text.replace(old, new, 1)
+          old = """      events.push({ type: 'EnemyIntentCountered', playerId, runId: this.state.id, enemyId: this.state.enemy.id, intentId: intent.id, counter: 'power-strike' });
+    }
+
+    let damage = attackPower + this.state.runAttackBonus"""
+          new = """      events.push({ type: 'EnemyIntentCountered', playerId, runId: this.state.id, enemyId: this.state.enemy.id, intentId: intent.id, counter: 'power-strike' });
+    } else if (this.state.enemyIntent) {
+      intentRetaliation = this.#resolveIntent(events, now);
+      if (participant.hp <= 0 || this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: intentRetaliation, focusSpent: 0, intentResolved: true };
+    }
+
+    participant.focus -= cost;
+    let damage = attackPower + this.state.runAttackBonus"""
+          if old not in text: raise SystemExit('power counter anchor missing')
+          text = text.replace(old, new, 1)
+          old = """    const retaliation = this.#retaliate(events);
+    if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
+    return { state: this.toJSON(), events, damage: dealt, retaliation, focusSpent: cost, countered };
+  }
+
+  guard"""
+          new = """    const retaliation = intentRetaliation || this.#retaliate(events);
+    if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
+    return { state: this.toJSON(), events, damage: dealt, retaliation, focusSpent: cost, countered, intentResolved: Boolean(intentRetaliation) };
+  }
+
+  guard"""
+          if old not in text: raise SystemExit('power retaliation anchor missing')
+          text = text.replace(old, new, 1)
+          p.write_text(text)
+          PY
+      - name: Commit balance fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/domain/DungeonRun.js
+          git commit -m 'Make enemy telegraphs force combat decisions'
+          git push origin HEAD:feature/frayed-hollow-combat-v2
