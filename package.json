@@ -1,19 +1,24 @@
 {
   "name": "threadbound",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Separate game application integrated with Threaded through OAuth2 + versioned APIs.",
+  "description": "Persistent cooperative roguelite RPG integrated with Threaded through OAuth2 + versioned APIs.",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test"
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/application/GameService.js && node --check src/infrastructure/SQLiteGameRepository.js",
+    "test": "node --test test/*.test.js test/**/*.test.js",
+    "test:e2e": "playwright test"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.5"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "express-session": "^1.18.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
   }
 }
