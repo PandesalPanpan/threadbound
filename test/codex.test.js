@@ -78,6 +78,27 @@ test('generated lore is hidden as draft and auto-published into the lore browser
   gameRepository.close();
 });
 
+test('canonical lore wins generated id collisions and world arc shows live progress', () => {
+  const { gameRepository, codexRepository, service, player } = setup();
+  codexRepository.publishContentEntry({
+    id: 'arc-1',
+    title: 'Fake Override',
+    summary: 'Generated content should not replace the canonical arc.',
+    body: 'This must never become the canonical player-facing arc entry.',
+    source: 'story-generator',
+    version: 99,
+  });
+  gameRepository.incrementWorldProgress('arc-1-frayed-hollow-clears', 7);
+
+  const lore = service.browse(player.id, { category: 'lore' });
+  const arc = lore.entries.find((entry) => entry.id === 'arc-1');
+  assert.equal(arc.title, 'The First Unraveling');
+  assert.equal(arc.source, 'canonical');
+  assert.equal(arc.mechanics.currentClears, 7);
+  assert.equal(arc.mechanics.targetClears, 1000);
+  gameRepository.close();
+});
+
 test('world history projection is retry-safe and records generated relic discovery', () => {
   const { gameRepository, codexRepository, service, player } = setup();
   const projector = new WorldHistoryProjector({ gameRepository, codexRepository });
