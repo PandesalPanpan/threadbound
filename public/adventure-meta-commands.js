@@ -11,7 +11,9 @@ if (stream) {
 
   const style = document.createElement('style');
   style.textContent = `
-    .stream-combat-dock { display: none !important; }
+    body.threadbound-player[data-game-view="play"] #stream .stream-combat-dock,
+    body.threadbound-player #stream .stream-combat-dock { display: none !important; }
+    body.threadbound-player #dungeon button { display: none !important; }
     .stream-suggestions { position: relative; padding-top: 22px; }
     .stream-suggestions::before { content: 'YOUR NEXT ACTION'; position: absolute; top: 2px; left: 2px; font-size: 10px; font-weight: 800; letter-spacing: .12em; opacity: .66; }
     .stream-entry-system .stream-entry-content > p { font-weight: 650; line-height: 1.48; }
