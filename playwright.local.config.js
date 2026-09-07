@@ -5,7 +5,10 @@ export default defineConfig({
   testMatch: ['**/local-auth.spec.js', '**/adventure-stream.spec.js'],
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // The local project intentionally uses one in-memory server for realistic persistence.
+  // Retrying a failed stateful journey against that same database is not isolated and can
+  // hide the original failure behind leftover party/run state, so CI runs it once cleanly.
+  retries: 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-local' }]] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:3002',
