@@ -67,7 +67,7 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
 
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const emberNeedle = page.getByTestId('inventory-item').filter({ hasText: 'Ember Needle of the Loom' }).first();
-  await expect(emberNeedle).toContainText('+3 attack');
+  await expect(emberNeedle).toContainText('+3 Attack');
   await expect(page.getByTestId('achievement').filter({ hasText: 'Through the Cinders' })).toBeVisible();
 
   await page.getByTestId('nav-codex').click();
