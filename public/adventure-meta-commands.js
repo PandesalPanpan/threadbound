@@ -7,6 +7,10 @@ if (stream) {
   const card = stream.querySelector('[data-testid="stream-command-card"]');
   const suggestions = stream.querySelector('[data-testid="stream-suggestions"]');
   const error = stream.querySelector('[data-testid="stream-error"]');
+  const hint = stream.querySelector('.stream-hint');
+
+  if (input) input.placeholder = 'Message your party…';
+  if (hint) hint.textContent = 'Tap an action or message your party. Slash commands are optional shortcuts.';
 
   function showError(message = '') {
     if (!error) return;
