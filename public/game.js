@@ -21,6 +21,7 @@ function button(label, onClick, testId) {
   if (testId) element.dataset.testid = testId;
   element.addEventListener('click', async () => {
     element.disabled = true;
+    statusEl.textContent = 'Working…';
     try { await onClick(); } catch (error) { statusEl.textContent = error.message; } finally { element.disabled = false; }
   });
   return element;
