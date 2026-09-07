@@ -22,25 +22,6 @@
 .combat-sprite.sprite-boss { background-image:url('/sprites/boss.svg') !important; }
 .gear-icon { background:url('/sprites/relic.svg') center/contain no-repeat !important; color:transparent !important; image-rendering:pixelated; }
 
-.stream-combat-dock {
-  margin:8px 0 10px;
-  padding:10px;
-  border:1px solid rgba(255,209,102,.26);
-  border-radius:14px;
-  background:radial-gradient(circle at 100% 0%,rgba(255,209,102,.09),transparent 12rem),rgba(8,13,26,.88);
-  box-shadow:inset 3px 0 0 rgba(255,209,102,.68);
-}
-.stream-combat-dock[hidden] { display:none !important; }
-.stream-combat-header { display:grid; grid-template-columns:54px minmax(0,1fr); gap:10px; align-items:center; }
-.stream-enemy-sprite { width:54px; height:54px; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 7px 10px rgba(0,0,0,.35)); }
-.stream-combat-header span { display:block; color:var(--gold); font-size:.62rem; font-weight:950; letter-spacing:.1em; }
-.stream-combat-header strong { display:block; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.stream-combat-header small { display:block; margin-top:3px; color:var(--muted); font-size:.75rem; }
-.stream-intent { margin-top:8px; padding:7px 9px; border-radius:10px; color:#ffd9d4; background:rgba(255,100,124,.1); font-size:.78rem; font-weight:800; }
-.stream-combat-actions { display:flex; gap:7px; margin-top:9px; overflow-x:auto; scrollbar-width:none; }
-.stream-combat-actions::-webkit-scrollbar { display:none; }
-.stream-combat-actions button { flex:0 0 auto; min-height:44px; margin:0 !important; padding:8px 12px; font-size:.8rem; font-weight:900; }
-
 .adventure-stream-log {
   height:min(46vh,430px);
   min-height:260px;
@@ -125,18 +106,12 @@
 .thread-codex-results span { color:var(--cyan); font-size:.58rem; font-weight:950; }
 .thread-codex-results small { color:var(--muted); line-height:1.35; }
 
+/* The contextual row is the single command surface for combat and navigation. */
 .stream-suggestions { display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding:1px 0 3px; scrollbar-width:none; }
 .stream-suggestions::-webkit-scrollbar { display:none; }
 .stream-suggestions button { flex:0 0 auto; min-height:44px; margin:0 !important; padding:8px 12px; border-radius:999px; font-size:.75rem; font-weight:850; }
 .stream-suggestions button.is-primary { color:#07111d; background:var(--cyan); border-color:var(--cyan); }
 .stream-suggestions.command-mode { opacity:.72; }
-/* Combat has one obvious action row: the live encounter dock. These hidden command
-   seeds are still used to build it, but do not create a second visible row. */
-.stream-suggestions button[data-command^="/attack"],
-.stream-suggestions button[data-command^="/guard"],
-.stream-suggestions button[data-command^="/interrupt"],
-.stream-suggestions button[data-command^="/mend"],
-.stream-suggestions button[data-command^="/revive"] { display:none !important; }
 
 .adventure-stream-composer { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:7px; }
 .adventure-stream-composer input { min-width:0; min-height:48px; border-radius:13px; }
@@ -146,14 +121,9 @@
 
 @media (max-width:720px) {
   body[data-game-view="play"] #stream { display:block; }
-  body[data-game-view="play"] #stream .stream-combat-dock:not([hidden]),
   body[data-game-view="play"] #stream .stream-command-card:not([hidden]) { display:block !important; }
   #stream { padding:11px; }
   .stream-hint { display:none; }
-  .stream-combat-dock { margin-top:6px; padding:8px; }
-  .stream-combat-header { grid-template-columns:46px minmax(0,1fr); }
-  .stream-enemy-sprite { width:46px; height:46px; }
-  .stream-combat-header small { font-size:.68rem; }
   .adventure-stream-log { height:29vh; min-height:190px; padding:6px; }
   .adventure-stream-log.is-empty { height:auto; min-height:92px; }
   .stream-empty { min-height:74px; padding:7px; }
