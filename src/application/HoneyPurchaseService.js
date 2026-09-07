@@ -32,13 +32,20 @@ export class HoneyPurchaseService {
       source: 'honey-purchase',
     };
     this.repository.addItem(playerId, item);
-    const grant = this.repository.recordPurchaseGrant({
+    const recorded = this.repository.recordPurchaseGrant({
       playerId,
       threadedUserId: String(threadedUserId),
       idempotencyKey,
       threadedTransactionId: spend.transaction_id,
       itemInstanceId: item.id,
     });
-    return { grantApplied: true, grant, spend, definition, item };
+
+    if (!recorded.grant || recorded.grant.threadedTransactionId !== spend.transaction_id) {
+      const error = new Error('The Honey transaction conflicts with an existing Threadbound grant.');
+      error.code = 'purchase_replay_mismatch';
+      throw error;
+    }
+
+    return { grantApplied: recorded.created, grant: recorded.grant, spend, definition, item: recorded.created ? item : undefined };
   }
 }
