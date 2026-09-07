@@ -31,7 +31,7 @@ jobs:
         if: always()
         with:
           name: ux-review-screenshots
-          path: test-results/ux-review/
+          path: ux-review/
           if-no-files-found: ignore
           retention-days: 7
       - uses: actions/upload-artifact@v4
