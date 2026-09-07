@@ -18,6 +18,7 @@ const CATEGORIES = [
 let activeCategory = 'all';
 let activeId = null;
 let timer = null;
+let loadRevision = 0;
 let lastResult = null;
 
 async function api(path) {
@@ -53,6 +54,8 @@ function renderTabs() {
     button.dataset.testid = `codex-tab-${key}`;
     button.setAttribute('aria-pressed', String(activeCategory === key));
     button.addEventListener('click', async () => {
+      clearTimeout(timer);
+      timer = null;
       activeCategory = key;
       activeId = null;
       history.replaceState(null, '', location.pathname);
@@ -152,6 +155,8 @@ function renderDetail(entry) {
     related.dataset.testid = 'codex-related-item';
     related.textContent = 'Open related item';
     related.addEventListener('click', async () => {
+      clearTimeout(timer);
+      timer = null;
       activeCategory = 'items';
       searchEl.value = '';
       activeId = entry.entityId;
@@ -200,23 +205,27 @@ function renderList(entries) {
 }
 
 async function load() {
+  const revision = ++loadRevision;
   statusEl.textContent = 'Loading…';
   try {
     const params = new URLSearchParams({ category: activeCategory });
     const query = searchEl.value.trim();
     if (query) params.set('q', query);
-    lastResult = await api(`/api/codex?${params}`);
+    const result = await api(`/api/codex?${params}`);
+    if (revision !== loadRevision) return;
+    lastResult = result;
     renderCounts(lastResult.counts);
     renderList(lastResult.entries);
     statusEl.textContent = `${lastResult.total} record${lastResult.total === 1 ? '' : 's'}`;
   } catch (error) {
-    statusEl.textContent = error.message;
+    if (revision === loadRevision) statusEl.textContent = error.message;
   }
 }
 
 searchEl.addEventListener('input', () => {
   clearTimeout(timer);
   timer = setTimeout(() => {
+    timer = null;
     activeId = null;
     load();
   }, 180);
