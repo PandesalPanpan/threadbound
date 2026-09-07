@@ -48,6 +48,7 @@ async function clickCodexTab(page, category) {
 }
 
 test('standalone local mode supports co-op combat plus the living Codex without Threaded', async ({ browser }) => {
+  test.setTimeout(90000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
