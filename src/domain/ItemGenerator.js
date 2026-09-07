@@ -6,10 +6,26 @@ export const ITEM_EFFECTS = Object.freeze({
   boss_bane: Object.freeze({ code: 'boss_bane', name: 'Severing', description: '+2 damage against bosses.' }),
 });
 
+export const ITEM_RARITIES = Object.freeze({
+  common: Object.freeze({ id: 'common', tier: 1, label: 'Common', minAttack: 1, maxAttack: 2 }),
+  uncommon: Object.freeze({ id: 'uncommon', tier: 2, label: 'Uncommon', minAttack: 2, maxAttack: 3 }),
+  rare: Object.freeze({ id: 'rare', tier: 3, label: 'Rare', minAttack: 3, maxAttack: 4 }),
+  epic: Object.freeze({ id: 'epic', tier: 4, label: 'Epic', minAttack: 4, maxAttack: 5 }),
+  legendary: Object.freeze({ id: 'legendary', tier: 5, label: 'Legendary', minAttack: 5, maxAttack: 6 }),
+});
+
 const PREFIXES = ['Frayed', 'Gleaming', 'Hollow', 'Bound'];
 const BASES = ['Needle', 'Threadblade', 'Spindle', 'Shears'];
 const SUFFIXES = ['of Echoes', 'of the Loom', 'of Severance', 'of Dawn'];
 const EFFECT_CODES = Object.keys(ITEM_EFFECTS);
+
+function rarityFromRoll(roll) {
+  if (roll >= 0.985) return ITEM_RARITIES.legendary;
+  if (roll >= 0.94) return ITEM_RARITIES.epic;
+  if (roll >= 0.78) return ITEM_RARITIES.rare;
+  if (roll >= 0.42) return ITEM_RARITIES.uncommon;
+  return ITEM_RARITIES.common;
+}
 
 export class ItemGenerator {
   constructor({ rng = Math.random, idFactory = randomUUID } = {}) {
@@ -19,14 +35,18 @@ export class ItemGenerator {
 
   generateReward({ source = 'frayed-hollow' } = {}) {
     const pick = (values) => values[Math.floor(this.rng() * values.length) % values.length];
-    const effectCode = pick(EFFECT_CODES);
+    const rarity = rarityFromRoll(this.rng());
+    const effectPool = rarity.tier >= 3 ? EFFECT_CODES.filter((code) => code !== 'none') : EFFECT_CODES;
+    const effectCode = pick(effectPool);
+    const attackBonus = rarity.minAttack + Math.floor(this.rng() * (rarity.maxAttack - rarity.minAttack + 1));
     return {
       id: this.idFactory(),
       definitionId: 'generated-weapon',
       name: `${pick(PREFIXES)} ${pick(BASES)} ${pick(SUFFIXES)}`,
       slot: 'weapon',
-      rarity: this.rng() > 0.82 ? 'rare' : 'common',
-      attackBonus: 1 + Math.floor(this.rng() * 3),
+      rarity: rarity.id,
+      rarityTier: rarity.tier,
+      attackBonus,
       effectCode,
       effect: ITEM_EFFECTS[effectCode],
       source,

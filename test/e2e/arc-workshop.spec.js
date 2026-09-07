@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('external Arc Manifest can be uploaded, validated, published, played, and documented', async ({ page }) => {
+test('external Arc Manifest can be uploaded, validated, published, played, and documented', async ({ page, context }) => {
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
@@ -45,7 +45,17 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const cinderDungeon = page.getByTestId('dungeon-option').filter({ hasText: 'Cinder Vault' });
   await expect(cinderDungeon).toContainText('The Ashen Thread');
-  await expect(cinderDungeon).toContainText(`manifest r${revision}`);
+
+  // Provenance is part of the game/application contract, not player-facing debug copy.
+  // Keep the streamlined dungeon card clean while proving the published revision survives
+  // the Workshop -> runtime boundary.
+  const dashboardResponse = await context.request.get('/api/dashboard');
+  expect(dashboardResponse.ok()).toBe(true);
+  const dashboard = await dashboardResponse.json();
+  const runtimeDungeon = dashboard.dungeons.find((dungeon) => dungeon.id === 'cinder-vault');
+  expect(runtimeDungeon).toBeTruthy();
+  expect(String(runtimeDungeon.sourceManifestRevision)).toBe(String(revision));
+
   await page.getByTestId('start-dungeon-cinder-vault').click();
   await expect(page.getByTestId('run-state')).toContainText('Ashling');
 
@@ -57,7 +67,7 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
 
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const emberNeedle = page.getByTestId('inventory-item').filter({ hasText: 'Ember Needle of the Loom' }).first();
-  await expect(emberNeedle).toContainText('+3 attack');
+  await expect(emberNeedle).toContainText('+3 Attack');
   await expect(page.getByTestId('achievement').filter({ hasText: 'Through the Cinders' })).toBeVisible();
 
   await page.getByTestId('nav-codex').click();

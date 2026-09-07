@@ -104,6 +104,11 @@ export class GameService {
     return this.#persistCombatOutcome(playerId, run, run.guard({ playerId }));
   }
 
+  interrupt(playerId, runId) {
+    const { run } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId }));
+  }
+
   mend(playerId, runId, targetPlayerId) {
     const { run } = this.#combatContext(playerId, runId);
     return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId }));

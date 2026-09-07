@@ -1,0 +1,59 @@
+name: Import CC0 Tiny Dungeon assets
+
+on:
+  push:
+    branches: [feature/realtime-combat-mobile-polish]
+    paths:
+      - '.github/workflows/import-cc0-assets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-assets:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/realtime-combat-mobile-polish
+      - name: Import curated Kenney CC0 sprites
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://raw.githubusercontent.com/Tiddybub/2d-assets/main/fantasy/tiny-dungeon'
+          dest='public/assets/kenney/tiny-dungeon'
+          mkdir -p "$dest/tiles"
+          curl -fsSL "$base/License.txt" -o "$dest/License.txt"
+          curl -fsSL "$base/SOURCE.md" -o "$dest/SOURCE.md"
+          curl -fsSL "$base/Preview.png" -o "$dest/Preview.png"
+          curl -fsSL "$base/Tilemap/tilemap_packed.png" -o "$dest/tilemap_packed.png"
+          for n in $(seq 96 131); do
+            tile=$(printf 'tile_%04d.png' "$n")
+            curl -fsSL "$base/Tiles/$tile" -o "$dest/tiles/$tile"
+          done
+          cat > "$dest/THREADBOUND_ASSET_MAP.md" <<'EOF'
+          # Threadbound Tiny Dungeon asset map
+
+          Source: Kenney Tiny Dungeon, mirrored from the CC0-only Tiddybub/2d-assets catalog.
+          License: Creative Commons Zero (CC0-1.0).
+
+          Threadbound intentionally vendors a small curated subset locally so gameplay does not depend on a third-party runtime CDN/API.
+
+          - `tilemap_packed.png`: dungeon texture/spritesheet.
+          - `tiles/tile_0096.png` through `tile_0131.png`: curated late-sheet entity/item tiles used as local visual primitives.
+          - `Preview.png`: source-pack visual reference only.
+          EOF
+      - name: Commit imported assets
+        shell: bash
+        run: |
+          if git diff --quiet -- public/assets/kenney/tiny-dungeon; then
+            echo 'Assets already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/kenney/tiny-dungeon
+          git commit -m 'assets: vendor Kenney Tiny Dungeon CC0 sprites'
+          git push origin HEAD:feature/realtime-combat-mobile-polish

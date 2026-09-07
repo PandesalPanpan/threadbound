@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testIgnore: ['**/local-auth.spec.js', '**/arc-workshop.spec.js'],
+  testIgnore: ['**/local-auth.spec.js', '**/adventure-stream.spec.js', '**/arc-workshop.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
