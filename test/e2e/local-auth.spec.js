@@ -57,7 +57,7 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await loginLocal(leader, 'a', 'Local Weaver A');
     await loginLocal(partner, 'b', 'Local Weaver B');
 
-    for (const heading of ['Weaver', 'Dungeon', 'Party', 'Gear', 'Achievements', 'World Arc', 'Honey']) {
+    for (const heading of ['Local Weaver A', 'Play', 'Party', 'Gear', 'Achievements', 'World Arc', 'Honey']) {
       await expect(leader.getByRole('heading', { name: heading })).toBeVisible();
     }
     await expect(leader.getByTestId('nav-codex')).toBeVisible();
@@ -82,14 +82,13 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await expect(leader.getByTestId('start-dungeon')).toBeVisible();
     await clickAndWait(leader, 'start-dungeon');
 
-    await expect(leader.getByTestId('run-state')).toContainText('2 players');
-    await expect(leader.getByTestId('run-state')).toContainText('v0');
+    await expect(leader.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(leader.getByTestId('run-scaling')).toContainText('Enemy HP ×1.65');
-    await expect(leader.getByTestId('combat-help')).toContainText('Guard adds threat');
+    await expect(leader.getByTestId('combat-help')).toContainText('Guard halves the hit');
 
     await partner.reload();
-    await expect(partner.getByTestId('mend-unavailable')).toContainText('No ally currently needs Mend');
-    await expect(partner.getByTestId('revive-unavailable')).toContainText('No ally is down');
+    await expect(partner.getByTestId('mend-unavailable')).toContainText('Mend appears when an ally is wounded');
+    await expect(partner.getByTestId('revive-unavailable')).toContainText('Revive appears when an ally falls');
 
     for (let index = 0; index < 20; index += 1) await clickAndWait(partner, 'guard');
     await expect(partner.getByTestId('defeated-player')).toContainText('down');
@@ -99,7 +98,7 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await expect(leader.getByTestId('revive')).toBeVisible();
     await expect(leader.getByTestId('revive-target')).toContainText('Local Weaver B');
     await clickAndWait(leader, 'revive');
-    await expect(leader.getByTestId('revive-unavailable')).toContainText('Revive used for this run');
+    await expect(leader.getByTestId('revive-unavailable')).toContainText('Revive used this run');
     const leaderAfterRevive = await leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' }).textContent();
     expect(leaderAfterRevive).toMatch(/revives 1/);
 
@@ -110,7 +109,7 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await clickAndWait(partner, 'mend');
     const partnerSupport = await partner.getByTestId('run-participant').filter({ hasText: 'Local Weaver B' }).textContent();
     expect(partnerSupport).toMatch(/healing [1-9]\d*/);
-    await expect(partner.getByTestId('mend-unavailable')).toContainText('Mend used for this encounter');
+    await expect(partner.getByTestId('mend-unavailable')).toContainText('Mend used this encounter');
 
     await leader.reload();
     const preventedBeforeText = await leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' }).textContent();
@@ -138,10 +137,10 @@ test('standalone local mode supports co-op combat plus the living Codex without 
     await expect(partner.getByTestId('thread-dust')).toHaveText('15');
     await expect(leader.getByTestId('party-readiness')).toContainText('Waiting');
 
-    const leaderItemName = (await leader.getByTestId('inventory-item').first().locator('strong').textContent()).trim();
+    const leaderItemName = (await leader.getByTestId('inventory-item').first().locator('h3').textContent()).trim();
     await leader.getByTestId('nav-codex').click();
     await expect(leader).toHaveURL(/\/codex/);
-    await expect(leader.getByRole('heading', { name: 'Threadbound Codex' })).toBeVisible();
+    await expect(leader.getByRole('heading', { name: 'Codex' })).toBeVisible();
     await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
     await expect(leader.getByTestId('codex-count-enemies')).toHaveText('Enemies 3');
     await expect(leader.getByTestId('codex-count-bosses')).toHaveText('Bosses 1');
