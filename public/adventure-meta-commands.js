@@ -9,8 +9,18 @@ if (stream) {
   const error = stream.querySelector('[data-testid="stream-error"]');
   const hint = stream.querySelector('.stream-hint');
 
+  const style = document.createElement('style');
+  style.textContent = `
+    .stream-combat-dock { display: none !important; }
+    .stream-suggestions { position: relative; padding-top: 22px; }
+    .stream-suggestions::before { content: 'YOUR NEXT ACTION'; position: absolute; top: 2px; left: 2px; font-size: 10px; font-weight: 800; letter-spacing: .12em; opacity: .66; }
+    .stream-entry-system .stream-entry-content > p { font-weight: 650; line-height: 1.48; }
+    .stream-entry-system:last-of-type { box-shadow: 0 0 0 1px rgba(255,255,255,.04), 0 12px 30px rgba(0,0,0,.14); }
+  `;
+  document.head.append(style);
+
   if (input) input.placeholder = 'Message your party…';
-  if (hint) hint.textContent = 'Tap an action or message your party. Slash commands are optional shortcuts.';
+  if (hint) hint.textContent = 'Threadbound posts the result of every action here. Tap your next action below, or chat normally.';
 
   function showError(message = '') {
     if (!error) return;
@@ -166,22 +176,16 @@ if (stream) {
     return false;
   }
 
-  // Capture only the commands this presentation extension owns. The primary stream
-  // module continues to handle normal chat and all combat/inventory/party commands.
   form?.addEventListener('submit', async (event) => {
     const command = input.value.trim().toLowerCase().split(/\s+/)[0];
     if (!['/world', '/achievements', '/honey', '/wallet'].includes(command)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const raw = input.value.trim();
     input.value = '';
     send.textContent = 'Send';
     showError('');
-    try {
-      await executeMetaCommand(raw.toLowerCase().split(/\s+/)[0]);
-    } catch (caught) {
-      showError(caught.message);
-    }
+    try { await executeMetaCommand(command); }
+    catch (caught) { showError(caught.message); }
     input.focus();
   }, true);
 
@@ -196,13 +200,17 @@ if (stream) {
     suggestions.append(button);
   }
 
-  function ensureSuggestions() {
+  function normalizeSuggestions() {
+    for (const button of suggestions?.querySelectorAll('button[data-command]') || []) {
+      if (button.dataset.command === '/attack') button.textContent = 'Attack';
+      if (button.dataset.command === '/guard') button.textContent = 'Guard';
+    }
     addSuggestion('World', '/world', 'stream-world');
     addSuggestion('Honey', '/honey', 'stream-honey');
   }
 
-  ensureSuggestions();
-  const observer = new MutationObserver(() => ensureSuggestions());
+  normalizeSuggestions();
+  const observer = new MutationObserver(() => normalizeSuggestions());
   if (suggestions) observer.observe(suggestions, { childList: true });
   window.addEventListener('beforeunload', () => observer.disconnect(), { once: true });
 }
