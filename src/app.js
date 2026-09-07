@@ -58,6 +58,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const app = express();
   const eventBus = new EventBus();
   const realtimeHub = new RealtimeHub();
+  app.locals.realtimeHub = realtimeHub;
   const streamRepository = new SQLiteActivityStreamRepository({ database: repository.db });
   const activityStream = new ActivityStreamService({ streamRepository, gameRepository: repository });
   const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
@@ -156,6 +157,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
 
   app.get('/api/events', requireConnection, (_request, response) => realtimeHub.attach(response));
+  app.get('/api/realtime-token', requireConnection, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json(realtimeHub.issueWebSocketToken(request.session.threaded.playerId));
+  });
   app.get('/api/stream', requireConnection, (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     return response.json({ entries: activityStream.recent(request.query.limit) });
