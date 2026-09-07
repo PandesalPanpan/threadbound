@@ -34,5 +34,6 @@ jobs:
           path: |
             playwright-report-threaded/
             playwright-report-local/
+            playwright-report-workshop/
             test-results/
           retention-days: 7

@@ -98,6 +98,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/nonEmpty" }, "description": { "$ref": "#/$defs/nonEmpty" },
         "event": { "enum": ["enemy_defeated", "boss_defeated", "dungeon_completed", "item_generated", "player_revived"] },
+        "targetId": { "$ref": "#/$defs/id" },
         "threshold": { "type": "integer", "minimum": 1, "maximum": 100000000 }
       }
     },

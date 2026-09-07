@@ -56,7 +56,7 @@ function renderParty(data) {
       await api('/api/party/join', { method: 'POST', body: JSON.stringify({ joinCode: input.value }) });
       await refresh();
     }, 'join-party'));
-    partyEl.insertAdjacentHTML('beforeend', '<p class="muted">No party required: Frayed Hollow remains soloable.</p>');
+    partyEl.insertAdjacentHTML('beforeend', '<p class="muted">No party required: every dungeon remains soloable, though some recommend co-op.</p>');
     return;
   }
 
@@ -90,7 +90,6 @@ function renderSupportActions(run) {
   const viewer = run.viewer;
   const allies = run.participants.filter((participant) => participant.playerId !== viewer.playerId);
   if (allies.length === 0) return;
-
   const wounded = allies.filter((participant) => participant.hp > 0 && participant.hp < participant.maxHp);
   const downed = allies.filter((participant) => participant.hp === 0);
   const support = document.createElement('div');
@@ -117,23 +116,28 @@ function renderSupportActions(run) {
   } else {
     support.insertAdjacentHTML('beforeend', `<span class="muted" data-testid="revive-unavailable">${viewer.reviveCharges > 0 ? 'No ally is down.' : 'Revive used for this run.'}</span>`);
   }
-
   dungeonEl.append(support);
 }
 
 function renderDungeon(data) {
   dungeonEl.innerHTML = '<h2>Dungeon</h2>';
   if (!data.activeRun) {
-    const dungeon = data.dungeons[0];
-    dungeonEl.insertAdjacentHTML('beforeend', `<p>${dungeon.name} · recommended ${dungeon.recommendedPlayers} players · supports ${dungeon.minPlayers}–${dungeon.maxPlayers}</p>`);
-    if (!data.party) {
-      dungeonEl.append(button('Start Frayed Hollow Solo', async () => { await api(`/api/dungeons/${dungeon.id}/start`, { method: 'POST' }); await refresh(); }, 'start-dungeon'));
-    } else if (data.party.canStart) {
-      dungeonEl.append(button(`Start Frayed Hollow · ${data.party.members.length} players`, async () => { await api(`/api/dungeons/${dungeon.id}/start`, { method: 'POST' }); await refresh(); }, 'start-dungeon'));
-    } else if (data.party.isLeader) {
-      dungeonEl.insertAdjacentHTML('beforeend', '<p data-testid="start-waiting">All party members must be ready before the leader can start.</p>');
-    } else {
-      dungeonEl.insertAdjacentHTML('beforeend', '<p data-testid="start-waiting">Waiting for the party leader to start.</p>');
+    const canStart = !data.party || data.party.canStart;
+    if (data.party && !data.party.canStart) {
+      dungeonEl.insertAdjacentHTML('beforeend', `<p data-testid="start-waiting">${data.party.isLeader ? 'All party members must be ready before the leader can start.' : 'Waiting for the party leader to start.'}</p>`);
+    }
+    for (const [index, dungeon] of data.dungeons.entries()) {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.dataset.testid = 'dungeon-option';
+      row.innerHTML = `<strong>${dungeon.name}</strong><br><span class="muted">${dungeon.arcTitle || 'Unknown arc'} · recommended ${dungeon.recommendedPlayers} players · supports ${dungeon.minPlayers}–${dungeon.maxPlayers}${dungeon.sourceManifestRevision ? ` · manifest r${dungeon.sourceManifestRevision}` : ''}</span>`;
+      if (canStart) {
+        const label = data.party ? `Start ${dungeon.name} · ${data.party.members.length} players` : `Start ${dungeon.name} Solo`;
+        const testId = index === 0 ? 'start-dungeon' : `start-dungeon-${dungeon.id}`;
+        row.append(document.createElement('br'));
+        row.append(button(label, async () => { await api(`/api/dungeons/${dungeon.id}/start`, { method: 'POST' }); await refresh(); }, testId));
+      }
+      dungeonEl.append(row);
     }
     return;
   }
@@ -185,7 +189,6 @@ async function refresh() {
   const walletText = data.authSource === 'local' ? 'Honey unavailable in local mode' : `Honey: <strong data-testid="honey-balance">${data.wallet.balance}</strong>`;
   identityEl.innerHTML = `<h2>${sourceLabel}</h2><p data-testid="threaded-user">${data.threadedUser.name || data.threadedUser.username || data.threadedUser.id}</p><p data-testid="auth-source">${data.authSource}</p><p>${walletText}</p>`;
   characterEl.innerHTML = `<h2>Character</h2><p>${data.character.displayName}</p><p>Attack: <strong data-testid="attack-power">${data.character.attackPower}</strong> · HP: ${data.character.maxHealth} · Thread Dust: <span data-testid="thread-dust">${data.character.threadDust}</span></p><p>Equipped: <span data-testid="equipped-item">${data.character.equippedItem?.name || 'None'}</span></p>`;
-
   renderParty(data);
   renderDungeon(data);
 

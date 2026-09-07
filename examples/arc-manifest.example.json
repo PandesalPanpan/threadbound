@@ -1,0 +1,78 @@
+{
+  "manifestVersion": 1,
+  "arc": {
+    "id": "ashen-thread",
+    "title": "The Ashen Thread",
+    "premise": "A heat-scarred strand of the Loom surfaces beneath old Weaver routes, leaving memories intact but burning away their connections.",
+    "progression": { "metric": "dungeon_clears", "target": 2500 }
+  },
+  "lore": [
+    {
+      "id": "cinder-seam",
+      "title": "The Cinder Seam",
+      "summary": "A black-orange rupture where severed memories continue to smolder.",
+      "body": "The Cinder Seam does not destroy objects. It burns the relationships that once made those objects meaningful, leaving dangerous relics behind.",
+      "tags": ["location", "ashen-thread"]
+    }
+  ],
+  "enemies": [
+    {
+      "id": "ashling",
+      "name": "Ashling",
+      "baseHp": 10,
+      "retaliation": 2,
+      "abilities": ["basic_retaliation"]
+    }
+  ],
+  "bosses": [
+    {
+      "id": "ember-loomkeeper",
+      "name": "The Ember Loomkeeper",
+      "baseHp": 28,
+      "retaliation": 4,
+      "abilities": ["basic_retaliation"]
+    }
+  ],
+  "dungeons": [
+    {
+      "id": "cinder-vault",
+      "name": "Cinder Vault",
+      "recommendedPlayers": 2,
+      "encounters": ["ashling", "ashling"],
+      "bossId": "ember-loomkeeper",
+      "rewardPoolId": "cinder-relics"
+    }
+  ],
+  "itemPools": [
+    {
+      "id": "cinder-relics",
+      "items": [
+        {
+          "id": "ember-needle-template",
+          "namePattern": "Ember Needle of {suffix}",
+          "rarity": "rare",
+          "attackBonus": 3,
+          "effects": ["boss_bane"]
+        }
+      ]
+    }
+  ],
+  "achievements": [
+    {
+      "id": "cinder-vault-cleared",
+      "title": "Through the Cinders",
+      "description": "Complete Cinder Vault once.",
+      "event": "dungeon_completed",
+      "targetId": "cinder-vault",
+      "threshold": 1
+    }
+  ],
+  "historicalConsequences": [
+    {
+      "id": "ashen-thread-begins",
+      "trigger": "arc_started",
+      "title": "The Ashen Thread begins",
+      "body": "The Cinder Seam was formally recorded as a new threat to the Loom."
+    }
+  ]
+}

@@ -10,12 +10,17 @@ export class WorldHistoryProjector {
         .map((playerId) => this.gameRepository.getPlayer(playerId)?.displayName)
         .filter(Boolean);
       const partyText = participantNames.length > 0 ? participantNames.join(', ') : 'Unknown Weavers';
+      const run = event.runId ? this.gameRepository.getRun(event.runId) : null;
+      const dungeon = run?.dungeonDefinition || null;
+      const dungeonName = dungeon?.name || (event.dungeonId === 'frayed-hollow' ? 'Frayed Hollow' : event.dungeonId);
+      const bossName = dungeon?.boss?.name || (event.dungeonId === 'frayed-hollow' ? 'The First Needle' : 'its recorded boss');
+      const arcTitle = dungeon?.arcTitle || (event.dungeonId === 'frayed-hollow' ? 'The First Unraveling' : 'an evolving world arc');
       this.codexRepository.recordWorldHistory({
         id: `run:${event.runId}:completed`,
         eventType: 'DungeonCompleted',
-        title: 'Frayed Hollow cleared',
-        summary: `${partyText} defeated the First Needle and recorded another clear of Frayed Hollow.`,
-        body: `This victory was recorded during The First Unraveling. Participant snapshot: ${partyText}.`,
+        title: `${dungeonName} cleared`,
+        summary: `${partyText} defeated ${bossName} and recorded a clear of ${dungeonName}.`,
+        body: `This victory was recorded during ${arcTitle}. Participant snapshot: ${partyText}.`,
         entityType: 'dungeon',
         entityId: event.dungeonId,
         createdAt: new Date().toISOString(),

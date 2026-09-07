@@ -80,9 +80,10 @@ function freshParticipants(participants) {
 export class DungeonRun {
   constructor(state) { this.state = structuredClone(state); }
 
-  static start({ id, ownerType, ownerId, startedByPlayerId, participants, dungeonId, now = new Date().toISOString() }) {
-    const dungeon = DUNGEONS[dungeonId];
-    if (!dungeon) throw new Error(`Unknown dungeon: ${dungeonId}`);
+  static start({ id, ownerType, ownerId, startedByPlayerId, participants, dungeonId, dungeonDefinition = null, now = new Date().toISOString() }) {
+    const dungeon = dungeonDefinition ? structuredClone(dungeonDefinition) : DUNGEONS[dungeonId];
+    if (!dungeon || dungeon.id !== dungeonId) throw new Error(`Unknown dungeon: ${dungeonId}`);
+    if (!Array.isArray(dungeon.encounters) || dungeon.encounters.length < 1 || !dungeon.boss) throw new Error('Dungeon definition is incomplete.');
     if (!['player', 'party'].includes(ownerType)) throw new Error('Dungeon ownerType must be player or party.');
     if (!ownerId || !startedByPlayerId) throw new Error('Dungeon requires ownerId and startedByPlayerId.');
 
@@ -102,6 +103,7 @@ export class DungeonRun {
       ownerId,
       startedByPlayerId,
       dungeonId,
+      dungeonDefinition: structuredClone(dungeon),
       phase: 'combat',
       encounterIndex: 0,
       participants: participantStates,
@@ -206,7 +208,7 @@ export class DungeonRun {
       this.#resetEncounterParticipant(participant);
     }
     this.state.phase = 'boss';
-    this.state.enemy = cloneEnemy(DUNGEONS[this.state.dungeonId].boss, this.state.participants.length, true);
+    this.state.enemy = cloneEnemy(this.#dungeon().boss, this.state.participants.length, true);
     return { state: this.toJSON(), events: [{ type: 'RunUpgradeChosen', runId: this.state.id, upgradeId }] };
   }
 
@@ -218,6 +220,12 @@ export class DungeonRun {
   }
 
   toJSON() { return structuredClone(this.state); }
+
+  #dungeon() {
+    const dungeon = this.state.dungeonDefinition || DUNGEONS[this.state.dungeonId];
+    if (!dungeon) throw new Error(`Dungeon definition unavailable: ${this.state.dungeonId}`);
+    return dungeon;
+  }
 
   #assertCombat() {
     if (!['combat', 'boss'].includes(this.state.phase)) throw new Error('The run is not currently in combat.');
@@ -256,7 +264,7 @@ export class DungeonRun {
   }
 
   #advanceAfterDefeat(events, now) {
-    const dungeon = DUNGEONS[this.state.dungeonId];
+    const dungeon = this.#dungeon();
     if (this.state.phase === 'boss') {
       this.state.phase = 'complete';
       this.state.enemy = null;

@@ -12,10 +12,10 @@ function matchesQuery(entry, query) {
   return haystack.includes(query);
 }
 
-function enemyEntries() {
+function enemyEntries(dungeons) {
   const seen = new Set();
   const entries = [];
-  for (const dungeon of Object.values(DUNGEONS)) {
+  for (const dungeon of dungeons) {
     for (const enemy of dungeon.encounters) {
       if (seen.has(enemy.id)) continue;
       seen.add(enemy.id);
@@ -24,41 +24,44 @@ function enemyEntries() {
         category: 'enemies',
         title: enemy.name,
         summary: `Encountered in ${dungeon.name}.`,
-        body: `${enemy.name} is documented directly from the live dungeon definition. Base HP ${enemy.hp}; base retaliation ${enemy.retaliation}. Actual combat values scale with party size.`,
-        mechanics: { baseHp: enemy.hp, baseRetaliation: enemy.retaliation, dungeonId: dungeon.id },
-        source: 'domain-model',
-        tags: [dungeon.id, 'enemy'],
+        body: `${enemy.name} is documented directly from the published dungeon definition. Base HP ${enemy.hp}; base retaliation ${enemy.retaliation}. Actual combat values scale with party size.`,
+        mechanics: { baseHp: enemy.hp, baseRetaliation: enemy.retaliation, dungeonId: dungeon.id, abilities: enemy.abilities || [] },
+        source: dungeon.sourceManifestId ? 'arc-manifest' : 'domain-model',
+        tags: [dungeon.id, dungeon.arcId, 'enemy'].filter(Boolean),
       });
     }
   }
   return entries;
 }
 
-function bossEntries() {
-  return Object.values(DUNGEONS).map((dungeon) => ({
+function bossEntries(dungeons) {
+  return dungeons.map((dungeon) => ({
     id: dungeon.boss.id,
     category: 'bosses',
     title: dungeon.boss.name,
     summary: `Boss of ${dungeon.name}.`,
-    body: `${dungeon.boss.name} is documented directly from the live dungeon definition. Base HP ${dungeon.boss.hp}; base retaliation ${dungeon.boss.retaliation}. Party-size scaling is applied at run start.`,
-    mechanics: { baseHp: dungeon.boss.hp, baseRetaliation: dungeon.boss.retaliation, dungeonId: dungeon.id },
-    source: 'domain-model',
-    tags: [dungeon.id, 'boss'],
+    body: `${dungeon.boss.name} is documented directly from the published dungeon definition. Base HP ${dungeon.boss.hp}; base retaliation ${dungeon.boss.retaliation}. Party-size scaling is applied at run start.`,
+    mechanics: { baseHp: dungeon.boss.hp, baseRetaliation: dungeon.boss.retaliation, dungeonId: dungeon.id, abilities: dungeon.boss.abilities || [] },
+    source: dungeon.sourceManifestId ? 'arc-manifest' : 'domain-model',
+    tags: [dungeon.id, dungeon.arcId, 'boss'].filter(Boolean),
   }));
 }
 
-function achievementEntries(gameRepository, playerId) {
+function achievementEntries(gameRepository, playerId, arcManifestService) {
   const unlocked = new Map(gameRepository.listAchievements(playerId).map((achievement) => [achievement.id, achievement]));
-  return Object.values(ACHIEVEMENTS).map((achievement) => ({
+  const canonical = Object.values(ACHIEVEMENTS).map((achievement) => ({ id: achievement.id, title: achievement.name, description: achievement.description, source: 'achievement-catalog' }));
+  const generated = (arcManifestService?.publishedAchievements() || []).map((achievement) => ({ id: achievement.id, title: achievement.title, description: achievement.description, source: 'arc-manifest', arcId: achievement.arcId, event: achievement.event, threshold: achievement.threshold }));
+  return [...canonical, ...generated].map((achievement) => ({
     id: achievement.id,
     category: 'achievements',
-    title: achievement.name,
+    title: achievement.title,
     summary: achievement.description,
     body: achievement.description,
     unlocked: unlocked.has(achievement.id),
     unlockedAt: unlocked.get(achievement.id)?.unlockedAt ?? null,
-    source: 'achievement-catalog',
-    tags: ['achievement', unlocked.has(achievement.id) ? 'unlocked' : 'locked'],
+    source: achievement.source,
+    mechanics: achievement.event ? { event: achievement.event, threshold: achievement.threshold } : undefined,
+    tags: ['achievement', achievement.arcId, unlocked.has(achievement.id) ? 'unlocked' : 'locked'].filter(Boolean),
   }));
 }
 
@@ -125,19 +128,21 @@ function historyEntries(codexRepository) {
 }
 
 export class CodexService {
-  constructor({ gameRepository, codexRepository }) {
+  constructor({ gameRepository, codexRepository, arcManifestService = null }) {
     this.gameRepository = gameRepository;
     this.codexRepository = codexRepository;
+    this.arcManifestService = arcManifestService;
   }
 
   browse(playerId, { category = 'all', query = '' } = {}) {
     const q = normalize(query);
+    const dungeons = [...Object.values(DUNGEONS), ...(this.arcManifestService?.runtimeDungeons() || [])];
     const groups = {
       items: itemEntries(this.codexRepository),
-      enemies: enemyEntries(),
-      bosses: bossEntries(),
+      enemies: enemyEntries(dungeons),
+      bosses: bossEntries(dungeons),
       lore: narrativeEntries(this.gameRepository, this.codexRepository),
-      achievements: achievementEntries(this.gameRepository, playerId),
+      achievements: achievementEntries(this.gameRepository, playerId, this.arcManifestService),
       history: historyEntries(this.codexRepository),
     };
     const entries = category === 'all' ? Object.values(groups).flat() : (groups[category] || []);
