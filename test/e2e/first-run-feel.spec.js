@@ -49,22 +49,27 @@ test('first 60 seconds explain themselves, feel responsive, reveal a reward, and
   await expect(page.getByTestId('first-run-guide')).toBeVisible();
   await expect(page.getByTestId('first-run-guide')).toContainText('Enter Frayed Hollow');
   await expect(page.getByTestId('start-dungeon')).toHaveText('Enter Frayed Hollow');
+  await expect(page.getByTestId('stream-empty')).toBeVisible();
   await reviewShot(page, '01-first-run');
 
   await clickAndWait(page, 'start-dungeon');
   await expect(page.getByTestId('combat-coach')).toBeVisible();
   await expect(page.getByTestId('combat-coach')).toContainText('Auto Strike');
   await expect(page.getByTestId('combat-coach')).toContainText('Guard');
-  await expect(page.getByTestId('auto-attack-status')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-dock')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-status')).toContainText('Auto Strike ON');
+  await expect(page.getByTestId('stream-guard')).toBeVisible();
+  await expect(page.getByTestId('auto-attack-status')).toBeHidden();
   await expect(page.getByTestId('attack')).toBeHidden();
 
   await expect(page.getByTestId('damage-feedback')).toBeVisible({ timeout: 5000 });
   await expect(page.getByTestId('combat-feedback')).toContainText('damage');
   await expect(page.getByTestId('retaliation-feedback')).toHaveCount(1);
-  await reviewShot(page, '02-combat-feedback', page.locator('#dungeon'));
+  await reviewShot(page, '02-combat-feedback', page.locator('#stream'));
 
-  if (await page.getByTestId('guard').isVisible()) {
-    await clickAndWait(page, 'guard');
+  if (await page.getByTestId('stream-guard').isVisible()) {
+    await page.getByTestId('stream-guard').click();
+    await expect(page.getByTestId('app-status')).toHaveText('Ready');
     await expect(page.getByTestId('combat-feedback')).toContainText(/Guard|absorbed/i);
   }
 
