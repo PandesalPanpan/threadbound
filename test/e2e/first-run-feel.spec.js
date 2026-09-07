@@ -26,11 +26,6 @@ async function loginWithThreaded(page) {
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
-async function clickAndWait(page, testId) {
-  await page.getByTestId(testId).click();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
-}
-
 async function dashboard(context) {
   const response = await context.request.get('/api/dashboard');
   expect(response.ok()).toBe(true);
@@ -42,61 +37,66 @@ async function waitUntilPhaseChanges(context, expectedPhase, timeout = 18000) {
   return dashboard(context);
 }
 
-test('first 60 seconds explain themselves, feel responsive, reveal a reward, and invite another run', async ({ page, context }) => {
+test('first 60 seconds explain themselves and keep the core loop inside the adventure thread', async ({ page, context }) => {
   test.setTimeout(60000);
   await loginWithThreaded(page);
 
   await expect(page.getByTestId('first-run-guide')).toBeVisible();
-  await expect(page.getByTestId('first-run-guide')).toContainText('Enter Frayed Hollow');
-  await expect(page.getByTestId('start-dungeon')).toHaveText('Enter Frayed Hollow');
+  await expect(page.getByTestId('stream-start-dungeon')).toContainText('Frayed Hollow');
   await reviewShot(page, '01-first-run');
 
-  await clickAndWait(page, 'start-dungeon');
-  await expect(page.getByTestId('combat-coach')).toBeVisible();
+  await page.getByTestId('stream-start-dungeon').click();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
   await expect(page.getByTestId('combat-coach')).toContainText('Auto Strike');
-  await expect(page.getByTestId('combat-coach')).toContainText('Guard');
-  await expect(page.getByTestId('auto-attack-status')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-dock')).toBeVisible();
+  await expect(page.getByTestId('stream-combat-status')).toContainText('Auto Strike ON');
+  const streamGuard = page.locator('[data-testid="stream-guard"]:visible').first();
+  await expect(streamGuard).toBeVisible();
+  await expect(page.getByTestId('auto-attack-status')).toBeHidden();
   await expect(page.getByTestId('attack')).toBeHidden();
 
   await expect(page.getByTestId('damage-feedback')).toBeVisible({ timeout: 5000 });
   await expect(page.getByTestId('combat-feedback')).toContainText('damage');
-  await expect(page.getByTestId('retaliation-feedback')).toHaveCount(1);
-  await reviewShot(page, '02-combat-feedback', page.locator('#dungeon'));
+  await reviewShot(page, '02-combat-feedback', page.locator('#stream'));
 
-  if (await page.getByTestId('guard').isVisible()) {
-    await clickAndWait(page, 'guard');
-    await expect(page.getByTestId('combat-feedback')).toContainText(/Guard|absorbed/i);
-  }
+  await streamGuard.click();
+  await expect(page.getByTestId('stream-system-entry').filter({ hasText: /raised Guard/i }).last()).toBeVisible();
 
   await waitUntilPhaseChanges(context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  await expect(page.getByTestId('upgrade-intro')).toContainText('Choose what the boss fight becomes');
-  await expect(page.getByTestId('upgrade-sharpen')).toHaveText('Choose +3 Attack');
-  await expect(page.getByTestId('upgrade-reinforce')).toHaveText('Choose +12 HP');
-  await expect(page.getByText('+3 attack for every strike this run.')).toBeVisible();
-  await expect(page.getByText('Restore 12 HP to every party member before the boss.')).toBeVisible();
-  await reviewShot(page, '03-upgrade-choice', page.locator('#dungeon'));
-
-  await clickAndWait(page, 'upgrade-sharpen');
+  const sharpen = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' });
+  await expect(sharpen).toBeVisible();
+  await reviewShot(page, '03-upgrade-choice', page.locator('#stream'));
+  await sharpen.click();
   await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
 
   await waitUntilPhaseChanges(context, 'boss');
   await expect(page.getByTestId('reward-reveal')).toBeVisible();
-  await expect(page.getByTestId('reward-name')).not.toHaveText('');
-  await expect(page.getByTestId('reward-equip')).toBeVisible();
-  await expect(page.getByTestId('run-again')).toBeVisible();
+  const rewardName = await page.getByTestId('reward-name').textContent();
+  expect(rewardName).toBeTruthy();
   await reviewShot(page, '04-reward-reveal', page.locator('#dungeon'));
 
-  const attackBeforeEquip = Number(await page.getByTestId('attack-power').textContent());
-  await clickAndWait(page, 'reward-equip');
-  const attackAfterEquip = Number(await page.getByTestId('attack-power').textContent());
-  expect(attackAfterEquip).toBeGreaterThan(attackBeforeEquip);
-  await expect(page.getByTestId('reward-power-gain')).toContainText(`Attack ${attackBeforeEquip}`);
-  await expect(page.getByTestId('reward-equip')).toHaveCount(0);
-  await reviewShot(page, '05-equipped-reward', page.locator('#dungeon'));
+  // Equipment management happens in a private replaceable /gear reply inside chat.
+  await page.getByTestId('stream-message').fill('/gear');
+  await page.getByTestId('stream-send').click();
+  const gearCard = page.getByTestId('stream-command-card');
+  await expect(gearCard).toContainText(rewardName);
+  await expect(gearCard.locator('img[src="/sprites/relic.svg"]').first()).toBeVisible();
+  const attackBeforeEquip = (await dashboard(context)).character.attackPower;
+  await gearCard.getByRole('button', { name: 'Equip' }).first().click();
+  await expect(gearCard).toContainText('EQUIPPED');
+  await expect.poll(async () => (await dashboard(context)).character.attackPower).toBeGreaterThan(attackBeforeEquip);
+  const attackAfterEquip = (await dashboard(context)).character.attackPower;
 
-  await clickAndWait(page, 'run-again');
+  // The primary presentation must reflect the authoritative equip immediately too.
+  await page.getByTestId('stream-message').fill('/status');
+  await page.getByTestId('stream-send').click();
+  await expect(page.getByTestId('stream-command-card')).toContainText(`ATK ${attackAfterEquip}`);
+  await expect(page.getByTestId('stream-command-card')).toContainText(rewardName);
+  await reviewShot(page, '05-equipped-reward', page.locator('#stream'));
+
+  // Start the next loop from the same thread rather than returning to a separate dungeon UI.
+  await page.getByTestId('stream-start-dungeon').click();
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
-  await expect(page.getByTestId('reward-reveal')).toHaveCount(0);
-  await expect(page.getByTestId('attack-power')).toHaveText(String(attackAfterEquip));
+  await expect.poll(async () => (await dashboard(context)).character.attackPower).toBe(attackAfterEquip);
 });

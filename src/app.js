@@ -12,9 +12,11 @@ import { ArcManifestService } from './application/ArcManifestService.js';
 import { ActivityStreamService } from './application/ActivityStreamService.js';
 import { GameService } from './application/GameService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
+import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
+import { SQLiteInventoryRepository } from './infrastructure/SQLiteInventoryRepository.js';
 
 const LOCAL_PROFILES = Object.freeze({
   a: Object.freeze({ id: 'local:a', name: 'Local Weaver A', username: 'local-a' }),
@@ -33,7 +35,7 @@ function topNav(active, authMode = 'threaded') {
 }
 
 function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Auto-strike through the Hollow. Time Guard, Interrupt, Mend, and Revive when the fight demands it.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Auto-strike through the Hollow. Time Guard, Interrupt, Mend, and Revive when the fight demands it.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script></body></html>`;
 }
 
 function codexPage(authMode) {
@@ -60,6 +62,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const realtimeHub = new RealtimeHub();
   app.locals.realtimeHub = realtimeHub;
   const streamRepository = new SQLiteActivityStreamRepository({ database: repository.db });
+  const inventoryRepository = new SQLiteInventoryRepository({ database: repository.db });
   const activityStream = new ActivityStreamService({ streamRepository, gameRepository: repository });
   const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
   const achievements = new AchievementProjector(repository);
@@ -98,6 +101,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     }
   });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
+  const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
   const partyService = new PartyService({ repository, eventBus });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
   const purchaseService = threadedGateway ? new HoneyPurchaseService({ repository, threadedGateway }) : null;
@@ -260,6 +264,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/runs/:runId/revive', requireConnection, (request, response) => response.json(gameService.revive(request.session.threaded.playerId, request.params.runId, String(request.body?.targetPlayerId || ''))));
   app.post('/api/runs/:runId/upgrade', requireConnection, (request, response) => response.json({ run: gameService.chooseUpgrade(request.session.threaded.playerId, request.params.runId, String(request.body?.upgradeId || '')) }));
   app.post('/api/items/:itemId/equip', requireConnection, (request, response) => response.json(gameService.equipItem(request.session.threaded.playerId, request.params.itemId)));
+  app.post('/api/items/:itemId/salvage', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const result = inventoryService.salvage(playerId, request.params.itemId);
+    return response.json({ ...result, dashboard: gameService.dashboard(playerId) });
+  });
 
   const purchaseHandler = async (request, response) => {
     const connection = request.session.threaded;
@@ -285,7 +294,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.use((error, _request, response, _next) => {
     console.error(error);
     const knownMessage = error instanceof Error ? error.message : 'Unknown error';
-    const status = error?.code === 'stale_run_version' || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed/i.test(knownMessage) ? 409 : 500;
+    const isConflictCode = error?.code === 'stale_run_version' || error?.code === 'equipped_item_cannot_be_salvaged';
+    const status = isConflictCode || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag/i.test(knownMessage) ? 409 : 500;
     response.status(status).json({ error: error?.code || (status === 409 ? 'game_rule_violation' : 'internal_error'), message: knownMessage });
   });
 
