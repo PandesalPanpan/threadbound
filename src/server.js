@@ -14,8 +14,10 @@ const app = createApp({ config, threadedGateway, repository, codexRepository, ma
 const server = app.listen(config.port, '127.0.0.1', () => {
   console.log(`Threadbound listening on http://127.0.0.1:${config.port} (${config.authMode} auth)`);
 });
+app.locals.realtimeHub.attachWebSocketServer(server);
 
 function shutdown() {
+  app.locals.realtimeHub.close();
   server.close(() => {
     repository.close();
     process.exit(0);
