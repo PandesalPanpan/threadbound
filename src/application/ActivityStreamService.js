@@ -58,6 +58,39 @@ export class ActivityStreamService {
     return this.gameRepository.getPlayer(playerId)?.displayName || 'Unknown Weaver';
   }
 
+  #combatResult(event, actorName) {
+    const action = String(event.action || 'action').toLowerCase();
+    const actorHp = event.actorHp === null || event.actorHp === undefined ? '' : `❤️ ${event.actorHp}/${event.actorMaxHp}`;
+    const enemyName = event.enemyName || (event.enemyId ? titleize(event.enemyId) : 'enemy');
+    const enemyHp = event.enemyHp === null || event.enemyHp === undefined ? '' : `👾 ${enemyName} ${event.enemyHp}/${event.enemyMaxHp}`;
+    const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
+    const retaliation = event.retaliation > 0
+      ? ` · ${targetName && event.targetPlayerId !== event.playerId ? `${targetName} took ${event.retaliation}` : `took ${event.retaliation}`}`
+      : '';
+    const intent = event.enemyIntent ? ` · ⚠ ${event.enemyIntent.name} incoming (${event.enemyIntent.damage})` : '';
+    const phase = event.phase === 'upgrade' ? ' · ✦ Choose the run upgrade.' : event.phase === 'complete' ? ' · ✦ Dungeon cleared.' : '';
+
+    let result;
+    if (action === 'attack') {
+      if (event.defeatedEnemyId) {
+        const defeated = titleize(event.defeatedEnemyId);
+        result = `${actorName} attacked ${defeated} for ${event.damage} and defeated it.`;
+        if (event.enemyHp !== null && event.enemyHp !== undefined && event.phase !== 'complete') result += ` Next: ${enemyHp}.`;
+      } else result = `${actorName} attacked ${enemyName} for ${event.damage} damage${retaliation}.`;
+    } else if (action === 'guard') {
+      result = `${actorName} guarded${event.prevented > 0 ? ` and prevented ${event.prevented} damage` : ''}${retaliation}.`;
+    } else if (action === 'interrupt') {
+      result = `${actorName} interrupted ${enemyName}'s heavy attack.`;
+    } else if (action === 'mend') {
+      result = `${actorName} mended ${targetName || 'an ally'} for ${event.healed} HP${retaliation}.`;
+    } else if (action === 'revive') {
+      result = `${actorName} revived ${targetName || 'an ally'} with ${event.restoredHp} HP${retaliation}.`;
+    } else result = `${actorName} used ${titleize(action)}.`;
+
+    const state = [actorHp, event.phase === 'upgrade' || event.phase === 'complete' ? '' : enemyHp].filter(Boolean).join(' · ');
+    return `${result}${state ? ` ${state}.` : ''}${intent}${phase}`;
+  }
+
   #project(event) {
     const actorName = event.playerId ? this.#playerName(event.playerId) : null;
     const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
@@ -65,42 +98,48 @@ export class ActivityStreamService {
     const dungeonName = event.dungeonId ? titleize(event.dungeonId) : null;
 
     switch (event.type) {
-      case 'DungeonStarted':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} entered ${dungeonName}.` };
+      case 'DungeonStarted': {
+        const foe = event.enemyName || enemyName || 'an enemy';
+        const enemyState = event.enemyHp === null || event.enemyHp === undefined ? '' : ` 👾 ${foe} ${event.enemyHp}/${event.enemyMaxHp} HP.`;
+        const playerState = event.actorHp === null || event.actorHp === undefined ? '' : ` ❤️ ${event.actorHp}/${event.actorMaxHp} HP.`;
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} entered ${dungeonName}.${enemyState}${playerState} Choose your first action.` };
+      }
+      case 'CombatActionResolved':
+        return { actorPlayerId: event.playerId, actorName, body: this.#combatResult(event, actorName) };
+
+      // These fine-grained domain events remain useful to achievements/history and
+      // realtime invalidation, but the social timeline receives the resolved turn
+      // above so one player action does not explode into several bot messages.
       case 'EnemyDamaged':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} struck ${enemyName} for ${event.damage} damage.` };
       case 'PlayerDamaged':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} took ${event.damage} damage.` };
       case 'PlayerGuarded':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} raised Guard.` };
       case 'EnemyIntentTelegraphed':
-        return { actorName: 'SYSTEM', body: `${enemyName} is preparing ${event.intent?.name || 'a heavy attack'}.` };
       case 'EnemyInterrupted':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} interrupted ${enemyName}.` };
       case 'PlayerHealed':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} mended ${targetName} for ${event.amount} HP.` };
       case 'PlayerRevived':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} revived ${targetName} with ${event.restoredHp} HP.` };
       case 'EnemyDefeated':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} defeated ${enemyName}.` };
-      case 'RunUpgradeChosen':
-        return { actorPlayerId: event.playerId || null, actorName: actorName || 'SYSTEM', body: `${actorName || 'The party'} chose ${titleize(event.upgradeId)}.` };
+      case 'EnemyIntentResolved':
+        return null;
+
+      case 'RunUpgradeChosen': {
+        const run = event.runId ? this.gameRepository.getRun(event.runId) : null;
+        const boss = run?.enemy;
+        const bossState = boss ? ` ${boss.name} awakens — ${boss.hp}/${boss.maxHp} HP.` : '';
+        return { actorPlayerId: event.playerId || null, actorName: actorName || 'SYSTEM', body: `${actorName || 'The party'} chose ${titleize(event.upgradeId)}.${bossState}` };
+      }
       case 'DungeonFailed': {
         const names = (event.participantIds || []).map((id) => this.#playerName(id));
         return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} fell in ${dungeonName}.` };
       }
-      case 'DungeonCompleted': {
-        if (event.playerId) return null;
-        const names = (event.participantIds || []).map((id) => this.#playerName(id));
-        return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} cleared ${dungeonName}.` };
-      }
+      case 'DungeonCompleted':
+        return null;
       case 'ItemGenerated': {
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}. Open Gear to equip, compare, or salvage it.` };
       }
       case 'ItemEquipped': {
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}${item ? ` (+${item.attackBonus} Attack)` : ''}.` };
       }
       case 'ItemSalvaged':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} salvaged ${event.itemName || 'a relic'} into ${event.threadDust} Thread Dust.` };
