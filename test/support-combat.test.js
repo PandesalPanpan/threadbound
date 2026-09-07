@@ -17,7 +17,7 @@ function partyRun({ firstHealth = 40, secondHealth = 40 } = {}) {
   });
 }
 
-test('Guard creates aggro and halves the retaliation that lands on the guarder', () => {
+test('Guard creates aggro, halves retaliation, and primes a Riposte', () => {
   const run = partyRun();
   const result = run.guard({ playerId: 'a' });
   const damaged = result.events.find((event) => event.type === 'PlayerDamaged');
@@ -28,9 +28,11 @@ test('Guard creates aggro and halves the retaliation that lands on the guarder',
   assert.equal(run.participant('a').hp, 38);
   assert.equal(run.participant('a').damagePrevented, 1);
   assert.equal(run.participant('a').guarding, false);
+  assert.equal(run.participant('a').riposteBonus, 3);
+  assert.ok(result.events.some((event) => event.type === 'RipostePrimed'));
 });
 
-test('Mend heals a wounded ally once per encounter and records support contribution', () => {
+test('Mend is reusable support gated by an action cooldown rather than a once-per-encounter charge', () => {
   const run = partyRun();
   run.attack({ playerId: 'b', attackPower: 1 });
   assert.equal(run.participant('b').hp, 37);
@@ -38,10 +40,27 @@ test('Mend heals a wounded ally once per encounter and records support contribut
   const result = run.mend({ playerId: 'a', targetPlayerId: 'b' });
   assert.equal(result.healed, 3);
   assert.equal(run.participant('a').healingDone, 3);
-  assert.equal(run.participant('a').mendCharges, 0);
+  assert.equal(run.participant('a').cooldowns.mend, 2);
 
   run.participant('b').hp = 30;
-  assert.throws(() => run.mend({ playerId: 'a', targetPlayerId: 'b' }), /already been used this encounter/i);
+  assert.throws(() => run.mend({ playerId: 'a', targetPlayerId: 'b' }), /cooling down/i);
+
+  run.guard({ playerId: 'a' });
+  assert.equal(run.participant('a').cooldowns.mend, 1);
+  run.attack({ playerId: 'a', attackPower: 1 });
+  assert.equal(run.participant('a').cooldowns.mend, 0);
+
+  const reused = run.mend({ playerId: 'a', targetPlayerId: 'b' });
+  assert.ok(reused.healed > 0);
+  assert.ok(run.participant('a').healingDone > 3);
+});
+
+test('Mender gear increases Mend throughput without creating a separate healing rules path', () => {
+  const run = partyRun();
+  run.participant('b').hp = 20;
+  const result = run.mend({ playerId: 'a', targetPlayerId: 'b', equipmentEffect: 'mender' });
+  assert.equal(result.healed, 11);
+  assert.equal(run.participant('b').hp, 31);
 });
 
 test('Revive restores a downed ally and is limited to once per run for the acting player', () => {
