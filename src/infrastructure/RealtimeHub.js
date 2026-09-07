@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 export class RealtimeHub {
   constructor({ heartbeatMs = 15000, tokenTtlMs = 60000 } = {}) {
-    this.sseClients = new Set();
+    this.sseClients = new Map();
     this.webSocketClients = new Set();
     this.heartbeatMs = heartbeatMs;
     this.tokenTtlMs = tokenTtlMs;
@@ -11,7 +11,7 @@ export class RealtimeHub {
     this.webSocketServer = null;
   }
 
-  attach(response) {
+  attach(response, { playerId = null } = {}) {
     response.status(200);
     response.setHeader('Content-Type', 'text/event-stream');
     response.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -20,7 +20,7 @@ export class RealtimeHub {
     response.flushHeaders?.();
     response.write('retry: 1500\n');
     response.write(`data: ${JSON.stringify({ type: 'connected', transport: 'sse' })}\n\n`);
-    this.sseClients.add(response);
+    this.sseClients.set(response, playerId);
 
     const heartbeat = setInterval(() => {
       if (!response.writableEnded) response.write(': heartbeat\n\n');
@@ -77,15 +77,17 @@ export class RealtimeHub {
     return socketServer;
   }
 
-  broadcast(payload = { type: 'state_changed' }) {
+  broadcast(payload = { type: 'state_changed' }, { playerIds = null } = {}) {
     const serialized = JSON.stringify(payload);
     const sseMessage = `data: ${serialized}\n\n`;
+    const audience = Array.isArray(playerIds) ? new Set(playerIds.filter(Boolean)) : null;
 
-    for (const response of [...this.sseClients]) {
+    for (const [response, playerId] of [...this.sseClients.entries()]) {
       if (response.writableEnded || response.destroyed) {
         this.sseClients.delete(response);
         continue;
       }
+      if (audience && !audience.has(playerId)) continue;
       try { response.write(sseMessage); } catch { this.sseClients.delete(response); }
     }
 
@@ -94,12 +96,13 @@ export class RealtimeHub {
         this.webSocketClients.delete(webSocket);
         continue;
       }
+      if (audience && !audience.has(webSocket.threadboundPlayerId)) continue;
       try { webSocket.send(serialized); } catch { this.webSocketClients.delete(webSocket); }
     }
   }
 
   close() {
-    for (const response of [...this.sseClients]) {
+    for (const response of [...this.sseClients.keys()]) {
       try { response.end(); } catch {}
     }
     this.sseClients.clear();
