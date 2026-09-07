@@ -187,7 +187,7 @@ function renderDungeon(data) {
   const summary = document.createElement('p');
   summary.className = 'run-summary';
   summary.dataset.testid = 'run-state';
-  summary.innerHTML = `<span class="phase-chip">${run.phase}</span><span>v${run.version} · ${run.participants.length} player${run.participants.length === 1 ? '' : 's'}${run.enemy ? ` · ${run.enemy.name} ${run.enemy.hp}/${run.enemy.maxHp}` : ''}</span>`;
+  summary.innerHTML = `<span class="phase-chip">Phase: ${run.phase}</span><span>v${run.version} · ${run.participants.length} player${run.participants.length === 1 ? '' : 's'}${run.enemy ? ` · ${run.enemy.name} ${run.enemy.hp}/${run.enemy.maxHp}` : ''}</span>`;
   dungeonEl.append(summary);
   dungeonEl.insertAdjacentHTML('beforeend', `<p class="muted" data-testid="run-scaling">Enemy HP ×${run.scaling.enemyHealthMultiplier} · retaliation ×${run.scaling.retaliationMultiplier}</p>`);
 
