@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'Apply combat v2 decision-state balance'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +51,6 @@ jobs:
   powerStrike"""
           if old not in text: raise SystemExit('attack retaliation anchor missing')
           text = text.replace(old, new, 1)
-
           old = """    const events = [];
     this.#resolveDueIntent(events, now);
     const participant = this.#actingParticipant(playerId);
