@@ -216,6 +216,7 @@
 
 @media (max-width: 720px) {
   body[data-game-view="play"] #stream { display: block; }
+  body[data-game-view="play"] #stream .stream-combat-dock:not([hidden]) { display: block !important; }
   #stream { padding: 12px; }
   .stream-hint { display: none; }
   .stream-combat-dock { margin-top: 7px; padding: 9px; }
