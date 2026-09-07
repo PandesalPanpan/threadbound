@@ -9,10 +9,12 @@ import { ArcAchievementProjector } from './application/ArcAchievementProjector.j
 import { WorldHistoryProjector } from './application/WorldHistoryProjector.js';
 import { CodexService } from './application/CodexService.js';
 import { ArcManifestService } from './application/ArcManifestService.js';
+import { ActivityStreamService } from './application/ActivityStreamService.js';
 import { GameService } from './application/GameService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { PartyService } from './application/PartyService.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
+import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
 
 const LOCAL_PROFILES = Object.freeze({
   a: Object.freeze({ id: 'local:a', name: 'Local Weaver A', username: 'local-a' }),
@@ -31,7 +33,7 @@ function topNav(active, authMode = 'threaded') {
 }
 
 function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}</head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Auto-strike through the Hollow. Time Guard, Interrupt, Mend, and Revive when the fight demands it.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script type="module" src="/game.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Auto-strike through the Hollow. Time Guard, Interrupt, Mend, and Revive when the fight demands it.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script></body></html>`;
 }
 
 function codexPage(authMode) {
@@ -56,6 +58,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const app = express();
   const eventBus = new EventBus();
   const realtimeHub = new RealtimeHub();
+  const streamRepository = new SQLiteActivityStreamRepository({ database: repository.db });
+  const activityStream = new ActivityStreamService({ streamRepository, gameRepository: repository });
   const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
   const achievements = new AchievementProjector(repository);
   const arcAchievements = new ArcAchievementProjector({ gameRepository: repository, manifestRepository, arcManifestService });
@@ -63,7 +67,15 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   eventBus.subscribe((event) => achievements.handle(event));
   eventBus.subscribe((event) => arcAchievements.handle(event));
   eventBus.subscribe((event) => history.handle(event));
-  eventBus.subscribe((event) => realtimeHub.broadcast({ type: 'state_changed', eventType: event.type }));
+  eventBus.subscribe((event) => {
+    realtimeHub.broadcast({ type: 'state_changed', eventType: event.type });
+    try {
+      const entry = activityStream.recordDomainEvent(event);
+      if (entry) realtimeHub.broadcast({ type: 'stream_entry', entry });
+    } catch (error) {
+      console.error('Activity stream projection failed:', error);
+    }
+  });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
   const partyService = new PartyService({ repository, eventBus });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
@@ -144,6 +156,20 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
 
   app.get('/api/events', requireConnection, (_request, response) => realtimeHub.attach(response));
+  app.get('/api/stream', requireConnection, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json({ entries: activityStream.recent(request.query.limit) });
+  });
+  app.post('/api/stream/messages', requireConnection, (request, response) => {
+    try {
+      const entry = activityStream.postChat({ playerId: request.session.threaded.playerId, body: request.body?.body });
+      realtimeHub.broadcast({ type: 'stream_entry', entry });
+      return response.status(201).json({ entry });
+    } catch (error) {
+      if (error.code === 'invalid_chat_message') return response.status(422).json({ error: error.code, message: error.message });
+      throw error;
+    }
+  });
 
   app.get('/api/codex', requireConnection, (request, response) => {
     const category = String(request.query.category || 'all').toLowerCase();
