@@ -379,7 +379,12 @@ if (stream) {
       const payload = await api('/api/stream?limit=100');
       const entries = new Map((payload.entries || []).map((entry) => [entry.id, entry]));
       for (const row of pending) decorateSystemEntry(row, entries.get(row.dataset.entryId));
-      if (keepBottomAnchored) requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
+      if (keepBottomAnchored) {
+        const pageX = window.scrollX;
+        const pageY = window.scrollY;
+        pending.at(-1)?.scrollIntoView({ block: 'end', inline: 'nearest' });
+        window.scrollTo(pageX, pageY);
+      }
     } finally {
       richRefreshInFlight = false;
       if (log.querySelector('.stream-entry-system[data-entry-id]:not([data-rich-formatted="true"])')) scheduleRichRefresh();
