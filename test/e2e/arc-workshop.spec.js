@@ -64,28 +64,28 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
 
   await page.getByTestId('codex-search').fill('Cinder Seam');
-  const cinderLore = page.getByTestId('codex-entry').filter({ hasText: 'The Cinder Seam' }).first();
+  const cinderLore = page.locator('[data-testid="codex-entry"][data-category="lore"][data-entry-id="generated-lore:ashen-thread:cinder-seam"]');
   await expect(cinderLore).toBeVisible();
   await cinderLore.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Cinder Seam');
   await expect(page.getByTestId('codex-detail')).toContainText('arc-manifest');
 
   await page.getByTestId('codex-search').fill('Ember Loomkeeper');
-  const loomkeeper = page.getByTestId('codex-entry').filter({ hasText: 'The Ember Loomkeeper' }).first();
+  const loomkeeper = page.locator('[data-testid="codex-entry"][data-category="bosses"][data-entry-id="ember-loomkeeper"]');
   await expect(loomkeeper).toBeVisible();
   await loomkeeper.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Ember Loomkeeper');
   await expect(page.getByTestId('codex-mechanics')).toContainText('28');
 
   await page.getByTestId('codex-search').fill('Ember Needle of the Loom');
-  const needleEntry = page.getByTestId('codex-entry').filter({ hasText: 'Ember Needle of the Loom' }).first();
+  const needleEntry = page.locator('[data-testid="codex-entry"][data-category="items"]').filter({ hasText: 'Ember Needle of the Loom' }).first();
   await expect(needleEntry).toBeVisible();
   await needleEntry.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('Ember Needle of the Loom');
   await expect(page.getByTestId('codex-detail')).toContainText('boss_bane');
 
   await page.getByTestId('codex-search').fill('Through the Cinders');
-  const achievementEntry = page.getByTestId('codex-entry').filter({ hasText: 'Through the Cinders' }).first();
+  const achievementEntry = page.locator('[data-testid="codex-entry"][data-category="achievements"][data-entry-id="cinder-vault-cleared"]');
   await expect(achievementEntry).toBeVisible();
   await achievementEntry.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('Through the Cinders');
@@ -93,7 +93,7 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
 
   await page.getByTestId('codex-tab-history').click();
   await page.getByTestId('codex-search').fill('Ashen Thread begins');
-  const historyEntry = page.getByTestId('codex-entry').filter({ hasText: 'The Ashen Thread begins' }).first();
+  const historyEntry = page.locator(`[data-testid="codex-entry"][data-category="history"][data-entry-id="manifest-history:ashen-thread:r${revision}:ashen-thread-begins"]`);
   await expect(historyEntry).toBeVisible();
   await historyEntry.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Ashen Thread begins');
