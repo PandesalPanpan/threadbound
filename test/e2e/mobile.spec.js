@@ -24,10 +24,11 @@ async function expectNoHorizontalOverflow(page) {
 }
 
 async function expectTouchTarget(locator, minimum = 44) {
-  const box = await locator.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box.width).toBeGreaterThanOrEqual(minimum);
-  expect(box.height).toBeGreaterThanOrEqual(minimum);
+  await expect(locator).toBeVisible();
+  await expect.poll(async () => {
+    const box = await locator.boundingBox();
+    return box ? Math.min(box.width, box.height) : 0;
+  }, { timeout: 5000 }).toBeGreaterThanOrEqual(minimum);
 }
 
 test('mobile player shell is touch-friendly and combat-first', async ({ page }) => {
