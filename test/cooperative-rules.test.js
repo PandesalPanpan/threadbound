@@ -18,7 +18,7 @@ test('a downed participant cannot act while surviving party members can continue
   run.attack({ playerId: 'fragile', attackPower: 1 });
   assert.equal(run.participant('fragile').hp, 0);
   assert.equal(run.state.phase, 'combat');
-  assert.throws(() => run.attack({ playerId: 'fragile', attackPower: 6 }), /defeated player/i);
+  assert.throws(() => run.attack({ playerId: 'fragile', attackPower: 6 }), /downed player cannot act/i);
 
   const survivorAttack = run.attack({ playerId: 'survivor', attackPower: 6 });
   assert.equal(survivorAttack.state.phase, 'combat');
