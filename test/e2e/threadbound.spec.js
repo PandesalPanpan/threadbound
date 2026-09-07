@@ -29,9 +29,15 @@ async function startFromThread(page, context) {
 
 async function attackFromThread(page, context) {
   const before = await dashboard(context);
+  const runId = before.activeRun?.id;
   const version = before.activeRun?.version ?? -1;
   await page.getByTestId('stream-attack').click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout: 5000 }).toBeGreaterThan(version);
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    if (!after.activeRun) return true;
+    if (after.activeRun.id !== runId) return true;
+    return after.activeRun.version > version;
+  }, { timeout: 5000 }).toBe(true);
 }
 
 async function attacksUntilPhaseChanges(context, page, expectedPhase, limit = 40) {
