@@ -34,7 +34,6 @@ function canonicalIds() {
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value); }
 function text(value) { return typeof value === 'string' && value.trim().length > 0; }
 function integer(value) { return Number.isInteger(value); }
-function pathJoin(path, key) { return path ? `${path}.${key}` : key; }
 
 export class ArcManifestValidator {
   validate(manifest) {
@@ -131,10 +130,12 @@ export class ArcManifestValidator {
       });
     });
 
+    const dungeonIds = new Set();
     manifest.dungeons.forEach((entry, index) => {
       const path = `dungeons[${index}]`;
       if (!object(entry)) return addError(path, 'invalid_dungeon', 'Dungeon must be an object.');
       registerId(entry.id, `${path}.id`);
+      if (text(entry.id)) dungeonIds.add(entry.id);
       if (!text(entry.name)) addError(`${path}.name`, 'name_required', 'Dungeon name is required.');
       if (!integer(entry.recommendedPlayers) || entry.recommendedPlayers < 1 || entry.recommendedPlayers > 4) addError(`${path}.recommendedPlayers`, 'invalid_recommended_players', 'recommendedPlayers must be 1–4.');
       if (!Array.isArray(entry.encounters) || entry.encounters.length < 1) addError(`${path}.encounters`, 'encounters_required', 'Dungeon must contain encounters.');
@@ -154,6 +155,15 @@ export class ArcManifestValidator {
       if (!text(entry.description)) addError(`${path}.description`, 'description_required', 'Achievement description is required.');
       if (!ACHIEVEMENT_EVENTS.has(entry.event)) addError(`${path}.event`, 'unsupported_achievement_event', 'Unsupported achievement event.');
       if (!integer(entry.threshold) || entry.threshold < 1 || entry.threshold > 100000000) addError(`${path}.threshold`, 'invalid_threshold', 'Achievement threshold must be a positive integer.');
+      if (entry.targetId !== undefined) {
+        this.#id(entry.targetId, `${path}.targetId`, addError);
+        const knownTargets = entry.event === 'enemy_defeated' ? enemyIds
+          : entry.event === 'boss_defeated' ? bossIds
+          : ['dungeon_completed', 'item_generated'].includes(entry.event) ? dungeonIds
+          : null;
+        if (entry.event === 'player_revived') addError(`${path}.targetId`, 'revive_target_scope_unsupported', 'player_revived achievements cannot currently use targetId.');
+        else if (knownTargets && !knownTargets.has(entry.targetId)) addError(`${path}.targetId`, 'unknown_achievement_target', `targetId "${entry.targetId}" does not exist for event ${entry.event}.`);
+      }
     });
 
     manifest.historicalConsequences.forEach((entry, index) => {
