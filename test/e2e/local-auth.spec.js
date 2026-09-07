@@ -31,9 +31,15 @@ async function startFromThread(page, context) {
 
 async function threadAction(page, context, locator) {
   const before = await dashboard(context);
+  const runId = before.activeRun?.id;
   const version = before.activeRun?.version ?? -1;
   await locator.click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout: 5000 }).toBeGreaterThan(version);
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    if (!after.activeRun) return true;
+    if (after.activeRun.id !== runId) return true;
+    return after.activeRun.version > version;
+  }, { timeout: 5000 }).toBe(true);
 }
 
 async function attack(page, context) {
@@ -121,8 +127,8 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
     const revive = leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
     await expect(revive).toBeVisible();
     await threadAction(leader, leaderContext, revive);
-    const leaderAfterRevive = await leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' }).textContent();
-    expect(leaderAfterRevive).toMatch(/revives 1/);
+    const leaderRow = leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' });
+    await expect(leaderRow).toContainText('revives 1');
 
     // Wound the leader explicitly, then let the partner use the contextual Mend action.
     await threadAction(leader, leaderContext, leader.getByTestId('stream-guard'));
@@ -130,16 +136,21 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
     const mend = partner.getByTestId('stream-suggestions').getByRole('button', { name: 'Mend ally' });
     await expect(mend).toBeVisible();
     await threadAction(partner, partnerContext, mend);
-    const partnerSupport = await partner.getByTestId('run-participant').filter({ hasText: 'Local Weaver B' }).textContent();
-    expect(partnerSupport).toMatch(/healing [1-9]\d*/);
+    const partnerRow = partner.getByTestId('run-participant').filter({ hasText: 'Local Weaver B' });
+    await expect.poll(async () => {
+      const text = await partnerRow.textContent();
+      return Number(text?.match(/healing (\d+)/)?.[1] || 0);
+    }, { timeout: 5000 }).toBeGreaterThan(0);
 
     await leader.reload();
     const preventedBeforeText = await leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' }).textContent();
     const preventedBefore = Number(preventedBeforeText.match(/prevented (\d+)/)?.[1] || 0);
     await threadAction(leader, leaderContext, leader.getByTestId('stream-guard'));
-    const preventedAfterText = await leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' }).textContent();
-    const preventedAfter = Number(preventedAfterText.match(/prevented (\d+)/)?.[1] || 0);
-    expect(preventedAfter).toBeGreaterThan(preventedBefore);
+    const preventedRow = leader.getByTestId('run-participant').filter({ hasText: 'Local Weaver A' });
+    await expect.poll(async () => {
+      const text = await preventedRow.textContent();
+      return Number(text?.match(/prevented (\d+)/)?.[1] || 0);
+    }, { timeout: 5000 }).toBeGreaterThan(preventedBefore);
 
     let turn = await alternateAttacksUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat');
     await leader.reload();
