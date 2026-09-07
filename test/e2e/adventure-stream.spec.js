@@ -15,11 +15,7 @@ async function submitComposer(page, value) {
   await expect(page.getByTestId('stream-message')).toHaveValue('');
 }
 
-function visibleTestId(page, id) {
-  return page.locator(`[data-testid="${id}"]:visible`).first();
-}
-
-test('players can chat, inspect state, and fight through the realtime adventure thread', async ({ browser }) => {
+test('players chat, inspect state, and exchange discrete game results in one realtime thread', async ({ browser }) => {
   const anonymousContext = await browser.newContext();
   const unauthenticatedToken = await anonymousContext.request.get('/api/realtime-token');
   expect(unauthenticatedToken.status()).toBe(401);
@@ -38,11 +34,11 @@ test('players can chat, inspect state, and fight through the realtime adventure 
     await expect(first.getByTestId('stream-composer')).toBeVisible();
     await expect(first.getByTestId('stream-suggestions')).toContainText('Status');
     await expect(first.getByTestId('stream-suggestions')).toContainText('Gear');
+    await expect(first.locator('.stream-hint')).toContainText('result of every action');
     const sendBox = await first.getByTestId('stream-send').boundingBox();
     expect(sendBox).not.toBeNull();
     expect(sendBox.height).toBeGreaterThanOrEqual(44);
 
-    // Slash commands are private replaceable thread replies, not global chat spam.
     await submitComposer(first, '/status');
     await expect(first.getByTestId('stream-command-card')).toBeVisible();
     await expect(first.getByTestId('stream-command-card')).toContainText('Current adventure');
@@ -65,35 +61,38 @@ test('players can chat, inspect state, and fight through the realtime adventure 
     await expect(safeMessage.locator('img')).toHaveCount(0);
     expect(await second.evaluate(() => window.chatInjected)).toBeUndefined();
 
-    // A remote adventure can update the shared timeline without destroying a local draft.
     await second.getByTestId('stream-message').fill('do not erase this draft');
     await first.getByTestId('stream-start-dungeon').click();
     await expect(first.getByTestId('run-state')).toContainText('Phase: combat');
     await expect(second.getByTestId('stream-message')).toHaveValue('do not erase this draft');
-    const firstEntered = second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C entered Frayed Hollow.' });
+    const firstEntered = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C entered Frayed Hollow/ });
     await expect(firstEntered).toBeVisible();
+    await expect(firstEntered).toContainText('Frayed Wisp 12/12 HP');
+    await expect(firstEntered).toContainText('Choose your first action');
 
-    // HP, foe identity, pixel sprite, manual attack and reactive skills all live in the thread.
-    await expect(first.getByTestId('stream-combat-dock')).toBeVisible();
-    await expect(first.getByTestId('stream-combat-status')).toContainText('Auto Strike ON');
-    await expect(first.getByTestId('stream-combat-dock').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
-    const attack = visibleTestId(first, 'stream-attack');
-    const guard = visibleTestId(first, 'stream-guard');
+    // The timeline + contextual row are the game UI; the old persistent combat HUD is gone.
+    await expect(first.getByTestId('stream-combat-dock')).toBeHidden();
+    await expect(first.getByTestId('enemy-card').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
+    const attack = first.getByTestId('stream-attack');
+    const guard = first.getByTestId('stream-guard');
     await expect(attack).toBeVisible();
     await expect(guard).toBeVisible();
     const guardBox = await guard.boundingBox();
     expect(guardBox).not.toBeNull();
     expect(guardBox.height).toBeGreaterThanOrEqual(44);
-    await attack.click();
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C struck Frayed Wisp/ }).first()).toBeVisible({ timeout: 7000 });
-    await guard.click();
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C raised Guard.' }).first()).toBeVisible();
 
-    // Independent dungeon streams coexist in the same social thread.
+    await attack.click();
+    const attackResult = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ }).last();
+    await expect(attackResult).toBeVisible({ timeout: 7000 });
+    await expect(attackResult).toContainText(/Frayed Wisp \d+\/12/);
+    await guard.click();
+    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C guarded/ }).last()).toBeVisible();
+
+    // Independent dungeon instances still coexist socially.
     await second.getByTestId('stream-message').fill('');
     await second.getByTestId('stream-start-dungeon').click();
     await expect(second.getByTestId('run-state')).toContainText('Phase: combat');
-    await expect(first.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver D entered Frayed Hollow.' })).toBeVisible();
+    await expect(first.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver D entered Frayed Hollow/ })).toBeVisible();
     const firstState = await (await firstContext.request.get('/api/dashboard')).json();
     const secondState = await (await secondContext.request.get('/api/dashboard')).json();
     expect(firstState.activeRun.id).not.toBe(secondState.activeRun.id);
@@ -104,7 +103,8 @@ test('players can chat, inspect state, and fight through the realtime adventure 
     await second.reload();
     await expect(second.getByTestId('stream-connection')).toHaveText('WebSocket live');
     await expect(second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' })).toBeVisible();
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver C entered Frayed Hollow.' })).toBeVisible();
+    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C entered Frayed Hollow/ })).toBeVisible();
+    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ })).toBeVisible();
   } finally {
     await firstContext.close();
     await secondContext.close();
