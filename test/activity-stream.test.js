@@ -36,17 +36,75 @@ test('chat rejects empty and oversized messages', () => {
   assert.throws(() => service.postChat({ playerId: a.id, body: 'x'.repeat(MAX_CHAT_LENGTH + 1) }), (error) => error.code === 'invalid_chat_message');
 });
 
-test('domain actions project to visually distinct system entries with useful names', () => {
-  const { service, a, b } = setup();
-  const started = service.recordDomainEvent({ type: 'DungeonStarted', playerId: a.id, runId: 'run-a', dungeonId: 'frayed-hollow' });
-  const strike = service.recordDomainEvent({ type: 'EnemyDamaged', playerId: a.id, runId: 'run-a', enemyId: 'hollow-stalker', damage: 9 });
-  const heal = service.recordDomainEvent({ type: 'PlayerHealed', playerId: b.id, targetPlayerId: a.id, runId: 'run-a', amount: 8 });
+test('one explicit combat command becomes one useful system result message', () => {
+  const { service, a } = setup();
+  const started = service.recordDomainEvent({
+    type: 'DungeonStarted',
+    playerId: a.id,
+    runId: 'run-a',
+    dungeonId: 'frayed-hollow',
+    enemyId: 'frayed-wisp',
+    enemyName: 'Frayed Wisp',
+    enemyHp: 12,
+    enemyMaxHp: 12,
+    actorHp: 40,
+    actorMaxHp: 40,
+  });
+  const lowLevel = service.recordDomainEvent({ type: 'EnemyDamaged', playerId: a.id, runId: 'run-a', enemyId: 'frayed-wisp', damage: 6 });
+  const resolved = service.recordDomainEvent({
+    type: 'CombatActionResolved',
+    action: 'attack',
+    playerId: a.id,
+    runId: 'run-a',
+    dungeonId: 'frayed-hollow',
+    enemyId: 'frayed-wisp',
+    enemyName: 'Frayed Wisp',
+    enemyHp: 6,
+    enemyMaxHp: 12,
+    actorHp: 38,
+    actorMaxHp: 40,
+    damage: 6,
+    retaliation: 2,
+    targetPlayerId: a.id,
+    phase: 'combat',
+  });
 
   assert.equal(started.kind, 'system');
-  assert.equal(started.eventType, 'DungeonStarted');
-  assert.equal(started.body, 'Local Weaver A entered Frayed Hollow.');
-  assert.equal(strike.body, 'Local Weaver A struck Hollow Stalker for 9 damage.');
-  assert.equal(heal.body, 'Local Weaver B mended Local Weaver A for 8 HP.');
+  assert.match(started.body, /Frayed Wisp 12\/12 HP/);
+  assert.match(started.body, /40\/40 HP/);
+  assert.match(started.body, /Choose your first action/);
+  assert.equal(lowLevel, null);
+  assert.match(resolved.body, /attacked Frayed Wisp for 6 damage/);
+  assert.match(resolved.body, /took 2/);
+  assert.match(resolved.body, /38\/40/);
+  assert.match(resolved.body, /Frayed Wisp 6\/12/);
+  assert.equal(service.recent().length, 2);
+});
+
+test('resolved turns can surface telegraphs without a second public event', () => {
+  const { service, a } = setup();
+  const telegraph = service.recordDomainEvent({ type: 'EnemyIntentTelegraphed', runId: 'run-a', enemyId: 'frayed-wisp', intent: { name: 'Fraying Blow', damage: 4 } });
+  const resolved = service.recordDomainEvent({
+    type: 'CombatActionResolved',
+    action: 'attack',
+    playerId: a.id,
+    runId: 'run-a',
+    enemyId: 'frayed-wisp',
+    enemyName: 'Frayed Wisp',
+    enemyHp: 3,
+    enemyMaxHp: 12,
+    actorHp: 34,
+    actorMaxHp: 40,
+    damage: 3,
+    retaliation: 2,
+    targetPlayerId: a.id,
+    enemyIntent: { name: 'Fraying Blow', damage: 4 },
+    phase: 'combat',
+  });
+
+  assert.equal(telegraph, null);
+  assert.match(resolved.body, /Fraying Blow incoming \(4\)/);
+  assert.equal(service.recent().length, 1);
 });
 
 test('duplicate participant completion notifications are ignored while the aggregate completion is kept', () => {

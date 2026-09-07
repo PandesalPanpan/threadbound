@@ -89,34 +89,50 @@ export class GameService {
       dungeonDefinition,
     });
     const persisted = this.repository.createRun(run.toJSON());
-    this.eventBus.publish({ type: 'DungeonStarted', playerId, runId: persisted.id, dungeonId, ownerType, ownerId });
+    const actor = persisted.participants.find((participant) => participant.playerId === playerId);
+    this.eventBus.publish({
+      type: 'DungeonStarted',
+      playerId,
+      participantIds: persisted.participants.map((participant) => participant.playerId),
+      runId: persisted.id,
+      dungeonId,
+      ownerType,
+      ownerId,
+      enemyId: persisted.enemy?.id || null,
+      enemyName: persisted.enemy?.name || null,
+      enemyHp: persisted.enemy?.hp ?? null,
+      enemyMaxHp: persisted.enemy?.maxHp ?? null,
+      actorHp: actor?.hp ?? null,
+      actorMaxHp: actor?.maxHp ?? null,
+      phase: persisted.phase,
+    });
     return this.#decorateRun(persisted, playerId);
   }
 
   attack(playerId, runId) {
     const { run, character, equipped } = this.#combatContext(playerId, runId);
     const outcome = run.attack({ playerId, attackPower: character.attackPower, equipmentEffect: equipped?.effectCode ?? 'none' });
-    return this.#persistCombatOutcome(playerId, run, outcome);
+    return this.#persistCombatOutcome(playerId, run, outcome, 'attack');
   }
 
   guard(playerId, runId) {
     const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId }));
+    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId }), 'guard');
   }
 
   interrupt(playerId, runId) {
     const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId }));
+    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId }), 'interrupt');
   }
 
   mend(playerId, runId, targetPlayerId) {
     const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId }));
+    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId }), 'mend');
   }
 
   revive(playerId, runId, targetPlayerId) {
     const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId }));
+    return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId }), 'revive');
   }
 
   chooseUpgrade(playerId, runId, upgradeId) {
@@ -152,9 +168,51 @@ export class GameService {
     return { run, player, equipped, character: new Character({ ...player, equippedItem: equipped }) };
   }
 
-  #persistCombatOutcome(playerId, run, outcome) {
+  #publishResolvedAction(playerId, action, outcome) {
+    const state = outcome.state;
+    const actor = state.participants.find((participant) => participant.playerId === playerId) || null;
+    const damaged = outcome.events.find((event) => event.type === 'PlayerDamaged') || null;
+    const damagedTarget = damaged ? state.participants.find((participant) => participant.playerId === damaged.playerId) || null : null;
+    const defeated = outcome.events.find((event) => event.type === 'EnemyDefeated') || null;
+    const healed = outcome.events.find((event) => event.type === 'PlayerHealed') || null;
+    const revived = outcome.events.find((event) => event.type === 'PlayerRevived') || null;
+    const interrupted = outcome.events.find((event) => event.type === 'EnemyInterrupted') || null;
+    const prevented = damaged ? Math.max(0, Number(damaged.rawDamage || 0) - Number(damaged.damage || 0)) : 0;
+
+    this.eventBus.publish({
+      type: 'CombatActionResolved',
+      playerId,
+      participantIds: state.participants.map((participant) => participant.playerId),
+      runId: state.id,
+      dungeonId: state.dungeonId,
+      action,
+      damage: Number(outcome.damage || 0),
+      retaliation: Number(outcome.retaliation || damaged?.damage || 0),
+      prevented,
+      healed: Number(outcome.healed || healed?.amount || 0),
+      restoredHp: Number(outcome.restoredHp || revived?.restoredHp || 0),
+      targetPlayerId: healed?.targetPlayerId || revived?.targetPlayerId || damaged?.playerId || null,
+      actorHp: actor?.hp ?? null,
+      actorMaxHp: actor?.maxHp ?? null,
+      targetHp: damagedTarget?.hp ?? null,
+      targetMaxHp: damagedTarget?.maxHp ?? null,
+      enemyId: state.enemy?.id || defeated?.enemyId || null,
+      enemyName: state.enemy?.name || null,
+      enemyHp: state.enemy?.hp ?? null,
+      enemyMaxHp: state.enemy?.maxHp ?? null,
+      defeatedEnemyId: defeated?.enemyId || null,
+      defeatedBoss: Boolean(defeated?.isBoss),
+      interruptedIntentId: interrupted?.intentId || null,
+      enemyIntent: state.enemyIntent ? structuredClone(state.enemyIntent) : null,
+      phase: state.phase,
+      encounterIndex: state.encounterIndex,
+    });
+  }
+
+  #persistCombatOutcome(playerId, run, outcome, action) {
     outcome.state = this.repository.saveRun(outcome.state);
     this.eventBus.publishAll(outcome.events);
+    this.#publishResolvedAction(playerId, action, outcome);
 
     let rewards = null;
     if (outcome.state.phase === 'complete' && !outcome.state.rewardsGranted) {
