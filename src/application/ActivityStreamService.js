@@ -102,6 +102,8 @@ export class ActivityStreamService {
         const item = this.gameRepository.getItem(event.itemId);
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}.` };
       }
+      case 'ItemSalvaged':
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} salvaged ${event.itemName || 'a relic'} into ${event.threadDust} Thread Dust.` };
       case 'PartyCreated':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} formed a party.` };
       case 'PartyMemberJoined':
