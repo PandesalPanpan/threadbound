@@ -105,24 +105,21 @@ export class SQLiteGameRepository {
     this.db.prepare('DELETE FROM party_members WHERE party_id = ? AND player_id = ?').run(partyId, playerId);
   }
 
-  deleteParty(partyId) {
-    this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId);
-  }
-
-  setPartyStatus(partyId, status) {
-    this.db.prepare('UPDATE parties SET status = ? WHERE id = ?').run(status, partyId);
-  }
+  deleteParty(partyId) { this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId); }
+  setPartyStatus(partyId, status) { this.db.prepare('UPDATE parties SET status = ? WHERE id = ?').run(status, partyId); }
 
   createRun(state) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      this.db.prepare('INSERT INTO dungeon_runs (id, player_id, dungeon_id, phase, state_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-        state.id, state.startedByPlayerId, state.dungeonId, state.phase, JSON.stringify(state), state.createdAt, new Date().toISOString(),
+      const persisted = { ...state, version: 0 };
+      this.db.prepare('INSERT INTO dungeon_runs (id, player_id, dungeon_id, phase, state_json, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').run(
+        persisted.id, persisted.startedByPlayerId, persisted.dungeonId, persisted.phase, JSON.stringify(persisted), persisted.createdAt, new Date().toISOString(),
       );
       const insertParticipant = this.db.prepare('INSERT INTO dungeon_run_participants (run_id, player_id) VALUES (?, ?)');
-      for (const participant of state.participants) insertParticipant.run(state.id, participant.playerId);
-      if (state.ownerType === 'party') this.db.prepare("UPDATE parties SET status = 'in_run' WHERE id = ?").run(state.ownerId);
+      for (const participant of persisted.participants) insertParticipant.run(persisted.id, participant.playerId);
+      if (persisted.ownerType === 'party') this.db.prepare("UPDATE parties SET status = 'in_run' WHERE id = ?").run(persisted.ownerId);
       this.db.exec('COMMIT');
+      return persisted;
     } catch (error) {
       this.db.exec('ROLLBACK');
       throw error;
@@ -130,28 +127,47 @@ export class SQLiteGameRepository {
   }
 
   getRun(runId) {
-    const row = this.db.prepare('SELECT state_json FROM dungeon_runs WHERE id = ?').get(runId);
-    return row ? JSON.parse(row.state_json) : null;
+    return this.#decodeRunRow(this.db.prepare('SELECT state_json, version FROM dungeon_runs WHERE id = ?').get(runId));
   }
 
   saveRun(state) {
-    this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, updated_at = ? WHERE id = ?').run(state.phase, JSON.stringify(state), new Date().toISOString(), state.id);
+    const expectedVersion = Number.isInteger(state.version) ? state.version : 0;
+    const nextState = { ...state, version: expectedVersion + 1 };
+    const result = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
+      nextState.phase,
+      JSON.stringify(nextState),
+      nextState.version,
+      new Date().toISOString(),
+      nextState.id,
+      expectedVersion,
+    );
+    if (result.changes !== 1) {
+      const error = new Error('Dungeon state changed before this action could be saved. Refresh and retry.');
+      error.code = 'stale_run_version';
+      throw error;
+    }
+    return nextState;
   }
 
   getActiveRun(playerId) {
-    const row = this.db.prepare("SELECT dr.state_json FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
-    return row ? JSON.parse(row.state_json) : null;
+    const row = this.db.prepare("SELECT dr.state_json, dr.version FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
+    return this.#decodeRunRow(row);
   }
 
   completeRunWithRewards(state, rewardsByPlayer, { threadDust = 15, worldProgressKey }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const storedRow = this.db.prepare('SELECT state_json FROM dungeon_runs WHERE id = ?').get(state.id);
+      const storedRow = this.db.prepare('SELECT state_json, version FROM dungeon_runs WHERE id = ?').get(state.id);
       if (!storedRow) throw new Error('Run not found while applying completion rewards.');
-      const stored = JSON.parse(storedRow.state_json);
+      const stored = this.#decodeRunRow(storedRow);
       if (stored.rewardsGranted) {
         this.db.exec('ROLLBACK');
         return { applied: false, state: stored };
+      }
+      if (stored.version !== state.version) {
+        const error = new Error('Dungeon state changed before completion rewards could be saved. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
       }
 
       for (const [playerId, item] of Object.entries(rewardsByPlayer)) {
@@ -159,15 +175,24 @@ export class SQLiteGameRepository {
         this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(threadDust, playerId);
       }
       this.db.prepare('INSERT INTO world_progress (progress_key, amount) VALUES (?, 1) ON CONFLICT(progress_key) DO UPDATE SET amount = amount + 1').run(worldProgressKey);
-      this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, updated_at = ? WHERE id = ?').run(state.phase, JSON.stringify(state), new Date().toISOString(), state.id);
 
-      if (state.ownerType === 'party') {
-        this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(state.ownerId);
-        this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(state.ownerId, state.ownerId);
+      const nextState = { ...state, version: state.version + 1 };
+      const update = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
+        nextState.phase, JSON.stringify(nextState), nextState.version, new Date().toISOString(), nextState.id, state.version,
+      );
+      if (update.changes !== 1) {
+        const error = new Error('Dungeon state changed before completion rewards could be committed. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+
+      if (nextState.ownerType === 'party') {
+        this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(nextState.ownerId);
+        this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(nextState.ownerId, nextState.ownerId);
       }
 
       this.db.exec('COMMIT');
-      return { applied: true, state };
+      return { applied: true, state: nextState };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -208,6 +233,11 @@ export class SQLiteGameRepository {
     this.db.prepare(`${verb} INTO items (id, player_id, definition_id, name, slot, rarity, attack_bonus, effect_code, effect_json, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
       item.id, playerId, item.definitionId, item.name, item.slot, item.rarity, item.attackBonus, item.effectCode, JSON.stringify(item.effect), item.source,
     );
+  }
+
+  #decodeRunRow(row) {
+    if (!row) return null;
+    return { ...JSON.parse(row.state_json), version: row.version };
   }
 
   #decodePlayer(row) {
@@ -274,6 +304,7 @@ export class SQLiteGameRepository {
         dungeon_id TEXT NOT NULL,
         phase TEXT NOT NULL,
         state_json TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -306,5 +337,10 @@ export class SQLiteGameRepository {
         UNIQUE (threaded_transaction_id)
       );
     `);
+
+    const runColumns = this.db.prepare('PRAGMA table_info(dungeon_runs)').all();
+    if (!runColumns.some((column) => column.name === 'version')) {
+      this.db.exec('ALTER TABLE dungeon_runs ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+    }
   }
 }
