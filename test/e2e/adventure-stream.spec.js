@@ -70,6 +70,17 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     await expect(firstEntered).toContainText('Frayed Wisp 12/12 HP');
     await expect(firstEntered).toContainText('Choose your first action');
 
+    // System messages are progressively enhanced into scannable combat receipts.
+    const mobileEntered = first.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C entered Frayed Hollow/ });
+    const startReceipt = mobileEntered.getByTestId('stream-dungeon-start-card');
+    await expect(startReceipt).toBeVisible({ timeout: 7000 });
+    await expect(startReceipt).toContainText('DUNGEON ENTERED');
+    await expect(startReceipt.getByTestId('stream-actor-hp')).toHaveText('40 / 40 HP');
+    await expect(startReceipt.getByTestId('stream-enemy-hp')).toHaveText('12 / 12 HP');
+    await expect(startReceipt.locator('img[src="/sprites/weaver.svg"]')).toBeVisible();
+    await expect(startReceipt.locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
+    expect(await first.getByTestId('adventure-stream-log').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
+
     // The timeline + contextual row are the game UI; the old persistent combat HUD is gone.
     await expect(first.getByTestId('stream-combat-dock')).toBeHidden();
     await expect(first.getByTestId('enemy-card').locator('img[src="/sprites/frayed-wisp.svg"]')).toBeVisible();
@@ -85,8 +96,20 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     const attackResult = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ }).last();
     await expect(attackResult).toBeVisible({ timeout: 7000 });
     await expect(attackResult).toContainText(/Frayed Wisp \d+\/12/);
+
+    const mobileAttackResult = first.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ }).last();
+    const attackReceipt = mobileAttackResult.getByTestId('stream-combat-result-card');
+    await expect(attackReceipt).toBeVisible({ timeout: 7000 });
+    await expect(attackReceipt).toContainText('ATTACK');
+    await expect(attackReceipt.getByTestId('stream-actor-hp')).toContainText('/ 40 HP');
+    await expect(attackReceipt.getByTestId('stream-enemy-hp')).toContainText('/ 12 HP');
+    expect(await attackReceipt.locator('.stream-result-chip').count()).toBeGreaterThan(0);
+    expect(await first.getByTestId('adventure-stream-log').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
+
     await guard.click();
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C guarded/ }).last()).toBeVisible();
+    const guardResult = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C guarded/ }).last();
+    await expect(guardResult).toBeVisible();
+    await expect(guardResult.getByTestId('stream-combat-result-card')).toContainText('GUARD');
 
     // Independent dungeon instances still coexist socially.
     await second.getByTestId('stream-message').fill('');
@@ -104,7 +127,9 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     await expect(second.getByTestId('stream-connection')).toHaveText('WebSocket live');
     await expect(second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' })).toBeVisible();
     await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C entered Frayed Hollow/ })).toBeVisible();
-    await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ })).toBeVisible();
+    const reloadedAttack = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ });
+    await expect(reloadedAttack).toBeVisible();
+    await expect(reloadedAttack.getByTestId('stream-combat-result-card')).toBeVisible({ timeout: 7000 });
   } finally {
     await firstContext.close();
     await secondContext.close();
