@@ -1,3 +1,5 @@
+import { enemySprite, weaverSprite } from './sprite-catalog.js';
+
 const streamEl = document.querySelector('#stream');
 
 if (streamEl) {
@@ -127,8 +129,7 @@ if (streamEl) {
   }
 
   function spriteForEnemy(enemy) {
-    if (!enemy) return '/sprites/frayed-wisp.svg';
-    return enemy.isBoss ? '/sprites/boss.svg' : `/sprites/${enemy.id}.svg`;
+    return enemySprite(enemy);
   }
 
   function clearCommandCard() {
@@ -199,7 +200,7 @@ if (streamEl) {
 
     const hero = document.createElement('article');
     hero.className = 'thread-status-unit';
-    hero.innerHTML = `<img src="/sprites/weaver.svg" alt="" class="thread-sprite"><div><span>YOU</span><strong></strong><small></small></div>`;
+    hero.innerHTML = `<img src="${weaverSprite(dashboard.character.id)}" alt="" class="thread-sprite" data-testid="stream-weaver-sprite"><div><span>YOU</span><strong></strong><small></small></div>`;
     hero.querySelector('strong').textContent = dashboard.character.displayName;
     hero.querySelector('small').textContent = `HP ${viewer?.hp ?? dashboard.character.maxHealth}/${viewer?.maxHp ?? dashboard.character.maxHealth} · ATK ${dashboard.character.attackPower}`;
     grid.append(hero);

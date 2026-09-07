@@ -1,3 +1,5 @@
+import { enemySprite, weaverSprite } from './sprite-catalog.js';
+
 document.documentElement.classList.add('threadbound-player-root');
 document.body.classList.add('threadbound-player');
 for (const href of ['/game.css', '/game-feel.css']) {
@@ -146,9 +148,11 @@ function renderParty(data) {
     const row = document.createElement('div');
     row.className = `member ${member.ready ? 'is-ready-member' : ''}`;
     row.dataset.testid = 'party-member';
-    const avatar = document.createElement('span');
+    const avatar = document.createElement('img');
     avatar.className = 'member-avatar';
-    avatar.textContent = member.displayName.slice(0, 1).toUpperCase();
+    avatar.src = weaverSprite(member.playerId);
+    avatar.alt = '';
+    avatar.dataset.testid = 'party-member-sprite';
     const copy = document.createElement('div');
     const name = document.createElement('strong');
     name.textContent = `${member.displayName}${member.playerId === party.leaderPlayerId ? ' · Leader' : ''}`;
@@ -239,7 +243,7 @@ function renderDungeon(data) {
     const enemy = document.createElement('div');
     enemy.className = `enemy-card ${run.enemy.isBoss ? 'boss-card' : ''}`;
     enemy.dataset.testid = 'enemy-card';
-    enemy.innerHTML = `<img src="${run.enemy.isBoss ? '/sprites/boss.svg' : `/sprites/${run.enemy.id}.svg`}" alt="" class="thread-sprite"><div class="enemy-body"><div class="enemy-name"><span></span><span>${run.enemy.hp}/${run.enemy.maxHp} HP</span></div>${progressBar(run.enemy.hp, run.enemy.maxHp)}</div>`;
+    enemy.innerHTML = `<img src="${enemySprite(run.enemy)}" alt="" class="thread-sprite"><div class="enemy-body"><div class="enemy-name"><span></span><span>${run.enemy.hp}/${run.enemy.maxHp} HP</span></div>${progressBar(run.enemy.hp, run.enemy.maxHp)}</div>`;
     enemy.querySelector('.enemy-name span').textContent = `${run.enemy.name}${run.enemy.isBoss ? ' · BOSS' : ''}`;
     dungeonEl.append(enemy);
   }
@@ -349,7 +353,7 @@ async function doRefresh({ quiet = false } = {}) {
   const sourceLabel = data.authSource === 'local' ? 'Local Weaver' : 'Threaded Weaver';
   identityEl.innerHTML = `<div class="identity-pill"><span>${sourceLabel}</span><strong data-testid="threaded-user"></strong><small data-testid="auth-source">${data.authSource}</small></div>`;
   identityEl.querySelector('[data-testid="threaded-user"]').textContent = data.threadedUser.name || data.threadedUser.username || data.threadedUser.id;
-  characterEl.innerHTML = `<div class="section-heading"><span>YOUR WEAVER</span><h2></h2></div><div class="weaver-summary"><img src="/sprites/weaver.svg" alt="" class="thread-sprite"><div class="stat-strip"><div class="stat-chip attack-stat"><span>Attack</span><strong data-testid="attack-power">${data.character.attackPower}</strong></div><div class="stat-chip"><span>Health</span><strong>${data.character.maxHealth}</strong></div><div class="stat-chip dust-stat"><span>Dust</span><strong data-testid="thread-dust">${data.character.threadDust}</strong></div></div></div><p class="equipped-summary">Equipped: <strong data-testid="equipped-item"></strong></p>`;
+  characterEl.innerHTML = `<div class="section-heading"><span>YOUR WEAVER</span><h2></h2></div><div class="weaver-summary"><img src="${weaverSprite(data.character.id)}" alt="" class="thread-sprite" data-testid="weaver-character-sprite"><div class="stat-strip"><div class="stat-chip attack-stat"><span>Attack</span><strong data-testid="attack-power">${data.character.attackPower}</strong></div><div class="stat-chip"><span>Health</span><strong>${data.character.maxHealth}</strong></div><div class="stat-chip dust-stat"><span>Dust</span><strong data-testid="thread-dust">${data.character.threadDust}</strong></div></div></div><p class="equipped-summary">Equipped: <strong data-testid="equipped-item"></strong></p>`;
   characterEl.querySelector('h2').textContent = data.character.displayName;
   characterEl.querySelector('[data-testid="equipped-item"]').textContent = data.character.equippedItem?.name || 'None';
   renderDungeon(data);
