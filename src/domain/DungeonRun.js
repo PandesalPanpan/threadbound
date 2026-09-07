@@ -7,7 +7,7 @@ export const DUNGEONS = Object.freeze({
     maxPlayers: 4,
     encounters: Object.freeze([
       Object.freeze({
-        id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2,
+        id: 'frayed-wisp', name: 'Frayed Wisp', hp: 18, retaliation: 2,
         behavior: Object.freeze({
           intentEvery: 2,
           intents: Object.freeze([
@@ -16,7 +16,7 @@ export const DUNGEONS = Object.freeze({
         }),
       }),
       Object.freeze({
-        id: 'hollow-stalker', name: 'Hollow Stalker', hp: 16, retaliation: 3,
+        id: 'hollow-stalker', name: 'Hollow Stalker', hp: 24, retaliation: 3,
         behavior: Object.freeze({
           intentEvery: 2,
           intents: Object.freeze([
@@ -25,7 +25,7 @@ export const DUNGEONS = Object.freeze({
         }),
       }),
       Object.freeze({
-        id: 'silkbound-guard', name: 'Silkbound Guard', hp: 20, retaliation: 3,
+        id: 'silkbound-guard', name: 'Silkbound Guard', hp: 24, retaliation: 3,
         behavior: Object.freeze({
           intentEvery: 2,
           intents: Object.freeze([
@@ -218,8 +218,13 @@ export class DungeonRun {
   attack({ playerId, attackPower, equipmentEffect = 'none', now = new Date().toISOString() }) {
     this.#assertCombat();
     const events = [];
-    this.#resolveDueIntent(events, now);
     const participant = this.#actingParticipant(playerId);
+    let intentRetaliation = this.#resolveDueIntent(events, now);
+    if (!intentRetaliation && this.state.enemyIntent) intentRetaliation = this.#resolveIntent(events, now);
+    if (participant.hp <= 0 || this.state.phase === 'failed') {
+      return { state: this.toJSON(), events, damage: 0, retaliation: intentRetaliation, focusGained: 0, intentResolved: true };
+    }
+
     let damage = attackPower + this.state.runAttackBonus;
     if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) damage += 2;
     if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) damage += 2;
@@ -234,21 +239,23 @@ export class DungeonRun {
     this.#finishAction(participant);
 
     if (this.state.enemy?.hp === 0) return this.#defeatOutcome(events, playerId, dealt, now);
-    const retaliation = this.#retaliate(events);
+    const retaliation = intentRetaliation || this.#retaliate(events);
     if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
-    return { state: this.toJSON(), events, damage: dealt, retaliation, focusGained: 1 };
+    return { state: this.toJSON(), events, damage: dealt, retaliation, focusGained: 1, intentResolved: Boolean(intentRetaliation) };
   }
 
   powerStrike({ playerId, attackPower, equipmentEffect = 'none', now = new Date().toISOString() }) {
     this.#assertCombat();
     const events = [];
-    this.#resolveDueIntent(events, now);
     const participant = this.#actingParticipant(playerId);
+    let intentRetaliation = this.#resolveDueIntent(events, now);
+    if (participant.hp <= 0 || this.state.phase === 'failed') {
+      return { state: this.toJSON(), events, damage: 0, retaliation: intentRetaliation, focusSpent: 0, intentResolved: true };
+    }
     this.#assertReady(participant, 'powerStrike');
     const cost = Math.max(1, this.state.runModifiers.powerStrikeCost);
     if (participant.focus < cost) throw new Error(`Power Strike requires ${cost} Focus.`);
 
-    participant.focus -= cost;
     let countered = false;
     if (this.state.enemyIntent?.counter === 'power-strike') {
       const intent = structuredClone(this.state.enemyIntent);
@@ -257,8 +264,14 @@ export class DungeonRun {
       this.state.enemy.staggeredHits = Math.max(this.state.enemy.staggeredHits, 1);
       countered = true;
       events.push({ type: 'EnemyIntentCountered', playerId, runId: this.state.id, enemyId: this.state.enemy.id, intentId: intent.id, counter: 'power-strike' });
+    } else if (this.state.enemyIntent) {
+      intentRetaliation = this.#resolveIntent(events, now);
+      if (participant.hp <= 0 || this.state.phase === 'failed') {
+        return { state: this.toJSON(), events, damage: 0, retaliation: intentRetaliation, focusSpent: 0, intentResolved: true };
+      }
     }
 
+    participant.focus -= cost;
     let damage = attackPower + this.state.runAttackBonus + this.state.runModifiers.powerStrikeBonus + (countered ? 2 : 0);
     if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) damage += 2;
     if (participant.riposteBonus > 0) {
@@ -270,9 +283,9 @@ export class DungeonRun {
     this.#finishAction(participant, 'powerStrike', 2);
 
     if (this.state.enemy?.hp === 0) return this.#defeatOutcome(events, playerId, dealt, now, { focusSpent: cost, countered });
-    const retaliation = this.#retaliate(events);
+    const retaliation = intentRetaliation || this.#retaliate(events);
     if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
-    return { state: this.toJSON(), events, damage: dealt, retaliation, focusSpent: cost, countered };
+    return { state: this.toJSON(), events, damage: dealt, retaliation, focusSpent: cost, countered, intentResolved: Boolean(intentRetaliation) };
   }
 
   guard({ playerId, equipmentEffect = 'none', now = new Date().toISOString() }) {
