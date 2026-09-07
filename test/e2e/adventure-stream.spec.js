@@ -6,7 +6,7 @@ async function loginLocal(page, slot, expectedName) {
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.getByTestId('threaded-user')).toHaveText(expectedName);
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await expect(page.getByTestId('stream-connection')).toHaveText('Live');
+  await expect(page.getByTestId('stream-connection')).toHaveText('WebSocket live');
 }
 
 async function sendMessage(page, message) {
@@ -15,7 +15,12 @@ async function sendMessage(page, message) {
   await expect(page.getByTestId('stream-message')).toHaveValue('');
 }
 
-test('two independent players share realtime chat and system activity without refreshing', async ({ browser }) => {
+test('two independent players share realtime chat and system activity over WebSocket without refreshing', async ({ browser }) => {
+  const anonymousContext = await browser.newContext();
+  const unauthenticatedToken = await anonymousContext.request.get('/api/realtime-token');
+  expect(unauthenticatedToken.status()).toBe(401);
+  await anonymousContext.close();
+
   const firstContext = await browser.newContext();
   const secondContext = await browser.newContext();
   const first = await firstContext.newPage();
@@ -65,7 +70,7 @@ test('two independent players share realtime chat and system activity without re
     expect((await tooLong.json()).error).toBe('invalid_chat_message');
 
     await second.reload();
-    await expect(second.getByTestId('stream-connection')).toHaveText('Live');
+    await expect(second.getByTestId('stream-connection')).toHaveText('WebSocket live');
     await expect(second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' })).toBeVisible();
     await expect(second.getByTestId('stream-system-entry').filter({ hasText: 'Local Weaver A entered Frayed Hollow.' })).toBeVisible();
   } finally {
