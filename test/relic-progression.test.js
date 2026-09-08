@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventBus } from '../src/application/EventBus.js';
+import { GameService } from '../src/application/GameService.js';
 import { InventoryService } from '../src/application/InventoryService.js';
 import { AdventureRun } from '../src/domain/AdventureRun.js';
 import { planRelicUpgrade, relicProgression } from '../src/domain/RelicProgressionPolicy.js';
@@ -132,12 +133,14 @@ test('Tempering atomically spends Dust, raises Attack, persists attunement, and 
   gameRepository.close();
 });
 
-test('insufficient Dust and active runs leave relic progression unchanged', () => {
+test('insufficient Dust and active runs leave relic progression and equipment unchanged', () => {
   const gameRepository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'p1' });
   const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'u1', displayName: 'Weaver' });
   gameRepository.addItem(player.id, item('locked', { rarity: 'rare', attackBonus: 4 }));
   const inventoryRepository = new SQLiteInventoryRepository({ database: gameRepository.db });
-  const service = new InventoryService({ inventoryRepository, gameRepository, eventBus: new EventBus() });
+  const eventBus = new EventBus();
+  const service = new InventoryService({ inventoryRepository, gameRepository, eventBus });
+  const gameService = new GameService({ repository: gameRepository, eventBus });
 
   assert.throws(() => service.upgrade(player.id, 'locked', 'bulwark'), (error) => error.code === 'insufficient_thread_dust');
   assert.equal(gameRepository.getItem('locked').attackBonus, 4);
@@ -158,6 +161,8 @@ test('insufficient Dust and active runs leave relic progression unchanged', () =
     () => inventoryRepository.upgradeItem({ playerId: player.id, itemId: 'locked', expectedLevel: 0, cost: 8, attackIncrease: 1, attunementCode: 'bulwark' }),
     (error) => error.code === 'relic_upgrade_during_run',
   );
+  assert.throws(() => gameService.equipItem(player.id, 'locked'), (error) => error.code === 'item_equip_during_run');
+  assert.equal(gameRepository.getPlayer(player.id).equippedItemId, null);
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 20);
   assert.equal(gameRepository.getItem('locked').attackBonus, 4);
   assert.equal(gameRepository.getItem('locked').effect.upgradeLevel, 0);
@@ -194,7 +199,7 @@ test('Executioner rewards the Exposed → Severing Knot combo with a primed foll
   assert.equal(hpBefore - attack.state.enemy.hp, 10);
 });
 
-test('Mender adds two recovery per living Weaver to Mending Chorus while normal retaliation still resolves', () => {
+test('Mender adds two recovery per living Weaver and keeps contribution totals honest', () => {
   const run = partyRun();
   const state = run.toJSON();
   for (const participant of state.participants) {
@@ -208,5 +213,6 @@ test('Mender adds two recovery per living Weaver to Mending Chorus while normal 
   assert.equal(outcome.retaliation, 2);
   assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'a').hp, 25);
   assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'b').hp, 27);
+  assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'a').healingDone, 14);
   assert.ok(outcome.events.some((event) => event.type === 'RelicAttunementTriggered' && event.effect === 'bonus_healing' && event.amount === 4));
 });
