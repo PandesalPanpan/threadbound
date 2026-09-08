@@ -13,6 +13,27 @@ const ENEMY_SPRITES = Object.freeze({
   'silkbound-guard': '/sprites/kenney/silkbound-guard.png',
 });
 
+let viewerPlayerId = null;
+let viewerStableIdentity = null;
+
+// Local development profiles are stable identities (local:a … local:d), while the
+// persisted player row may use a generated UUID. Resolve the viewer once at module
+// load so the same local Weaver keeps the same visual variant across fresh databases
+// and separate browser sessions. Other players still use their persisted player IDs.
+if (globalThis.window?.THREADBOUND_AUTH_MODE === 'local') {
+  try {
+    const response = await fetch('/api/dashboard', { headers: { Accept: 'application/json' } });
+    if (response.ok) {
+      const dashboard = await response.json();
+      viewerPlayerId = dashboard.character?.id || null;
+      viewerStableIdentity = dashboard.threadedUser?.id || null;
+    }
+  } catch {
+    // Sprite selection is presentation-only; fall back to the supplied seed if the
+    // dashboard is unavailable during initial module evaluation.
+  }
+}
+
 function stableIndex(seed, size) {
   const value = String(seed || 'threadbound-weaver');
   let hash = 2166136261;
@@ -24,7 +45,10 @@ function stableIndex(seed, size) {
 }
 
 export function weaverSprite(seed) {
-  return WEAVER_SPRITES[stableIndex(seed, WEAVER_SPRITES.length)];
+  const effectiveSeed = viewerStableIdentity && String(seed) === String(viewerPlayerId)
+    ? viewerStableIdentity
+    : seed;
+  return WEAVER_SPRITES[stableIndex(effectiveSeed, WEAVER_SPRITES.length)];
 }
 
 export function enemySprite(enemy = {}) {
