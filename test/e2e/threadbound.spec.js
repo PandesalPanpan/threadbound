@@ -31,7 +31,10 @@ async function streamAction(page, context, testId) {
   const before = await dashboard(context);
   const runId = before.activeRun?.id;
   const version = before.activeRun?.version ?? -1;
-  await page.getByTestId(testId).click();
+  const action = page.getByTestId(testId);
+  await expect(action).toBeVisible({ timeout: 5000 });
+  await expect(action).toBeEnabled({ timeout: 5000 });
+  await action.click();
   await expect.poll(async () => {
     const after = await dashboard(context);
     if (!after.activeRun) return true;
@@ -59,7 +62,6 @@ async function actionsUntilPhaseChanges(context, page, expectedPhase, limit = 60
   for (let index = 0; index < limit; index += 1) {
     const state = await dashboard(context);
     if (state.activeRun?.phase !== expectedPhase) return;
-    await page.reload();
     await reactOrAttackFromThread(page, context);
   }
   throw new Error(`Run did not leave ${expectedPhase} within ${limit} explicit actions.`);
@@ -81,13 +83,13 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
 
     const page = pages[index];
     const context = contexts[index];
-    await page.reload();
-    await expect(page.getByTestId('run-state')).toContainText(`Phase: ${expectedPhase}`);
+    await expect(page.getByTestId('run-state')).toContainText(`Phase: ${expectedPhase}`, { timeout: 5000 });
 
     const downed = actorState.activeRun.participants.find((participant) => participant.hp <= 0);
     if (downed && actorState.activeRun.viewer.reviveCharges > 0) {
       const revive = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
       if (await revive.count()) {
+        await expect(revive).toBeVisible({ timeout: 5000 });
         await revive.click();
         await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout: 5000 }).toBeGreaterThan(actorState.activeRun.version);
         turn += 1;
@@ -192,30 +194,26 @@ test('two browser sessions form a party and complete one shared scaled dungeon t
     await expect(partner.getByTestId('party-member')).toHaveCount(2);
     await clickAndWait(partner, 'toggle-ready');
 
-    await leader.reload();
-    await expect(leader.getByTestId('party-readiness')).toContainText('All members ready');
+    await expect(leader.getByTestId('party-readiness')).toContainText('All members ready', { timeout: 5000 });
     await startFromThread(leader, leaderContext);
 
     await expect(leader.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(leader.getByTestId('run-scaling')).toContainText('Enemy HP ×1.65');
     await expect(leader.getByTestId('run-participant')).toHaveCount(2);
 
-    await partner.reload();
-    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
-    await expect(partner.getByTestId('party-readiness')).toContainText('locked');
+    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers', { timeout: 5000 });
+    await expect(partner.getByTestId('party-readiness')).toContainText('locked', { timeout: 5000 });
 
     await attackFromThread(leader, leaderContext);
-    await partner.reload();
     await attackFromThread(partner, partnerContext);
-    await leader.reload();
-    const contributionRows = await leader.getByTestId('run-participant').allTextContents();
-    expect(contributionRows.every((row) => /damage [1-9]\d*/.test(row))).toBe(true);
+    await expect.poll(async () => {
+      const rows = await leader.getByTestId('run-participant').allTextContents();
+      return rows.length === 2 && rows.every((row) => /damage [1-9]\d*/.test(row));
+    }, { timeout: 5000 }).toBe(true);
 
     let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', 2);
-    await leader.reload();
-    await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade');
-    await partner.reload();
-    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting');
+    await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade', { timeout: 5000 });
+    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
 
     await leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Disruptor Knot' }).click();
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
@@ -225,6 +223,8 @@ test('two browser sessions form a party and complete one shared scaled dungeon t
     const completedState = await dashboard(leaderContext);
     expect(completedState.activeRun).toBeNull();
 
+    // A final reload is intentional: rewards and party state must reconstruct durably,
+    // while combat synchronization above is proven through realtime updates only.
     await leader.reload();
     await partner.reload();
     await expect(leader.getByTestId('inventory-item')).toHaveCount(1);
