@@ -15,13 +15,13 @@ async function dashboard(context) {
   return response.json();
 }
 
-async function versionedAction(page, context, testId) {
+async function versionedLocatorAction(page, context, locate) {
   const before = await dashboard(context);
   const runId = before.activeRun?.id;
   const version = before.activeRun?.version ?? -1;
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  const button = page.getByTestId(testId);
+  const button = locate();
   await expect(button).toBeVisible({ timeout: 5000 });
   await expect(button).toBeEnabled({ timeout: 5000 });
   await button.click();
@@ -31,6 +31,10 @@ async function versionedAction(page, context, testId) {
     if (after.activeRun.id !== runId) return true;
     return after.activeRun.version > version;
   }, { timeout: 5000 }).toBe(true);
+}
+
+async function versionedAction(page, context, testId) {
+  return versionedLocatorAction(page, context, () => page.getByTestId(testId));
 }
 
 async function playUntilPhase(page, context, targetPhase, limit = 100) {
@@ -53,7 +57,7 @@ async function playUntilPhase(page, context, targetPhase, limit = 100) {
     if (!['combat', 'boss'].includes(run.phase)) throw new Error(`Unexpected phase ${run.phase} while waiting for ${targetPhase}.`);
 
     if (run.viewer.hp <= 18 && run.viewer.mendCharges > 0 && run.viewer.hp < run.viewer.maxHp) {
-      await versionedAction(page, context, 'stream-mend');
+      await versionedLocatorAction(page, context, () => page.getByTestId('stream-suggestions').getByRole('button', { name: 'Mend ally' }));
       continue;
     }
     if (run.enemyIntent) {
