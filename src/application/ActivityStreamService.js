@@ -61,8 +61,10 @@ export class ActivityStreamService {
   #combatResult(event, actorName) {
     const action = String(event.action || 'action').toLowerCase();
     const actorHp = event.actorHp === null || event.actorHp === undefined ? '' : `❤️ ${event.actorHp}/${event.actorMaxHp}`;
+    const actorFocus = event.actorFocus === null || event.actorFocus === undefined ? '' : `🧵 Focus ${event.actorFocus}/${event.actorMaxFocus}`;
     const enemyName = event.enemyName || (event.enemyId ? titleize(event.enemyId) : 'enemy');
     const enemyHp = event.enemyHp === null || event.enemyHp === undefined ? '' : `👾 ${enemyName} ${event.enemyHp}/${event.enemyMaxHp}`;
+    const exposed = Number(event.enemyStatuses?.exposed || 0) > 0 ? ' · ✦ EXPOSED' : '';
     const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
     const retaliation = event.retaliation > 0
       ? ` · ${targetName && event.targetPlayerId !== event.playerId ? `${targetName} took ${event.retaliation}` : `took ${event.retaliation}`}`
@@ -85,9 +87,16 @@ export class ActivityStreamService {
       result = `${actorName} mended ${targetName || 'an ally'} for ${event.healed} HP${retaliation}.`;
     } else if (action === 'revive') {
       result = `${actorName} revived ${targetName || 'an ally'} with ${event.restoredHp} HP${retaliation}.`;
+    } else if (action === 'skill') {
+      const skillName = titleize(event.skillId || 'combat skill');
+      const combo = event.combo ? ` · COMBO ${titleize(event.combo)} +${event.comboBonus} damage` : '';
+      const interrupted = event.interruptedIntentId ? ' · interrupted the telegraph' : '';
+      if (event.damage > 0) result = `${actorName} used ${skillName} on ${enemyName} for ${event.damage} damage${combo}${interrupted}${retaliation}.`;
+      else if (event.healed > 0) result = `${actorName} used ${skillName} and restored ${event.healed} total party HP${retaliation}.`;
+      else result = `${actorName} used ${skillName}${interrupted}${retaliation}.`;
     } else result = `${actorName} used ${titleize(action)}.`;
 
-    const state = [actorHp, event.phase === 'upgrade' || event.phase === 'complete' ? '' : enemyHp].filter(Boolean).join(' · ');
+    const state = [actorHp, actorFocus, event.phase === 'upgrade' || event.phase === 'complete' ? '' : `${enemyHp}${exposed}`].filter(Boolean).join(' · ');
     return `${result}${state ? ` ${state}.` : ''}${intent}${phase}`;
   }
 
@@ -106,8 +115,8 @@ export class ActivityStreamService {
       case 'CombatActionResolved':
         return { actorPlayerId: event.playerId, actorName, body: this.#combatResult(event, actorName) };
 
-      // Fine-grained domain events still drive achievements/history/realtime state,
-      // but one explicit player command becomes one public result message.
+      // Fine-grained domain events drive achievements/history/realtime state. One player
+      // command still becomes exactly one durable public result message.
       case 'EnemyDamaged':
       case 'PlayerDamaged':
       case 'PlayerGuarded':
@@ -117,6 +126,12 @@ export class ActivityStreamService {
       case 'PlayerRevived':
       case 'EnemyDefeated':
       case 'EnemyIntentResolved':
+      case 'EnemyIntentIgnored':
+      case 'CombatReactionSucceeded':
+      case 'CombatSkillUsed':
+      case 'FocusChanged':
+      case 'EnemyStatusApplied':
+      case 'SkillComboTriggered':
         return null;
 
       case 'RunUpgradeChosen': {
