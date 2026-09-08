@@ -37,11 +37,18 @@ function bossRun({ vulnerableHp = 24 } = {}) {
 
 function reachThreadmark(run) {
   let phaseChange = null;
-  for (let index = 0; index < 6 && !run.toJSON().enemyIntent; index += 1) {
-    const result = run.attack({ playerId: 'a', attackPower: 10, now: `2026-09-08T00:00:0${index + 1}.000Z` });
+  for (let index = 0; index < 20; index += 1) {
+    const state = run.toJSON();
+    if (state.enemyIntent?.id === 'threadmark-lunge') return phaseChange;
+    if (state.enemyIntent) {
+      if (state.enemyIntent.reaction === 'interrupt') run.interrupt({ playerId: 'a' });
+      else run.guard({ playerId: 'a', now: `2026-09-08T00:00:${String(index).padStart(2, '0')}.500Z` });
+      continue;
+    }
+    const result = run.attack({ playerId: 'a', attackPower: 10, now: `2026-09-08T00:00:${String(index).padStart(2, '0')}.000Z` });
     phaseChange ||= result.events.find((event) => event.type === 'BossPhaseChanged') || null;
   }
-  return phaseChange;
+  throw new Error('Boss did not reach the Phase II Threadmark window.');
 }
 
 test('boss enters Unraveling Phase II at half health and telegraphs faster', () => {
@@ -73,7 +80,7 @@ test('a teammate Guard intercepts Threadmark and keeps the marked ally untouched
   const protectorHpBefore = run.participant('a').hp;
   const rawDamage = run.toJSON().enemyIntent.damage;
 
-  const result = run.guard({ playerId: 'a', now: '2026-09-08T00:00:10.000Z' });
+  const result = run.guard({ playerId: 'a', now: '2026-09-08T00:00:30.000Z' });
   const protectedEvent = result.events.find((event) => event.type === 'PlayerProtected');
 
   assert.ok(protectedEvent);
@@ -91,7 +98,7 @@ test('blindly attacking through Threadmark damages the marked ally instead', () 
   const markedHpBefore = run.participant('b').hp;
   const rawDamage = run.toJSON().enemyIntent.damage;
 
-  const result = run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:10.000Z' });
+  const result = run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:30.000Z' });
 
   assert.equal(result.events.some((event) => event.type === 'EnemyIntentIgnored'), true);
   assert.equal(result.events.some((event) => event.type === 'PlayerProtected'), false);
