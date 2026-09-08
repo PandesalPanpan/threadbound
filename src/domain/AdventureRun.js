@@ -1,5 +1,6 @@
 import { DUNGEONS, DungeonRun as CombatDungeonRun, RUN_UPGRADES } from './DungeonRun.js';
 import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunEventCatalog.js';
+import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -11,8 +12,8 @@ function aliveParticipants(state) {
  * Aggregate facade for the whole dungeon run lifecycle.
  *
  * CombatDungeonRun remains the combat Domain Model. AdventureRun coordinates the
- * additional non-combat phases while keeping one persisted/versioned run state as
- * the aggregate consistency boundary.
+ * additional non-combat phases and cross-cutting run policies while keeping one
+ * persisted/versioned run state as the aggregate consistency boundary.
  */
 export class AdventureRun {
   constructor(state) {
@@ -127,8 +128,21 @@ export class AdventureRun {
     const combat = new CombatDungeonRun(this.state);
     const outcome = combat[method](args);
     this.state = outcome.state;
+
+    const attuned = applyRelicCombatAttunement({
+      state: this.state,
+      events: outcome.events,
+      method,
+      args,
+      attunementCode: args?.attunementCode || null,
+    });
+    this.state = attuned.state;
+    if (attuned.triggered?.effect === 'bonus_healing') {
+      outcome.healed = Number(outcome.healed || 0) + Number(attuned.triggered.amount || 0);
+    }
+
     this.#pauseForRunEvent(before, outcome.events);
-    return { ...outcome, state: this.toJSON() };
+    return { ...outcome, relicTrigger: attuned.triggered, state: this.toJSON() };
   }
 
   #pauseForRunEvent(before, events) {
