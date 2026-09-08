@@ -154,8 +154,13 @@ test('insufficient Dust and active runs leave relic progression unchanged', () =
   });
   gameRepository.createRun(run.toJSON());
   assert.throws(() => service.upgrade(player.id, 'locked', 'bulwark'), (error) => error.code === 'relic_upgrade_during_run');
+  assert.throws(
+    () => inventoryRepository.upgradeItem({ playerId: player.id, itemId: 'locked', expectedLevel: 0, cost: 8, attackIncrease: 1, attunementCode: 'bulwark' }),
+    (error) => error.code === 'relic_upgrade_during_run',
+  );
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 20);
   assert.equal(gameRepository.getItem('locked').attackBonus, 4);
+  assert.equal(gameRepository.getItem('locked').effect.upgradeLevel, 0);
   gameRepository.close();
 });
 
