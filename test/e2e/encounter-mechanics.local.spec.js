@@ -55,10 +55,20 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     const runId = started.run.id;
 
     // Clear the normal encounters through the same public command routes while reacting
-    // to every telegraph. The browser assertion below stays focused on the new mechanic.
-    for (let guard = 0; guard < 60; guard += 1) {
+    // to every telegraph. If the authoritative lifecycle pauses for a discovery, resolve
+    // that shared leader decision before continuing toward the boss upgrade.
+    for (let guard = 0; guard < 80; guard += 1) {
       const state = await dashboard(leaderContext);
-      if (state.activeRun?.phase !== 'combat') break;
+      const phase = state.activeRun?.phase;
+      if (phase === 'event') {
+        const choices = state.activeRun.runEvent?.choices || [];
+        const safeChoice = choices.find((choice) => /bind|quiet/i.test(choice.id)) || choices[0];
+        expect(safeChoice?.id).toBeTruthy();
+        await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: safeChoice.id });
+        expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
+        continue;
+      }
+      if (phase !== 'combat') break;
       const actorContext = guard % 2 === 0 ? leaderContext : partnerContext;
       const actorState = await dashboard(actorContext);
       const action = actorState.activeRun.enemyIntent

@@ -93,7 +93,7 @@ test('generated rewards only use registered effect vocabulary', () => {
   assert.ok(item.attackBonus >= 1 && item.attackBonus <= 3);
 });
 
-test('service layer preserves solo reward, progression, achievements, and equipment power', () => {
+test('service layer preserves solo reward, progression, achievements, and equipment power across a mid-run choice', () => {
   let id = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++id}` });
   const bus = new EventBus();
@@ -107,13 +107,24 @@ test('service layer preserves solo reward, progression, achievements, and equipm
   });
   const player = service.ensurePlayer({ id: 1001, name: 'Tester' });
   const run = service.startDungeon(player.id, 'frayed-hollow');
-  for (let i = 0; i < 6; i += 1) service.attack(player.id, run.id);
+
+  for (let i = 0; i < 4; i += 1) service.attack(player.id, run.id);
+  const discovery = repository.getRun(run.id);
+  assert.equal(discovery.phase, 'event');
+  assert.ok(discovery.runEvent?.choices?.length === 2);
+  service.chooseUpgrade(player.id, run.id, discovery.runEvent.choices[0].id);
+  assert.equal(repository.getRun(run.id).phase, 'combat');
+
+  service.attack(player.id, run.id);
+  service.attack(player.id, run.id);
+  assert.equal(repository.getRun(run.id).phase, 'upgrade');
   service.chooseUpgrade(player.id, run.id, 'sharpen');
   service.attack(player.id, run.id);
   service.attack(player.id, run.id);
   const completed = service.attack(player.id, run.id);
 
   assert.equal(completed.state.phase, 'complete');
+  assert.equal(repository.getRun(run.id).runEventHistory.length, 1);
   assert.equal(repository.listItems(player.id).length, 1);
   assert.equal(repository.getPlayer(player.id).threadDust, 15);
   assert.equal(repository.getWorldState().frayedHollowClears, 1);
@@ -125,7 +136,7 @@ test('service layer preserves solo reward, progression, achievements, and equipm
   repository.close();
 });
 
-test('two-player party owns one run and both players receive shared completion rewards', () => {
+test('two-player party owns one run, leader owns the shared decision, and both players receive completion rewards', () => {
   let playerSequence = 0;
   let rewardSequence = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++playerSequence}` });
@@ -155,6 +166,15 @@ test('two-player party owns one run and both players receive shared completion r
 
   let turn = 0;
   const players = [leader.id, partner.id];
+  while (repository.getRun(run.id).phase === 'combat') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
+
+  const discovery = repository.getRun(run.id);
+  assert.equal(discovery.phase, 'event');
+  const eventChoice = discovery.runEvent.choices[0].id;
+  assert.throws(() => game.chooseUpgrade(partner.id, run.id, eventChoice), /party leader/i);
+  game.chooseUpgrade(leader.id, run.id, eventChoice);
+  assert.equal(repository.getRun(run.id).runEventHistory.length, 1);
+
   while (repository.getRun(run.id).phase === 'combat') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
   assert.equal(repository.getRun(run.id).phase, 'upgrade');
   assert.throws(() => game.chooseUpgrade(partner.id, run.id, 'sharpen'), /party leader/i);

@@ -88,12 +88,27 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
   throw new Error(`Local co-op run did not leave ${expectedPhase} within the guard limit.`);
 }
 
+async function resolveSharedDiscovery(leader, leaderContext, partner, partnerContext) {
+  const state = await dashboard(leaderContext);
+  expect(state.activeRun?.phase).toBe('event');
+  await leader.reload();
+  await partner.reload();
+  await expect(leader.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
+  await expect(partner.getByTestId('run-event-waiting')).toContainText('Waiting for the party leader', { timeout: 5000 });
+  const choices = state.activeRun.runEvent?.choices || [];
+  const choice = choices.find((candidate) => /bind|quiet/i.test(candidate.id)) || choices[0];
+  expect(choice?.id).toBeTruthy();
+  await threadAction(leader, leaderContext, leader.getByTestId(`run-event-choice-${choice.id}`));
+  await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+  return choice.id;
+}
+
 async function clickCodexTab(page, category) {
   await page.getByTestId(`codex-tab-${category}`).click();
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
 }
 
-test('standalone local mode supports thread-driven co-op combat plus the living Codex without Threaded', async ({ browser }) => {
+test('standalone local mode supports thread-driven co-op combat, shared discoveries, and the living Codex without Threaded', async ({ browser }) => {
   test.setTimeout(150000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
@@ -175,6 +190,9 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
     }, { timeout: 5000 }).toBeGreaterThan(preventedBefore);
 
     let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat');
+    await resolveSharedDiscovery(leader, leaderContext, partner, partnerContext);
+    turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
+
     await leader.reload();
     await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade');
     await partner.reload();
