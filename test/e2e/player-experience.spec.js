@@ -106,19 +106,49 @@ test('PX-42/43 Commuter: offline thread action cannot mutate confirmed run state
   expect(afterContinuedPlay.version).toBeGreaterThan(confirmedBeforeOffline.version);
 });
 
-test('PX-44 Interrupted Decision Maker: refreshing at the thread upgrade choice preserves the unresolved decision', async ({ page, context }) => {
+test('PX-44 Interrupted Decision Maker: refresh preserves both discovery and upgrade choices', async ({ page, context }) => {
   await loginWithThreaded(page);
   await startFromThread(page, context);
   await actUntilPhaseChanges(context, page, 'combat');
 
-  const beforeRefresh = confirmedRunSnapshot(await dashboard(context));
-  expect(beforeRefresh.phase).toBe('upgrade');
+  // First interruption: the new mid-run discovery is durable and reconstructs the exact
+  // same snapshotted event/choices after refresh rather than rerolling on the client.
+  const eventDataBefore = await dashboard(context);
+  const eventSnapshotBefore = confirmedRunSnapshot(eventDataBefore);
+  expect(eventSnapshotBefore.phase).toBe('event');
+  expect(eventDataBefore.activeRun?.runEvent?.id).toBeTruthy();
+  const eventId = eventDataBefore.activeRun.runEvent.id;
+  const choiceIds = eventDataBefore.activeRun.runEvent.choices.map((choice) => choice.id);
+  await expect(page.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('run-event-name')).toHaveText(eventDataBefore.activeRun.runEvent.name);
+
+  await page.reload();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  const eventDataAfter = await dashboard(context);
+  expect(confirmedRunSnapshot(eventDataAfter)).toEqual(eventSnapshotBefore);
+  expect(eventDataAfter.activeRun.runEvent.id).toBe(eventId);
+  expect(eventDataAfter.activeRun.runEvent.choices.map((choice) => choice.id)).toEqual(choiceIds);
+  await expect(page.getByTestId('run-state')).toContainText('Phase: event');
+  await expect(page.getByTestId('run-event-card')).toBeVisible();
+
+  const safeChoice = eventDataAfter.activeRun.runEvent.choices.find((choice) => /bind|quiet/i.test(choice.id)) || eventDataAfter.activeRun.runEvent.choices[0];
+  const eventVersion = eventDataAfter.activeRun.version;
+  await page.getByTestId(`run-event-choice-${safeChoice.id}`).click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.phase === 'combat' && after.activeRun.version > eventVersion;
+  }, { timeout: 5000 }).toBe(true);
+
+  // Second interruption: the original between-encounters upgrade remains equally durable.
+  await actUntilPhaseChanges(context, page, 'combat');
+  const upgradeBeforeRefresh = confirmedRunSnapshot(await dashboard(context));
+  expect(upgradeBeforeRefresh.phase).toBe('upgrade');
   await expect(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' })).toBeVisible();
   await expect(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Reinforce the Weave' })).toBeVisible();
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  expect(confirmedRunSnapshot(await dashboard(context))).toEqual(beforeRefresh);
+  expect(confirmedRunSnapshot(await dashboard(context))).toEqual(upgradeBeforeRefresh);
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
   await expect(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' })).toBeVisible();
 
