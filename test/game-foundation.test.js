@@ -11,6 +11,26 @@ import { GameService } from '../src/application/GameService.js';
 import { HoneyPurchaseService } from '../src/application/HoneyPurchaseService.js';
 import { PartyService } from '../src/application/PartyService.js';
 
+function takeReactivePartyTurn(game, repository, runId, players, turn) {
+  const state = repository.getRun(runId);
+  const living = players.filter((playerId) => state.participants.find((participant) => participant.playerId === playerId)?.hp > 0);
+  const actor = living[turn % living.length];
+  const downed = state.participants.find((participant) => participant.hp <= 0);
+  const actorState = state.participants.find((participant) => participant.playerId === actor);
+
+  if (downed && actorState.reviveCharges > 0) {
+    game.revive(actor, runId, downed.playerId);
+    return turn + 1;
+  }
+  if (state.enemyIntent) {
+    if (state.enemyIntent.reaction === 'interrupt') game.interrupt(actor, runId);
+    else game.guard(actor, runId);
+    return turn + 1;
+  }
+  game.attack(actor, runId);
+  return turn + 1;
+}
+
 test('character and solo dungeon domain rules preserve the complete first run loop', () => {
   const character = new Character({ id: 'p1', threadedUserId: '42', displayName: 'Tester', equippedItem: { attackBonus: 3 } });
   assert.equal(character.attackPower, 9);
@@ -135,23 +155,18 @@ test('two-player party owns one run and both players receive shared completion r
 
   let turn = 0;
   const players = [leader.id, partner.id];
-  while (repository.getRun(run.id).phase === 'combat') {
-    game.attack(players[turn % 2], run.id);
-    turn += 1;
-  }
+  while (repository.getRun(run.id).phase === 'combat') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
   assert.equal(repository.getRun(run.id).phase, 'upgrade');
   assert.throws(() => game.chooseUpgrade(partner.id, run.id, 'sharpen'), /party leader/i);
   game.chooseUpgrade(leader.id, run.id, 'sharpen');
 
-  while (repository.getRun(run.id).phase === 'boss') {
-    game.attack(players[turn % 2], run.id);
-    turn += 1;
-  }
+  while (repository.getRun(run.id).phase === 'boss') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
 
   const completed = repository.getRun(run.id);
   assert.equal(completed.phase, 'complete');
   assert.equal(completed.rewardsGranted, true);
   assert.ok(completed.participants.every((participant) => participant.contributionDamage > 0));
+  assert.ok(completed.participants.some((participant) => participant.successfulGuards + participant.successfulInterrupts > 0));
   assert.equal(repository.listItems(leader.id).length, 1);
   assert.equal(repository.listItems(partner.id).length, 1);
   assert.equal(repository.getPlayer(leader.id).threadDust, 15);

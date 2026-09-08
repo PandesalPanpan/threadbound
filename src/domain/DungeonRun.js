@@ -1,3 +1,5 @@
+import { nextEnemyIntent, resolveEnemyIntent } from './CombatIntentPolicy.js';
+
 export const DUNGEONS = Object.freeze({
   'frayed-hollow': Object.freeze({
     id: 'frayed-hollow',
@@ -15,8 +17,10 @@ export const DUNGEONS = Object.freeze({
 });
 
 export const RUN_UPGRADES = Object.freeze({
-  sharpen: Object.freeze({ id: 'sharpen', name: 'Sharpen the Thread', attackBonus: 3, heal: 0 }),
-  reinforce: Object.freeze({ id: 'reinforce', name: 'Reinforce the Weave', attackBonus: 0, heal: 12 }),
+  sharpen: Object.freeze({ id: 'sharpen', name: 'Sharpen the Thread', attackBonus: 3, heal: 0, reactionStyle: null }),
+  reinforce: Object.freeze({ id: 'reinforce', name: 'Reinforce the Weave', attackBonus: 0, heal: 12, reactionStyle: null }),
+  riposte: Object.freeze({ id: 'riposte', name: 'Riposte Weave', attackBonus: 0, heal: 4, reactionStyle: 'guard' }),
+  disrupt: Object.freeze({ id: 'disrupt', name: 'Disruptor Knot', attackBonus: 0, heal: 4, reactionStyle: 'interrupt' }),
 });
 
 const HEALTH_MULTIPLIERS = Object.freeze([0, 1, 1.65, 2.25, 2.8]);
@@ -28,60 +32,46 @@ const REVIVE_THREAT = 4;
 const INTERRUPT_THREAT = 3;
 const THREAT_DECAY = 2;
 const INTENT_AFTER_ATTACKS = 3;
-const INTENT_WINDOW_MS = 3000;
+const RIPOSTE_BONUS = 3;
+const DISRUPT_BONUS = 4;
 
 export function scalingForPlayerCount(playerCount) {
-  if (!Number.isInteger(playerCount) || playerCount < 1 || playerCount > 4) {
-    throw new Error('Dungeon player count must be between 1 and 4.');
-  }
-  return {
-    playerCount,
-    enemyHealthMultiplier: HEALTH_MULTIPLIERS[playerCount],
-    retaliationMultiplier: RETALIATION_MULTIPLIERS[playerCount],
-  };
+  if (!Number.isInteger(playerCount) || playerCount < 1 || playerCount > 4) throw new Error('Dungeon player count must be between 1 and 4.');
+  return { playerCount, enemyHealthMultiplier: HEALTH_MULTIPLIERS[playerCount], retaliationMultiplier: RETALIATION_MULTIPLIERS[playerCount] };
 }
 
 function cloneEnemy(definition, playerCount, isBoss = false) {
   const scaling = scalingForPlayerCount(playerCount);
   const hp = Math.ceil(definition.hp * scaling.enemyHealthMultiplier);
-  return {
-    id: definition.id,
-    name: definition.name,
-    hp,
-    maxHp: hp,
-    retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier),
-    isBoss,
-  };
+  return { id: definition.id, name: definition.name, hp, maxHp: hp, retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier), isBoss };
 }
 
 function freshParticipants(participants) {
-  if (!Array.isArray(participants) || participants.length < 1 || participants.length > 4) {
-    throw new Error('Dungeon requires between 1 and 4 participants.');
-  }
+  if (!Array.isArray(participants) || participants.length < 1 || participants.length > 4) throw new Error('Dungeon requires between 1 and 4 participants.');
   const ids = new Set();
   return participants.map(({ playerId, maxHealth }) => {
     if (!playerId || !Number.isInteger(maxHealth) || maxHealth <= 0) throw new Error('Each participant requires playerId and positive maxHealth.');
     if (ids.has(playerId)) throw new Error('Dungeon participants must be unique.');
     ids.add(playerId);
     return {
-      playerId,
-      maxHp: maxHealth,
-      hp: maxHealth,
-      contributionDamage: 0,
-      healingDone: 0,
-      revives: 0,
-      damagePrevented: 0,
-      firstStrikeUsed: false,
-      guarding: false,
-      threat: 0,
-      mendCharges: 1,
-      reviveCharges: 1,
+      playerId, maxHp: maxHealth, hp: maxHealth, contributionDamage: 0, healingDone: 0, revives: 0,
+      damagePrevented: 0, firstStrikeUsed: false, guarding: false, threat: 0, mendCharges: 1, reviveCharges: 1,
+      reactionDamageBonus: 0, successfulGuards: 0, successfulInterrupts: 0,
     };
   });
 }
 
 export class DungeonRun {
-  constructor(state) { this.state = structuredClone(state); }
+  constructor(state) {
+    this.state = structuredClone(state);
+    this.state.intentCount ??= 0;
+    this.state.reactionStyle ??= null;
+    for (const participant of this.state.participants || []) {
+      participant.reactionDamageBonus ??= 0;
+      participant.successfulGuards ??= 0;
+      participant.successfulInterrupts ??= 0;
+    }
+  }
 
   static start({ id, ownerType, ownerId, startedByPlayerId, participants, dungeonId, dungeonDefinition = null, now = new Date().toISOString() }) {
     const dungeon = dungeonDefinition ? structuredClone(dungeonDefinition) : DUNGEONS[dungeonId];
@@ -89,37 +79,15 @@ export class DungeonRun {
     if (!Array.isArray(dungeon.encounters) || dungeon.encounters.length < 1 || !dungeon.boss) throw new Error('Dungeon definition is incomplete.');
     if (!['player', 'party'].includes(ownerType)) throw new Error('Dungeon ownerType must be player or party.');
     if (!ownerId || !startedByPlayerId) throw new Error('Dungeon requires ownerId and startedByPlayerId.');
-
     const participantStates = freshParticipants(participants);
-    if (!participantStates.some((participant) => participant.playerId === startedByPlayerId)) {
-      throw new Error('The player starting the dungeon must be a participant.');
-    }
-    if (participantStates.length < dungeon.minPlayers || participantStates.length > dungeon.maxPlayers) {
-      throw new Error('Dungeon participant count is outside the allowed range.');
-    }
-
+    if (!participantStates.some((participant) => participant.playerId === startedByPlayerId)) throw new Error('The player starting the dungeon must be a participant.');
+    if (participantStates.length < dungeon.minPlayers || participantStates.length > dungeon.maxPlayers) throw new Error('Dungeon participant count is outside the allowed range.');
     const scaling = scalingForPlayerCount(participantStates.length);
     return new DungeonRun({
-      id,
-      version: 0,
-      ownerType,
-      ownerId,
-      startedByPlayerId,
-      dungeonId,
-      dungeonDefinition: structuredClone(dungeon),
-      phase: 'combat',
-      encounterIndex: 0,
-      participants: participantStates,
-      scaling,
-      runAttackBonus: 0,
-      selectedUpgrade: null,
-      enemy: cloneEnemy(dungeon.encounters[0], participantStates.length),
-      enemyIntent: null,
-      attacksSinceIntent: 0,
-      rewardsGranted: false,
-      rewardItemIds: {},
-      createdAt: now,
-      completedAt: null,
+      id, version: 0, ownerType, ownerId, startedByPlayerId, dungeonId, dungeonDefinition: structuredClone(dungeon),
+      phase: 'combat', encounterIndex: 0, participants: participantStates, scaling, runAttackBonus: 0, selectedUpgrade: null,
+      reactionStyle: null, enemy: cloneEnemy(dungeon.encounters[0], participantStates.length), enemyIntent: null,
+      attacksSinceIntent: 0, intentCount: 0, rewardsGranted: false, rewardItemIds: {}, createdAt: now, completedAt: null,
     });
   }
 
@@ -129,28 +97,35 @@ export class DungeonRun {
   attack({ playerId, attackPower, equipmentEffect = 'none', now = new Date().toISOString() }) {
     this.#assertCombat();
     const events = [];
-    this.#resolveDueIntent(events, now);
+    let ignoredRetaliation = 0;
+    if (this.state.enemyIntent) {
+      const ignoredIntent = structuredClone(this.state.enemyIntent);
+      const resolved = this.#resolveIntent(events, now, 'ignored');
+      ignoredRetaliation = resolved.damage || 0;
+      events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: ignoredIntent.id, reaction: ignoredIntent.reaction, result: resolved });
+      if (this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
+      const actorAfterIntent = this.participant(playerId);
+      if (actorAfterIntent?.hp <= 0) return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
+    }
     const participant = this.#actingParticipant(playerId);
-    let damage = attackPower + this.state.runAttackBonus;
+    let damage = attackPower + this.state.runAttackBonus + participant.reactionDamageBonus;
+    participant.reactionDamageBonus = 0;
     if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) damage += 2;
     if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) damage += 2;
     participant.firstStrikeUsed = true;
-
     const enemyHpBefore = this.state.enemy.hp;
     this.state.enemy.hp = Math.max(0, this.state.enemy.hp - damage);
     const effectiveDamage = Math.min(enemyHpBefore, damage);
     participant.contributionDamage += effectiveDamage;
     participant.threat += effectiveDamage;
     events.push({ type: 'EnemyDamaged', playerId, runId: this.state.id, enemyId: this.state.enemy.id, damage: effectiveDamage });
-
     if (this.state.enemy.hp === 0) {
       const defeated = structuredClone(this.state.enemy);
       events.push({ type: 'EnemyDefeated', playerId, runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, isBoss: defeated.isBoss });
       this.#advanceAfterDefeat(events, now);
-      return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: 0 };
+      return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: ignoredRetaliation };
     }
-
-    const retaliation = this.#retaliate(events);
+    const retaliation = ignoredRetaliation || this.#retaliate(events);
     if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
     return { state: this.toJSON(), events, damage: effectiveDamage, retaliation };
   }
@@ -161,9 +136,17 @@ export class DungeonRun {
     participant.guarding = true;
     participant.threat += GUARD_THREAT;
     const events = [{ type: 'PlayerGuarded', playerId, runId: this.state.id, threatAdded: GUARD_THREAT }];
-    let retaliation;
-    if (this.state.enemyIntent) retaliation = this.#resolveIntent(events, now);
-    else retaliation = this.#retaliate(events);
+    let retaliation = 0;
+    if (this.state.enemyIntent) {
+      const intended = structuredClone(this.state.enemyIntent);
+      const resolved = this.#resolveIntent(events, now, 'guard');
+      retaliation = resolved.damage || 0;
+      if (intended.kind === 'damage') {
+        participant.successfulGuards += 1;
+        if (this.state.reactionStyle === 'guard') participant.reactionDamageBonus += RIPOSTE_BONUS;
+        events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'guard', intentId: intended.id, bonusDamage: this.state.reactionStyle === 'guard' ? RIPOSTE_BONUS : 0 });
+      }
+    } else retaliation = this.#retaliate(events);
     return { state: this.toJSON(), events, retaliation };
   }
 
@@ -174,9 +157,14 @@ export class DungeonRun {
     const interrupted = structuredClone(this.state.enemyIntent);
     this.state.enemyIntent = null;
     participant.threat += INTERRUPT_THREAT;
+    participant.successfulInterrupts += 1;
+    if (this.state.reactionStyle === 'interrupt') participant.reactionDamageBonus += DISRUPT_BONUS;
     return {
       state: this.toJSON(),
-      events: [{ type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interrupted.id, enemyId: this.state.enemy.id }],
+      events: [
+        { type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interrupted.id, enemyId: this.state.enemy.id },
+        { type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interrupted.id, bonusDamage: this.state.reactionStyle === 'interrupt' ? DISRUPT_BONUS : 0 },
+      ],
       interrupted,
     };
   }
@@ -189,7 +177,6 @@ export class DungeonRun {
     if (target.hp <= 0) throw new Error('Mend cannot heal a downed player; use Revive.');
     if (target.hp >= target.maxHp) throw new Error('Mend target is already at full health.');
     if (participant.mendCharges <= 0) throw new Error('Mend has already been used this encounter.');
-
     participant.mendCharges -= 1;
     participant.threat += MEND_THREAT;
     const healed = Math.min(MEND_AMOUNT, target.maxHp - target.hp);
@@ -208,7 +195,6 @@ export class DungeonRun {
     if (target.playerId === playerId) throw new Error('Players cannot revive themselves.');
     if (target.hp > 0) throw new Error('Revive target is not downed.');
     if (participant.reviveCharges <= 0) throw new Error('Revive has already been used this run.');
-
     participant.reviveCharges -= 1;
     participant.revives += 1;
     participant.threat += REVIVE_THREAT;
@@ -226,6 +212,7 @@ export class DungeonRun {
     if (!upgrade) throw new Error(`Unknown run upgrade: ${upgradeId}`);
     this.state.selectedUpgrade = upgrade.id;
     this.state.runAttackBonus += upgrade.attackBonus;
+    this.state.reactionStyle = upgrade.reactionStyle;
     for (const participant of this.state.participants) {
       participant.hp = Math.min(participant.maxHp, participant.hp + upgrade.heal);
       this.#resetEncounterParticipant(participant);
@@ -234,6 +221,7 @@ export class DungeonRun {
     this.state.enemy = cloneEnemy(this.#dungeon().boss, this.state.participants.length, true);
     this.state.enemyIntent = null;
     this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
     return { state: this.toJSON(), events: [{ type: 'RunUpgradeChosen', runId: this.state.id, upgradeId }] };
   }
 
@@ -252,9 +240,7 @@ export class DungeonRun {
     return dungeon;
   }
 
-  #assertCombat() {
-    if (!['combat', 'boss'].includes(this.state.phase)) throw new Error('The run is not currently in combat.');
-  }
+  #assertCombat() { if (!['combat', 'boss'].includes(this.state.phase)) throw new Error('The run is not currently in combat.'); }
 
   #actingParticipant(playerId) {
     const participant = this.participant(playerId);
@@ -287,29 +273,19 @@ export class DungeonRun {
     this.state.attacksSinceIntent = (this.state.attacksSinceIntent || 0) + 1;
     if (this.state.attacksSinceIntent < INTENT_AFTER_ATTACKS) return;
     this.state.attacksSinceIntent = 0;
-    const dueAt = new Date(new Date(now).getTime() + INTENT_WINDOW_MS).toISOString();
-    this.state.enemyIntent = {
-      id: this.state.enemy.isBoss ? 'needle-break' : 'fraying-blow',
-      name: this.state.enemy.isBoss ? 'Needle Break' : 'Fraying Blow',
-      damage: Math.max(this.state.enemy.retaliation + 2, this.state.enemy.retaliation * 2),
-      dueAt,
-    };
+    this.state.enemyIntent = nextEnemyIntent({ enemy: this.state.enemy, intentCount: this.state.intentCount || 0, now });
+    this.state.intentCount = (this.state.intentCount || 0) + 1;
     events.push({ type: 'EnemyIntentTelegraphed', runId: this.state.id, enemyId: this.state.enemy.id, intent: structuredClone(this.state.enemyIntent) });
   }
 
-  #resolveDueIntent(events, now) {
-    if (!this.state.enemyIntent) return 0;
-    if (new Date(now).getTime() < new Date(this.state.enemyIntent.dueAt).getTime()) return 0;
-    return this.#resolveIntent(events, now);
-  }
-
-  #resolveIntent(events, _now) {
-    if (!this.state.enemyIntent) return 0;
+  #resolveIntent(events, _now, answeredBy = 'timeout') {
+    if (!this.state.enemyIntent) return { kind: 'none' };
     const intent = structuredClone(this.state.enemyIntent);
     this.state.enemyIntent = null;
-    const damage = this.#retaliate(events, intent.damage);
-    events.push({ type: 'EnemyIntentResolved', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, damage });
-    return damage;
+    const result = resolveEnemyIntent(intent, { enemy: this.state.enemy, retaliate: (damage) => this.#retaliate(events, damage) });
+    if (result.kind === 'heal') events.push({ type: 'EnemyHealed', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, amount: result.amount, answeredBy });
+    else events.push({ type: 'EnemyIntentResolved', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, damage: result.damage, answeredBy });
+    return result;
   }
 
   #resetEncounterParticipant(participant) {
@@ -317,12 +293,14 @@ export class DungeonRun {
     participant.guarding = false;
     participant.threat = 0;
     participant.mendCharges = 1;
+    participant.reactionDamageBonus = 0;
   }
 
   #advanceAfterDefeat(events, now) {
     const dungeon = this.#dungeon();
     this.state.enemyIntent = null;
     this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
     if (this.state.phase === 'boss') {
       this.state.phase = 'complete';
       this.state.enemy = null;
@@ -331,14 +309,12 @@ export class DungeonRun {
       events.push({ type: 'DungeonCompleted', runId: this.state.id, dungeonId: this.state.dungeonId, participantIds: this.state.participants.map((participant) => participant.playerId) });
       return;
     }
-
     if (this.state.encounterIndex < dungeon.encounters.length - 1) {
       this.state.encounterIndex += 1;
       for (const participant of this.state.participants) this.#resetEncounterParticipant(participant);
       this.state.enemy = cloneEnemy(dungeon.encounters[this.state.encounterIndex], this.state.participants.length);
       return;
     }
-
     this.state.phase = 'upgrade';
     this.state.enemy = null;
   }
