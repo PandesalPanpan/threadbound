@@ -56,6 +56,13 @@ async function openGear(page) {
 
 test('mobile Gear can permanently attune and Temper an earned relic with Thread Dust', async ({ page }) => {
   test.setTimeout(120000);
+  let browserDashboardRequests = 0;
+  page.on('request', (request) => {
+    try {
+      if (new URL(request.url()).pathname === '/api/dashboard') browserDashboardRequests += 1;
+    } catch {}
+  });
+
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
   await expect(page).toHaveURL(/\/game$/);
@@ -82,6 +89,13 @@ test('mobile Gear can permanently attune and Temper an earned relic with Thread 
   await expect(page.getByTestId(`temper-${relic.id}-executioner`)).toBeVisible();
   await expect(page.getByTestId(`temper-${relic.id}-mender`)).toBeVisible();
 
+  // Once the owner UI and relic enhancer settle, the enhancer must not observe its own
+  // chips/actions and continuously refetch the dashboard.
+  await page.waitForTimeout(250);
+  browserDashboardRequests = 0;
+  await page.waitForTimeout(450);
+  expect(browserDashboardRequests).toBeLessThanOrEqual(1);
+
   await bulwark.click();
   await expect.poll(async () => (await dashboard(page)).character.threadDust, { timeout: 5000 }).toBe(7);
   const after = await dashboard(page);
@@ -99,4 +113,15 @@ test('mobile Gear can permanently attune and Temper an earned relic with Thread 
 
   const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(bodyWidth).toBeLessThanOrEqual(390);
+
+  // A run fixes the build loadout. Even re-equipping the same owned relic through the
+  // public route is rejected until that run ends, so another relic cannot be swapped in.
+  await post(page, `/api/items/${relic.id}/equip`);
+  await post(page, '/api/dungeons/frayed-hollow/start');
+  const blockedEquip = await page.request.post(`/api/items/${relic.id}/equip`);
+  expect(blockedEquip.status()).toBe(409);
+  expect((await blockedEquip.json()).error).toBe('item_equip_during_run');
+  const locked = await dashboard(page);
+  expect(locked.activeRun).not.toBeNull();
+  expect(locked.character.equippedItem.id).toBe(relic.id);
 });
