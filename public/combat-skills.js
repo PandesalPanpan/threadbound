@@ -1,5 +1,29 @@
 const stream = document.querySelector('[data-testid="adventure-stream"]');
-const suggestions = document.querySelector('[data-testid="stream-suggestions"]');
+
+async function waitForStreamElement(testId, timeoutMs = 3000) {
+  const selector = `[data-testid="${testId}"]`;
+  const existing = document.querySelector(selector);
+  if (existing || !stream) return existing;
+  return new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      const element = document.querySelector(selector);
+      if (!element) return;
+      clearTimeout(timer);
+      observer.disconnect();
+      resolve(element);
+    });
+    const timer = setTimeout(() => {
+      observer.disconnect();
+      resolve(document.querySelector(selector));
+    }, timeoutMs);
+    observer.observe(stream, { childList: true, subtree: true });
+  });
+}
+
+// Adventure Stream owns these nodes. Browser module fetch/evaluation order can differ on
+// a cold server, so the extension waits for its presentation owner instead of assuming
+// another independent module script has already populated the DOM.
+const suggestions = await waitForStreamElement('stream-suggestions');
 const streamLog = document.querySelector('[data-testid="adventure-stream-log"]');
 
 if (stream && suggestions) {
