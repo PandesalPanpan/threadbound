@@ -160,8 +160,10 @@ if (stream && suggestions) {
     if (!guard) return;
     if (run?.enemyIntent?.id === 'threadmark-lunge') {
       const target = participantName(run, run.enemyIntent.targetPlayerId);
-      guard.textContent = `Protect ${target}`;
-      guard.setAttribute('aria-label', `Protect ${target} from Threadmark`);
+      const label = `Protect ${target}`;
+      if (guard.textContent !== label) guard.textContent = label;
+      const ariaLabel = `${label} from Threadmark`;
+      if (guard.getAttribute('aria-label') !== ariaLabel) guard.setAttribute('aria-label', ariaLabel);
       guard.dataset.threadmarkProtect = 'true';
       return;
     }
