@@ -59,12 +59,21 @@ if (stream && suggestions) {
     .combat-skill.is-interrupt { border-color:rgba(255,100,124,.42) !important; }
     .combat-skill:disabled { opacity:.55; cursor:not-allowed; }
     .combat-skill-error { margin:0; padding:6px 8px; border-radius:8px; background:rgba(255,100,124,.08); color:#ff9cac; font-size:.68rem; }
+    .run-event-card { display:grid; gap:9px; }
+    .run-event-copy { display:grid; gap:4px; }
+    .run-event-copy h3 { margin:0; font-size:1rem; }
+    .run-event-copy p { margin:0; color:var(--muted); font-size:.72rem; line-height:1.4; }
+    .run-event-choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+    .run-event-choice { display:grid; gap:4px; min-height:72px; padding:9px !important; margin:0 !important; text-align:left; border:1px solid rgba(255,209,102,.27) !important; background:rgba(255,209,102,.07) !important; }
+    .run-event-choice strong { color:#ffe097; font-size:.76rem; }
+    .run-event-choice small { color:var(--muted); font-size:.62rem; line-height:1.3; }
+    .run-event-waiting { margin:0; padding:8px; border:1px solid rgba(255,255,255,.08); border-radius:9px; color:var(--muted); font-size:.7rem; }
     .stream-entry-rich.stream-action-skill { border-color:rgba(179,109,255,.34); box-shadow:inset 3px 0 0 rgba(179,109,255,.78),0 8px 24px rgba(0,0,0,.14); }
     .stream-action-skill .stream-rich-kicker { color:#d9b8ff; }
     @media (max-width:520px) {
       .combat-skill-panel { padding:8px 7px; }
-      .combat-skill-grid { grid-template-columns:1fr; }
-      .combat-skill { min-height:52px; }
+      .combat-skill-grid, .run-event-choice-grid { grid-template-columns:1fr; }
+      .combat-skill, .run-event-choice { min-height:52px; }
     }
   `;
   document.head.append(style);
@@ -171,6 +180,80 @@ if (stream && suggestions) {
     guard.removeAttribute('aria-label');
   }
 
+  async function chooseRunEvent(runId, choiceId, button) {
+    if (acting) return;
+    acting = true;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/upgrade`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upgradeId: choiceId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || `Run choice failed (${response.status})`);
+      await refreshSkills();
+    } catch (error) {
+      const message = document.createElement('p');
+      message.className = 'combat-skill-error';
+      message.dataset.testid = 'run-event-error';
+      message.textContent = error.message;
+      panel.querySelector('.combat-skill-error')?.remove();
+      panel.append(message);
+      scheduleRefresh(300);
+    } finally {
+      acting = false;
+      button.removeAttribute('aria-busy');
+    }
+  }
+
+  function renderRunEvent(run) {
+    const event = run.runEvent;
+    const card = document.createElement('div');
+    card.className = 'run-event-card';
+    card.dataset.testid = 'run-event-card';
+    const copy = document.createElement('div');
+    copy.className = 'run-event-copy';
+    const kicker = document.createElement('span');
+    kicker.className = 'combat-skill-kicker';
+    kicker.textContent = '✦ RUN DISCOVERY';
+    const title = document.createElement('h3');
+    title.dataset.testid = 'run-event-name';
+    title.textContent = event.name;
+    const prompt = document.createElement('p');
+    prompt.textContent = event.prompt;
+    copy.append(kicker, title, prompt);
+    card.append(copy);
+
+    if (!run.isLeader) {
+      const waiting = document.createElement('p');
+      waiting.className = 'run-event-waiting';
+      waiting.dataset.testid = 'run-event-waiting';
+      waiting.textContent = 'Waiting for the party leader to choose the shared path.';
+      card.append(waiting);
+      return card;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'run-event-choice-grid';
+    for (const choice of event.choices || []) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'run-event-choice';
+      button.dataset.testid = `run-event-choice-${choice.id}`;
+      const name = document.createElement('strong');
+      name.textContent = choice.name;
+      const summary = document.createElement('small');
+      summary.textContent = choice.summary;
+      button.append(name, summary);
+      button.addEventListener('click', () => chooseRunEvent(run.id, choice.id, button));
+      grid.append(button);
+    }
+    card.append(grid);
+    return card;
+  }
+
   async function useSkill(runId, skillId, button) {
     if (acting) return;
     acting = true;
@@ -231,6 +314,12 @@ if (stream && suggestions) {
       if (generation !== renderGeneration) return;
       const run = data.activeRun;
       decorateEncounterControls(run);
+      if (run?.phase === 'event' && run.runEvent) {
+        panel.hidden = false;
+        panel.innerHTML = '';
+        panel.append(renderRunEvent(run));
+        return;
+      }
       if (!run || !['combat', 'boss'].includes(run.phase) || !run.viewer || run.viewer.hp <= 0) {
         panel.hidden = true;
         panel.innerHTML = '';
@@ -306,6 +395,8 @@ if (stream && suggestions) {
       if (phase) appendReceiptChip(row, `⚡ PHASE II · ${phase[1].trim().toUpperCase()}`, 'special');
       const marked = raw.match(/THREADMARK:\s*(.+?)\s+is marked/i);
       if (marked) appendReceiptChip(row, `⚠ ${marked[1].trim()} MARKED`, 'damage');
+      const discovery = raw.match(/DISCOVERY:\s*([^·.]+)/i);
+      if (discovery) appendReceiptChip(row, `✦ DISCOVERY · ${discovery[1].trim().toUpperCase()}`, 'special');
       row.dataset.encounterEnhanced = 'true';
     }
   }
