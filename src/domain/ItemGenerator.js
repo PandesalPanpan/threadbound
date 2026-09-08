@@ -48,9 +48,7 @@ export class ItemGenerator {
       rarityTier: rarity.tier,
       attackBonus,
       effectCode,
-      effect: ITEM_EFFECTS[effectCode],
-      upgradeLevel: 0,
-      attunementCode: null,
+      effect: { ...ITEM_EFFECTS[effectCode], upgradeLevel: 0, attunementCode: null },
       source,
     };
   }
