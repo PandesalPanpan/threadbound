@@ -55,7 +55,13 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
-export function snapshotRunEventSchedule(dungeonId) {
+export function snapshotRunEventSchedule(dungeonId, authoredSchedule = null) {
+  if (authoredSchedule?.events?.length) {
+    return {
+      afterEncounterIndex: authoredSchedule.afterEncounterIndex,
+      events: authoredSchedule.events.map((event) => structuredClone(event)),
+    };
+  }
   const schedule = SCHEDULES[dungeonId];
   if (!schedule) return null;
   return {
