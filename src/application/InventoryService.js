@@ -1,3 +1,5 @@
+import { planRelicUpgrade } from '../domain/RelicProgressionPolicy.js';
+
 const SALVAGE_BY_RARITY = Object.freeze({
   common: 4,
   uncommon: 7,
@@ -21,6 +23,39 @@ export class InventoryService {
     const salvaged = this.inventoryRepository.salvageItem({ playerId, itemId, threadDust });
     this.eventBus.publish({ type: 'ItemSalvaged', playerId, itemId, itemName: item.name, rarity: item.rarity, threadDust });
     return { salvaged, dashboard: null };
+  }
+
+  upgrade(playerId, itemId, attunementCode = null) {
+    if (this.gameRepository.getActiveRun(playerId)) {
+      const error = new Error('Finish the active dungeon before Tempering a relic.');
+      error.code = 'relic_upgrade_during_run';
+      throw error;
+    }
+    const item = this.gameRepository.getItem(itemId);
+    if (!item || item.playerId !== playerId) throw new Error('Item not found.');
+    const plan = planRelicUpgrade(item, attunementCode);
+    const result = this.inventoryRepository.upgradeItem({
+      playerId,
+      itemId,
+      expectedLevel: plan.expectedLevel,
+      cost: plan.cost,
+      attackIncrease: plan.attackIncrease,
+      attunementCode: plan.attunementCode,
+    });
+    const upgraded = this.gameRepository.getItem(itemId);
+    this.eventBus.publish({
+      type: 'ItemUpgraded',
+      playerId,
+      itemId,
+      itemName: upgraded?.name || item.name,
+      level: plan.nextLevel,
+      maxLevel: plan.maxLevel,
+      attackIncrease: plan.attackIncrease,
+      threadDustSpent: plan.cost,
+      attunementCode: plan.attunementCode,
+      attunementName: plan.attunement.name,
+    });
+    return { upgraded, temper: result, dashboard: null };
   }
 }
 
