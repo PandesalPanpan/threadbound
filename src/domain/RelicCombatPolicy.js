@@ -69,6 +69,9 @@ export function applyRelicCombatAttunement({ state, events, method, args, attune
       extraTotal += extra;
     }
     if (extraTotal > 0) {
+      // DungeonRun already accounts for the base Chorus healing. The attunement owns
+      // only its additive healing, so it must extend the same contribution total here.
+      actor.healingDone = Number(actor.healingDone || 0) + extraTotal;
       triggered = triggeredEvent({ state, playerId: actor.playerId, attunementCode, effect: 'bonus_healing', amount: extraTotal, skillId: args.skillId });
     }
   }
