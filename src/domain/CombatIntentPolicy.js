@@ -85,10 +85,8 @@ function abilityProfile(enemy) {
 export function nextEnemyIntent({ enemy, intentCount = 0, participants = [], now = new Date().toISOString() }) {
   const battlePhase = Number(enemy?.battlePhase || 1);
   const profile = abilityProfile(enemy);
-  const cycle = enemy.isBoss && enemy.id === 'first-needle'
-    ? battlePhase >= 2
-      ? [THREADMARK, BOSS_HEAVY, BOSS_MEND]
-      : [BOSS_HEAVY, BOSS_MEND, BOSS_HEAVY]
+  const cycle = enemy.isBoss && battlePhase >= 2
+    ? [THREADMARK, BOSS_HEAVY, BOSS_MEND]
     : profile.cycle;
   const template = cycle[intentCount % cycle.length];
   const windowMs = enemy.isBoss && battlePhase >= 2 ? PHASE_TWO_INTENT_WINDOW_MS : BASE_INTENT_WINDOW_MS;
