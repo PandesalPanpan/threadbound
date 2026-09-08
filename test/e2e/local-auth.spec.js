@@ -50,7 +50,9 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
   let turn = startTurn;
   for (let guard = 0; guard < 100; guard += 1) {
     const shared = await dashboard(contexts[0]);
-    if (shared.activeRun?.phase !== expectedPhase) return turn;
+    if (!shared.activeRun) return turn;
+    if (shared.activeRun.phase === 'failed') throw new Error(`Local co-op party wiped while resolving ${expectedPhase}.`);
+    if (shared.activeRun.phase !== expectedPhase) return turn;
 
     let index = turn % pages.length;
     let state = await dashboard(contexts[index]);
@@ -68,11 +70,13 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
     const downed = state.activeRun?.participants.find((participant) => participant.hp <= 0);
     if (downed && state.activeRun.viewer.reviveCharges > 0) {
       const revive = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
-      if (await revive.count()) {
-        await threadAction(page, context, revive);
-        turn += 1;
-        continue;
-      }
+      // Realtime context rendering follows the authoritative dashboard by a short debounce.
+      // If the aggregate says Revive is legal, require the contextual UI action to appear
+      // instead of racing it with an immediate count() and accidentally attacking past it.
+      await expect(revive).toBeVisible({ timeout: 5000 });
+      await threadAction(page, context, revive);
+      turn += 1;
+      continue;
     }
 
     if (state.activeRun?.enemyIntent) {
@@ -180,6 +184,11 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
     await threadAction(leader, leaderContext, reinforce);
     turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
     expect(turn).toBeGreaterThan(0);
+
+    // Completion is an authoritative condition, not "phase changed somehow". A wipe is
+    // rejected above; a successful boss kill removes the active run after rewards commit.
+    const completed = await dashboard(leaderContext);
+    expect(completed.activeRun).toBeNull();
 
     await leader.reload();
     await partner.reload();
