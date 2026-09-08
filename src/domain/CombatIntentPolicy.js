@@ -27,8 +27,8 @@ export function nextEnemyIntent({ enemy, intentCount = 0, participants = [], now
       : [BOSS_HEAVY, BOSS_MEND, BOSS_HEAVY]
     : [HEAVY, MEND, HEAVY];
   const template = cycle[intentCount % cycle.length];
-  const intentWindowMs = enemy.isBoss && battlePhase >= 2 ? PHASE_TWO_INTENT_WINDOW_MS : BASE_INTENT_WINDOW_MS;
-  const dueAt = new Date(new Date(now).getTime() + intentWindowMs).toISOString();
+  const windowMs = enemy.isBoss && battlePhase >= 2 ? PHASE_TWO_INTENT_WINDOW_MS : BASE_INTENT_WINDOW_MS;
+  const dueAt = new Date(new Date(now).getTime() + windowMs).toISOString();
 
   if (template.kind === 'heal') {
     const amount = Math.max(2, Math.ceil(enemy.maxHp * template.healRatio));
@@ -38,6 +38,7 @@ export function nextEnemyIntent({ enemy, intentCount = 0, participants = [], now
       amount,
       damage: 0,
       dueAt,
+      windowMs,
       battlePhase,
       hint: 'Interrupt before it completes.',
     };
@@ -52,6 +53,7 @@ export function nextEnemyIntent({ enemy, intentCount = 0, participants = [], now
       targetPlayerId: target?.playerId || null,
       damage,
       dueAt,
+      windowMs,
       battlePhase,
       hint: 'A marked ally is in danger. Any living Weaver can Guard to intercept and blunt the hit.',
     };
@@ -61,6 +63,7 @@ export function nextEnemyIntent({ enemy, intentCount = 0, participants = [], now
     ...template,
     damage,
     dueAt,
+    windowMs,
     battlePhase,
     hint: 'Guard to blunt the hit, or Interrupt to cancel it.',
   };
