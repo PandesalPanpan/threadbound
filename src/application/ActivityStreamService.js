@@ -8,6 +8,14 @@ function titleize(value) {
     .join(' ') || 'Unknown';
 }
 
+function relicTriggerCopy(trigger) {
+  if (!trigger) return '';
+  if (trigger.effect === 'bonus_focus') return ` · ◇ ${trigger.name}: +${trigger.amount} Focus`;
+  if (trigger.effect === 'prime_damage') return ` · ◇ ${trigger.name}: +${trigger.amount} next damage primed`;
+  if (trigger.effect === 'bonus_healing') return ` · ◇ ${trigger.name}: +${trigger.amount} bonus healing`;
+  return ` · ◇ ${trigger.name} triggered`;
+}
+
 export class ActivityStreamService {
   constructor({ streamRepository, gameRepository }) {
     this.streamRepository = streamRepository;
@@ -87,6 +95,7 @@ export class ActivityStreamService {
       : event.phase === 'complete'
         ? ' · ✦ Dungeon cleared.'
         : runEvent;
+    const relic = relicTriggerCopy(event.relicAttunement);
 
     let result;
     if (action === 'attack') {
@@ -116,7 +125,7 @@ export class ActivityStreamService {
 
     const bossPhase = event.bossBattlePhase ? ` · PHASE ${event.bossBattlePhase}${event.bossPhaseName ? ` ${event.bossPhaseName.toUpperCase()}` : ''}` : '';
     const state = [actorHp, actorFocus, ['upgrade', 'complete', 'event'].includes(event.phase) ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
-    return `${result}${state ? ` ${state}.` : ''}${phaseChange}${intent}${phase}`;
+    return `${result}${state ? ` ${state}.` : ''}${relic}${phaseChange}${intent}${phase}`;
   }
 
   #project(event) {
@@ -154,6 +163,7 @@ export class ActivityStreamService {
       case 'SkillComboTriggered':
       case 'BossPhaseChanged':
       case 'RunEventDiscovered':
+      case 'RelicAttunementTriggered':
         return null;
 
       case 'RunEventChosen': {
@@ -181,12 +191,18 @@ export class ActivityStreamService {
       }
       case 'ItemGenerated': {
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}. Open Gear to equip, compare, or salvage it.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}. Open Gear to equip, Temper, compare, or salvage it.` };
       }
       case 'ItemEquipped': {
         const item = this.gameRepository.getItem(event.itemId);
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}${item ? ` (+${item.attackBonus} Attack)` : ''}.` };
       }
+      case 'ItemUpgraded':
+        return {
+          actorPlayerId: event.playerId,
+          actorName,
+          body: `${actorName} Tempered ${event.itemName || 'a relic'} to ${event.level}/${event.maxLevel} with ${event.attunementName} (+${event.attackIncrease} Attack, −${event.threadDustSpent} Dust).`,
+        };
       case 'ItemSalvaged':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} salvaged ${event.itemName || 'a relic'} into ${event.threadDust} Thread Dust.` };
       case 'PartyCreated':
