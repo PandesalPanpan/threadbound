@@ -186,7 +186,7 @@ export class ArcManifestService {
     if (DUNGEONS[id]) return structuredClone(DUNGEONS[id]);
     const dungeon = this.runtimeDungeons().find((candidate) => candidate.id === id);
     if (!dungeon) return null;
-    const selection = selectEncounterSequence(dungeon, `encounters:${id}:${this.rng()}`);
+    const selection = selectEncounterSequence(dungeon, this.rng());
     return {
       ...structuredClone(dungeon),
       encounters: selection.encounters,
