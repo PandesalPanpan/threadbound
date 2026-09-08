@@ -67,6 +67,31 @@ async function actionsUntilPhaseChanges(context, page, expectedPhase, limit = 60
   throw new Error(`Run did not leave ${expectedPhase} within ${limit} explicit actions.`);
 }
 
+async function chooseRunDiscovery(page, context) {
+  const state = await dashboard(context);
+  expect(state.activeRun?.phase).toBe('event');
+  await expect(page.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('run-event-name')).not.toHaveText('');
+  const choice = state.activeRun.runEvent?.choices?.[0];
+  expect(choice?.id).toBeTruthy();
+  const beforeVersion = state.activeRun.version;
+  await page.getByTestId(`run-event-choice-${choice.id}`).click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.phase === 'combat' && after.activeRun.version > beforeVersion;
+  }, { timeout: 5000 }).toBe(true);
+  return choice.id;
+}
+
+async function normalEncountersThroughDiscovery(context, page) {
+  await actionsUntilPhaseChanges(context, page, 'combat');
+  const state = await dashboard(context);
+  if (state.activeRun?.phase === 'event') {
+    await chooseRunDiscovery(page, context);
+    await actionsUntilPhaseChanges(context, page, 'combat');
+  }
+}
+
 async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
   let turn = startTurn;
   for (let guard = 0; guard < 90; guard += 1) {
@@ -109,7 +134,7 @@ async function expectCountAtLeast(locator, minimum) {
   expect(count).toBeGreaterThanOrEqual(minimum);
 }
 
-test('Threaded login -> discrete dungeon thread -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
+test('Threaded login -> discrete dungeon thread -> mid-run discovery -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
   await loginWithThreaded(page);
   await expect(page.getByTestId('honey-balance')).toHaveText('100');
   await expect(page.getByTestId('attack-power')).toHaveText('6');
@@ -118,7 +143,7 @@ test('Threaded login -> discrete dungeon thread -> generated loot -> codex -> eq
   await startFromThread(page, context);
   await expect(page.getByTestId('combat-help')).toContainText('explicit');
   await expect(page.getByTestId('combat-coach')).toContainText('Nothing attacks automatically');
-  await actionsUntilPhaseChanges(context, page, 'combat');
+  await normalEncountersThroughDiscovery(context, page);
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
 
   await page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
@@ -174,7 +199,7 @@ test('Threaded login -> discrete dungeon thread -> generated loot -> codex -> eq
   await expect(page.getByTestId('attack-power')).not.toHaveText('6');
 });
 
-test('two browser sessions form a party and complete one shared scaled dungeon through the thread', async ({ browser }) => {
+test('two browser sessions share one discovery choice and complete one scaled dungeon through the thread', async ({ browser }) => {
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
@@ -212,6 +237,15 @@ test('two browser sessions form a party and complete one shared scaled dungeon t
     }, { timeout: 5000 }).toBe(true);
 
     let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', 2);
+    const discovery = await dashboard(leaderContext);
+    expect(discovery.activeRun?.phase).toBe('event');
+    await expect(leader.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
+    await expect(partner.getByTestId('run-event-waiting')).toContainText('Waiting for the party leader', { timeout: 5000 });
+    const choice = discovery.activeRun.runEvent.choices[0];
+    await leader.getByTestId(`run-event-choice-${choice.id}`).click();
+    await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+
+    turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
     await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade', { timeout: 5000 });
     await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
 
