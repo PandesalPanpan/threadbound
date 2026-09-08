@@ -150,7 +150,9 @@ export class SQLiteGameRepository {
   }
 
   getActiveRun(playerId) {
-    const row = this.db.prepare("SELECT dr.state_json, dr.version FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
+    // Non-combat decision phases are still active runs: they must survive dashboard reads,
+    // reconnects, and party/run creation guards until the aggregate reaches complete/failed.
+    const row = this.db.prepare("SELECT dr.state_json, dr.version FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
     return this.#decodeRunRow(row);
   }
 
