@@ -1,4 +1,5 @@
 import { nextEnemyIntent, resolveEnemyIntent } from './CombatIntentPolicy.js';
+import { combatSkill, MAX_FOCUS } from './CombatSkillCatalog.js';
 
 export const DUNGEONS = Object.freeze({
   'frayed-hollow': Object.freeze({
@@ -43,7 +44,15 @@ export function scalingForPlayerCount(playerCount) {
 function cloneEnemy(definition, playerCount, isBoss = false) {
   const scaling = scalingForPlayerCount(playerCount);
   const hp = Math.ceil(definition.hp * scaling.enemyHealthMultiplier);
-  return { id: definition.id, name: definition.name, hp, maxHp: hp, retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier), isBoss };
+  return {
+    id: definition.id,
+    name: definition.name,
+    hp,
+    maxHp: hp,
+    retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier),
+    isBoss,
+    statuses: { exposed: 0 },
+  };
 }
 
 function freshParticipants(participants) {
@@ -54,9 +63,24 @@ function freshParticipants(participants) {
     if (ids.has(playerId)) throw new Error('Dungeon participants must be unique.');
     ids.add(playerId);
     return {
-      playerId, maxHp: maxHealth, hp: maxHealth, contributionDamage: 0, healingDone: 0, revives: 0,
-      damagePrevented: 0, firstStrikeUsed: false, guarding: false, threat: 0, mendCharges: 1, reviveCharges: 1,
-      reactionDamageBonus: 0, successfulGuards: 0, successfulInterrupts: 0,
+      playerId,
+      maxHp: maxHealth,
+      hp: maxHealth,
+      contributionDamage: 0,
+      healingDone: 0,
+      revives: 0,
+      damagePrevented: 0,
+      firstStrikeUsed: false,
+      guarding: false,
+      threat: 0,
+      mendCharges: 1,
+      reviveCharges: 1,
+      reactionDamageBonus: 0,
+      successfulGuards: 0,
+      successfulInterrupts: 0,
+      focus: 0,
+      maxFocus: MAX_FOCUS,
+      skillCooldowns: {},
     };
   });
 }
@@ -66,10 +90,14 @@ export class DungeonRun {
     this.state = structuredClone(state);
     this.state.intentCount ??= 0;
     this.state.reactionStyle ??= null;
+    if (this.state.enemy) this.state.enemy.statuses ??= { exposed: 0 };
     for (const participant of this.state.participants || []) {
       participant.reactionDamageBonus ??= 0;
       participant.successfulGuards ??= 0;
       participant.successfulInterrupts ??= 0;
+      participant.focus ??= 0;
+      participant.maxFocus ??= MAX_FOCUS;
+      participant.skillCooldowns ??= {};
     }
   }
 
@@ -84,10 +112,28 @@ export class DungeonRun {
     if (participantStates.length < dungeon.minPlayers || participantStates.length > dungeon.maxPlayers) throw new Error('Dungeon participant count is outside the allowed range.');
     const scaling = scalingForPlayerCount(participantStates.length);
     return new DungeonRun({
-      id, version: 0, ownerType, ownerId, startedByPlayerId, dungeonId, dungeonDefinition: structuredClone(dungeon),
-      phase: 'combat', encounterIndex: 0, participants: participantStates, scaling, runAttackBonus: 0, selectedUpgrade: null,
-      reactionStyle: null, enemy: cloneEnemy(dungeon.encounters[0], participantStates.length), enemyIntent: null,
-      attacksSinceIntent: 0, intentCount: 0, rewardsGranted: false, rewardItemIds: {}, createdAt: now, completedAt: null,
+      id,
+      version: 0,
+      ownerType,
+      ownerId,
+      startedByPlayerId,
+      dungeonId,
+      dungeonDefinition: structuredClone(dungeon),
+      phase: 'combat',
+      encounterIndex: 0,
+      participants: participantStates,
+      scaling,
+      runAttackBonus: 0,
+      selectedUpgrade: null,
+      reactionStyle: null,
+      enemy: cloneEnemy(dungeon.encounters[0], participantStates.length),
+      enemyIntent: null,
+      attacksSinceIntent: 0,
+      intentCount: 0,
+      rewardsGranted: false,
+      rewardItemIds: {},
+      createdAt: now,
+      completedAt: null,
     });
   }
 
@@ -97,6 +143,8 @@ export class DungeonRun {
   attack({ playerId, attackPower, equipmentEffect = 'none', now = new Date().toISOString() }) {
     this.#assertCombat();
     const events = [];
+    const participant = this.#actingParticipant(playerId);
+    this.#beginAction(participant);
     let ignoredRetaliation = 0;
     if (this.state.enemyIntent) {
       const ignoredIntent = structuredClone(this.state.enemyIntent);
@@ -104,25 +152,17 @@ export class DungeonRun {
       ignoredRetaliation = resolved.damage || 0;
       events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: ignoredIntent.id, reaction: ignoredIntent.reaction, result: resolved });
       if (this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
-      const actorAfterIntent = this.participant(playerId);
-      if (actorAfterIntent?.hp <= 0) return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
+      if (this.participant(playerId)?.hp <= 0) return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
     }
-    const participant = this.#actingParticipant(playerId);
     let damage = attackPower + this.state.runAttackBonus + participant.reactionDamageBonus;
     participant.reactionDamageBonus = 0;
     if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) damage += 2;
     if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) damage += 2;
     participant.firstStrikeUsed = true;
-    const enemyHpBefore = this.state.enemy.hp;
-    this.state.enemy.hp = Math.max(0, this.state.enemy.hp - damage);
-    const effectiveDamage = Math.min(enemyHpBefore, damage);
-    participant.contributionDamage += effectiveDamage;
-    participant.threat += effectiveDamage;
-    events.push({ type: 'EnemyDamaged', playerId, runId: this.state.id, enemyId: this.state.enemy.id, damage: effectiveDamage });
+    const effectiveDamage = this.#damageEnemy(participant, damage, events, playerId);
+    this.#grantFocus(participant, 1, events);
     if (this.state.enemy.hp === 0) {
-      const defeated = structuredClone(this.state.enemy);
-      events.push({ type: 'EnemyDefeated', playerId, runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, isBoss: defeated.isBoss });
-      this.#advanceAfterDefeat(events, now);
+      this.#defeatCurrentEnemy(events, playerId, now);
       return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: ignoredRetaliation };
     }
     const retaliation = ignoredRetaliation || this.#retaliate(events);
@@ -133,6 +173,7 @@ export class DungeonRun {
   guard({ playerId, now = new Date().toISOString() }) {
     this.#assertCombat();
     const participant = this.#actingParticipant(playerId);
+    this.#beginAction(participant);
     participant.guarding = true;
     participant.threat += GUARD_THREAT;
     const events = [{ type: 'PlayerGuarded', playerId, runId: this.state.id, threatAdded: GUARD_THREAT }];
@@ -143,6 +184,7 @@ export class DungeonRun {
       retaliation = resolved.damage || 0;
       if (intended.kind === 'damage') {
         participant.successfulGuards += 1;
+        this.#grantFocus(participant, 1, events);
         if (this.state.reactionStyle === 'guard') participant.reactionDamageBonus += RIPOSTE_BONUS;
         events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'guard', intentId: intended.id, bonusDamage: this.state.reactionStyle === 'guard' ? RIPOSTE_BONUS : 0 });
       }
@@ -153,16 +195,19 @@ export class DungeonRun {
   interrupt({ playerId }) {
     this.#assertCombat();
     const participant = this.#actingParticipant(playerId);
+    this.#beginAction(participant);
     if (!this.state.enemyIntent) throw new Error('There is no enemy action to interrupt.');
     const interrupted = structuredClone(this.state.enemyIntent);
     this.state.enemyIntent = null;
     participant.threat += INTERRUPT_THREAT;
     participant.successfulInterrupts += 1;
+    this.#grantFocus(participant, 1, []);
     if (this.state.reactionStyle === 'interrupt') participant.reactionDamageBonus += DISRUPT_BONUS;
     return {
       state: this.toJSON(),
       events: [
         { type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interrupted.id, enemyId: this.state.enemy.id },
+        { type: 'FocusChanged', playerId, runId: this.state.id, focus: participant.focus, maxFocus: participant.maxFocus },
         { type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interrupted.id, bonusDamage: this.state.reactionStyle === 'interrupt' ? DISRUPT_BONUS : 0 },
       ],
       interrupted,
@@ -172,6 +217,7 @@ export class DungeonRun {
   mend({ playerId, targetPlayerId }) {
     this.#assertCombat();
     const participant = this.#actingParticipant(playerId);
+    this.#beginAction(participant);
     const target = this.participant(targetPlayerId);
     if (!target) throw new Error('Mend target is not a participant in this run.');
     if (target.hp <= 0) throw new Error('Mend cannot heal a downed player; use Revive.');
@@ -190,6 +236,7 @@ export class DungeonRun {
   revive({ playerId, targetPlayerId }) {
     this.#assertCombat();
     const participant = this.#actingParticipant(playerId);
+    this.#beginAction(participant);
     const target = this.participant(targetPlayerId);
     if (!target) throw new Error('Revive target is not a participant in this run.');
     if (target.playerId === playerId) throw new Error('Players cannot revive themselves.');
@@ -204,6 +251,76 @@ export class DungeonRun {
     const events = [{ type: 'PlayerRevived', playerId, targetPlayerId, runId: this.state.id, restoredHp: target.hp }];
     const retaliation = this.#retaliate(events);
     return { state: this.toJSON(), events, restoredHp: target.hp, retaliation };
+  }
+
+  useSkill({ playerId, skillId, attackPower, now = new Date().toISOString() }) {
+    this.#assertCombat();
+    const participant = this.#actingParticipant(playerId);
+    this.#beginAction(participant);
+    const skill = combatSkill(skillId);
+    const remaining = Number(participant.skillCooldowns[skill.id] || 0);
+    if (remaining > 0) throw new Error(`${skill.name} is on cooldown for ${remaining} more action${remaining === 1 ? '' : 's'}.`);
+    if (participant.focus < skill.cost) throw new Error(`${skill.name} requires ${skill.cost} Focus.`);
+
+    const events = [];
+    let retaliation = 0;
+    let interruptedIntent = null;
+    if (this.state.enemyIntent) {
+      if (skill.interrupts) {
+        interruptedIntent = structuredClone(this.state.enemyIntent);
+        this.state.enemyIntent = null;
+        participant.successfulInterrupts += 1;
+        events.push({ type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interruptedIntent.id, enemyId: this.state.enemy.id, bySkillId: skill.id });
+        events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interruptedIntent.id, bySkillId: skill.id, bonusDamage: 0 });
+      } else {
+        const ignoredIntent = structuredClone(this.state.enemyIntent);
+        const resolved = this.#resolveIntent(events, now, 'ignored');
+        retaliation = resolved.damage || 0;
+        events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: ignoredIntent.id, reaction: ignoredIntent.reaction, result: resolved });
+        if (this.state.phase === 'failed' || this.participant(playerId)?.hp <= 0) return { state: this.toJSON(), events, skillId: skill.id, damage: 0, healed: 0, retaliation };
+      }
+    }
+
+    participant.focus -= skill.cost;
+    participant.skillCooldowns[skill.id] = skill.cooldown;
+    events.push({ type: 'CombatSkillUsed', playerId, runId: this.state.id, skillId: skill.id, focusCost: skill.cost });
+    events.push({ type: 'FocusChanged', playerId, runId: this.state.id, focus: participant.focus, maxFocus: participant.maxFocus });
+
+    let damage = 0;
+    let healed = 0;
+    if (skill.kind === 'damage') {
+      let rawDamage = attackPower + this.state.runAttackBonus + skill.damageBonus + participant.reactionDamageBonus;
+      participant.reactionDamageBonus = 0;
+      const exposed = Number(this.state.enemy.statuses?.exposed || 0);
+      if (skill.id === 'severing-knot' && exposed > 0) {
+        rawDamage += skill.comboBonus;
+        this.state.enemy.statuses.exposed = Math.max(0, exposed - 1);
+        events.push({ type: 'SkillComboTriggered', playerId, runId: this.state.id, skillId: skill.id, combo: 'exposed', bonusDamage: skill.comboBonus });
+      }
+      damage = this.#damageEnemy(participant, rawDamage, events, playerId);
+      if (this.state.enemy.hp === 0) {
+        this.#defeatCurrentEnemy(events, playerId, now);
+        return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation };
+      }
+      if (skill.id === 'piercing-stitch') {
+        this.state.enemy.statuses.exposed = 1;
+        events.push({ type: 'EnemyStatusApplied', playerId, runId: this.state.id, enemyId: this.state.enemy.id, status: 'exposed', charges: 1 });
+      }
+      if (!interruptedIntent && !retaliation) retaliation = this.#retaliate(events);
+      if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
+    } else if (skill.kind === 'party-heal') {
+      for (const target of this.state.participants.filter((candidate) => candidate.hp > 0)) {
+        const amount = Math.min(skill.heal, target.maxHp - target.hp);
+        if (amount <= 0) continue;
+        target.hp += amount;
+        healed += amount;
+        participant.healingDone += amount;
+        events.push({ type: 'PlayerHealed', playerId, targetPlayerId: target.playerId, runId: this.state.id, amount, bySkillId: skill.id });
+      }
+      if (!retaliation) retaliation = this.#retaliate(events);
+    }
+
+    return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation };
   }
 
   chooseUpgrade(upgradeId) {
@@ -247,6 +364,34 @@ export class DungeonRun {
     if (!participant) throw new Error('Player is not a participant in this run.');
     if (participant.hp <= 0) throw new Error('A downed player cannot act until revived.');
     return participant;
+  }
+
+  #beginAction(participant) {
+    for (const [skillId, remaining] of Object.entries(participant.skillCooldowns || {})) {
+      if (remaining > 0) participant.skillCooldowns[skillId] = remaining - 1;
+    }
+  }
+
+  #grantFocus(participant, amount, events) {
+    const before = participant.focus;
+    participant.focus = Math.min(participant.maxFocus, participant.focus + amount);
+    if (participant.focus !== before && events) events.push({ type: 'FocusChanged', playerId: participant.playerId, runId: this.state.id, focus: participant.focus, maxFocus: participant.maxFocus });
+  }
+
+  #damageEnemy(participant, rawDamage, events, playerId) {
+    const enemyHpBefore = this.state.enemy.hp;
+    this.state.enemy.hp = Math.max(0, this.state.enemy.hp - rawDamage);
+    const effectiveDamage = Math.min(enemyHpBefore, rawDamage);
+    participant.contributionDamage += effectiveDamage;
+    participant.threat += effectiveDamage;
+    events.push({ type: 'EnemyDamaged', playerId, runId: this.state.id, enemyId: this.state.enemy.id, damage: effectiveDamage });
+    return effectiveDamage;
+  }
+
+  #defeatCurrentEnemy(events, playerId, now) {
+    const defeated = structuredClone(this.state.enemy);
+    events.push({ type: 'EnemyDefeated', playerId, runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, isBoss: defeated.isBoss });
+    this.#advanceAfterDefeat(events, now);
   }
 
   #retaliate(events, forcedDamage = null) {
