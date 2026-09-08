@@ -184,6 +184,11 @@ export class GameService {
   equipItem(playerId, itemId) {
     const item = this.repository.getItem(itemId);
     if (!item || item.playerId !== playerId) throw new Error('Item not found.');
+    if (this.repository.getActiveRun(playerId)) {
+      const error = new Error('Finish the active dungeon before changing equipped relics.');
+      error.code = 'item_equip_during_run';
+      throw error;
+    }
     this.repository.equipItem(playerId, itemId);
     this.eventBus.publish({ type: 'ItemEquipped', playerId, itemId });
     return this.dashboard(playerId);
