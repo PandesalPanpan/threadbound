@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Character } from '../domain/Character.js';
+import { publicCombatSkills } from '../domain/CombatSkillCatalog.js';
 import { DUNGEONS, DungeonRun, RUN_UPGRADES } from '../domain/DungeonRun.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { Party } from '../domain/Party.js';
@@ -47,6 +48,7 @@ export class GameService {
       world: this.repository.getWorldState(),
       dungeons: allDungeons.map(({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId, arcTitle, sourceManifestRevision }) => ({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId: arcId || 'arc-1', arcTitle: arcTitle || 'The First Unraveling', sourceManifestRevision: sourceManifestRevision || null })),
       runUpgrades: Object.values(RUN_UPGRADES),
+      combatSkills: publicCombatSkills(),
     };
   }
 
@@ -135,6 +137,12 @@ export class GameService {
     return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId }), 'revive');
   }
 
+  useSkill(playerId, runId, skillId) {
+    const { run, character } = this.#combatContext(playerId, runId);
+    const outcome = run.useSkill({ playerId, skillId, attackPower: character.attackPower });
+    return this.#persistCombatOutcome(playerId, run, outcome, 'skill');
+  }
+
   chooseUpgrade(playerId, runId, upgradeId) {
     const runState = this.repository.getRun(runId);
     if (!runState) throw new Error('Run not found.');
@@ -177,6 +185,7 @@ export class GameService {
     const healed = outcome.events.find((event) => event.type === 'PlayerHealed') || null;
     const revived = outcome.events.find((event) => event.type === 'PlayerRevived') || null;
     const interrupted = outcome.events.find((event) => event.type === 'EnemyInterrupted') || null;
+    const combo = outcome.events.find((event) => event.type === 'SkillComboTriggered') || null;
     const prevented = damaged ? Math.max(0, Number(damaged.rawDamage || 0) - Number(damaged.damage || 0)) : 0;
 
     this.eventBus.publish({
@@ -186,6 +195,9 @@ export class GameService {
       runId: state.id,
       dungeonId: state.dungeonId,
       action,
+      skillId: outcome.skillId || null,
+      combo: combo?.combo || null,
+      comboBonus: Number(combo?.bonusDamage || 0),
       damage: Number(outcome.damage || 0),
       retaliation: Number(outcome.retaliation || damaged?.damage || 0),
       prevented,
@@ -194,12 +206,16 @@ export class GameService {
       targetPlayerId: healed?.targetPlayerId || revived?.targetPlayerId || damaged?.playerId || null,
       actorHp: actor?.hp ?? null,
       actorMaxHp: actor?.maxHp ?? null,
+      actorFocus: actor?.focus ?? null,
+      actorMaxFocus: actor?.maxFocus ?? null,
+      actorSkillCooldowns: actor?.skillCooldowns ? structuredClone(actor.skillCooldowns) : {},
       targetHp: damagedTarget?.hp ?? null,
       targetMaxHp: damagedTarget?.maxHp ?? null,
       enemyId: state.enemy?.id || defeated?.enemyId || null,
       enemyName: state.enemy?.name || null,
       enemyHp: state.enemy?.hp ?? null,
       enemyMaxHp: state.enemy?.maxHp ?? null,
+      enemyStatuses: state.enemy?.statuses ? structuredClone(state.enemy.statuses) : {},
       defeatedEnemyId: defeated?.enemyId || null,
       defeatedBoss: Boolean(defeated?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
