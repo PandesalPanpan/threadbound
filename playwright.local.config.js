@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testMatch: ['**/local-auth.spec.js', '**/adventure-stream.spec.js'],
+  testMatch: ['**/local-auth.spec.js', '**/adventure-stream.spec.js', '**/encounter-mechanics.local.spec.js'],
   fullyParallel: false,
   workers: 1,
   // The local project intentionally uses one in-memory server for realistic persistence.
