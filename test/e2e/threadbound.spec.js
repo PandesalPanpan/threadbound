@@ -122,6 +122,23 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
       }
     }
 
+    // A proxy player should use the support action the UI offers rather than attack until
+    // death. Only Mend between telegraphs so defensive reaction windows remain authoritative.
+    // The command itself picks a wounded ally first, mirroring normal cooperative play.
+    if (!actorState.activeRun.enemyIntent && actorState.activeRun.viewer.mendCharges > 0) {
+      const wounded = actorState.activeRun.participants
+        .filter((participant) => participant.hp > 0 && participant.maxHp - participant.hp >= 8)
+        .sort((left, right) => (left.hp / left.maxHp) - (right.hp / right.maxHp))[0];
+      if (wounded) {
+        const mend = page.getByTestId('stream-mend');
+        if (await mend.count()) {
+          await streamAction(page, context, 'stream-mend');
+          turn += 1;
+          continue;
+        }
+      }
+    }
+
     await reactOrAttackFromThread(page, context);
     turn += 1;
   }
@@ -256,6 +273,11 @@ test('two browser sessions share one discovery choice and complete one scaled du
 
     const completedState = await dashboard(leaderContext);
     expect(completedState.activeRun).toBeNull();
+    // No active run can mean either complete or failed. Require the synchronous atomic
+    // completion side effects here so a wiped party can never masquerade as a victory.
+    expect(completedState.inventory).toHaveLength(1);
+    expect(completedState.character.threadDust).toBe(15);
+    expect(completedState.world.frayedHollowClears).toBe(worldBefore + 1);
 
     // A final reload is intentional: rewards and party state must reconstruct durably,
     // while combat synchronization above is proven through realtime updates only.

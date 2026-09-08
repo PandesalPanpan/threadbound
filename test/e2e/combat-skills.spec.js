@@ -65,6 +65,23 @@ async function reactToIntent(page, context) {
   else await action(page, context, 'stream-guard');
 }
 
+async function finishCurrentCombatPhase(page, context, limit = 24) {
+  for (let turn = 0; turn < limit; turn += 1) {
+    const state = await dashboard(context);
+    if (state.activeRun?.phase !== 'combat') return state.activeRun?.phase || null;
+    if ((state.activeRun.viewer?.hp ?? 0) <= 0) throw new Error('The skills proxy player was downed before the encounter finished.');
+
+    await page.reload();
+    if (state.activeRun.enemyIntent) {
+      if (state.activeRun.enemyIntent.reaction === 'interrupt') await action(page, context, 'stream-interrupt');
+      else await action(page, context, 'stream-guard');
+    } else {
+      await action(page, context, 'stream-attack');
+    }
+  }
+  throw new Error(`The skills proxy did not leave combat within ${limit} explicit actions.`);
+}
+
 async function formParty(leader, leaderContext, partner, partnerContext) {
   // Party creation/navigation has dedicated E2E coverage. Build the authenticated shared
   // run through the HTTP boundary here so this mobile-first journey measures combat UX.
@@ -135,12 +152,15 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     expect(skillButtonBox.height).toBeGreaterThanOrEqual(44);
     expect(await leader.getByTestId('combat-skill-panel').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 
-    // First encounter: both players build Focus while still respecting the first telegraph.
+    // First encounter: deliberately alternate offense and the Wisp's reaction windows.
+    // This leaves Weaver A at exactly 2 Focus and Weaver B with enough Focus for the
+    // next encounter's finisher, while proving the browser journey no longer relies on
+    // a fixed number of blind Strike presses.
     await action(leader, leaderContext, 'stream-attack');
-    await partner.reload();
+    await reactToIntent(partner, partnerContext);
     await action(partner, partnerContext, 'stream-attack');
-    await leader.reload();
-    await action(leader, leaderContext, 'stream-attack');
+    await reactToIntent(leader, leaderContext);
+    await action(partner, partnerContext, 'stream-attack');
     await reactToIntent(partner, partnerContext);
     await action(partner, partnerContext, 'stream-attack');
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.encounterIndex, { timeout: 7000 }).toBe(1);
@@ -183,19 +203,10 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await expect(leader.getByTestId('skill-piercing-stitch-state')).toHaveText('2 Focus');
     await expect(leader.getByTestId('skill-piercing-stitch')).toBeEnabled();
 
-    // Finish the third encounter reactively rather than bypassing its telegraph.
-    const thirdState = await dashboard(partnerContext);
-    if (thirdState.activeRun?.enemyIntent) await reactToIntent(partner, partnerContext);
-    else {
-      await partner.reload();
-      await action(partner, partnerContext, 'stream-attack');
-      const maybeIntent = await dashboard(partnerContext);
-      if (maybeIntent.activeRun?.phase === 'combat' && maybeIntent.activeRun?.enemyIntent) await reactToIntent(partner, partnerContext);
-    }
-    if ((await dashboard(partnerContext)).activeRun?.phase === 'combat') {
-      await partner.reload();
-      await action(partner, partnerContext, 'stream-attack');
-    }
+    // Finish the third encounter with the same intent-aware loop a real player follows.
+    // Use Weaver B so Weaver A's exact Focus/cooldown state remains available for the
+    // subsequent party-heal assertions instead of being changed just to advance a fixture.
+    await finishCurrentCombatPhase(partner, partnerContext);
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('upgrade');
 
     await leader.reload();

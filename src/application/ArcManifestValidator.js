@@ -1,10 +1,11 @@
 import { DUNGEONS } from '../domain/DungeonRun.js';
+import { ENEMY_ABILITY_CATALOG } from '../domain/CombatIntentPolicy.js';
 import { ITEM_EFFECTS } from '../domain/ItemGenerator.js';
 import { ACHIEVEMENTS } from './AchievementProjector.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 
 export const MANIFEST_VERSION = 1;
-export const ALLOWED_ENEMY_ABILITIES = Object.freeze(['basic_retaliation']);
+export const ALLOWED_ENEMY_ABILITIES = Object.freeze(Object.keys(ENEMY_ABILITY_CATALOG));
 export const BALANCE_BUDGETS = Object.freeze({
   enemyBaseHp: Object.freeze({ min: 1, max: 200 }),
   enemyRetaliation: Object.freeze({ min: 0, max: 30 }),
@@ -149,7 +150,7 @@ export class ArcManifestValidator {
 
     manifest.achievements.forEach((entry, index) => {
       const path = `achievements[${index}]`;
-      if (!object(entry)) return addError(path, 'invalid_achievement', 'Achievement must be an object.');
+      if (!object(entry)) return addError(path, 'invalid_achievement', 'Achievement entry must be an object.');
       registerId(entry.id, `${path}.id`);
       if (!text(entry.title)) addError(`${path}.title`, 'title_required', 'Achievement title is required.');
       if (!text(entry.description)) addError(`${path}.description`, 'description_required', 'Achievement description is required.');
@@ -192,7 +193,7 @@ export class ArcManifestValidator {
   }
   #tags(value, path, addError) {
     if (value === undefined) return;
-    if (!Array.isArray(value)) return addError(path, 'tags_array_required', 'tags must be an array.');
+    if (!Array.isArray(value)) return addError(path, 'tags_array_required', 'Tags must be an array.');
     if (value.some((tag) => !text(tag))) addError(path, 'invalid_tag', 'Tags must be non-empty strings.');
   }
 }

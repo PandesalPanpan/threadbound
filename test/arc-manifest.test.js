@@ -4,7 +4,7 @@ import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository
 import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
-import { ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
+import { ALLOWED_ENEMY_ABILITIES, ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
 import { ArcAchievementProjector } from '../src/application/ArcAchievementProjector.js';
 import { DungeonRun } from '../src/domain/DungeonRun.js';
 
@@ -131,7 +131,7 @@ test('world context exports supported mechanics and current published arc metada
   const context = service.worldContext();
   assert.equal(context.manifestVersion, 1);
   assert.ok(context.allowedMechanics.itemEffects.some((effect) => effect.code === 'boss_bane'));
-  assert.deepEqual(context.allowedMechanics.enemyAbilities, ['basic_retaliation']);
+  assert.deepEqual(context.allowedMechanics.enemyAbilities, [...ALLOWED_ENEMY_ABILITIES]);
   assert.equal(context.publishedGeneratedArcs[0].arcId, 'ashen-thread-test');
   assert.ok(context.generationRules.some((rule) => /Return JSON only/i.test(rule)));
   gameRepository.close();

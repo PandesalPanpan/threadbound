@@ -1,32 +1,45 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DungeonRun } from '../src/domain/DungeonRun.js';
+import { DUNGEONS, DungeonRun } from '../src/domain/DungeonRun.js';
 
-function soloRun(maxHealth = 80) {
+function soloRun(maxHealth = 80, enemyId = 'hollow-stalker') {
+  const dungeonDefinition = structuredClone(DUNGEONS['frayed-hollow']);
+  const enemy = dungeonDefinition.encounters.find((entry) => entry.id === enemyId);
+  if (!enemy) throw new Error(`Missing combat-v2 fixture enemy ${enemyId}`);
+  dungeonDefinition.encounters = [enemy];
   return DungeonRun.start({
-    id: 'combat-v2-run', ownerType: 'player', ownerId: 'a', startedByPlayerId: 'a', dungeonId: 'frayed-hollow',
+    id: `combat-v2-run-${enemyId}`,
+    ownerType: 'player', ownerId: 'a', startedByPlayerId: 'a', dungeonId: 'frayed-hollow',
+    dungeonDefinition,
     participants: [{ playerId: 'a', maxHealth }], now: '2026-09-08T00:00:00.000Z',
   });
 }
 
-function triggerIntent(run, attackPower = 1) {
-  for (let i = 0; i < 3; i += 1) run.attack({ playerId: 'a', attackPower, now: `2026-09-08T00:00:0${i}.000Z` });
+function triggerNormalIntent(run, now = '2026-09-08T00:00:00.000Z') {
+  run.attack({ playerId: 'a', attackPower: 1, now });
+  assert.ok(run.toJSON().enemyIntent);
 }
 
-test('mindless Attack immediately pays the cost of an unanswered telegraph', () => {
+function triggerBossIntent(run) {
+  for (let i = 0; i < 3; i += 1) run.attack({ playerId: 'a', attackPower: 1, now: `2026-09-08T00:00:0${i}.000Z` });
+  assert.ok(run.toJSON().enemyIntent);
+}
+
+test('mindless Attack immediately pays the cost of an unanswered heavy telegraph', () => {
   const run = soloRun();
-  triggerIntent(run);
+  triggerNormalIntent(run);
   const hpBefore = run.participant('a').hp;
-  const result = run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:02.200Z' });
+  const result = run.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:04.000Z' });
   assert.ok(run.participant('a').hp < hpBefore);
   assert.equal(result.events.some((event) => event.type === 'EnemyIntentIgnored'), true);
 });
 
-test('enemy intent cycle includes an interrupt-worthy heal after the heavy attack', () => {
-  const run = soloRun();
-  triggerIntent(run);
+test('mixed pressure rotates from a guardable heavy into an interrupt-worthy heal', () => {
+  const run = soloRun(80, 'silkbound-guard');
+  triggerNormalIntent(run);
+  assert.equal(run.toJSON().enemyIntent.kind, 'damage');
   run.interrupt({ playerId: 'a' });
-  triggerIntent(run);
+  triggerNormalIntent(run, '2026-09-08T00:00:01.000Z');
   const intent = run.toJSON().enemyIntent;
   assert.equal(intent.kind, 'heal');
   assert.equal(intent.reaction, 'interrupt');
@@ -35,18 +48,18 @@ test('enemy intent cycle includes an interrupt-worthy heal after the heavy attac
 });
 
 test('ignoring Thread Mend restores enemy HP while interrupting it prevents the heal', () => {
-  const ignored = soloRun();
-  triggerIntent(ignored);
+  const ignored = soloRun(80, 'silkbound-guard');
+  triggerNormalIntent(ignored);
   ignored.interrupt({ playerId: 'a' });
-  triggerIntent(ignored);
+  triggerNormalIntent(ignored, '2026-09-08T00:00:01.000Z');
   const beforeIgnored = ignored.toJSON().enemy.hp;
   ignored.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:05.000Z' });
   const afterIgnored = ignored.toJSON().enemy.hp;
 
-  const answered = soloRun();
-  triggerIntent(answered);
+  const answered = soloRun(80, 'silkbound-guard');
+  triggerNormalIntent(answered);
   answered.interrupt({ playerId: 'a' });
-  triggerIntent(answered);
+  triggerNormalIntent(answered, '2026-09-08T00:00:01.000Z');
   const beforeAnswered = answered.toJSON().enemy.hp;
   answered.interrupt({ playerId: 'a' });
 
@@ -59,7 +72,7 @@ test('reaction upgrades create build-defining payoff instead of flat attack only
   while (base.toJSON().phase === 'combat') base.attack({ playerId: 'a', attackPower: 20, now: '2026-09-08T00:00:00.000Z' });
   assert.equal(base.toJSON().phase, 'upgrade');
   base.chooseUpgrade('disrupt');
-  triggerIntent(base);
+  triggerBossIntent(base);
   base.interrupt({ playerId: 'a' });
   assert.equal(base.participant('a').reactionDamageBonus, 4);
   const before = base.toJSON().enemy.hp;

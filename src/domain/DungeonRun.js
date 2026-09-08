@@ -9,11 +9,11 @@ export const DUNGEONS = Object.freeze({
     minPlayers: 1,
     maxPlayers: 4,
     encounters: Object.freeze([
-      Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2 }),
-      Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2 }),
-      Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2 }),
+      Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2, abilities: Object.freeze(['self_mend']), intentCadence: 1 }),
+      Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure']), intentCadence: 1 }),
+      Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure', 'self_mend']), intentCadence: 1 }),
     ]),
-    boss: Object.freeze({ id: 'first-needle', name: 'The First Needle', hp: 24, retaliation: 4 }),
+    boss: Object.freeze({ id: 'first-needle', name: 'The First Needle', hp: 24, retaliation: 4, abilities: Object.freeze(['basic_retaliation']), intentCadence: 3 }),
   }),
 });
 
@@ -51,6 +51,8 @@ function cloneEnemy(definition, playerCount, isBoss = false) {
     hp,
     maxHp: hp,
     retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier),
+    abilities: [...(definition.abilities || ['basic_retaliation'])],
+    intentCadence: Number.isInteger(definition.intentCadence) && definition.intentCadence > 0 ? definition.intentCadence : INTENT_AFTER_ATTACKS,
     isBoss,
     battlePhase: isBoss ? 1 : 0,
     phaseName: isBoss ? 'Stitching' : null,
@@ -95,6 +97,8 @@ export class DungeonRun {
     this.state.reactionStyle ??= null;
     if (this.state.enemy) {
       this.state.enemy.statuses ??= { exposed: 0 };
+      this.state.enemy.abilities ??= [];
+      this.state.enemy.intentCadence ??= INTENT_AFTER_ATTACKS;
       this.state.enemy.battlePhase ??= this.state.enemy.isBoss ? 1 : 0;
       this.state.enemy.phaseName ??= this.state.enemy.isBoss ? (this.state.enemy.battlePhase >= 2 ? 'Unraveling' : 'Stitching') : null;
     }
@@ -475,7 +479,7 @@ export class DungeonRun {
     this.state.attacksSinceIntent = (this.state.attacksSinceIntent || 0) + 1;
     const cadence = this.state.enemy.isBoss && Number(this.state.enemy.battlePhase || 1) >= 2
       ? PHASE_TWO_INTENT_AFTER_ACTIONS
-      : INTENT_AFTER_ATTACKS;
+      : Math.max(1, Number(this.state.enemy.intentCadence || INTENT_AFTER_ATTACKS));
     if (this.state.attacksSinceIntent < cadence) return;
     this.state.attacksSinceIntent = 0;
     this.state.enemyIntent = nextEnemyIntent({
