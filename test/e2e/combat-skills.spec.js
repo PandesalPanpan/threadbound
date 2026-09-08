@@ -1,6 +1,14 @@
+import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 const LOCAL_NAMES = { a: 'Local Weaver A', b: 'Local Weaver B' };
+const REVIEW_DIR = 'ux-review';
+
+async function reviewShot(page, name) {
+  mkdirSync(REVIEW_DIR, { recursive: true });
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: `${REVIEW_DIR}/${name}.png` });
+}
 
 async function login(page, slot) {
   await page.goto('/');
@@ -84,6 +92,7 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
   try {
     await login(leader, 'a');
     await login(partner, 'b');
+    const authSource = (await dashboard(leaderContext)).authSource;
     await formParty(leader, leaderContext, partner, partnerContext);
 
     await expect(leader.getByTestId('combat-skill-panel')).toBeVisible();
@@ -112,6 +121,7 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await expect(leader.getByTestId('enemy-status-exposed')).toContainText('EXPOSED');
     await expect(leader.getByTestId('skill-piercing-stitch-state')).toHaveText('Cooldown 2');
     await expect(leader.getByTestId('skill-piercing-stitch')).toBeDisabled();
+    await reviewShot(leader, `combat-v2-skills-exposed-${authSource}`);
     await leader.reload();
     await expect(leader.getByTestId('enemy-status-exposed')).toContainText('EXPOSED');
     await expect(leader.getByTestId('skill-piercing-stitch-state')).toHaveText('Cooldown 2');
@@ -182,6 +192,7 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await expect(chorusEntry).toContainText(/restored 10 total party HP/i);
     await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 0/4');
     await expect(leader.getByTestId('skill-mending-chorus-state')).toHaveText('Cooldown 3');
+    await reviewShot(leader, `combat-v2-skills-chorus-${authSource}`);
 
     // Refresh/reconnect must reconstruct the resource and cooldown from persisted run state.
     await leader.reload();
