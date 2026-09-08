@@ -78,6 +78,7 @@ test('a teammate Guard intercepts Threadmark and keeps the marked ally untouched
   reachThreadmark(run);
   const markedHpBefore = run.participant('b').hp;
   const protectorHpBefore = run.participant('a').hp;
+  const successfulGuardsBefore = run.participant('a').successfulGuards;
   const rawDamage = run.toJSON().enemyIntent.damage;
 
   const result = run.guard({ playerId: 'a', now: '2026-09-08T00:00:30.000Z' });
@@ -89,7 +90,7 @@ test('a teammate Guard intercepts Threadmark and keeps the marked ally untouched
   assert.equal(run.participant('b').hp, markedHpBefore);
   assert.equal(run.participant('a').hp, protectorHpBefore - Math.ceil(rawDamage / 2));
   assert.equal(protectedEvent.prevented, rawDamage - Math.ceil(rawDamage / 2));
-  assert.equal(run.participant('a').successfulGuards, 1);
+  assert.equal(run.participant('a').successfulGuards, successfulGuardsBefore + 1);
 });
 
 test('blindly attacking through Threadmark damages the marked ally instead', () => {
