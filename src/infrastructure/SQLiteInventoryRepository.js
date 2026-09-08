@@ -36,6 +36,16 @@ export class SQLiteInventoryRepository {
   upgradeItem({ playerId, itemId, expectedLevel, cost, attackIncrease, attunementCode }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
+      // This check belongs inside the same write transaction as Dust spending and item
+      // mutation. The Service Layer keeps its earlier check for fast feedback, but only
+      // this lock closes the race with a dungeon start committing at the same time.
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      if (activeRun) {
+        const error = new Error('Finish the active dungeon before Tempering a relic.');
+        error.code = 'relic_upgrade_during_run';
+        throw error;
+      }
+
       const item = this.db.prepare('SELECT * FROM items WHERE id = ? AND player_id = ?').get(itemId, playerId);
       if (!item) throw new Error('Item not found.');
       const player = this.db.prepare('SELECT thread_dust FROM players WHERE id = ?').get(playerId);
