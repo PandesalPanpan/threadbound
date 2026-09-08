@@ -36,8 +36,12 @@ const RARITY_MAX_LEVEL = Object.freeze({
 const UPGRADE_COSTS = Object.freeze([8, 14, 22]);
 
 function currentLevel(item) {
-  const value = Number(item?.upgradeLevel || 0);
+  const value = Number(item?.upgradeLevel ?? item?.effect?.upgradeLevel ?? 0);
   return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+function currentAttunementCode(item) {
+  return item?.attunementCode || item?.effect?.attunementCode || null;
 }
 
 export function maxRelicUpgradeLevel(item) {
@@ -52,7 +56,8 @@ export function relicProgression(item) {
   const level = currentLevel(item);
   const maxLevel = maxRelicUpgradeLevel(item);
   const nextCost = level < maxLevel ? UPGRADE_COSTS[level] : null;
-  const attunement = item?.attunementCode ? RELIC_ATTUNEMENTS[item.attunementCode] || null : null;
+  const attunementCode = currentAttunementCode(item);
+  const attunement = attunementCode ? RELIC_ATTUNEMENTS[attunementCode] || null : null;
   return {
     level,
     maxLevel,
