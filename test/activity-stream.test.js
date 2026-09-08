@@ -107,6 +107,74 @@ test('resolved turns can surface telegraphs without a second public event', () =
   assert.equal(service.recent().length, 1);
 });
 
+test('Phase II Threadmark names the marked ally in the same resolved turn', () => {
+  const { service, a, b } = setup();
+  const phase = service.recordDomainEvent({ type: 'BossPhaseChanged', runId: 'run-a', enemyId: 'first-needle', battlePhase: 2, phaseName: 'Unraveling' });
+  const telegraph = service.recordDomainEvent({ type: 'EnemyIntentTelegraphed', runId: 'run-a', enemyId: 'first-needle', intent: { id: 'threadmark-lunge', targetPlayerId: b.id, damage: 11 } });
+  const resolved = service.recordDomainEvent({
+    type: 'CombatActionResolved',
+    action: 'attack',
+    playerId: a.id,
+    runId: 'run-a',
+    enemyId: 'first-needle',
+    enemyName: 'The First Needle',
+    enemyHp: 18,
+    enemyMaxHp: 40,
+    actorHp: 35,
+    actorMaxHp: 40,
+    actorFocus: 2,
+    actorMaxFocus: 4,
+    damage: 5,
+    retaliation: 4,
+    targetPlayerId: a.id,
+    bossBattlePhase: 2,
+    bossPhaseName: 'Unraveling',
+    bossPhaseChanged: { fromBattlePhase: 1, battlePhase: 2, phaseName: 'Unraveling' },
+    enemyIntent: { id: 'threadmark-lunge', name: 'Threadmark Lunge · marked ally', targetPlayerId: b.id, damage: 11 },
+    phase: 'boss',
+  });
+
+  assert.equal(phase, null);
+  assert.equal(telegraph, null);
+  assert.match(resolved.body, /PHASE 2: Unraveling/);
+  assert.match(resolved.body, /THREADMARK: Local Weaver B is marked for 11 damage/);
+  assert.match(resolved.body, /Guard to protect them/);
+  assert.equal(service.recent().length, 1);
+});
+
+test('a protection Guard explains who was saved and how much damage was prevented', () => {
+  const { service, a, b } = setup();
+  const protectedEvent = service.recordDomainEvent({ type: 'PlayerProtected', playerId: a.id, targetPlayerId: b.id, runId: 'run-a', damage: 6, rawDamage: 11, prevented: 5 });
+  const resolved = service.recordDomainEvent({
+    type: 'CombatActionResolved',
+    action: 'guard',
+    playerId: a.id,
+    runId: 'run-a',
+    enemyId: 'first-needle',
+    enemyName: 'The First Needle',
+    enemyHp: 18,
+    enemyMaxHp: 40,
+    actorHp: 29,
+    actorMaxHp: 40,
+    actorFocus: 3,
+    actorMaxFocus: 4,
+    retaliation: 6,
+    prevented: 5,
+    targetPlayerId: a.id,
+    protectedPlayerId: b.id,
+    protectionRawDamage: 11,
+    bossBattlePhase: 2,
+    bossPhaseName: 'Unraveling',
+    phase: 'boss',
+  });
+
+  assert.equal(protectedEvent, null);
+  assert.match(resolved.body, /Local Weaver A protected Local Weaver B from Threadmark/);
+  assert.match(resolved.body, /prevented 5 damage/);
+  assert.match(resolved.body, /took 6/);
+  assert.equal(service.recent().length, 1);
+});
+
 test('duplicate participant completion notifications are ignored while the aggregate completion is kept', () => {
   const { service, a, b } = setup();
   const aggregate = service.recordDomainEvent({ type: 'DungeonCompleted', runId: 'run-a', dungeonId: 'frayed-hollow', participantIds: [a.id, b.id] });
