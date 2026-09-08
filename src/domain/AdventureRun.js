@@ -48,9 +48,13 @@ export class AdventureRun {
   revive(args) { return this.#combat('revive', args); }
   useSkill(args) { return this.#combat('useSkill', args); }
 
-  chooseUpgrade(upgradeId) {
+  // The existing /upgrade command is the public run-choice transport. Dispatching by
+  // authoritative phase keeps that boundary backwards-compatible while the Domain Model
+  // still distinguishes an event choice from a boss upgrade.
+  chooseUpgrade(choiceId) {
+    if (this.state.phase === 'event') return this.chooseRunEvent(choiceId);
     const combat = new CombatDungeonRun(this.state);
-    const outcome = combat.chooseUpgrade(upgradeId);
+    const outcome = combat.chooseUpgrade(choiceId);
     this.state = outcome.state;
     return { ...outcome, state: this.toJSON() };
   }
