@@ -162,6 +162,7 @@ test('insufficient Dust and active runs leave relic progression and equipment un
     (error) => error.code === 'relic_upgrade_during_run',
   );
   assert.throws(() => gameService.equipItem(player.id, 'locked'), (error) => error.code === 'item_equip_during_run');
+  assert.throws(() => gameRepository.equipItem(player.id, 'locked'), (error) => error.code === 'item_equip_during_run');
   assert.equal(gameRepository.getPlayer(player.id).equippedItemId, null);
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 20);
   assert.equal(gameRepository.getItem('locked').attackBonus, 4);
