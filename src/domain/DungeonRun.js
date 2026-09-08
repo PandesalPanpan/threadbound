@@ -97,11 +97,15 @@ export class DungeonRun {
   attack({ playerId, attackPower, equipmentEffect = 'none', now = new Date().toISOString() }) {
     this.#assertCombat();
     const events = [];
+    let ignoredRetaliation = 0;
     if (this.state.enemyIntent) {
       const ignoredIntent = structuredClone(this.state.enemyIntent);
       const resolved = this.#resolveIntent(events, now, 'ignored');
+      ignoredRetaliation = resolved.damage || 0;
       events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: ignoredIntent.id, reaction: ignoredIntent.reaction, result: resolved });
-      if (this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: resolved.damage || 0 };
+      if (this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
+      const actorAfterIntent = this.participant(playerId);
+      if (actorAfterIntent?.hp <= 0) return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
     }
     const participant = this.#actingParticipant(playerId);
     let damage = attackPower + this.state.runAttackBonus + participant.reactionDamageBonus;
@@ -119,9 +123,9 @@ export class DungeonRun {
       const defeated = structuredClone(this.state.enemy);
       events.push({ type: 'EnemyDefeated', playerId, runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, isBoss: defeated.isBoss });
       this.#advanceAfterDefeat(events, now);
-      return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: 0 };
+      return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: ignoredRetaliation };
     }
-    const retaliation = this.#retaliate(events);
+    const retaliation = ignoredRetaliation || this.#retaliate(events);
     if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
     return { state: this.toJSON(), events, damage: effectiveDamage, retaliation };
   }
