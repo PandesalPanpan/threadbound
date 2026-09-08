@@ -4,6 +4,7 @@ import { publicCombatSkills } from '../domain/CombatSkillCatalog.js';
 import { AdventureRun as DungeonRun, DUNGEONS, RUN_UPGRADES } from '../domain/AdventureRun.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { Party } from '../domain/Party.js';
+import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 
 export class GameService {
   constructor({ repository, eventBus, arcManifestService = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
@@ -30,6 +31,7 @@ export class GameService {
     const activeRun = this.repository.getActiveRun(playerId);
     const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
+    const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
 
     return {
       character: {
@@ -39,16 +41,17 @@ export class GameService {
         attackPower: character.attackPower,
         maxHealth: character.maxHealth,
         threadDust: character.threadDust,
-        equippedItem,
+        equippedItem: decorateItem(equippedItem),
       },
       party: party ? this.#decorateParty(party, playerId) : null,
-      inventory: this.repository.listItems(playerId),
+      inventory: this.repository.listItems(playerId).map(decorateItem),
       activeRun: activeRun ? this.#decorateRun(activeRun, playerId) : null,
       achievements: this.repository.listAchievements(playerId),
       world: this.repository.getWorldState(),
       dungeons: allDungeons.map(({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId, arcTitle, sourceManifestRevision }) => ({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId: arcId || 'arc-1', arcTitle: arcTitle || 'The First Unraveling', sourceManifestRevision: sourceManifestRevision || null })),
       runUpgrades: Object.values(RUN_UPGRADES),
       combatSkills: publicCombatSkills(),
+      relicAttunements: publicRelicAttunements(),
     };
   }
 
@@ -113,33 +116,38 @@ export class GameService {
 
   attack(playerId, runId) {
     const { run, character, equipped } = this.#combatContext(playerId, runId);
-    const outcome = run.attack({ playerId, attackPower: character.attackPower, equipmentEffect: equipped?.effectCode ?? 'none' });
+    const outcome = run.attack({
+      playerId,
+      attackPower: character.attackPower,
+      equipmentEffect: equipped?.effectCode ?? 'none',
+      attunementCode: equipped?.effect?.attunementCode ?? null,
+    });
     return this.#persistCombatOutcome(playerId, run, outcome, 'attack');
   }
 
   guard(playerId, runId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId }), 'guard');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.guard({ playerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'guard');
   }
 
   interrupt(playerId, runId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId }), 'interrupt');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'interrupt');
   }
 
   mend(playerId, runId, targetPlayerId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId }), 'mend');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'mend');
   }
 
   revive(playerId, runId, targetPlayerId) {
-    const { run } = this.#combatContext(playerId, runId);
-    return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId }), 'revive');
+    const { run, equipped } = this.#combatContext(playerId, runId);
+    return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'revive');
   }
 
   useSkill(playerId, runId, skillId) {
-    const { run, character } = this.#combatContext(playerId, runId);
-    const outcome = run.useSkill({ playerId, skillId, attackPower: character.attackPower });
+    const { run, character, equipped } = this.#combatContext(playerId, runId);
+    const outcome = run.useSkill({ playerId, skillId, attackPower: character.attackPower, attunementCode: equipped?.effect?.attunementCode ?? null });
     return this.#persistCombatOutcome(playerId, run, outcome, 'skill');
   }
 
@@ -203,6 +211,7 @@ export class GameService {
     const combo = outcome.events.find((event) => event.type === 'SkillComboTriggered') || null;
     const protectedAlly = outcome.events.find((event) => event.type === 'PlayerProtected') || null;
     const bossPhaseChanged = outcome.events.find((event) => event.type === 'BossPhaseChanged') || null;
+    const relicTrigger = outcome.events.find((event) => event.type === 'RelicAttunementTriggered') || null;
     const prevented = protectedAlly
       ? Number(protectedAlly.prevented || 0)
       : damaged
@@ -227,6 +236,12 @@ export class GameService {
       targetPlayerId: healed?.targetPlayerId || revived?.targetPlayerId || damaged?.playerId || null,
       protectedPlayerId: protectedAlly?.targetPlayerId || null,
       protectionRawDamage: Number(protectedAlly?.rawDamage || 0),
+      relicAttunement: relicTrigger ? {
+        code: relicTrigger.attunementCode,
+        name: relicTrigger.attunementName,
+        effect: relicTrigger.effect,
+        amount: Number(relicTrigger.amount || 0),
+      } : null,
       actorHp: actor?.hp ?? null,
       actorMaxHp: actor?.maxHp ?? null,
       actorFocus: actor?.focus ?? null,
