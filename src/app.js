@@ -270,6 +270,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const result = inventoryService.salvage(playerId, request.params.itemId);
     return response.json({ ...result, dashboard: gameService.dashboard(playerId) });
   });
+  app.post('/api/items/:itemId/upgrade', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const result = inventoryService.upgrade(playerId, request.params.itemId, request.body?.attunementCode || null);
+    return response.json({ ...result, dashboard: gameService.dashboard(playerId) });
+  });
 
   const purchaseHandler = async (request, response) => {
     const connection = request.session.threaded;
@@ -295,8 +300,17 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.use((error, _request, response, _next) => {
     console.error(error);
     const knownMessage = error instanceof Error ? error.message : 'Unknown error';
-    const isConflictCode = error?.code === 'stale_run_version' || error?.code === 'equipped_item_cannot_be_salvaged';
-    const status = isConflictCode || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill/i.test(knownMessage) ? 409 : 500;
+    const conflictCodes = new Set([
+      'stale_run_version',
+      'equipped_item_cannot_be_salvaged',
+      'stale_relic_upgrade',
+      'insufficient_thread_dust',
+      'relic_upgrade_during_run',
+      'relic_max_level',
+      'invalid_relic_attunement',
+      'relic_attunement_locked',
+    ]);
+    const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic/i.test(knownMessage) ? 409 : 500;
     response.status(status).json({ error: error?.code || (status === 409 ? 'game_rule_violation' : 'internal_error'), message: knownMessage });
   });
 
