@@ -91,6 +91,28 @@ async function formParty(leader, leaderContext, partner, partnerContext) {
   expect((await dashboard(partnerContext)).activeRun?.id).toBe((await dashboard(leaderContext)).activeRun?.id);
 }
 
+async function resolveRunEventIfPresent(leader, leaderContext, partner = null) {
+  const state = await dashboard(leaderContext);
+  if (state.activeRun?.phase !== 'event') return null;
+
+  await leader.reload();
+  await expect(leader.getByTestId('run-event-card')).toBeVisible({ timeout: 7000 });
+  await expect(leader.getByTestId('run-event-name')).not.toHaveText('');
+  if (partner) {
+    await partner.reload();
+    await expect(partner.getByTestId('run-event-waiting')).toContainText('Waiting for the party leader', { timeout: 7000 });
+  }
+
+  // Keep this skill-focused journey's existing Focus expectations stable by preferring
+  // the recovery path, which never grants extra Focus (and clamps a loss at zero).
+  const choices = state.activeRun.runEvent?.choices || [];
+  const choice = choices.find((candidate) => /bind|quiet/i.test(candidate.id)) || choices[0];
+  expect(choice?.id).toBeTruthy();
+  await clickVersioned(leader, leaderContext, leader.getByTestId(`run-event-choice-${choice.id}`));
+  await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('combat');
+  return choice.id;
+}
+
 test('Focus, cooldowns, reconnect persistence, cross-player combos, and party healing are playable from the thread', async ({ browser }) => {
   test.setTimeout(90000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -143,6 +165,11 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.encounterIndex, { timeout: 7000 }).toBe(2);
     const comboEntry = partner.getByTestId('stream-system-entry').filter({ hasText: /Severing Knot/ }).last();
     await expect(comboEntry).toContainText(/COMBO Exposed \+4 damage/i);
+
+    // The midpoint discovery is part of the authoritative run lifecycle. Resolve it
+    // through the leader UI, prove the partner sees the shared wait state, then continue
+    // the cooldown contract from the exact persisted combat state that resumes afterward.
+    await resolveRunEventIfPresent(leader, leaderContext, partner);
 
     // Piercing Stitch's cooldown only advances on Weaver A's own later actions.
     await leader.reload();
