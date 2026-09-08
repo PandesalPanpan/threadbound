@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Character } from '../domain/Character.js';
 import { publicCombatSkills } from '../domain/CombatSkillCatalog.js';
-import { DUNGEONS, DungeonRun, RUN_UPGRADES } from '../domain/DungeonRun.js';
+import { AdventureRun as DungeonRun, DUNGEONS, RUN_UPGRADES } from '../domain/AdventureRun.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { Party } from '../domain/Party.js';
 
@@ -143,6 +143,21 @@ export class GameService {
     return this.#persistCombatOutcome(playerId, run, outcome, 'skill');
   }
 
+  chooseRunEvent(playerId, runId, choiceId) {
+    const runState = this.repository.getRun(runId);
+    if (!runState) throw new Error('Run not found.');
+    const run = new DungeonRun(runState);
+    if (!run.hasParticipant(playerId)) throw new Error('Run not found.');
+    if (runState.ownerType === 'party') {
+      const party = this.repository.getParty(runState.ownerId);
+      if (!party || party.leaderPlayerId !== playerId) throw new Error('Only the party leader can choose the shared run event.');
+    }
+    const outcome = run.chooseRunEvent(choiceId);
+    outcome.state = this.repository.saveRun(outcome.state);
+    this.eventBus.publishAll(outcome.events.map((event) => ({ ...event, playerId, participantIds: outcome.state.participants.map((participant) => participant.playerId) })));
+    return this.#decorateRun(outcome.state, playerId);
+  }
+
   chooseUpgrade(playerId, runId, upgradeId) {
     const runState = this.repository.getRun(runId);
     if (!runState) throw new Error('Run not found.');
@@ -231,6 +246,7 @@ export class GameService {
         battlePhase: bossPhaseChanged.battlePhase,
         phaseName: bossPhaseChanged.phaseName,
       } : null,
+      runEvent: state.runEvent ? structuredClone(state.runEvent) : null,
       defeatedEnemyId: defeated?.enemyId || null,
       defeatedBoss: Boolean(defeated?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
