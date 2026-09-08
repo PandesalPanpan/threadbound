@@ -66,7 +66,7 @@ test('Mending Chorus turns Focus into party-wide recovery', () => {
   run = new DungeonRun(state);
   const result = run.useSkill({ playerId: 'p1', skillId: 'mending-chorus', attackPower: 1 });
   assert.equal(result.healed, 10);
-  assert.equal(run.participant('p1').hp, 53); // heal 5, then ordinary retaliation 2 lands on the caster
+  assert.equal(run.participant('p1').hp, 52); // heal 5, then two-player-scaled retaliation 3 lands on the caster
   assert.equal(run.participant('p2').hp, 65);
   assert.equal(run.participant('p1').healingDone, 10);
 });
