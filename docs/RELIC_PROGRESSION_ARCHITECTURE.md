@@ -14,9 +14,9 @@ Threadbound relic progression is intended to deepen build identity without movin
   - **Executioner Weave** — consuming Exposed with Severing Knot primes +4 damage for the next damaging action.
   - **Mender Weave** — Mending Chorus heals +2 additional HP for each living Weaver it restores.
 - A Tempered relic cannot switch attunement.
-- Relics cannot be Tempered during an active run. A run therefore uses a stable loadout for its lifetime.
+- Relics cannot be Tempered or re-equipped during an active run. A run therefore uses a stable loadout for its lifetime.
 
-The Gear UI shows the server-computed level cap, next Dust cost, attunement, and build description. It does not calculate upgrade legality itself.
+The Gear UI shows the server-computed level cap, next Dust cost, attunement, and build description. It does not calculate upgrade legality itself. Gear controls are visibly locked while a run is active, while the server remains authoritative if a stale client still submits a command.
 
 ## Fowler-style boundaries
 
@@ -36,24 +36,27 @@ HP, Focus, reaction bonus, enemy state, skills, run phases, relic-triggered comb
 
 ### Service Layer
 
-`InventoryService` is the application **Service Layer** for Tempering. It verifies that the player has no active run, asks the domain policy for a legal upgrade plan, invokes the transactional repository operation, and publishes `ItemUpgraded` only after the write succeeds.
+`InventoryService` is the application **Service Layer** for Tempering. It performs an early active-run check for fast feedback, asks the domain policy for a legal upgrade plan, invokes the transactional repository operation, and publishes `ItemUpgraded` only after the write succeeds.
 
-`GameService` remains the combat Service Layer. It resolves the equipped item, passes only the equipped attunement code into `AdventureRun`, persists the run with the existing optimistic version, and publishes the normal resolved combat receipt.
+`GameService` remains the combat Service Layer. It resolves the equipped item, passes only the equipped attunement code into `AdventureRun`, persists the run with the existing optimistic version, publishes the normal resolved combat receipt, and rejects equipment changes while a run is active.
 
 ### Transaction Script at the persistence edge
 
 `SQLiteInventoryRepository.upgradeItem` is intentionally a small atomic transaction rather than a second domain aggregate. It uses `BEGIN IMMEDIATE` to:
 
-1. re-read the owned relic and player Dust;
-2. compare the expected Temper level;
-3. reject insufficient Dust or a stale repeated command;
-4. update `attack_bonus` and relic progression metadata;
-5. deduct Dust;
-6. commit both changes together.
+1. re-check that the player still has no active run while holding the SQLite write lock;
+2. re-read the owned relic and player Dust;
+3. compare the expected Temper level;
+4. reject insufficient Dust or a stale repeated command;
+5. update `attack_bonus` and relic progression metadata;
+6. deduct Dust;
+7. commit both changes together.
 
-This prevents a crash or concurrent request from spending Dust without upgrading the item, or upgrading an item twice from the same stale level.
+The Service Layer’s earlier active-run check is not the consistency boundary. The repository repeats it under the same write lock as the mutation so a concurrent dungeon start cannot slip between the check and the Temper commit.
 
-Progression metadata is stored additively in the existing item `effect_json`. Existing relic rows therefore hydrate as Temper 0 with no attunement, and no table migration is needed for this slice.
+This prevents a crash or concurrent request from spending Dust without upgrading the item, upgrading an item twice from the same stale level, or mutating a build after an active run has already committed.
+
+Progression metadata is stored additively in the existing item `effect_json`. Fresh generated relics explicitly persist Temper 0 with no attunement, while older relic rows safely hydrate to those same defaults. No table migration is needed for this slice.
 
 ### Projection, not Event Sourcing
 
@@ -78,8 +81,11 @@ Relic progression is not complete unless tests prove:
 - Dust deduction and item mutation are atomic;
 - stale repeated Temper commands cannot both commit;
 - insufficient Dust leaves both player and item unchanged;
-- active runs block gear mutation;
+- the active-run rule is enforced again inside the Temper write transaction;
+- active runs block both Temper and equipment changes;
+- Mender’s bonus healing is reflected in HP, combat events, and contribution totals;
 - Bulwark, Disruptor, Executioner, and Mender produce measurable tactical payoff in the aggregate;
 - fine-grained attunement triggers do not create extra public combat messages;
-- a 390×844 local Playwright journey earns a relic and Dust through a real run, exposes 44px-or-larger attunement controls, Tempers a relic, reloads, and sees the exact persisted level/attunement;
+- the Gear enhancer ignores its own DOM mutations instead of creating a dashboard-refetch loop;
+- a 390×844 local Playwright journey earns a relic and Dust through a real run, exposes 44px-or-larger attunement controls, Tempers a relic, reloads, sees the exact persisted level/attunement, stays within the viewport, and confirms the public Equip route is locked once the next run begins;
 - existing Threaded, local realtime/co-op, boss encounter, skills, run-event, reconnect, Codex, and Arc Workshop acceptance suites remain green before merge.
