@@ -79,14 +79,21 @@ export class ActivityStreamService {
     const phaseChange = event.bossPhaseChanged
       ? ` · ⚡ PHASE ${event.bossPhaseChanged.battlePhase}: ${event.bossPhaseChanged.phaseName}. Telegraphs accelerate.`
       : '';
-    const phase = event.phase === 'upgrade' ? ' · ✦ Choose the run upgrade.' : event.phase === 'complete' ? ' · ✦ Dungeon cleared.' : '';
+    const runEvent = event.phase === 'event' && event.runEvent
+      ? ` · ✦ DISCOVERY: ${event.runEvent.name}. ${event.runEvent.prompt} Choose the party's path.`
+      : '';
+    const phase = event.phase === 'upgrade'
+      ? ' · ✦ Choose the run upgrade.'
+      : event.phase === 'complete'
+        ? ' · ✦ Dungeon cleared.'
+        : runEvent;
 
     let result;
     if (action === 'attack') {
       if (event.defeatedEnemyId) {
         const defeated = titleize(event.defeatedEnemyId);
         result = `${actorName} attacked ${defeated} for ${event.damage} and defeated it.`;
-        if (event.enemyHp !== null && event.enemyHp !== undefined && event.phase !== 'complete') result += ` Next: ${enemyHp}.`;
+        if (event.enemyHp !== null && event.enemyHp !== undefined && !['complete', 'event'].includes(event.phase)) result += ` Next: ${enemyHp}.`;
       } else result = `${actorName} attacked ${enemyName} for ${event.damage} damage${retaliation}.`;
     } else if (action === 'guard') {
       if (protectedName) {
@@ -108,7 +115,7 @@ export class ActivityStreamService {
     } else result = `${actorName} used ${titleize(action)}.`;
 
     const bossPhase = event.bossBattlePhase ? ` · PHASE ${event.bossBattlePhase}${event.bossPhaseName ? ` ${event.bossPhaseName.toUpperCase()}` : ''}` : '';
-    const state = [actorHp, actorFocus, event.phase === 'upgrade' || event.phase === 'complete' ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
+    const state = [actorHp, actorFocus, ['upgrade', 'complete', 'event'].includes(event.phase) ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
     return `${result}${state ? ` ${state}.` : ''}${phaseChange}${intent}${phase}`;
   }
 
@@ -146,8 +153,17 @@ export class ActivityStreamService {
       case 'EnemyStatusApplied':
       case 'SkillComboTriggered':
       case 'BossPhaseChanged':
+      case 'RunEventDiscovered':
         return null;
 
+      case 'RunEventChosen': {
+        const next = event.nextEnemyName ? ` Next: ${event.nextEnemyName}.` : '';
+        return {
+          actorPlayerId: event.playerId || null,
+          actorName: actorName || 'SYSTEM',
+          body: `${actorName || 'The party'} chose ${event.choiceName} at ${event.eventName}. ${event.choiceSummary}${next}`,
+        };
+      }
       case 'RunUpgradeChosen': {
         const run = event.runId ? this.gameRepository.getRun(event.runId) : null;
         const boss = run?.enemy;
