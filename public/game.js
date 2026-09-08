@@ -1,4 +1,5 @@
 import { enemySprite, weaverSprite } from './sprite-catalog.js';
+import './relic-progression.js';
 
 document.documentElement.classList.add('threadbound-player-root');
 document.body.classList.add('threadbound-player');

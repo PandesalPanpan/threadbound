@@ -56,9 +56,22 @@ export class SQLiteGameRepository {
   }
 
   equipItem(playerId, itemId) {
-    const item = this.getItem(itemId);
-    if (!item || item.playerId !== playerId) throw new Error('Cannot equip an item owned by another player.');
-    this.db.prepare('UPDATE players SET equipped_item_id = ? WHERE id = ?').run(itemId, playerId);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const item = this.getItem(itemId);
+      if (!item || item.playerId !== playerId) throw new Error('Cannot equip an item owned by another player.');
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      if (activeRun) {
+        const error = new Error('Finish the active dungeon before changing equipped relics.');
+        error.code = 'item_equip_during_run';
+        throw error;
+      }
+      this.db.prepare('UPDATE players SET equipped_item_id = ? WHERE id = ?').run(itemId, playerId);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
   }
 
   addThreadDust(playerId, amount) {
@@ -177,7 +190,6 @@ export class SQLiteGameRepository {
         this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(threadDust, playerId);
       }
       this.db.prepare('INSERT INTO world_progress (progress_key, amount) VALUES (?, 1) ON CONFLICT(progress_key) DO UPDATE SET amount = amount + 1').run(worldProgressKey);
-
       const nextState = { ...state, version: state.version + 1 };
       const update = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
         nextState.phase, JSON.stringify(nextState), nextState.version, new Date().toISOString(), nextState.id, state.version,
