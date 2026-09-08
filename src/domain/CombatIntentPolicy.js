@@ -23,6 +23,11 @@ export const ENEMY_ABILITY_CATALOG = Object.freeze({
     name: 'Self mend',
     description: 'Frequently restores health unless interrupted.',
   }),
+  ally_hunter: Object.freeze({
+    id: 'ally_hunter',
+    name: 'Ally hunter',
+    description: 'Marks the most vulnerable living Weaver so another player may Guard to intercept the hit.',
+  }),
 });
 
 const CANONICAL_ABILITY_PROFILES = Object.freeze({
@@ -50,6 +55,33 @@ function abilityProfile(enemy) {
   const abilities = new Set(configured);
   const heavy = abilities.has('heavy_pressure');
   const mend = abilities.has('self_mend');
+  const hunter = abilities.has('ally_hunter');
+
+  if (hunter && !heavy && !mend) {
+    return {
+      cycle: enemy?.isBoss ? [THREADMARK, THREADMARK, BOSS_HEAVY] : [THREADMARK, THREADMARK, HEAVY],
+      heavyMultiplier: enemy?.isBoss ? 2.5 : 2.2,
+      healRatio: enemy?.isBoss ? BOSS_MEND.healRatio : MEND.healRatio,
+    };
+  }
+
+  if (hunter && mend && !heavy) {
+    return {
+      cycle: enemy?.isBoss ? [THREADMARK, BOSS_MEND, THREADMARK] : [THREADMARK, MEND, THREADMARK],
+      heavyMultiplier: enemy?.isBoss ? 2.5 : 2.2,
+      healRatio: enemy?.isBoss ? 0.31 : 0.28,
+    };
+  }
+
+  if (hunter && heavy) {
+    return {
+      cycle: mend
+        ? (enemy?.isBoss ? [THREADMARK, BOSS_HEAVY, BOSS_MEND] : [THREADMARK, HEAVY, MEND])
+        : (enemy?.isBoss ? [THREADMARK, BOSS_HEAVY, THREADMARK] : [THREADMARK, HEAVY, THREADMARK]),
+      heavyMultiplier: enemy?.isBoss ? 2.8 : 2.6,
+      healRatio: enemy?.isBoss ? 0.3 : 0.25,
+    };
+  }
 
   if (heavy && !mend) {
     return {
