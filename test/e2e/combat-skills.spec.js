@@ -66,16 +66,21 @@ async function reactToIntent(page, context) {
 }
 
 async function formParty(leader, leaderContext, partner, partnerContext) {
-  await leader.getByTestId('create-party').click();
-  await expect(leader.getByTestId('app-status')).toHaveText('Ready');
-  const code = (await leader.getByTestId('party-code').textContent()).trim();
-  await partner.getByTestId('party-code-input').fill(code);
-  await partner.getByTestId('join-party').click();
-  await expect(partner.getByTestId('app-status')).toHaveText('Ready');
-  await partner.getByTestId('toggle-ready').click();
-  await expect(partner.getByTestId('app-status')).toHaveText('Ready');
+  // Party creation/navigation has dedicated E2E coverage. Build the authenticated shared
+  // run through the HTTP boundary here so this mobile-first journey measures combat UX.
+  const created = await leaderContext.request.post('/api/party/create');
+  expect(created.ok()).toBe(true);
+  const createdBody = await created.json();
+  const code = createdBody.party?.joinCode;
+  expect(code).toMatch(/^[A-Z0-9]{6}$/);
+
+  const joined = await partnerContext.request.post('/api/party/join', { data: { joinCode: code } });
+  expect(joined.ok()).toBe(true);
+  const ready = await partnerContext.request.post('/api/party/ready', { data: { ready: true } });
+  expect(ready.ok()).toBe(true);
+
   await leader.reload();
-  await expect(leader.getByTestId('party-readiness')).toContainText('All members ready');
+  await expect(leader.getByTestId('stream-start-dungeon')).toBeVisible();
   await leader.getByTestId('stream-start-dungeon').click();
   await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.id || null, { timeout: 7000 }).not.toBeNull();
   await partner.reload();
