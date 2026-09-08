@@ -43,6 +43,7 @@ jobs:
             playwright-report-local/
             playwright-report-encounters-local/
             playwright-report-skills-local/
+            playwright-report-relics-local/
             playwright-report-workshop/
             test-results/
           retention-days: 7
