@@ -96,7 +96,7 @@ if (commandCard || inventory) {
     if (data.activeRun) {
       const note = document.createElement('p');
       note.className = 'relic-temper-note';
-      note.textContent = 'Finish the active dungeon before Tempering gear.';
+      note.textContent = 'Finish the active dungeon before Tempering or changing gear.';
       wrap.append(note);
       return wrap;
     }
@@ -137,6 +137,27 @@ if (commandCard || inventory) {
     return wrap;
   }
 
+  function syncEquipLock(row, item, data, { stream = false } = {}) {
+    if (item.id === data.character.equippedItem?.id) return;
+    const testId = `${stream ? 'stream-equip' : 'equip'}-${item.id}`;
+    const equip = [...row.querySelectorAll('button')].find((button) => button.dataset.testid === testId);
+    if (!equip) return;
+
+    if (data.activeRun && equip.dataset.relicEquipLocked !== 'true') {
+      equip.dataset.relicEquipLocked = 'true';
+      equip.dataset.relicEquipOriginalDisabled = String(equip.disabled);
+      equip.dataset.relicEquipOriginalTitle = equip.title || '';
+      equip.disabled = true;
+      equip.title = 'Finish the active dungeon before changing equipped relics.';
+    } else if (!data.activeRun && equip.dataset.relicEquipLocked === 'true') {
+      equip.disabled = equip.dataset.relicEquipOriginalDisabled === 'true';
+      equip.title = equip.dataset.relicEquipOriginalTitle || '';
+      delete equip.dataset.relicEquipLocked;
+      delete equip.dataset.relicEquipOriginalDisabled;
+      delete equip.dataset.relicEquipOriginalTitle;
+    }
+  }
+
   function enhanceRows(rows, data, { stream = false } = {}) {
     rows.forEach((row, index) => {
       const item = data.inventory?.[index];
@@ -147,6 +168,7 @@ if (commandCard || inventory) {
       const host = stream ? row.querySelector('.thread-gear-actions') || row : row;
       const actions = temperActions(item, data, host);
       if (actions) host.append(actions);
+      syncEquipLock(row, item, data, { stream });
     });
   }
 
