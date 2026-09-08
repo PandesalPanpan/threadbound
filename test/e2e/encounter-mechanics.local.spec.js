@@ -1,4 +1,13 @@
+import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+
+const REVIEW_DIR = 'ux-review';
+
+async function reviewShot(page, name) {
+  mkdirSync(REVIEW_DIR, { recursive: true });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${REVIEW_DIR}/${name}.png` });
+}
 
 async function loginLocal(page, slot, expectedName) {
   await page.goto('/');
@@ -28,8 +37,8 @@ async function directAction(context, runId, action) {
 
 test('Phase II marks a wounded ally and another Weaver can protect them from the thread', async ({ browser }) => {
   test.setTimeout(60000);
-  const leaderContext = await browser.newContext();
-  const partnerContext = await browser.newContext();
+  const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const partnerContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const leader = await leaderContext.newPage();
   const partner = await partnerContext.newPage();
 
@@ -88,6 +97,7 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     const protect = leader.getByTestId('stream-guard');
     await expect(protect).toHaveText('Protect Local Weaver B');
     await expect(protect).toHaveAttribute('aria-label', 'Protect Local Weaver B from Threadmark');
+    await reviewShot(leader, 'combat-v2-phase-two-protect-decision');
 
     const versionBefore = state.activeRun.version;
     await protect.click();
@@ -105,6 +115,7 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     await expect(receipt.locator('.stream-rich-summary')).toContainText('protected Local Weaver B from Threadmark', { timeout: 5000 });
     await expect(receipt.getByText('Local Weaver B PROTECTED', { exact: false })).toBeVisible();
     await expect(partner.getByTestId('run-participant').filter({ hasText: 'Local Weaver B' })).toContainText(`HP ${markedHpBefore}/${markedAfter.maxHp}`, { timeout: 5000 });
+    await reviewShot(leader, 'combat-v2-phase-two-protection-result');
   } finally {
     await leaderContext.close();
     await partnerContext.close();
