@@ -94,6 +94,17 @@ test('choosing a run event applies its real tradeoff once and resumes the snapsh
   }
   assert.equal(outcome.events[0].type, 'RunEventChosen');
   assert.equal(outcome.events[0].choiceId, choice.id);
+  assert.throws(() => model.chooseRunEvent(choice.id), /no run event choice/i);
+  assert.deepEqual(model.toJSON(), after);
+});
+
+test('an invalid run event choice fails without partially mutating the aggregate', () => {
+  const model = run('invalid-choice-run');
+  reachEvent(model);
+  const before = model.toJSON();
+
+  assert.throws(() => model.chooseRunEvent('not-a-real-choice'), /Unknown run event choice/i);
+  assert.deepEqual(model.toJSON(), before);
 });
 
 test('combat is blocked while the party decision is unresolved', () => {
