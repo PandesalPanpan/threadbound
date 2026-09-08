@@ -11,6 +11,24 @@ import { GameService } from '../src/application/GameService.js';
 import { HoneyPurchaseService } from '../src/application/HoneyPurchaseService.js';
 import { PartyService } from '../src/application/PartyService.js';
 
+function takeReactiveDomainTurn(run, playerId, attackPower = 6) {
+  const state = run.toJSON();
+  if (state.enemyIntent) {
+    if (state.enemyIntent.reaction === 'interrupt') return run.interrupt({ playerId });
+    return run.guard({ playerId });
+  }
+  return run.attack({ playerId, attackPower });
+}
+
+function takeReactiveSoloTurn(game, repository, runId, playerId) {
+  const state = repository.getRun(runId);
+  if (state.enemyIntent) {
+    if (state.enemyIntent.reaction === 'interrupt') return game.interrupt(playerId, runId);
+    return game.guard(playerId, runId);
+  }
+  return game.attack(playerId, runId);
+}
+
 function takeReactivePartyTurn(game, repository, runId, players, turn) {
   const state = repository.getRun(runId);
   const living = players.filter((playerId) => state.participants.find((participant) => participant.playerId === playerId)?.hp > 0);
@@ -39,19 +57,21 @@ test('character and solo dungeon domain rules preserve the complete first run lo
     id: 'r1', ownerType: 'player', ownerId: 'p1', startedByPlayerId: 'p1', dungeonId: 'frayed-hollow',
     participants: [{ playerId: 'p1', maxHealth: 40 }],
   });
-  for (let encounter = 0; encounter < 3; encounter += 1) {
-    run.attack({ playerId: 'p1', attackPower: 6 });
-    const result = run.attack({ playerId: 'p1', attackPower: 6 });
-    assert.ok(result.events.some((event) => event.type === 'EnemyDefeated'));
+
+  let defeated = 0;
+  for (let turn = 0; turn < 40 && run.toJSON().phase === 'combat'; turn += 1) {
+    const result = takeReactiveDomainTurn(run, 'p1', 6);
+    defeated += result.events.filter((event) => event.type === 'EnemyDefeated').length;
   }
+  assert.equal(defeated, 3);
   assert.equal(run.state.phase, 'upgrade');
+
   run.chooseUpgrade('sharpen');
   assert.equal(run.state.phase, 'boss');
-  run.attack({ playerId: 'p1', attackPower: 6 });
-  run.attack({ playerId: 'p1', attackPower: 6 });
-  const final = run.attack({ playerId: 'p1', attackPower: 6 });
+  let final = null;
+  for (let turn = 0; turn < 40 && run.toJSON().phase === 'boss'; turn += 1) final = takeReactiveDomainTurn(run, 'p1', 6);
   assert.equal(run.state.phase, 'complete');
-  assert.ok(final.events.some((event) => event.type === 'DungeonCompleted'));
+  assert.ok(final?.events.some((event) => event.type === 'DungeonCompleted'));
 });
 
 test('co-op scaling is sub-linear and contribution is tracked per participant', () => {
@@ -65,6 +85,7 @@ test('co-op scaling is sub-linear and contribution is tracked per participant', 
   });
   assert.equal(run.state.enemy.maxHp, 20);
   run.attack({ playerId: 'p1', attackPower: 6 });
+  run.interrupt({ playerId: 'p2' });
   run.attack({ playerId: 'p2', attackPower: 6 });
   assert.equal(run.participant('p1').contributionDamage, 6);
   assert.equal(run.participant('p2').contributionDamage, 6);
@@ -108,22 +129,27 @@ test('service layer preserves solo reward, progression, achievements, and equipm
   const player = service.ensurePlayer({ id: 1001, name: 'Tester' });
   const run = service.startDungeon(player.id, 'frayed-hollow');
 
-  for (let i = 0; i < 4; i += 1) service.attack(player.id, run.id);
+  for (let turn = 0; turn < 40 && repository.getRun(run.id).phase === 'combat'; turn += 1) {
+    takeReactiveSoloTurn(service, repository, run.id, player.id);
+  }
   const discovery = repository.getRun(run.id);
   assert.equal(discovery.phase, 'event');
   assert.ok(discovery.runEvent?.choices?.length === 2);
   service.chooseUpgrade(player.id, run.id, discovery.runEvent.choices[0].id);
   assert.equal(repository.getRun(run.id).phase, 'combat');
 
-  service.attack(player.id, run.id);
-  service.attack(player.id, run.id);
+  for (let turn = 0; turn < 40 && repository.getRun(run.id).phase === 'combat'; turn += 1) {
+    takeReactiveSoloTurn(service, repository, run.id, player.id);
+  }
   assert.equal(repository.getRun(run.id).phase, 'upgrade');
   service.chooseUpgrade(player.id, run.id, 'sharpen');
-  service.attack(player.id, run.id);
-  service.attack(player.id, run.id);
-  const completed = service.attack(player.id, run.id);
 
-  assert.equal(completed.state.phase, 'complete');
+  let completed = null;
+  for (let turn = 0; turn < 60 && repository.getRun(run.id).phase === 'boss'; turn += 1) {
+    completed = takeReactiveSoloTurn(service, repository, run.id, player.id);
+  }
+
+  assert.equal(completed?.state.phase, 'complete');
   assert.equal(repository.getRun(run.id).runEventHistory.length, 1);
   assert.equal(repository.listItems(player.id).length, 1);
   assert.equal(repository.getPlayer(player.id).threadDust, 15);
