@@ -1,5 +1,6 @@
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 const suggestions = document.querySelector('[data-testid="stream-suggestions"]');
+const streamLog = document.querySelector('[data-testid="adventure-stream-log"]');
 
 if (stream && suggestions) {
   const panel = document.createElement('section');
@@ -32,6 +33,8 @@ if (stream && suggestions) {
     .combat-skill.is-interrupt { border-color:rgba(255,100,124,.42) !important; }
     .combat-skill:disabled { opacity:.55; cursor:not-allowed; }
     .combat-skill-error { margin:0; padding:6px 8px; border-radius:8px; background:rgba(255,100,124,.08); color:#ff9cac; font-size:.68rem; }
+    .stream-entry-rich.stream-action-skill { border-color:rgba(179,109,255,.34); box-shadow:inset 3px 0 0 rgba(179,109,255,.78),0 8px 24px rgba(0,0,0,.14); }
+    .stream-action-skill .stream-rich-kicker { color:#d9b8ff; }
     @media (max-width:520px) {
       .combat-skill-panel { padding:8px 7px; }
       .combat-skill-grid { grid-template-columns:1fr; }
@@ -42,6 +45,7 @@ if (stream && suggestions) {
 
   let renderGeneration = 0;
   let refreshTimer = null;
+  let receiptTimer = null;
   let acting = false;
 
   async function dashboard() {
@@ -191,6 +195,47 @@ if (stream && suggestions) {
     }
   }
 
+  function appendReceiptChip(row, text, tone = 'special') {
+    let chips = row.querySelector('.stream-result-chips');
+    if (!chips) {
+      chips = document.createElement('div');
+      chips.className = 'stream-result-chips';
+      row.querySelector('.stream-rich-header')?.after(chips);
+    }
+    if ([...chips.children].some((chip) => chip.textContent === text)) return;
+    const chip = document.createElement('span');
+    chip.className = `stream-result-chip ${tone}`;
+    chip.textContent = text;
+    chips.append(chip);
+  }
+
+  function enhanceSkillReceipts() {
+    if (!streamLog) return;
+    for (const row of streamLog.querySelectorAll('.stream-entry-rich.stream-action-skill:not([data-skill-enhanced="true"])')) {
+      const raw = row.querySelector('[data-testid="stream-raw-result"]')?.textContent?.trim() || '';
+      if (!raw) continue;
+      const summary = row.querySelector('.stream-rich-summary');
+      const kicker = row.querySelector('.stream-rich-kicker');
+      const actionSummary = raw.match(/^(.*?)(?=\s❤️|\s🧵\sFocus|\s👾|$)/u)?.[1] || raw;
+      if (summary) summary.textContent = actionSummary;
+      if (kicker) kicker.textContent = '✦ SKILL';
+
+      const damage = raw.match(/for (\d+) damage/i)?.[1];
+      if (damage) appendReceiptChip(row, `⚔ −${damage} ENEMY HP`, 'damage');
+      const combo = raw.match(/COMBO\s+([^·.]+?)\s+\+(\d+) damage/i);
+      if (combo) appendReceiptChip(row, `✦ COMBO ${combo[1].trim()} +${combo[2]}`, 'special');
+      const focus = raw.match(/Focus (\d+)\/(\d+)/i);
+      if (focus) appendReceiptChip(row, `🧵 FOCUS ${focus[1]}/${focus[2]}`, 'special');
+      if (/EXPOSED/i.test(raw)) appendReceiptChip(row, '✦ EXPOSED', 'special');
+      row.dataset.skillEnhanced = 'true';
+    }
+  }
+
+  function scheduleReceiptEnhancement(delay = 70) {
+    clearTimeout(receiptTimer);
+    receiptTimer = setTimeout(enhanceSkillReceipts, delay);
+  }
+
   function scheduleRefresh(delay = 50) {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => refreshSkills(), delay);
@@ -198,5 +243,15 @@ if (stream && suggestions) {
 
   const observer = new MutationObserver(() => scheduleRefresh());
   observer.observe(suggestions, { childList: true, subtree: true, characterData: true });
+  const receiptObserver = streamLog ? new MutationObserver(() => scheduleReceiptEnhancement()) : null;
+  if (streamLog) receiptObserver.observe(streamLog, { childList: true, subtree: true });
   scheduleRefresh(0);
+  scheduleReceiptEnhancement(120);
+
+  window.addEventListener('beforeunload', () => {
+    clearTimeout(refreshTimer);
+    clearTimeout(receiptTimer);
+    observer.disconnect();
+    receiptObserver?.disconnect();
+  }, { once: true });
 }
