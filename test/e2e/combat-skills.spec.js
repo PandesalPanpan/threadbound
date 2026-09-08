@@ -135,12 +135,15 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     expect(skillButtonBox.height).toBeGreaterThanOrEqual(44);
     expect(await leader.getByTestId('combat-skill-panel').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 
-    // First encounter: both players build Focus while still respecting the first telegraph.
+    // First encounter: deliberately alternate offense and the Wisp's reaction windows.
+    // This leaves Weaver A at exactly 2 Focus and Weaver B with enough Focus for the
+    // next encounter's finisher, while proving the browser journey no longer relies on
+    // a fixed number of blind Strike presses.
     await action(leader, leaderContext, 'stream-attack');
-    await partner.reload();
+    await reactToIntent(partner, partnerContext);
     await action(partner, partnerContext, 'stream-attack');
-    await leader.reload();
-    await action(leader, leaderContext, 'stream-attack');
+    await reactToIntent(leader, leaderContext);
+    await action(partner, partnerContext, 'stream-attack');
     await reactToIntent(partner, partnerContext);
     await action(partner, partnerContext, 'stream-attack');
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.encounterIndex, { timeout: 7000 }).toBe(1);
