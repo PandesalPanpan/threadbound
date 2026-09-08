@@ -48,14 +48,18 @@ test('a second Weaver can consume Exposed with Severing Knot for a real party co
   assert.equal(result.events.some((event) => event.type === 'SkillComboTriggered' && event.combo === 'exposed'), true);
 });
 
-test('Severing Knot cuts off a pending telegraph while dealing damage', () => {
+test('Severing Knot interrupts the current telegraph while dealing damage', () => {
   let run = withFocus(runWithPlayers(), 'p1', 4);
-  for (let index = 0; index < 3; index += 1) run.attack({ playerId: 'p1', attackPower: 1 });
+  run.attack({ playerId: 'p1', attackPower: 1 });
   run = withFocus(run, 'p1', 4);
-  assert.ok(run.toJSON().enemyIntent);
+  const pending = run.toJSON().enemyIntent;
+  assert.ok(pending);
+
+  const hpBefore = run.toJSON().enemy.hp;
   const result = run.useSkill({ playerId: 'p1', skillId: 'severing-knot', attackPower: 1 });
-  assert.equal(run.toJSON().enemyIntent, null);
-  assert.equal(result.events.some((event) => event.type === 'EnemyInterrupted' && event.bySkillId === 'severing-knot'), true);
+
+  assert.ok(result.damage > 0 && run.toJSON().enemy.hp < hpBefore);
+  assert.equal(result.events.some((event) => event.type === 'EnemyInterrupted' && event.bySkillId === 'severing-knot' && event.intentId === pending.id), true);
 });
 
 test('Mending Chorus turns Focus into party-wide recovery', () => {
