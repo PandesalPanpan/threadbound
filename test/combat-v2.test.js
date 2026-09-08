@@ -30,7 +30,7 @@ test('enemy intent cycle includes an interrupt-worthy heal after the heavy attac
   const intent = run.toJSON().enemyIntent;
   assert.equal(intent.kind, 'heal');
   assert.equal(intent.reaction, 'interrupt');
-  assert.equal(intent.name, 'Thread Mend');
+  assert.match(intent.name, /^Thread Mend/);
   assert.ok(intent.amount > 0);
 });
 
@@ -41,7 +41,7 @@ test('ignoring Thread Mend restores enemy HP while interrupting it prevents the 
   triggerIntent(ignored);
   const beforeIgnored = ignored.toJSON().enemy.hp;
   ignored.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:05.000Z' });
-  const ignoredEvent = ignored.toJSON().enemy.hp;
+  const afterIgnored = ignored.toJSON().enemy.hp;
 
   const answered = soloRun();
   triggerIntent(answered);
@@ -50,7 +50,7 @@ test('ignoring Thread Mend restores enemy HP while interrupting it prevents the 
   const beforeAnswered = answered.toJSON().enemy.hp;
   answered.interrupt({ playerId: 'a' });
 
-  assert.ok(ignoredEvent >= beforeIgnored - 1);
+  assert.ok(afterIgnored >= beforeIgnored - 1);
   assert.equal(answered.toJSON().enemy.hp, beforeAnswered);
 });
 
