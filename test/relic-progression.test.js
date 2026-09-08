@@ -189,7 +189,7 @@ test('Executioner rewards the Exposed → Severing Knot combo with a primed foll
   assert.equal(hpBefore - attack.state.enemy.hp, 10);
 });
 
-test('Mender adds two recovery per living Weaver to Mending Chorus', () => {
+test('Mender adds two recovery per living Weaver to Mending Chorus while normal retaliation still resolves', () => {
   const run = partyRun();
   const state = run.toJSON();
   for (const participant of state.participants) {
@@ -199,7 +199,9 @@ test('Mender adds two recovery per living Weaver to Mending Chorus', () => {
   const attuned = new AdventureRun(state);
   const outcome = attuned.useSkill({ playerId: 'a', skillId: 'mending-chorus', attackPower: 6, attunementCode: 'mender' });
   assert.equal(outcome.healed, 14);
-  assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'a').hp, 26);
+  assert.deepEqual(outcome.events.filter((event) => event.type === 'PlayerHealed').map((event) => event.amount), [7, 7]);
+  assert.equal(outcome.retaliation, 2);
+  assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'a').hp, 25);
   assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'b').hp, 27);
   assert.ok(outcome.events.some((event) => event.type === 'RelicAttunementTriggered' && event.effect === 'bonus_healing' && event.amount === 4));
 });
