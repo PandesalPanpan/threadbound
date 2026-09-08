@@ -33,6 +33,7 @@ const REVIVE_THREAT = 4;
 const INTERRUPT_THREAT = 3;
 const THREAT_DECAY = 2;
 const INTENT_AFTER_ATTACKS = 3;
+const PHASE_TWO_INTENT_AFTER_ACTIONS = 2;
 const RIPOSTE_BONUS = 3;
 const DISRUPT_BONUS = 4;
 
@@ -51,6 +52,8 @@ function cloneEnemy(definition, playerCount, isBoss = false) {
     maxHp: hp,
     retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier),
     isBoss,
+    battlePhase: isBoss ? 1 : 0,
+    phaseName: isBoss ? 'Stitching' : null,
     statuses: { exposed: 0 },
   };
 }
@@ -90,7 +93,11 @@ export class DungeonRun {
     this.state = structuredClone(state);
     this.state.intentCount ??= 0;
     this.state.reactionStyle ??= null;
-    if (this.state.enemy) this.state.enemy.statuses ??= { exposed: 0 };
+    if (this.state.enemy) {
+      this.state.enemy.statuses ??= { exposed: 0 };
+      this.state.enemy.battlePhase ??= this.state.enemy.isBoss ? 1 : 0;
+      this.state.enemy.phaseName ??= this.state.enemy.isBoss ? (this.state.enemy.battlePhase >= 2 ? 'Unraveling' : 'Stitching') : null;
+    }
     for (const participant of this.state.participants || []) {
       participant.reactionDamageBonus ??= 0;
       participant.successfulGuards ??= 0;
@@ -180,9 +187,9 @@ export class DungeonRun {
     let retaliation = 0;
     if (this.state.enemyIntent) {
       const intended = structuredClone(this.state.enemyIntent);
-      const resolved = this.#resolveIntent(events, now, 'guard');
+      const resolved = this.#resolveIntent(events, now, 'guard', playerId);
       retaliation = resolved.damage || 0;
-      if (intended.kind === 'damage') {
+      if (intended.reaction === 'guard') {
         participant.successfulGuards += 1;
         this.#grantFocus(participant, 1, events);
         if (this.state.reactionStyle === 'guard') participant.reactionDamageBonus += RIPOSTE_BONUS;
@@ -385,7 +392,29 @@ export class DungeonRun {
     participant.contributionDamage += effectiveDamage;
     participant.threat += effectiveDamage;
     events.push({ type: 'EnemyDamaged', playerId, runId: this.state.id, enemyId: this.state.enemy.id, damage: effectiveDamage });
+    this.#maybeAdvanceBossPhase(events);
     return effectiveDamage;
+  }
+
+  #maybeAdvanceBossPhase(events) {
+    const enemy = this.state.enemy;
+    if (!enemy?.isBoss || enemy.hp <= 0 || Number(enemy.battlePhase || 1) >= 2) return;
+    if (enemy.hp > Math.ceil(enemy.maxHp / 2)) return;
+    const fromBattlePhase = Number(enemy.battlePhase || 1);
+    enemy.battlePhase = 2;
+    enemy.phaseName = 'Unraveling';
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+    events.push({
+      type: 'BossPhaseChanged',
+      runId: this.state.id,
+      dungeonId: this.state.dungeonId,
+      enemyId: enemy.id,
+      fromBattlePhase,
+      battlePhase: 2,
+      phaseName: enemy.phaseName,
+    });
   }
 
   #defeatCurrentEnemy(events, playerId, now) {
@@ -394,42 +423,82 @@ export class DungeonRun {
     this.#advanceAfterDefeat(events, now);
   }
 
-  #retaliate(events, forcedDamage = null) {
-    const alive = this.state.participants.filter((participant) => participant.hp > 0);
-    if (alive.length === 0) return 0;
-    const target = alive.reduce((best, candidate) => candidate.threat > best.threat ? candidate : best, alive[0]);
-    const rawDamage = forcedDamage ?? this.state.enemy.retaliation;
+  #applyParticipantDamage(target, rawDamage, events) {
     const damage = target.guarding ? Math.max(1, Math.ceil(rawDamage / 2)) : rawDamage;
     if (target.guarding) target.damagePrevented += rawDamage - damage;
     target.guarding = false;
     target.hp = Math.max(0, target.hp - damage);
     events.push({ type: 'PlayerDamaged', playerId: target.playerId, runId: this.state.id, damage, rawDamage });
     for (const participant of this.state.participants) participant.threat = Math.max(0, participant.threat - THREAT_DECAY);
-    if (this.state.participants.every((candidate) => candidate.hp === 0)) {
-      this.state.phase = 'failed';
-      this.state.enemyIntent = null;
-      events.push({ type: 'DungeonFailed', runId: this.state.id, dungeonId: this.state.dungeonId, participantIds: this.state.participants.map((candidate) => candidate.playerId) });
-    }
+    this.#failIfPartyDown(events);
     return damage;
+  }
+
+  #retaliate(events, forcedDamage = null) {
+    const alive = this.state.participants.filter((participant) => participant.hp > 0);
+    if (alive.length === 0) return 0;
+    const target = alive.reduce((best, candidate) => candidate.threat > best.threat ? candidate : best, alive[0]);
+    const rawDamage = forcedDamage ?? this.state.enemy.retaliation;
+    return this.#applyParticipantDamage(target, rawDamage, events);
+  }
+
+  #damageTarget(events, targetPlayerId, rawDamage, protectorPlayerId = null) {
+    const marked = this.participant(targetPlayerId);
+    if (!marked || marked.hp <= 0) return this.#retaliate(events, rawDamage);
+    const protector = protectorPlayerId ? this.participant(protectorPlayerId) : null;
+    if (!protector || protector.hp <= 0) return this.#applyParticipantDamage(marked, rawDamage, events);
+
+    const preventedBefore = protector.damagePrevented;
+    const damage = this.#applyParticipantDamage(protector, rawDamage, events);
+    const prevented = Math.max(0, protector.damagePrevented - preventedBefore);
+    events.push({
+      type: 'PlayerProtected',
+      playerId: protector.playerId,
+      targetPlayerId: marked.playerId,
+      runId: this.state.id,
+      damage,
+      rawDamage,
+      prevented,
+    });
+    return damage;
+  }
+
+  #failIfPartyDown(events) {
+    if (!this.state.participants.every((candidate) => candidate.hp === 0)) return;
+    this.state.phase = 'failed';
+    this.state.enemyIntent = null;
+    events.push({ type: 'DungeonFailed', runId: this.state.id, dungeonId: this.state.dungeonId, participantIds: this.state.participants.map((candidate) => candidate.playerId) });
   }
 
   #maybeTelegraphIntent(events, now) {
     if (this.state.enemyIntent || !this.state.enemy || this.state.enemy.hp <= 0) return;
     this.state.attacksSinceIntent = (this.state.attacksSinceIntent || 0) + 1;
-    if (this.state.attacksSinceIntent < INTENT_AFTER_ATTACKS) return;
+    const cadence = this.state.enemy.isBoss && Number(this.state.enemy.battlePhase || 1) >= 2
+      ? PHASE_TWO_INTENT_AFTER_ACTIONS
+      : INTENT_AFTER_ATTACKS;
+    if (this.state.attacksSinceIntent < cadence) return;
     this.state.attacksSinceIntent = 0;
-    this.state.enemyIntent = nextEnemyIntent({ enemy: this.state.enemy, intentCount: this.state.intentCount || 0, now });
+    this.state.enemyIntent = nextEnemyIntent({
+      enemy: this.state.enemy,
+      participants: this.state.participants,
+      intentCount: this.state.intentCount || 0,
+      now,
+    });
     this.state.intentCount = (this.state.intentCount || 0) + 1;
     events.push({ type: 'EnemyIntentTelegraphed', runId: this.state.id, enemyId: this.state.enemy.id, intent: structuredClone(this.state.enemyIntent) });
   }
 
-  #resolveIntent(events, _now, answeredBy = 'timeout') {
+  #resolveIntent(events, _now, answeredBy = 'timeout', reactingPlayerId = null) {
     if (!this.state.enemyIntent) return { kind: 'none' };
     const intent = structuredClone(this.state.enemyIntent);
     this.state.enemyIntent = null;
-    const result = resolveEnemyIntent(intent, { enemy: this.state.enemy, retaliate: (damage) => this.#retaliate(events, damage) });
+    const result = resolveEnemyIntent(intent, {
+      enemy: this.state.enemy,
+      retaliate: (damage) => this.#retaliate(events, damage),
+      damageTarget: (targetPlayerId, damage) => this.#damageTarget(events, targetPlayerId, damage, answeredBy === 'guard' ? reactingPlayerId : null),
+    });
     if (result.kind === 'heal') events.push({ type: 'EnemyHealed', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, amount: result.amount, answeredBy });
-    else events.push({ type: 'EnemyIntentResolved', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, damage: result.damage, answeredBy });
+    else events.push({ type: 'EnemyIntentResolved', runId: this.state.id, enemyId: this.state.enemy?.id || null, intentId: intent.id, damage: result.damage, targetPlayerId: result.targetPlayerId || intent.targetPlayerId || null, answeredBy });
     return result;
   }
 

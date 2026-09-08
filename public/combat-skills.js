@@ -49,6 +49,8 @@ if (stream && suggestions) {
     .combat-status-line { display:flex; flex-wrap:wrap; gap:5px; min-height:25px; }
     .combat-status-badge { display:inline-flex; align-items:center; min-height:25px; padding:3px 7px; border:1px solid rgba(255,209,102,.25); border-radius:8px; background:rgba(255,209,102,.08); color:#ffe097; font-size:.65rem; font-weight:900; }
     .combat-status-badge.intent { border-color:rgba(255,100,124,.25); background:rgba(255,100,124,.08); color:#ff9cac; }
+    .combat-status-badge.phase { border-color:rgba(179,109,255,.34); background:rgba(179,109,255,.1); color:#d9b8ff; }
+    .combat-status-badge.protect { border-color:rgba(85,214,255,.34); background:rgba(85,214,255,.1); color:#a8ecff; }
     .combat-skill-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
     .combat-skill { display:grid; gap:3px; align-content:start; min-height:68px; padding:8px !important; margin:0 !important; text-align:left; border:1px solid rgba(217,184,255,.2) !important; background:rgba(255,255,255,.045) !important; }
     .combat-skill strong { display:block; font-size:.73rem; color:var(--text); }
@@ -89,6 +91,10 @@ if (stream && suggestions) {
     return { disabled: false, reason: `${skill.cost} Focus`, cooldown };
   }
 
+  function participantName(run, playerId) {
+    return run.participants.find((participant) => participant.playerId === playerId)?.displayName || 'ally';
+  }
+
   function renderFocus(run) {
     const viewer = run.viewer;
     const head = document.createElement('div');
@@ -122,6 +128,13 @@ if (stream && suggestions) {
   function renderStatuses(run) {
     const line = document.createElement('div');
     line.className = 'combat-status-line';
+    if (run.enemy?.isBoss && Number(run.enemy.battlePhase || 1) >= 2) {
+      const phase = document.createElement('span');
+      phase.className = 'combat-status-badge phase';
+      phase.dataset.testid = 'boss-phase-badge';
+      phase.textContent = `⚡ PHASE II · ${(run.enemy.phaseName || 'Unraveling').toUpperCase()}`;
+      line.append(phase);
+    }
     if (Number(run.enemy?.statuses?.exposed || 0) > 0) {
       const exposed = document.createElement('span');
       exposed.className = 'combat-status-badge';
@@ -131,12 +144,31 @@ if (stream && suggestions) {
     }
     if (run.enemyIntent) {
       const intent = document.createElement('span');
-      intent.className = 'combat-status-badge intent';
-      intent.dataset.testid = 'skill-intent-warning';
-      intent.textContent = `⚠ ${run.enemyIntent.name} · Severing Knot can interrupt`;
+      const threadmark = run.enemyIntent.id === 'threadmark-lunge';
+      intent.className = `combat-status-badge ${threadmark ? 'protect' : 'intent'}`;
+      intent.dataset.testid = threadmark ? 'threadmark-warning' : 'skill-intent-warning';
+      intent.textContent = threadmark
+        ? `🛡 PROTECT ${participantName(run, run.enemyIntent.targetPlayerId).toUpperCase()} · Guard now`
+        : `⚠ ${run.enemyIntent.name} · ${run.enemyIntent.reaction === 'interrupt' ? 'Interrupt now' : 'Guard now'} · Severing Knot can interrupt`;
       line.append(intent);
     }
     return line;
+  }
+
+  function decorateEncounterControls(run) {
+    const guard = suggestions.querySelector('[data-testid="stream-guard"]');
+    if (!guard) return;
+    if (run?.enemyIntent?.id === 'threadmark-lunge') {
+      const target = participantName(run, run.enemyIntent.targetPlayerId);
+      const label = `Protect ${target}`;
+      if (guard.textContent !== label) guard.textContent = label;
+      const ariaLabel = `${label} from Threadmark`;
+      if (guard.getAttribute('aria-label') !== ariaLabel) guard.setAttribute('aria-label', ariaLabel);
+      guard.dataset.threadmarkProtect = 'true';
+      return;
+    }
+    guard.removeAttribute('data-threadmark-protect');
+    guard.removeAttribute('aria-label');
   }
 
   async function useSkill(runId, skillId, button) {
@@ -198,6 +230,7 @@ if (stream && suggestions) {
       const data = await dashboard();
       if (generation !== renderGeneration) return;
       const run = data.activeRun;
+      decorateEncounterControls(run);
       if (!run || !['combat', 'boss'].includes(run.phase) || !run.viewer || run.viewer.hp <= 0) {
         panel.hidden = true;
         panel.innerHTML = '';
@@ -255,9 +288,34 @@ if (stream && suggestions) {
     }
   }
 
+  function enhanceEncounterReceipts() {
+    if (!streamLog) return;
+    for (const row of streamLog.querySelectorAll('.stream-entry-rich:not([data-encounter-enhanced="true"])')) {
+      const raw = row.querySelector('[data-testid="stream-raw-result"]')?.textContent?.trim() || '';
+      if (!raw) continue;
+      const protection = raw.match(/protected (.+?) from Threadmark, prevented (\d+) damage, and took (\d+)/i);
+      if (protection) {
+        const summary = row.querySelector('.stream-rich-summary');
+        const kicker = row.querySelector('.stream-rich-kicker');
+        if (summary) summary.textContent = raw.match(/^(.*?)(?=\s❤️|\s🧵\sFocus|\s👾|$)/u)?.[1] || raw;
+        if (kicker) kicker.textContent = '🛡 PROTECT';
+        appendReceiptChip(row, `🛡 ${protection[1].trim()} PROTECTED`, 'guard');
+        appendReceiptChip(row, `−${protection[2]} PREVENTED`, 'guard');
+      }
+      const phase = raw.match(/PHASE\s+2:\s*([^·.]+)/i) || raw.match(/PHASE\s+2\s+([A-Z]+)/i);
+      if (phase) appendReceiptChip(row, `⚡ PHASE II · ${phase[1].trim().toUpperCase()}`, 'special');
+      const marked = raw.match(/THREADMARK:\s*(.+?)\s+is marked/i);
+      if (marked) appendReceiptChip(row, `⚠ ${marked[1].trim()} MARKED`, 'damage');
+      row.dataset.encounterEnhanced = 'true';
+    }
+  }
+
   function scheduleReceiptEnhancement(delay = 70) {
     clearTimeout(receiptTimer);
-    receiptTimer = setTimeout(enhanceSkillReceipts, delay);
+    receiptTimer = setTimeout(() => {
+      enhanceSkillReceipts();
+      enhanceEncounterReceipts();
+    }, delay);
   }
 
   function scheduleRefresh(delay = 50) {

@@ -66,10 +66,19 @@ export class ActivityStreamService {
     const enemyHp = event.enemyHp === null || event.enemyHp === undefined ? '' : `👾 ${enemyName} ${event.enemyHp}/${event.enemyMaxHp}`;
     const exposed = Number(event.enemyStatuses?.exposed || 0) > 0 ? ' · ✦ EXPOSED' : '';
     const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
+    const protectedName = event.protectedPlayerId ? this.#playerName(event.protectedPlayerId) : null;
     const retaliation = event.retaliation > 0
       ? ` · ${targetName && event.targetPlayerId !== event.playerId ? `${targetName} took ${event.retaliation}` : `took ${event.retaliation}`}`
       : '';
-    const intent = event.enemyIntent ? ` · ⚠ ${event.enemyIntent.name} incoming (${event.enemyIntent.damage})` : '';
+    const intentTargetName = event.enemyIntent?.targetPlayerId ? this.#playerName(event.enemyIntent.targetPlayerId) : null;
+    const intent = event.enemyIntent
+      ? event.enemyIntent.id === 'threadmark-lunge'
+        ? ` · ⚠ THREADMARK: ${intentTargetName || 'an ally'} is marked for ${event.enemyIntent.damage} damage — Guard to protect them.`
+        : ` · ⚠ ${event.enemyIntent.name} incoming (${event.enemyIntent.damage})`
+      : '';
+    const phaseChange = event.bossPhaseChanged
+      ? ` · ⚡ PHASE ${event.bossPhaseChanged.battlePhase}: ${event.bossPhaseChanged.phaseName}. Telegraphs accelerate.`
+      : '';
     const phase = event.phase === 'upgrade' ? ' · ✦ Choose the run upgrade.' : event.phase === 'complete' ? ' · ✦ Dungeon cleared.' : '';
 
     let result;
@@ -80,7 +89,9 @@ export class ActivityStreamService {
         if (event.enemyHp !== null && event.enemyHp !== undefined && event.phase !== 'complete') result += ` Next: ${enemyHp}.`;
       } else result = `${actorName} attacked ${enemyName} for ${event.damage} damage${retaliation}.`;
     } else if (action === 'guard') {
-      result = `${actorName} guarded${event.prevented > 0 ? ` and prevented ${event.prevented} damage` : ''}${retaliation}.`;
+      if (protectedName) {
+        result = `${actorName} protected ${protectedName} from Threadmark, prevented ${event.prevented} damage, and took ${event.retaliation}.`;
+      } else result = `${actorName} guarded${event.prevented > 0 ? ` and prevented ${event.prevented} damage` : ''}${retaliation}.`;
     } else if (action === 'interrupt') {
       result = `${actorName} interrupted ${enemyName}'s heavy attack.`;
     } else if (action === 'mend') {
@@ -96,8 +107,9 @@ export class ActivityStreamService {
       else result = `${actorName} used ${skillName}${interrupted}${retaliation}.`;
     } else result = `${actorName} used ${titleize(action)}.`;
 
-    const state = [actorHp, actorFocus, event.phase === 'upgrade' || event.phase === 'complete' ? '' : `${enemyHp}${exposed}`].filter(Boolean).join(' · ');
-    return `${result}${state ? ` ${state}.` : ''}${intent}${phase}`;
+    const bossPhase = event.bossBattlePhase ? ` · PHASE ${event.bossBattlePhase}${event.bossPhaseName ? ` ${event.bossPhaseName.toUpperCase()}` : ''}` : '';
+    const state = [actorHp, actorFocus, event.phase === 'upgrade' || event.phase === 'complete' ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
+    return `${result}${state ? ` ${state}.` : ''}${phaseChange}${intent}${phase}`;
   }
 
   #project(event) {
@@ -124,6 +136,7 @@ export class ActivityStreamService {
       case 'EnemyInterrupted':
       case 'PlayerHealed':
       case 'PlayerRevived':
+      case 'PlayerProtected':
       case 'EnemyDefeated':
       case 'EnemyIntentResolved':
       case 'EnemyIntentIgnored':
@@ -132,6 +145,7 @@ export class ActivityStreamService {
       case 'FocusChanged':
       case 'EnemyStatusApplied':
       case 'SkillComboTriggered':
+      case 'BossPhaseChanged':
         return null;
 
       case 'RunUpgradeChosen': {

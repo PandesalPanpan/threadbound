@@ -186,7 +186,13 @@ export class GameService {
     const revived = outcome.events.find((event) => event.type === 'PlayerRevived') || null;
     const interrupted = outcome.events.find((event) => event.type === 'EnemyInterrupted') || null;
     const combo = outcome.events.find((event) => event.type === 'SkillComboTriggered') || null;
-    const prevented = damaged ? Math.max(0, Number(damaged.rawDamage || 0) - Number(damaged.damage || 0)) : 0;
+    const protectedAlly = outcome.events.find((event) => event.type === 'PlayerProtected') || null;
+    const bossPhaseChanged = outcome.events.find((event) => event.type === 'BossPhaseChanged') || null;
+    const prevented = protectedAlly
+      ? Number(protectedAlly.prevented || 0)
+      : damaged
+        ? Math.max(0, Number(damaged.rawDamage || 0) - Number(damaged.damage || 0))
+        : 0;
 
     this.eventBus.publish({
       type: 'CombatActionResolved',
@@ -204,6 +210,8 @@ export class GameService {
       healed: Number(outcome.healed || healed?.amount || 0),
       restoredHp: Number(outcome.restoredHp || revived?.restoredHp || 0),
       targetPlayerId: healed?.targetPlayerId || revived?.targetPlayerId || damaged?.playerId || null,
+      protectedPlayerId: protectedAlly?.targetPlayerId || null,
+      protectionRawDamage: Number(protectedAlly?.rawDamage || 0),
       actorHp: actor?.hp ?? null,
       actorMaxHp: actor?.maxHp ?? null,
       actorFocus: actor?.focus ?? null,
@@ -216,6 +224,13 @@ export class GameService {
       enemyHp: state.enemy?.hp ?? null,
       enemyMaxHp: state.enemy?.maxHp ?? null,
       enemyStatuses: state.enemy?.statuses ? structuredClone(state.enemy.statuses) : {},
+      bossBattlePhase: state.enemy?.isBoss ? Number(state.enemy.battlePhase || 1) : null,
+      bossPhaseName: state.enemy?.isBoss ? state.enemy.phaseName || null : null,
+      bossPhaseChanged: bossPhaseChanged ? {
+        fromBattlePhase: bossPhaseChanged.fromBattlePhase,
+        battlePhase: bossPhaseChanged.battlePhase,
+        phaseName: bossPhaseChanged.phaseName,
+      } : null,
       defeatedEnemyId: defeated?.enemyId || null,
       defeatedBoss: Boolean(defeated?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
