@@ -46,21 +46,39 @@ async function attack(page, context) {
   await threadAction(page, context, page.getByTestId('stream-attack'));
 }
 
-async function alternateAttacksUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
+async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
   let turn = startTurn;
-  for (let guard = 0; guard < 70; guard += 1) {
-    const state = await dashboard(contexts[0]);
-    if (state.activeRun?.phase !== expectedPhase) return turn;
-    const index = turn % pages.length;
+  for (let guard = 0; guard < 100; guard += 1) {
+    const shared = await dashboard(contexts[0]);
+    if (shared.activeRun?.phase !== expectedPhase) return turn;
+
+    let index = turn % pages.length;
+    let state = await dashboard(contexts[index]);
+    if ((state.activeRun?.viewer?.hp ?? 0) <= 0) {
+      index = (index + 1) % pages.length;
+      state = await dashboard(contexts[index]);
+    }
+    if ((state.activeRun?.viewer?.hp ?? 0) <= 0) throw new Error('No living local co-op actor remains.');
+
     const page = pages[index];
     const context = contexts[index];
     await page.reload();
-    const viewer = (await dashboard(context)).activeRun?.viewer;
-    if (!viewer || viewer.hp <= 0) {
-      turn += 1;
-      continue;
+    state = await dashboard(context);
+
+    const downed = state.activeRun?.participants.find((participant) => participant.hp <= 0);
+    if (downed && state.activeRun.viewer.reviveCharges > 0) {
+      const revive = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
+      if (await revive.count()) {
+        await threadAction(page, context, revive);
+        turn += 1;
+        continue;
+      }
     }
-    await attack(page, context);
+
+    if (state.activeRun?.enemyIntent) {
+      const testId = state.activeRun.enemyIntent.reaction === 'interrupt' ? 'stream-interrupt' : 'stream-guard';
+      await threadAction(page, context, page.getByTestId(testId));
+    } else await attack(page, context);
     turn += 1;
   }
   throw new Error(`Local co-op run did not leave ${expectedPhase} within the guard limit.`);
@@ -152,7 +170,7 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
       return Number(text?.match(/prevented (\d+)/)?.[1] || 0);
     }, { timeout: 5000 }).toBeGreaterThan(preventedBefore);
 
-    let turn = await alternateAttacksUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat');
+    let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat');
     await leader.reload();
     await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade');
     await partner.reload();
@@ -160,7 +178,7 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
 
     const reinforce = leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Reinforce the Weave' });
     await threadAction(leader, leaderContext, reinforce);
-    turn = await alternateAttacksUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
+    turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
     expect(turn).toBeGreaterThan(0);
 
     await leader.reload();
@@ -207,7 +225,6 @@ test('standalone local mode supports thread-driven co-op combat plus the living 
     const relicHistory = leader.getByTestId('codex-entry').filter({ hasText: 'Relic discovered:' }).first();
     await relicHistory.click();
     await expect(leader.getByTestId('codex-related-item')).toBeVisible();
-
     await leader.getByTestId('nav-game').click();
     await expect(leader).toHaveURL(/\/game$/);
     await expect(leader.getByTestId('app-status')).toHaveText('Ready');
