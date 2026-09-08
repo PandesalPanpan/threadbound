@@ -1,5 +1,6 @@
 import { nextEnemyIntent, resolveEnemyIntent } from './CombatIntentPolicy.js';
 import { combatSkill, MAX_FOCUS } from './CombatSkillCatalog.js';
+import { decisionChoice, selectRunDecision } from './RunDecisionCatalog.js';
 
 export const DUNGEONS = Object.freeze({
   'frayed-hollow': Object.freeze({
@@ -93,6 +94,8 @@ export class DungeonRun {
     this.state = structuredClone(state);
     this.state.intentCount ??= 0;
     this.state.reactionStyle ??= null;
+    this.state.pendingDecision ??= null;
+    this.state.decisionResolved ??= false;
     if (this.state.enemy) {
       this.state.enemy.statuses ??= { exposed: 0 };
       this.state.enemy.battlePhase ??= this.state.enemy.isBoss ? 1 : 0;
@@ -133,6 +136,8 @@ export class DungeonRun {
       runAttackBonus: 0,
       selectedUpgrade: null,
       reactionStyle: null,
+      pendingDecision: null,
+      decisionResolved: false,
       enemy: cloneEnemy(dungeon.encounters[0], participantStates.length),
       enemyIntent: null,
       attacksSinceIntent: 0,
@@ -330,6 +335,56 @@ export class DungeonRun {
     return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation };
   }
 
+  chooseDecision(choiceId) {
+    if (this.state.phase !== 'decision' || !this.state.pendingDecision) throw new Error('There is no run decision waiting for a choice.');
+    const pending = structuredClone(this.state.pendingDecision);
+    const choice = decisionChoice(pending, choiceId);
+    const effect = choice.effect || {};
+    const consequences = { attackBonus: Number(effect.attackBonus || 0), strain: 0, healed: 0, focusReleased: 0 };
+
+    this.state.runAttackBonus += consequences.attackBonus;
+    for (const participant of this.state.participants.filter((candidate) => candidate.hp > 0)) {
+      if (Number(effect.strain || 0) > 0) {
+        const before = participant.hp;
+        participant.hp = Math.max(1, participant.hp - Number(effect.strain));
+        consequences.strain += before - participant.hp;
+      }
+      if (Number(effect.heal || 0) > 0) {
+        const before = participant.hp;
+        participant.hp = Math.min(participant.maxHp, participant.hp + Number(effect.heal));
+        consequences.healed += participant.hp - before;
+      }
+      if (effect.clearFocus) {
+        consequences.focusReleased += participant.focus;
+        participant.focus = 0;
+      }
+    }
+
+    this.state.decisionResolved = true;
+    this.state.pendingDecision = null;
+    this.state.phase = 'combat';
+    this.state.encounterIndex = pending.nextEncounterIndex;
+    this.state.enemy = cloneEnemy(this.#dungeon().encounters[this.state.encounterIndex], this.state.participants.length);
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+
+    return {
+      state: this.toJSON(),
+      events: [{
+        type: 'RunDecisionChosen',
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        decisionId: pending.id,
+        decisionName: pending.name,
+        choiceId: choice.id,
+        choiceName: choice.name,
+        consequences,
+        nextEnemyId: this.state.enemy.id,
+      }],
+    };
+  }
+
   chooseUpgrade(upgradeId) {
     if (this.state.phase !== 'upgrade') throw new Error('An upgrade can only be chosen between the normal encounters and the boss.');
     const upgrade = RUN_UPGRADES[upgradeId];
@@ -524,8 +579,28 @@ export class DungeonRun {
       return;
     }
     if (this.state.encounterIndex < dungeon.encounters.length - 1) {
-      this.state.encounterIndex += 1;
+      const defeatedEncounterIndex = this.state.encounterIndex;
+      const nextEncounterIndex = defeatedEncounterIndex + 1;
       for (const participant of this.state.participants) this.#resetEncounterParticipant(participant);
+      const decisionTriggerIndex = Math.floor((dungeon.encounters.length - 1) / 2);
+      if (!this.state.decisionResolved && dungeon.encounters.length > 1 && defeatedEncounterIndex === decisionTriggerIndex) {
+        this.state.phase = 'decision';
+        this.state.enemy = null;
+        this.state.pendingDecision = selectRunDecision({
+          runId: this.state.id,
+          dungeonId: this.state.dungeonId,
+          encounterIndex: defeatedEncounterIndex,
+          nextEncounterIndex,
+        });
+        events.push({
+          type: 'RunDecisionOffered',
+          runId: this.state.id,
+          dungeonId: this.state.dungeonId,
+          decision: structuredClone(this.state.pendingDecision),
+        });
+        return;
+      }
+      this.state.encounterIndex = nextEncounterIndex;
       this.state.enemy = cloneEnemy(dungeon.encounters[this.state.encounterIndex], this.state.participants.length);
       return;
     }
