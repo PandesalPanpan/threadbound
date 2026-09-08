@@ -172,9 +172,19 @@ if (commandCard || inventory) {
     refreshTimer = setTimeout(refreshRelics, delay);
   }
 
+  function mutationIsOwned(mutation) {
+    const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
+    return nodes.length > 0 && nodes.every((node) => node.nodeType === Node.ELEMENT_NODE && node.dataset?.relicProgressionOwned === 'true');
+  }
+
   const observers = [];
   for (const target of [commandCard, inventory].filter(Boolean)) {
-    const observer = new MutationObserver(() => scheduleRefresh());
+    const observer = new MutationObserver((mutations) => {
+      // Ignore the chips/actions this module adds and removes itself. Without this guard,
+      // the observer schedules another dashboard fetch after every enhancement pass.
+      if (mutations.length > 0 && mutations.every(mutationIsOwned)) return;
+      scheduleRefresh();
+    });
     observer.observe(target, { childList: true, subtree: true });
     observers.push(observer);
   }
