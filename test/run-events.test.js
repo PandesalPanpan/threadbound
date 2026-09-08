@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { AdventureRun } from '../src/domain/AdventureRun.js';
 import { DungeonRun } from '../src/domain/DungeonRun.js';
 import { RUN_EVENTS, selectRunEvent, snapshotRunEventSchedule } from '../src/domain/RunEventCatalog.js';
+import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
 const QUICK_HOLLOW = Object.freeze({
   id: 'frayed-hollow',
@@ -99,6 +100,33 @@ test('combat is blocked while the party decision is unresolved', () => {
   const model = run();
   reachEvent(model);
   assert.throws(() => model.attack({ playerId: 'a', attackPower: 10 }), /Choose the run event/i);
+});
+
+test('repository treats the unresolved decision as the same active run across reconnects', () => {
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'a' });
+  repository.getOrCreatePlayer({ threadedUserId: 'local:a', displayName: 'Weaver A' });
+  let model = AdventureRun.start({
+    id: 'persisted-event-run',
+    ownerType: 'player',
+    ownerId: 'a',
+    startedByPlayerId: 'a',
+    dungeonId: 'frayed-hollow',
+    dungeonDefinition: QUICK_HOLLOW,
+    participants: [{ playerId: 'a', maxHealth: 80 }],
+  });
+  let persisted = repository.createRun(model.toJSON());
+
+  model = new AdventureRun(persisted);
+  persisted = repository.saveRun(model.attack({ playerId: 'a', attackPower: 10 }).state);
+  model = new AdventureRun(persisted);
+  persisted = repository.saveRun(model.attack({ playerId: 'a', attackPower: 10 }).state);
+
+  const active = repository.getActiveRun('a');
+  assert.equal(active.id, 'persisted-event-run');
+  assert.equal(active.phase, 'event');
+  assert.ok(active.runEvent);
+  assert.equal(active.version, persisted.version);
+  repository.close();
 });
 
 test('pre-event persisted runs hydrate without gaining a surprise mid-run decision', () => {
