@@ -83,6 +83,10 @@ async function formParty(leader, leaderContext, partner, partnerContext) {
   await expect(leader.getByTestId('stream-start-dungeon')).toBeVisible();
   await leader.getByTestId('stream-start-dungeon').click();
   await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.id || null, { timeout: 7000 }).not.toBeNull();
+  // The standalone-local transport does not receive the API-created party lifecycle
+  // notifications on this page connection. Reload once after the run exists so both auth
+  // modes begin the actual combat journey from the same persisted authoritative state.
+  await leader.reload();
   await partner.reload();
   expect((await dashboard(partnerContext)).activeRun?.id).toBe((await dashboard(leaderContext)).activeRun?.id);
 }
