@@ -10,9 +10,12 @@ export function nextEnemyIntent({ enemy, intentCount = 0, now = new Date().toISO
   const template = cycle[intentCount % cycle.length];
   const dueAt = new Date(new Date(now).getTime() + INTENT_WINDOW_MS).toISOString();
   if (template.kind === 'heal') {
+    const amount = Math.max(2, Math.ceil(enemy.maxHp * template.healRatio));
     return {
       ...template,
-      amount: Math.max(2, Math.ceil(enemy.maxHp * template.healRatio)),
+      name: `${template.name} · heals ${amount} HP`,
+      amount,
+      damage: 0,
       dueAt,
       hint: 'Interrupt before it completes.',
     };
