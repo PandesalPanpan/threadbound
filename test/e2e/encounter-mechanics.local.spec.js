@@ -45,6 +45,8 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
   try {
     await loginLocal(leader, 'a', 'Local Weaver A');
     await loginLocal(partner, 'b', 'Local Weaver B');
+    const leaderPlayerId = (await dashboard(leaderContext)).character.id;
+    const partnerPlayerId = (await dashboard(partnerContext)).character.id;
 
     const created = await post(leaderContext, '/api/party/create');
     await post(partnerContext, '/api/party/join', { joinCode: created.party.joinCode });
@@ -86,10 +88,12 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     expect(state.activeRun.enemy.battlePhase).toBe(2);
     expect(state.activeRun.enemy.phaseName).toBe('Unraveling');
     expect(state.activeRun.enemyIntent?.id).toBe('threadmark-lunge');
-    const marked = state.activeRun.participants.find((participant) => participant.playerId === 'local:b');
-    expect(state.activeRun.enemyIntent.targetPlayerId).toBe('local:b');
+    const marked = state.activeRun.participants.find((participant) => participant.playerId === partnerPlayerId);
+    expect(marked).toBeTruthy();
+    expect(state.activeRun.enemyIntent.targetPlayerId).toBe(partnerPlayerId);
     const markedHpBefore = marked.hp;
-    const leaderBefore = state.activeRun.participants.find((participant) => participant.playerId === 'local:a');
+    const leaderBefore = state.activeRun.participants.find((participant) => participant.playerId === leaderPlayerId);
+    expect(leaderBefore).toBeTruthy();
 
     await expect(leader.getByTestId('boss-phase-badge')).toContainText('PHASE II', { timeout: 5000 });
     await expect(leader.getByTestId('boss-phase-badge')).toContainText('UNRAVELING');
@@ -104,8 +108,8 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version, { timeout: 5000 }).toBeGreaterThan(versionBefore);
 
     const after = await dashboard(leaderContext);
-    const markedAfter = after.activeRun.participants.find((participant) => participant.playerId === 'local:b');
-    const leaderAfter = after.activeRun.participants.find((participant) => participant.playerId === 'local:a');
+    const markedAfter = after.activeRun.participants.find((participant) => participant.playerId === partnerPlayerId);
+    const leaderAfter = after.activeRun.participants.find((participant) => participant.playerId === leaderPlayerId);
     expect(markedAfter.hp).toBe(markedHpBefore);
     expect(leaderAfter.hp).toBeLessThan(leaderBefore.hp);
     expect(leaderAfter.successfulGuards).toBe(leaderBefore.successfulGuards + 1);
