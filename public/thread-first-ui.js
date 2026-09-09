@@ -14,6 +14,8 @@ if (stream) {
     const style = document.createElement('style');
     style.textContent = `
       body[data-thread-first="true"] .threadbound-game-page { display:block !important; max-width:1040px; }
+      body[data-thread-first="true"] .threadbound-game-page > .page-hero,
+      body[data-thread-first="true"] .threadbound-game-page > #status,
       body[data-thread-first="true"] .threadbound-game-page > #identity,
       body[data-thread-first="true"] .threadbound-game-page > #character,
       body[data-thread-first="true"] .threadbound-game-page > #party,
@@ -24,7 +26,7 @@ if (stream) {
       body[data-thread-first="true"] .threadbound-game-page > #honey,
       body[data-thread-first="true"] .mobile-game-nav { display:none !important; }
       body[data-thread-first="true"] #stream { max-width:960px; margin-inline:auto; }
-      body[data-thread-first="true"] .adventure-stream-log { height:min(68vh,760px); min-height:520px; padding:8px; }
+      body[data-thread-first="true"] .adventure-stream-log { height:min(72vh,780px); min-height:520px; padding:8px; }
 
       .stream-thread-local {
         display:grid; grid-template-columns:32px minmax(0,1fr); gap:8px; align-items:start;
@@ -55,7 +57,7 @@ if (stream) {
       .stream-thread-local .stream-action-section-head { margin-bottom:4px; }
       .stream-thread-local .stream-action-section-head small { color:#7f8da5; }
       .stream-thread-local .stream-meta-actions-row { gap:5px; }
-      .stream-thread-local .stream-meta-actions-row button { min-height:42px !important; }
+      .stream-thread-local .stream-meta-actions-row button { min-height:44px !important; }
       .stream-thread-local .stream-suggestions { padding:1px 0 2px !important; }
       .stream-thread-local .stream-suggestions::before { content:none !important; }
       .stream-thread-local .combat-skill-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
@@ -77,12 +79,10 @@ if (stream) {
 
       @media (max-width:720px) {
         body[data-thread-first="true"] .threadbound-page { padding:8px; }
-        body[data-thread-first="true"] .page-hero { display:none; }
-        body[data-thread-first="true"] #status { margin:4px 0 7px; padding:5px 8px; font-size:.72rem; }
         body[data-thread-first="true"] #stream { padding:8px; border-radius:12px; }
         body[data-thread-first="true"] .stream-heading h2 { font-size:1rem; }
         body[data-thread-first="true"] .stream-heading > div > span { font-size:.56rem; }
-        body[data-thread-first="true"] .adventure-stream-log { height:calc(100dvh - 205px); min-height:520px; padding:5px; }
+        body[data-thread-first="true"] .adventure-stream-log { height:calc(100dvh - 168px); min-height:540px; padding:5px; }
         .stream-thread-local { grid-template-columns:28px minmax(0,1fr); gap:6px; padding:7px 6px; }
         .stream-thread-local-avatar { width:26px; height:26px; border-radius:8px; }
         .stream-thread-local-meta small { display:none; }
