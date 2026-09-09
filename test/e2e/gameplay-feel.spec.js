@@ -47,6 +47,9 @@ async function chooseEvent(page, context) {
     const next = await dashboard(context);
     return next.activeRun?.phase === 'combat' && next.activeRun.version > version;
   }, { timeout: 5000 }).toBe(true);
+  const next = await dashboard(context);
+  await expect(page.getByTestId('stream-next-enemy').last()).toContainText(next.activeRun.enemy.name, { timeout:5000 });
+  await expect(page.getByTestId('stream-next-enemy-hp').last()).toHaveText(`${next.activeRun.enemy.hp} / ${next.activeRun.enemy.maxHp} HP`);
 }
 
 test('gameplay feel pass previews outcomes, uses semantic colors, condenses receipts, pages history, and builds through repeated drafts', async ({ page, context }) => {
@@ -77,11 +80,19 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   expect(expectedDamage).toBeGreaterThan(0);
   const attack = page.getByTestId('stream-attack');
   await expect.poll(async () => Number(await attack.getAttribute('data-preview-damage') || 0), { timeout: 5000 }).toBe(expectedDamage);
+  const beforeHover = await attack.boundingBox();
+  const rowBeforeHover = await page.getByTestId('stream-suggestions').boundingBox();
   await attack.hover();
   await expect(page.getByTestId('enemy-damage-preview')).toBeVisible();
+  const afterHover = await attack.boundingBox();
+  const rowAfterHover = await page.getByTestId('stream-suggestions').boundingBox();
+  expect(afterHover?.width).toBe(beforeHover?.width);
+  expect(afterHover?.height).toBe(beforeHover?.height);
+  expect(rowAfterHover?.height).toBe(rowBeforeHover?.height);
   const previewCopy = page.getByTestId('enemy-damage-preview-copy');
   await expect(previewCopy).toContainText(`${previewState.actionPreviews.actions.attack.enemyHpBefore} → ${previewState.actionPreviews.actions.attack.enemyHpAfter} HP`);
   const forecastColor = await previewCopy.evaluate((element) => getComputedStyle(element).color);
+  expect(forecastColor).toBe('rgb(255, 228, 92)');
 
   await actAndWait(page, context, 'stream-attack');
   const attackReceipt = page.locator('.stream-entry-rich.stream-action-attack').last();
@@ -93,9 +104,6 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   const confirmedColor = await attackReceipt.locator('.combat-metric.damage').evaluate((element) => getComputedStyle(element).color);
   expect(confirmedColor).not.toBe(forecastColor);
 
-  // The Wisp's first telegraph is a self-mend. Guarding it deals no player damage, so the
-  // receipt must not invent a red incoming-damage chip. Red is reserved for HP actually
-  // lost; cyan only appears when damage was truly blocked/prevented.
   await actAndWait(page, context, 'stream-guard');
   const guardReceipt = page.locator('.stream-entry-rich.stream-action-guard').last();
   await expect(guardReceipt).toBeVisible();
@@ -106,9 +114,8 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   await expect(liveReceipt.getByTestId('stream-exchange-count')).toContainText('2 actions condensed');
   await expect(page.locator('.stream-entry.is-condensed-receipt').last()).toBeHidden();
   const animatedFill = liveReceipt.locator('.stream-health-track > span:not(.stream-health-preview)').first();
-  await expect.poll(async () => animatedFill.evaluate((element) => getComputedStyle(element).transitionDuration)).toContain('0.36s');
+  await expect.poll(async () => animatedFill.evaluate((element) => getComputedStyle(element).transitionDuration)).toContain('0.32s');
 
-  // First encounter: a role-balanced, server-authoritative build draft.
   let state = await attackUntilPhaseChanges(page, context, 'combat');
   expect(state.activeRun.phase).toBe('upgrade');
   expect(state.activeRun.runUpgradeResume).toBeTruthy();
@@ -136,13 +143,14 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   await cards.first().click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
   await expect.poll(async () => (await dashboard(context)).activeRun?.selectedUpgrades?.length || 0, { timeout: 5000 }).toBe(1);
+  let nextState = await dashboard(context);
+  await expect(page.getByTestId('stream-next-enemy').last()).toContainText(nextState.activeRun.enemy.name, { timeout:5000 });
+  await expect(page.getByTestId('stream-next-enemy-hp').last()).toHaveText(`${nextState.activeRun.enemy.maxHp} / ${nextState.activeRun.enemy.maxHp} HP`);
 
-  // Second encounter: narrative discovery remains durable and readable.
   state = await attackUntilPhaseChanges(page, context, 'combat');
   expect(state.activeRun.phase).toBe('event');
   await chooseEvent(page, context);
 
-  // Third encounter: a rotated second draft before the boss.
   state = await attackUntilPhaseChanges(page, context, 'combat');
   expect(state.activeRun.phase).toBe('upgrade');
   expect(state.activeRun.runUpgradeResume).toBeNull();
@@ -155,4 +163,7 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   await cards.first().click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
   await expect.poll(async () => (await dashboard(context)).activeRun?.selectedUpgrades?.length || 0, { timeout: 5000 }).toBe(2);
+  nextState = await dashboard(context);
+  await expect(page.getByTestId('stream-next-enemy').last()).toContainText(nextState.activeRun.enemy.name, { timeout:5000 });
+  await expect(page.getByTestId('stream-next-enemy-hp').last()).toHaveText(`${nextState.activeRun.enemy.maxHp} / ${nextState.activeRun.enemy.maxHp} HP`);
 });
