@@ -42,7 +42,7 @@ test('combat preview simulates the authoritative aggregate without mutating the 
   repository.close();
 });
 
-test('run power catalog produces stable role-balanced three-card drafts that change across draft index', () => {
+test('run power catalog produces stable role-balanced three-card drafts that rotate across draft index', () => {
   const catalog = Object.values(RUN_UPGRADES);
   assert.ok(catalog.length >= 10, 'the run needs enough powers for actual draft variation');
   const run = { id: 'offer-run-a', phase: 'upgrade', runUpgradeOfferVersion: RUN_UPGRADE_OFFER_VERSION, runUpgradeOfferIds: [], runUpgradeDraftIndex: 0 };
@@ -59,6 +59,7 @@ test('run power catalog produces stable role-balanced three-card drafts that cha
   const later = offeredRunUpgradeIds({ ...run, runUpgradeDraftIndex: 1 }, catalog);
   assert.equal(later.length, 3);
   assert.notDeepEqual(later, first, 'a later build moment should not simply repeat the same draft');
+  assert.equal(later.filter((id) => first.includes(id)).length, 0, 'each role rotates to its next card');
 });
 
 test('AdventureRun aggregate rejects powers outside its snapshotted offer', () => {
@@ -84,7 +85,7 @@ test('AdventureRun aggregate rejects powers outside its snapshotted offer', () =
   assert.deepEqual(chosen.state.selectedUpgrades, ['sharpen']);
 });
 
-test('a normal run pauses for a mid-run power draft and a second pre-boss draft', () => {
+test('a new run paces combat into power draft, discovery, final power draft, then boss', () => {
   let sequence = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++sequence}` });
   const game = new GameService({ repository, eventBus: new EventBus(), idFactory: () => 'multi-draft-run' });
@@ -93,13 +94,8 @@ test('a normal run pauses for a mid-run power draft and a second pre-boss draft'
 
   for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
   let state = repository.getRun(started.id);
-  assert.equal(state.phase, 'event');
-  game.chooseUpgrade(player.id, started.id, state.runEvent.choices[0].id);
-
-  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
-  state = repository.getRun(started.id);
   assert.equal(state.phase, 'upgrade');
-  assert.ok(state.runUpgradeResume?.enemy, 'first draft should pause before the next normal encounter');
+  assert.ok(state.runUpgradeResume?.enemy, 'first draft should pause before encounter two');
   const firstOffer = [...state.runUpgradeOfferIds];
   assert.equal(firstOffer.length, 3);
   game.chooseUpgrade(player.id, started.id, firstOffer[0]);
@@ -107,6 +103,13 @@ test('a normal run pauses for a mid-run power draft and a second pre-boss draft'
   assert.equal(state.phase, 'combat');
   assert.equal(state.runUpgradeDraftIndex, 1);
   assert.equal(state.selectedUpgrades.length, 1);
+
+  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
+  state = repository.getRun(started.id);
+  assert.equal(state.phase, 'event');
+  assert.ok(state.runEvent?.choices?.length === 2);
+  game.chooseUpgrade(player.id, started.id, state.runEvent.choices[0].id);
+  assert.equal(repository.getRun(started.id).phase, 'combat');
 
   for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
   state = repository.getRun(started.id);
