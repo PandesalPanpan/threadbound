@@ -29,6 +29,9 @@ export class AdventureRun {
     this.state.runUpgradeDraftIndex ??= 0;
     this.state.runUpgradeResume ??= null;
     this.state.selectedUpgrades ??= this.state.selectedUpgrade ? [this.state.selectedUpgrade] : [];
+    // Compatibility rule: old persisted runs predate repeated drafts. They must hydrate
+    // exactly where they were rather than acquiring a surprise blocking decision.
+    this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
   }
 
   static start(args) {
@@ -43,6 +46,7 @@ export class AdventureRun {
     state.runUpgradeDraftIndex = 0;
     state.runUpgradeResume = null;
     state.selectedUpgrades = [];
+    state.runPowerDraftsEnabled = true;
     return new AdventureRun(state);
   }
 
@@ -248,12 +252,14 @@ export class AdventureRun {
   }
 
   #pauseForRunPowerDraft(before, events) {
+    if (!this.state.runPowerDraftsEnabled) return;
     if (before.phase !== 'combat' || this.state.phase !== 'combat') return;
     if (!events.some((event) => event.type === 'EnemyDefeated')) return;
     if (this.state.encounterIndex !== before.encounterIndex + 1) return;
-    // The first transition is reserved for the dungeon discovery when one is scheduled.
-    // Every later normal-encounter transition becomes a build moment before the next foe.
-    if (before.encounterIndex < 1) return;
+    // A narrative discovery owns its scheduled transition. Every other transition between
+    // normal encounters is eligible for a build draft. Frayed Hollow therefore drafts
+    // after encounter 1, discovers its event after encounter 2, and drafts again pre-boss.
+    if (this.state.runEventSchedule?.afterEncounterIndex === before.encounterIndex && this.state.runEventHistory.length === 0) return;
 
     this.state.runUpgradeResume = {
       encounterIndex: this.state.encounterIndex,
