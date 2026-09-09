@@ -25,6 +25,26 @@ function triggerBossIntent(run) {
   assert.ok(run.toJSON().enemyIntent);
 }
 
+function advanceSilkboundToMend(run) {
+  triggerNormalIntent(run, '2026-09-08T00:00:00.000Z');
+  const marked = run.toJSON().enemyIntent;
+  assert.equal(marked.kind, 'targeted-damage');
+  assert.equal(marked.reaction, 'guard');
+  run.interrupt({ playerId: 'a' });
+
+  triggerNormalIntent(run, '2026-09-08T00:00:01.000Z');
+  const heavy = run.toJSON().enemyIntent;
+  assert.equal(heavy.kind, 'damage');
+  assert.equal(heavy.reaction, 'guard');
+  run.interrupt({ playerId: 'a' });
+
+  triggerNormalIntent(run, '2026-09-08T00:00:02.000Z');
+  const mend = run.toJSON().enemyIntent;
+  assert.equal(mend.kind, 'heal');
+  assert.equal(mend.reaction, 'interrupt');
+  return mend;
+}
+
 test('mindless Attack immediately pays the cost of an unanswered heavy telegraph', () => {
   const run = soloRun();
   triggerNormalIntent(run);
@@ -34,32 +54,22 @@ test('mindless Attack immediately pays the cost of an unanswered heavy telegraph
   assert.equal(result.events.some((event) => event.type === 'EnemyIntentIgnored'), true);
 });
 
-test('mixed pressure rotates from a guardable heavy into an interrupt-worthy heal', () => {
+test('Silkbound Guard rotates targeted protection, heavy pressure, then interrupt-worthy recovery', () => {
   const run = soloRun(80, 'silkbound-guard');
-  triggerNormalIntent(run);
-  assert.equal(run.toJSON().enemyIntent.kind, 'damage');
-  run.interrupt({ playerId: 'a' });
-  triggerNormalIntent(run, '2026-09-08T00:00:01.000Z');
-  const intent = run.toJSON().enemyIntent;
-  assert.equal(intent.kind, 'heal');
-  assert.equal(intent.reaction, 'interrupt');
+  const intent = advanceSilkboundToMend(run);
   assert.match(intent.name, /^Thread Mend/);
   assert.ok(intent.amount > 0);
 });
 
 test('ignoring Thread Mend restores enemy HP while interrupting it prevents the heal', () => {
   const ignored = soloRun(80, 'silkbound-guard');
-  triggerNormalIntent(ignored);
-  ignored.interrupt({ playerId: 'a' });
-  triggerNormalIntent(ignored, '2026-09-08T00:00:01.000Z');
+  advanceSilkboundToMend(ignored);
   const beforeIgnored = ignored.toJSON().enemy.hp;
   ignored.attack({ playerId: 'a', attackPower: 1, now: '2026-09-08T00:00:05.000Z' });
   const afterIgnored = ignored.toJSON().enemy.hp;
 
   const answered = soloRun(80, 'silkbound-guard');
-  triggerNormalIntent(answered);
-  answered.interrupt({ playerId: 'a' });
-  triggerNormalIntent(answered, '2026-09-08T00:00:01.000Z');
+  advanceSilkboundToMend(answered);
   const beforeAnswered = answered.toJSON().enemy.hp;
   answered.interrupt({ playerId: 'a' });
 
