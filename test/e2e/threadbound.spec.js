@@ -191,7 +191,10 @@ async function joinPartyThroughThread(page, context, joinCode) {
   await reply.getByRole('button', { name: 'Join', exact: true }).click();
   await expect.poll(async () => (await dashboard(context)).party?.members?.length || 0, { timeout: 5000 }).toBe(2);
   await page.getByTestId('stream-command-card').getByRole('button', { name: 'Ready', exact: true }).click();
-  await expect.poll(async () => (await dashboard(context)).party?.members?.find((member) => member.playerId === (await dashboard(context)).character.id)?.ready || false, { timeout: 5000 }).toBe(true);
+  await expect.poll(async () => {
+    const state = await dashboard(context);
+    return state.party?.members?.find((member) => member.playerId === state.character.id)?.ready || false;
+  }, { timeout: 5000 }).toBe(true);
 }
 
 test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -> inline gear -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
