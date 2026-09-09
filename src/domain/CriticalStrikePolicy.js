@@ -11,9 +11,10 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
-export function criticalStrike({ runId, runVersion, playerId, enemyId, actionKey = 'attack', baseDamage, exposed = false }) {
+export function criticalStrike({ runId, runVersion, playerId, enemyId, actionKey = 'attack', baseDamage, exposed = false, chanceBonus = 0 }) {
   const raw = Math.max(0, Number(baseDamage || 0));
-  const chance = Math.min(0.95, BASE_CRIT_CHANCE + (exposed ? EXPOSED_CRIT_BONUS : 0));
+  const bonus = Math.max(0, Number(chanceBonus || 0));
+  const chance = Math.min(0.95, BASE_CRIT_CHANCE + (exposed ? EXPOSED_CRIT_BONUS : 0) + bonus);
   const roll = stableHash(`${runId}:${runVersion}:${playerId}:${enemyId}:${actionKey}`) / 0x100000000;
   const critical = raw > 0 && roll < chance;
   return {
