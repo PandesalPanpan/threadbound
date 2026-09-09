@@ -1,6 +1,7 @@
 import { nextEnemyIntent, resolveEnemyIntent } from './CombatIntentPolicy.js';
 import { combatSkill, MAX_FOCUS } from './CombatSkillCatalog.js';
 import { criticalStrike } from './CriticalStrikePolicy.js';
+import { runBuildModifiers } from './RunBuildPolicy.js';
 
 export const DUNGEONS = Object.freeze({
   'frayed-hollow': Object.freeze({
@@ -12,7 +13,7 @@ export const DUNGEONS = Object.freeze({
     encounters: Object.freeze([
       Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2, abilities: Object.freeze(['self_mend']), intentCadence: 1 }),
       Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure']), intentCadence: 1 }),
-      Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure', 'self_mend']), intentCadence: 1 }),
+      Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure', 'self_mend', 'ally_hunter']), intentCadence: 1 }),
     ]),
     boss: Object.freeze({ id: 'first-needle', name: 'The First Needle', hp: 24, retaliation: 4, abilities: Object.freeze(['basic_retaliation']), intentCadence: 3 }),
   }),
@@ -160,10 +161,16 @@ export class DungeonRun {
     const pendingIntent = this.state.enemyIntent ? structuredClone(this.state.enemyIntent) : null;
     if (pendingIntent) this.state.enemyIntent = null;
 
+    const build = runBuildModifiers(this.state);
+    const exposed = Number(this.state.enemy.statuses?.exposed || 0) > 0;
     let baseDamage = attackPower + this.state.runAttackBonus + participant.reactionDamageBonus;
     participant.reactionDamageBonus = 0;
     if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) baseDamage += 2;
     if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) baseDamage += 2;
+    if (exposed && build.exposedDamageBonus > 0) {
+      baseDamage += build.exposedDamageBonus;
+      events.push({ type: 'RunPowerTriggered', playerId, runId: this.state.id, trigger: 'exposed-damage', amount: build.exposedDamageBonus });
+    }
     participant.firstStrikeUsed = true;
     const critical = criticalStrike({
       runId: this.state.id,
@@ -172,7 +179,8 @@ export class DungeonRun {
       enemyId: this.state.enemy.id,
       actionKey: 'attack',
       baseDamage,
-      exposed: Number(this.state.enemy.statuses?.exposed || 0) > 0,
+      exposed,
+      chanceBonus: exposed ? build.exposedCritChanceBonus : 0,
     });
     if (critical.critical) events.push({ type: 'CriticalStrikeLanded', playerId, runId: this.state.id, enemyId: this.state.enemy.id, baseDamage, damage: critical.damage, multiplier: critical.multiplier });
     const effectiveDamage = this.#damageEnemy(participant, critical.damage, events, playerId);
@@ -208,10 +216,16 @@ export class DungeonRun {
       const resolved = this.#resolveIntent(events, now, 'guard', playerId);
       retaliation = resolved.damage || 0;
       if (intended.reaction === 'guard') {
+        const build = runBuildModifiers(this.state);
+        const counterBonus = (this.state.reactionStyle === 'guard' ? RIPOSTE_BONUS : 0) + build.guardCounterBonus;
+        const focusGain = 1 + build.guardFocusBonus;
         participant.successfulGuards += 1;
-        this.#grantFocus(participant, 1, events);
-        if (this.state.reactionStyle === 'guard') participant.reactionDamageBonus += RIPOSTE_BONUS;
-        events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'guard', intentId: intended.id, bonusDamage: this.state.reactionStyle === 'guard' ? RIPOSTE_BONUS : 0 });
+        this.#grantFocus(participant, focusGain, events);
+        participant.reactionDamageBonus += counterBonus;
+        events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'guard', intentId: intended.id, bonusDamage: counterBonus, focusGain });
+        if (build.guardCounterBonus > 0 || build.guardFocusBonus > 0) {
+          events.push({ type: 'RunPowerTriggered', playerId, runId: this.state.id, trigger: 'guard-riposte', bonusDamage: build.guardCounterBonus, bonusFocus: build.guardFocusBonus });
+        }
       }
     } else retaliation = this.#retaliate(events);
     return { state: this.toJSON(), events, retaliation };
@@ -223,18 +237,22 @@ export class DungeonRun {
     this.#beginAction(participant);
     if (!this.state.enemyIntent) throw new Error('There is no enemy action to interrupt.');
     const interrupted = structuredClone(this.state.enemyIntent);
+    const build = runBuildModifiers(this.state);
+    const counterBonus = (this.state.reactionStyle === 'interrupt' ? DISRUPT_BONUS : 0) + build.interruptCounterBonus;
+    const focusGain = 1 + build.interruptFocusBonus;
     this.state.enemyIntent = null;
     participant.threat += INTERRUPT_THREAT;
     participant.successfulInterrupts += 1;
-    this.#grantFocus(participant, 1, []);
-    if (this.state.reactionStyle === 'interrupt') participant.reactionDamageBonus += DISRUPT_BONUS;
+    const events = [{ type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interrupted.id, enemyId: this.state.enemy.id }];
+    this.#grantFocus(participant, focusGain, events);
+    participant.reactionDamageBonus += counterBonus;
+    events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interrupted.id, bonusDamage: counterBonus, focusGain });
+    if (build.interruptCounterBonus > 0 || build.interruptFocusBonus > 0) {
+      events.push({ type: 'RunPowerTriggered', playerId, runId: this.state.id, trigger: 'interrupt-control', bonusDamage: build.interruptCounterBonus, bonusFocus: build.interruptFocusBonus });
+    }
     return {
       state: this.toJSON(),
-      events: [
-        { type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interrupted.id, enemyId: this.state.enemy.id },
-        { type: 'FocusChanged', playerId, runId: this.state.id, focus: participant.focus, maxFocus: participant.maxFocus },
-        { type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interrupted.id, bonusDamage: this.state.reactionStyle === 'interrupt' ? DISRUPT_BONUS : 0 },
-      ],
+      events,
       interrupted,
     };
   }
@@ -288,6 +306,7 @@ export class DungeonRun {
     if (participant.focus < skill.cost) throw new Error(`${skill.name} requires ${skill.cost} Focus.`);
 
     const events = [];
+    const build = runBuildModifiers(this.state);
     let retaliation = 0;
     let interruptedIntent = null;
     const pendingIntent = this.state.enemyIntent ? structuredClone(this.state.enemyIntent) : null;
@@ -296,8 +315,10 @@ export class DungeonRun {
         interruptedIntent = pendingIntent;
         this.state.enemyIntent = null;
         participant.successfulInterrupts += 1;
+        const counterBonus = (this.state.reactionStyle === 'interrupt' ? DISRUPT_BONUS : 0) + build.interruptCounterBonus;
+        participant.reactionDamageBonus += counterBonus;
         events.push({ type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interruptedIntent.id, enemyId: this.state.enemy.id, bySkillId: skill.id });
-        events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interruptedIntent.id, bySkillId: skill.id, bonusDamage: 0 });
+        events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interruptedIntent.id, bySkillId: skill.id, bonusDamage: counterBonus, focusGain: 1 + build.interruptFocusBonus });
       } else this.state.enemyIntent = null;
     }
 
@@ -305,6 +326,12 @@ export class DungeonRun {
     participant.skillCooldowns[skill.id] = skill.cooldown;
     events.push({ type: 'CombatSkillUsed', playerId, runId: this.state.id, skillId: skill.id, focusCost: skill.cost });
     events.push({ type: 'FocusChanged', playerId, runId: this.state.id, focus: participant.focus, maxFocus: participant.maxFocus });
+    if (interruptedIntent) {
+      this.#grantFocus(participant, 1 + build.interruptFocusBonus, events);
+      if (build.interruptCounterBonus > 0 || build.interruptFocusBonus > 0) {
+        events.push({ type: 'RunPowerTriggered', playerId, runId: this.state.id, trigger: 'interrupt-control', bonusDamage: build.interruptCounterBonus, bonusFocus: build.interruptFocusBonus, bySkillId: skill.id });
+      }
+    }
 
     let damage = 0;
     let healed = 0;
@@ -313,6 +340,10 @@ export class DungeonRun {
       let rawDamage = attackPower + this.state.runAttackBonus + skill.damageBonus + participant.reactionDamageBonus;
       participant.reactionDamageBonus = 0;
       const exposed = Number(this.state.enemy.statuses?.exposed || 0);
+      if (exposed > 0 && build.exposedDamageBonus > 0) {
+        rawDamage += build.exposedDamageBonus;
+        events.push({ type: 'RunPowerTriggered', playerId, runId: this.state.id, trigger: 'exposed-damage', amount: build.exposedDamageBonus, bySkillId: skill.id });
+      }
       if (skill.id === 'severing-knot' && exposed > 0) {
         rawDamage += skill.comboBonus;
         this.state.enemy.statuses.exposed = Math.max(0, exposed - 1);
@@ -326,9 +357,14 @@ export class DungeonRun {
         actionKey: `skill:${skill.id}`,
         baseDamage: rawDamage,
         exposed: exposed > 0,
+        chanceBonus: exposed > 0 ? build.exposedCritChanceBonus : 0,
       });
       if (criticalResult.critical) events.push({ type: 'CriticalStrikeLanded', playerId, runId: this.state.id, enemyId: this.state.enemy.id, skillId: skill.id, baseDamage: rawDamage, damage: criticalResult.damage, multiplier: criticalResult.multiplier });
       damage = this.#damageEnemy(participant, criticalResult.damage, events, playerId);
+      if (damage > 0 && build.skillFocusRefund > 0) {
+        this.#grantFocus(participant, build.skillFocusRefund, events);
+        events.push({ type: 'RunPowerTriggered', playerId, runId: this.state.id, trigger: 'skill-focus-refund', bonusFocus: build.skillFocusRefund, bySkillId: skill.id });
+      }
       if (this.state.enemy.hp === 0) {
         if (pendingIntent && !interruptedIntent) events.push({ type: 'EnemyIntentCancelledByDefeat', playerId, runId: this.state.id, enemyId: this.state.enemy.id, intentId: pendingIntent.id });
         retaliation = this.#defeatCurrentEnemy(events, playerId, now);
