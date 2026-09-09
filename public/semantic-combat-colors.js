@@ -1,3 +1,5 @@
+import './combat-transition-presentation.js';
+
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
 if (stream) {
