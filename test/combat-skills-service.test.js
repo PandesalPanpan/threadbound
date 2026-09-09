@@ -21,9 +21,15 @@ test('GameService exposes the skill catalog and persists one rich skill result',
   assert.equal(initialDashboard.activeRun.viewer.maxFocus, 4);
 
   game.attack(player.id, started.id);
-  game.attack(player.id, started.id); // first enemy defeated; Focus carries into encounter two
-  const focused = game.dashboard(player.id);
+  game.attack(player.id, started.id); // player-first lethal may now finish the Wisp before its mend resolves
+  let focused = game.dashboard(player.id);
   assert.equal(focused.activeRun.viewer.focus, 2);
+  if (focused.activeRun.phase === 'upgrade') {
+    assert.ok(focused.runUpgrades.length > 0);
+    game.chooseUpgrade(player.id, started.id, focused.runUpgrades[0].id);
+    focused = game.dashboard(player.id);
+  }
+  assert.equal(focused.activeRun.phase, 'combat');
 
   const outcome = game.useSkill(player.id, started.id, 'piercing-stitch');
   assert.equal(outcome.skillId, 'piercing-stitch');
