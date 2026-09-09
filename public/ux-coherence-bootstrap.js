@@ -32,6 +32,7 @@ if (stream) {
   const suggestions = await waitFor('stream-suggestions');
   if (suggestions) {
     await import('./ux-coherence.js');
+    await import('./buildcraft-presentation.js');
 
     // Meta command buttons keep their original event handlers as hidden Presentation Model
     // sources while visible mirrors live in Navigation. Never expose duplicate test IDs.
