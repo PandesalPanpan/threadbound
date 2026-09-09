@@ -21,6 +21,30 @@ if (stream) {
     });
   }
 
+  function stripHiddenSourceTestIds(suggestions) {
+    for (const source of suggestions.querySelectorAll('.ux-meta-source[data-testid]')) {
+      const testId = source.getAttribute('data-testid');
+      if (testId && !source.dataset.uxOriginalTestid) source.dataset.uxOriginalTestid = testId;
+      source.removeAttribute('data-testid');
+    }
+  }
+
   const suggestions = await waitFor('stream-suggestions');
-  if (suggestions) await import('./ux-coherence.js');
+  if (suggestions) {
+    await import('./ux-coherence.js');
+
+    // Meta command buttons keep their original event handlers as hidden Presentation Model
+    // sources while visible mirrors live in Navigation. Never expose duplicate test IDs.
+    stripHiddenSourceTestIds(suggestions);
+    const sourceObserver = new MutationObserver(() => stripHiddenSourceTestIds(suggestions));
+    sourceObserver.observe(suggestions, { childList:true, subtree:true, attributes:true, attributeFilter:['data-testid','class'] });
+
+    // Keep the established semantic contract: yellow (#ffe45c) means projected damage.
+    // The new dark backing/border supplies the improved contrast without changing meaning.
+    const style = document.createElement('style');
+    style.textContent = '#stream .stream-health-preview-copy { color:#ffe45c !important; }';
+    document.head.append(style);
+
+    window.addEventListener('beforeunload', () => sourceObserver.disconnect(), { once:true });
+  }
 }
