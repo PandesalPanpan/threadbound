@@ -58,12 +58,18 @@ export class SQLiteActivityStreamRepository {
         `).all(String(beforeId), bounded + 1)
       : this.db.prepare('SELECT * FROM activity_stream_entries ORDER BY rowid DESC LIMIT ?').all(bounded + 1);
     const hasMore = rows.length > bounded;
-    const page = rows.slice(0, bounded).map(decode).reverse();
-    return { entries: page, hasMore };
+    return {
+      entries: rows.slice(0, bounded).map(decode).reverse(),
+      hasMore,
+    };
   }
 
   listRecent({ limit = 80 } = {}) {
-    return this.listPage({ limit: Math.min(50, Number(limit) || 80) }).entries;
+    const bounded = Math.max(1, Math.min(200, Number(limit) || 80));
+    return this.db.prepare('SELECT * FROM activity_stream_entries ORDER BY rowid DESC LIMIT ?')
+      .all(bounded)
+      .map(decode)
+      .reverse();
   }
 
   #migrate() {
