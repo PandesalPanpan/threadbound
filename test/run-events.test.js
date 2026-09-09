@@ -19,8 +19,16 @@ const QUICK_HOLLOW = Object.freeze({
   boss: Object.freeze({ id: 'boss', name: 'Boss', hp: 1, retaliation: 1 }),
 });
 
+function eventOnlyRun(args) {
+  const model = AdventureRun.start(args);
+  // These tests specify the Run Event pattern itself. Power-draft pacing has a separate
+  // acceptance suite, so disable that orthogonal policy to keep the fixture focused.
+  model.state.runPowerDraftsEnabled = false;
+  return model;
+}
+
 function run(id = 'event-run-a') {
-  return AdventureRun.start({
+  return eventOnlyRun({
     id,
     ownerType: 'party',
     ownerId: 'party-1',
@@ -116,7 +124,7 @@ test('combat is blocked while the party decision is unresolved', () => {
 test('repository treats the unresolved decision as the same active run across reconnects', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'a' });
   repository.getOrCreatePlayer({ threadedUserId: 'local:a', displayName: 'Weaver A' });
-  let model = AdventureRun.start({
+  let model = eventOnlyRun({
     id: 'persisted-event-run',
     ownerType: 'player',
     ownerId: 'a',
@@ -140,7 +148,7 @@ test('repository treats the unresolved decision as the same active run across re
   repository.close();
 });
 
-test('pre-event persisted runs hydrate without gaining a surprise mid-run decision', () => {
+test('pre-event persisted runs hydrate without gaining a surprise mid-run decision or power draft', () => {
   const legacy = DungeonRun.start({
     id: 'legacy-run',
     ownerType: 'player',
@@ -155,4 +163,5 @@ test('pre-event persisted runs hydrate without gaining a surprise mid-run decisi
   model.attack({ playerId: 'a', attackPower: 10 });
   assert.equal(model.toJSON().phase, 'combat');
   assert.equal(model.toJSON().enemy.id, 'three');
+  assert.equal(model.toJSON().runPowerDraftsEnabled, false);
 });
