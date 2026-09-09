@@ -146,9 +146,18 @@ export class ActivityStreamService {
       }
       case 'CombatActionResolved':
         return { actorPlayerId: event.playerId, actorName, body: this.#combatResult(event, actorName) };
+      case 'CriticalStrikeLanded':
+        return {
+          actorPlayerId: event.playerId,
+          actorName,
+          body: `CRITICAL STRIKE! ${actorName} dealt ${event.damage} damage (${Number(event.multiplier || 1).toFixed(2)}×).`,
+        };
+      case 'EnemyDeathEffectResolved':
+        return {
+          actorName: 'THREADBOUND',
+          body: `${titleize(event.enemyId)} triggered ${titleize(event.effect)} on defeat for ${event.damage} damage.`,
+        };
 
-      // Fine-grained domain events drive achievements/history/realtime state. One player
-      // command still becomes exactly one durable public result message.
       case 'EnemyDamaged':
       case 'PlayerDamaged':
       case 'PlayerGuarded':
@@ -160,6 +169,7 @@ export class ActivityStreamService {
       case 'EnemyDefeated':
       case 'EnemyIntentResolved':
       case 'EnemyIntentIgnored':
+      case 'EnemyIntentCancelledByDefeat':
       case 'CombatReactionSucceeded':
       case 'CombatSkillUsed':
       case 'FocusChanged':
@@ -171,18 +181,40 @@ export class ActivityStreamService {
         return null;
 
       case 'RunEventChosen': {
-        const next = event.nextEnemyName ? ` Next: ${event.nextEnemyName}.` : '';
+        const run = event.runId ? this.gameRepository.getRun(event.runId) : null;
+        const nextEnemy = run?.enemy || null;
+        const next = nextEnemy ? ` Next: ${nextEnemy.name} — ${nextEnemy.hp}/${nextEnemy.maxHp} HP.` : event.nextEnemyName ? ` Next: ${event.nextEnemyName}.` : '';
         return {
           actorPlayerId: event.playerId || null,
           actorName: actorName || 'SYSTEM',
+          metadata: {
+            ...event,
+            nextEnemyId: nextEnemy?.id || event.nextEnemyId || null,
+            nextEnemyName: nextEnemy?.name || event.nextEnemyName || null,
+            nextEnemyHp: nextEnemy?.hp ?? null,
+            nextEnemyMaxHp: nextEnemy?.maxHp ?? null,
+            nextEnemyIsBoss: Boolean(nextEnemy?.isBoss),
+          },
           body: `${actorName || 'The party'} chose ${event.choiceName} at ${event.eventName}. ${event.choiceSummary}${next}`,
         };
       }
       case 'RunUpgradeChosen': {
         const run = event.runId ? this.gameRepository.getRun(event.runId) : null;
-        const boss = run?.enemy;
-        const bossState = boss ? ` ${boss.name} awakens — ${boss.hp}/${boss.maxHp} HP.` : '';
-        return { actorPlayerId: event.playerId || null, actorName: actorName || 'SYSTEM', body: `${actorName || 'The party'} chose ${titleize(event.upgradeId)}.${bossState}` };
+        const nextEnemy = run?.enemy || null;
+        const next = nextEnemy ? ` ${nextEnemy.name} enters — ${nextEnemy.hp}/${nextEnemy.maxHp} HP.` : '';
+        return {
+          actorPlayerId: event.playerId || null,
+          actorName: actorName || 'SYSTEM',
+          metadata: {
+            ...event,
+            nextEnemyId: nextEnemy?.id || event.nextEnemyId || null,
+            nextEnemyName: nextEnemy?.name || event.nextEnemyName || null,
+            nextEnemyHp: nextEnemy?.hp ?? null,
+            nextEnemyMaxHp: nextEnemy?.maxHp ?? null,
+            nextEnemyIsBoss: Boolean(nextEnemy?.isBoss),
+          },
+          body: `${actorName || 'The party'} chose ${titleize(event.upgradeId)}.${next}`,
+        };
       }
       case 'DungeonFailed': {
         const names = (event.participantIds || []).map((id) => this.#playerName(id));
