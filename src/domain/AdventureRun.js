@@ -1,6 +1,7 @@
 import { DUNGEONS, DungeonRun as CombatDungeonRun, RUN_UPGRADES } from './DungeonRun.js';
 import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunEventCatalog.js';
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
+import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -22,6 +23,8 @@ export class AdventureRun {
     this.state.runEvent ??= null;
     this.state.runEventResume ??= null;
     this.state.runEventHistory ??= [];
+    this.state.runUpgradeOfferVersion ??= RUN_UPGRADE_OFFER_VERSION;
+    this.state.runUpgradeOfferIds ??= [];
   }
 
   static start(args) {
@@ -31,6 +34,8 @@ export class AdventureRun {
     state.runEvent = null;
     state.runEventResume = null;
     state.runEventHistory = [];
+    state.runUpgradeOfferVersion = RUN_UPGRADE_OFFER_VERSION;
+    state.runUpgradeOfferIds = [];
     return new AdventureRun(state);
   }
 
@@ -54,6 +59,10 @@ export class AdventureRun {
   // still distinguishes an event choice from a boss upgrade.
   chooseUpgrade(choiceId) {
     if (this.state.phase === 'event') return this.chooseRunEvent(choiceId);
+    if (this.state.phase === 'upgrade') {
+      const offered = this.#runUpgradeOffers();
+      if (!offered.includes(choiceId)) throw new Error('An upgrade can only be chosen from this run\'s offered powers.');
+    }
     const combat = new CombatDungeonRun(this.state);
     const outcome = combat.chooseUpgrade(choiceId);
     this.state = outcome.state;
@@ -142,7 +151,19 @@ export class AdventureRun {
     }
 
     this.#pauseForRunEvent(before, outcome.events);
+    if (this.state.phase === 'upgrade') this.#snapshotRunUpgradeOffers();
     return { ...outcome, relicTrigger: attuned.triggered, state: this.toJSON() };
+  }
+
+  #runUpgradeOffers() {
+    const offered = offeredRunUpgradeIds(this.state, Object.values(RUN_UPGRADES));
+    if (!this.state.runUpgradeOfferIds.length) this.state.runUpgradeOfferIds = [...offered];
+    return offered;
+  }
+
+  #snapshotRunUpgradeOffers() {
+    if (this.state.runUpgradeOfferIds.length) return;
+    this.state.runUpgradeOfferIds = offeredRunUpgradeIds(this.state, Object.values(RUN_UPGRADES));
   }
 
   #pauseForRunEvent(before, events) {
