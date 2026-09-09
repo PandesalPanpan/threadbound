@@ -29,8 +29,8 @@ export class AdventureRun {
     this.state.runUpgradeDraftIndex ??= 0;
     this.state.runUpgradeResume ??= null;
     this.state.selectedUpgrades ??= this.state.selectedUpgrade ? [this.state.selectedUpgrade] : [];
-    // Compatibility rule: old persisted runs predate repeated drafts. They must hydrate
-    // exactly where they were rather than acquiring a surprise blocking decision.
+    // Compatibility rule: repeated between-fight drafts were removed from new runs, but a
+    // persisted run that already opted into them must still hydrate and finish truthfully.
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
   }
 
@@ -46,7 +46,9 @@ export class AdventureRun {
     state.runUpgradeDraftIndex = 0;
     state.runUpgradeResume = null;
     state.selectedUpgrades = [];
-    state.runPowerDraftsEnabled = true;
+    // New runs keep build depth but expose only the normal pre-boss power milestone from
+    // CombatDungeonRun. Minor between-fight stat drafts no longer block the chat loop.
+    state.runPowerDraftsEnabled = false;
     return new AdventureRun(state);
   }
 
@@ -65,9 +67,8 @@ export class AdventureRun {
   revive(args) { return this.#combat('revive', args); }
   useSkill(args) { return this.#combat('useSkill', args); }
 
-  // The existing /upgrade command remains the transport boundary. AdventureRun owns the
-  // repeated draft lifecycle while CombatDungeonRun is still responsible for resetting
-  // encounter combat state and constructing the boss transition.
+  // The existing /upgrade command remains the transport boundary. New runs use it for the
+  // single pre-boss milestone; runUpgradeResume remains supported for persisted legacy runs.
   chooseUpgrade(choiceId) {
     if (this.state.phase === 'event') return this.chooseRunEvent(choiceId);
     if (this.state.phase !== 'upgrade') throw new Error('An upgrade can only be chosen from a waiting run power draft.');
@@ -252,13 +253,12 @@ export class AdventureRun {
   }
 
   #pauseForRunPowerDraft(before, events) {
+    // Legacy compatibility only. New AdventureRun instances start with this disabled so
+    // normal encounter transitions remain frictionless until the single pre-boss milestone.
     if (!this.state.runPowerDraftsEnabled) return;
     if (before.phase !== 'combat' || this.state.phase !== 'combat') return;
     if (!events.some((event) => event.type === 'EnemyDefeated')) return;
     if (this.state.encounterIndex !== before.encounterIndex + 1) return;
-    // A narrative discovery owns its scheduled transition. Every other transition between
-    // normal encounters is eligible for a build draft. Frayed Hollow therefore drafts
-    // after encounter 1, discovers its event after encounter 2, and drafts again pre-boss.
     if (this.state.runEventSchedule?.afterEncounterIndex === before.encounterIndex && this.state.runEventHistory.length === 0) return;
 
     this.state.runUpgradeResume = {
