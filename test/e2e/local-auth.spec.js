@@ -108,6 +108,12 @@ async function clickCodexTab(page, category) {
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
 }
 
+async function expectCodexCountAtLeast(page, category, minimum) {
+  const text = await page.getByTestId(`codex-count-${category}`).textContent();
+  const count = Number(text?.match(/\d+/)?.[0] || 0);
+  expect(count).toBeGreaterThanOrEqual(minimum);
+}
+
 test('standalone local mode supports thread-driven co-op combat, shared discoveries, and the living Codex without Threaded', async ({ browser }) => {
   test.setTimeout(150000);
   const leaderContext = await browser.newContext();
@@ -220,12 +226,15 @@ test('standalone local mode supports thread-driven co-op combat, shared discover
     await leader.getByTestId('nav-codex').click();
     await expect(leader).toHaveURL(/\/codex/);
     await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
-    await expect(leader.getByTestId('codex-count-enemies')).toHaveText('Enemies 3');
-    await expect(leader.getByTestId('codex-count-bosses')).toHaveText('Bosses 1');
-    await expect(leader.getByTestId('codex-count-lore')).toHaveText('Lore 4');
-    await expect(leader.getByTestId('codex-count-achievements')).toHaveText('Achievements 3');
-    await expect(leader.getByTestId('codex-count-items')).toHaveText('Items 2');
-    await expect(leader.getByTestId('codex-count-history')).toHaveText('History 3');
+    // This journey owns local-auth/Codex integration, not the global catalog size. Keep
+    // minimums high enough to prove the bundled Glasswake content is present while allowing
+    // future Arc manifests to add records without breaking an unrelated auth acceptance test.
+    await expectCodexCountAtLeast(leader, 'enemies', 6);
+    await expectCodexCountAtLeast(leader, 'bosses', 2);
+    await expectCodexCountAtLeast(leader, 'lore', 7);
+    await expectCodexCountAtLeast(leader, 'achievements', 5);
+    await expectCodexCountAtLeast(leader, 'items', 2);
+    await expectCodexCountAtLeast(leader, 'history', 5);
 
     await clickCodexTab(leader, 'bosses');
     await expect(leader.getByTestId('codex-detail-title')).toHaveText('The First Needle');
