@@ -141,7 +141,6 @@ if (stream) {
   let historyLoading = false;
   let historyHasMore = true;
   let historyBeforeId = null;
-  let latestDashboard = null;
 
   function waitFor(selector, timeoutMs = 4000) {
     const existing = document.querySelector(selector);
@@ -262,8 +261,7 @@ if (stream) {
 
   async function refreshDashboardPresentation(log, suggestions) {
     try {
-      const data = await json('/api/dashboard');
-      latestDashboard = data;
+      const data = await json('/api/dashboard?previews=1');
       const previews = data.actionPreviews;
       wirePreview(suggestions.querySelector('[data-testid="stream-attack"]'), previews?.actions?.attack);
       wirePreview(suggestions.querySelector('[data-testid="stream-guard"]'), previews?.actions?.guard);
@@ -342,7 +340,7 @@ if (stream) {
     const previousCount = Math.max(1, Number(previousRow.dataset.coalescedCount || 1));
     const count = previousCount + 1;
     currentRow.dataset.coalescedCount = String(count);
-    currentRow.dataset.testid = 'stream-live-combat-receipt';
+    currentRow.dataset.liveCombatReceipt = 'true';
     installExchangeToggle(currentRow, count);
 
     animateUnitFrom(
