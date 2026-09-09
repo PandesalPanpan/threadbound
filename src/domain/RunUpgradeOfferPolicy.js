@@ -34,12 +34,11 @@ export function enrichRunUpgrade(upgrade) {
   };
 }
 
-function deterministicPick(items, seed) {
+function rotatingPick(items, { runId, version, category, draftIndex }) {
   if (!items.length) return null;
-  const ranked = items
-    .map((item) => ({ item, score: stableHash(`${seed}:${item.id}`) }))
-    .sort((left, right) => left.score - right.score || left.item.id.localeCompare(right.item.id));
-  return ranked[0]?.item || null;
+  const ordered = [...items].sort((left, right) => left.id.localeCompare(right.id));
+  const start = stableHash(`${runId}:${version}:${category}`) % ordered.length;
+  return ordered[(start + draftIndex) % ordered.length] || null;
 }
 
 export function offeredRunUpgradeIds(runState, upgrades) {
@@ -53,23 +52,25 @@ export function offeredRunUpgradeIds(runState, upgrades) {
   if (snapshotted.length) return snapshotted.slice(0, RUN_UPGRADE_OFFER_SIZE);
 
   const version = Number(runState.runUpgradeOfferVersion || RUN_UPGRADE_OFFER_VERSION);
-  const draftIndex = Number(runState.runUpgradeDraftIndex || 0);
-  const seed = `${runState.id}:${version}:draft-${draftIndex}`;
+  const draftIndex = Math.max(0, Number(runState.runUpgradeDraftIndex || 0));
   const categories = ['OFFENSE', 'SUSTAIN', 'TECHNIQUE'];
   const chosen = [];
 
-  // One card from each role makes every draft readable at a glance while the actual card
-  // in that role varies per run and per draft. This avoids both dead all-defense offers and
-  // a static tutorial menu that stops feeling roguelite after one clear.
+  // One card from each role makes every draft readable at a glance. Within each role the
+  // deterministic starting point is run-specific, then later draft moments rotate through
+  // the role pool. That guarantees visible build variety without client-side rerolls.
   for (const category of categories) {
-    const candidate = deterministicPick(catalog.filter((upgrade) => String(upgrade.category || '').toUpperCase() === category), `${seed}:${category}`);
+    const candidate = rotatingPick(
+      catalog.filter((upgrade) => String(upgrade.category || '').toUpperCase() === category),
+      { runId: runState.id, version, category, draftIndex },
+    );
     if (candidate && !chosen.some((upgrade) => upgrade.id === candidate.id)) chosen.push(candidate);
   }
 
   if (chosen.length < RUN_UPGRADE_OFFER_SIZE) {
     const remaining = catalog
       .filter((upgrade) => !chosen.some((candidate) => candidate.id === upgrade.id))
-      .map((upgrade) => ({ upgrade, score: stableHash(`${seed}:fallback:${upgrade.id}`) }))
+      .map((upgrade) => ({ upgrade, score: stableHash(`${runState.id}:${version}:${draftIndex}:fallback:${upgrade.id}`) }))
       .sort((left, right) => left.score - right.score || left.upgrade.id.localeCompare(right.upgrade.id));
     for (const { upgrade } of remaining) {
       chosen.push(upgrade);
