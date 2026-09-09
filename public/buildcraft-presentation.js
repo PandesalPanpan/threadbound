@@ -25,9 +25,12 @@ if (stream) {
   document.head.append(style);
 
   const catalog = new Map();
+  const log = stream.querySelector('[data-testid="adventure-stream-log"]');
+  const suggestions = stream.querySelector('[data-testid="stream-suggestions"]');
   let panel = null;
   let timer = null;
   let refreshing = false;
+  let lastSignature = '';
 
   const humanize = (value) => String(value || '')
     .split('-')
@@ -66,8 +69,19 @@ if (stream) {
     const target = ensurePanel();
     if (!target) return;
     rememberCatalog(data);
-    const ids = data?.activeRun?.selectedUpgrades || [];
-    if (!data?.activeRun || !ids.length) {
+    const run = data?.activeRun;
+    const ids = run?.selectedUpgrades || [];
+    const definitions = ids.map((id) => catalog.get(id) || { id, name: humanize(id), archetypes: [], effectSummary: [] });
+    const signature = JSON.stringify([
+      run?.id || null,
+      run?.version ?? null,
+      run?.phase || null,
+      definitions.map((power) => [power.id, power.name, power.archetypes, power.effectSummary]),
+    ]);
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+
+    if (!run || !ids.length) {
       target.hidden = true;
       target.innerHTML = '';
       return;
@@ -84,7 +98,6 @@ if (stream) {
     head.append(title, hint);
     target.append(head);
 
-    const definitions = ids.map((id) => catalog.get(id) || { id, name: humanize(id), archetypes: [], effectSummary: [] });
     const paths = document.createElement('div');
     paths.className = 'stream-build-paths';
     paths.dataset.testid = 'stream-build-paths';
@@ -128,11 +141,24 @@ if (stream) {
     timer = setTimeout(() => refresh().catch(() => {}), delay);
   }
 
-  const observer = new MutationObserver(() => schedule(40));
-  observer.observe(stream, { childList:true, subtree:true });
+  // Observe only the core surfaces that reflect authoritative state changes. Observing the
+  // whole stream subtree would observe this Presentation Model's own render and create a
+  // refresh feedback loop that can race other presentation modules.
+  const observers = [];
+  if (log) {
+    const observer = new MutationObserver(() => schedule(45));
+    observer.observe(log, { childList:true });
+    observers.push(observer);
+  }
+  if (suggestions) {
+    const observer = new MutationObserver(() => schedule(35));
+    observer.observe(suggestions, { childList:true });
+    observers.push(observer);
+  }
+
   schedule(0);
   window.addEventListener('beforeunload', () => {
     clearTimeout(timer);
-    observer.disconnect();
+    for (const observer of observers) observer.disconnect();
   }, { once:true });
 }
