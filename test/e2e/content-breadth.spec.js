@@ -50,7 +50,7 @@ async function chooseOfferedPower(page, context, { preferCategory = null } = {})
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  const button = page.getByTestId('stream-suggestions').getByRole('button', { name: chosen.name });
+  const button = page.getByTestId('stream-suggestions').getByRole('button', { name: chosen.name, exact:true });
   await expect(button).toBeVisible({ timeout: 5000 });
   await button.click();
   await expect.poll(async () => {
@@ -77,9 +77,8 @@ async function playUntilPhase(page, context, targetPhase, limit = 100) {
       continue;
     }
 
-    // Generated dungeons use the same repeated build-draft lifecycle as canonical ones.
-    // When a caller is trying to reach a later phase, consume only a card the server
-    // actually offered instead of hard-coding a legacy upgrade name.
+    // Generated dungeons use the same one-milestone build policy as canonical ones. If a
+    // caller is waiting for a later phase, consume only the authoritative offered card.
     if (run.phase === 'upgrade') {
       await chooseOfferedPower(page, context);
       continue;
@@ -124,25 +123,21 @@ test('bundled Glasswake dungeon is discoverable and completable through the same
   expect(['glass-skulker', 'shard-choir', 'stitch-leech']).toContain(started.activeRun.enemy.id);
   expect(started.activeRun.dungeonDefinition.encounterVariantIndex).toBeGreaterThanOrEqual(0);
   expect(started.activeRun.runEventSchedule?.events?.length).toBe(2);
+  expect(started.activeRun.runPowerDraftsEnabled).toBe(false);
 
-  // First normal encounter must stop at a durable three-card draft. Reload and choose
-  // the actual offered sustain card to prove generated content survives the same draft
-  // reconstruction path instead of relying on Reinforce always being present.
+  // Normal fights and the generated discovery flow without stat-card interruptions. The
+  // only build decision is the authoritative three-card boss preparation milestone.
   await playUntilPhase(page, context, 'upgrade');
-  const firstDraft = await dashboard(context);
-  expect(firstDraft.activeRun.runUpgradeResume).toBeTruthy();
-  expect(firstDraft.runUpgrades).toHaveLength(3);
-  const firstOfferIds = firstDraft.runUpgrades.map((upgrade) => upgrade.id);
-  await chooseOfferedPower(page, context, { preferCategory: 'SUSTAIN' });
-  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+  const bossPrep = await dashboard(context);
+  expect(bossPrep.activeRun.runUpgradeResume).toBeNull();
+  expect(bossPrep.activeRun.selectedUpgrades).toHaveLength(0);
+  expect(bossPrep.runUpgrades).toHaveLength(3);
+  await expect(page.getByTestId('stream-action-mode')).toHaveText('BOSS PREPARATION', { timeout:5000 });
+  const selected = await chooseOfferedPower(page, context, { preferCategory: 'SUSTAIN' });
 
-  // Continue through the narrative discovery and the rotated pre-boss draft. The helper
-  // consumes only authoritative offers while keeping combat reactions intent-aware.
-  await playUntilPhase(page, context, 'boss');
   const bossState = await dashboard(context);
-  expect(bossState.activeRun.selectedUpgrades).toHaveLength(2);
-  expect(new Set(bossState.activeRun.selectedUpgrades).size).toBe(2);
-  expect(bossState.activeRun.selectedUpgrades.some((id) => firstOfferIds.includes(id))).toBe(true);
+  expect(bossState.activeRun.phase).toBe('boss');
+  expect(bossState.activeRun.selectedUpgrades).toEqual([selected.id]);
   await expect(page.getByTestId('run-state')).toContainText('The Hollow Mirror');
 
   await playUntilPhase(page, context, 'complete');
@@ -151,5 +146,5 @@ test('bundled Glasswake dungeon is discoverable and completable through the same
   const after = await dashboard(context);
   expect(after.inventory.length).toBe(inventoryBefore + 1);
   expect(after.character.threadDust).toBe(dustBefore + 15);
-  await expect(page.getByTestId('achievement').filter({ hasText: 'No Weaver Left Reflected' })).toBeVisible();
+  expect(after.achievements.some((achievement) => achievement.name === 'No Weaver Left Reflected')).toBe(true);
 });
