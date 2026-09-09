@@ -35,6 +35,12 @@ async function directAction(context, runId, action) {
   return post(context, `/api/runs/${encodeURIComponent(runId)}/${action}`);
 }
 
+function preferredOfferedPower(state) {
+  const offered = state.runUpgrades || [];
+  expect(offered).toHaveLength(3);
+  return offered.find((upgrade) => String(upgrade.category || '').toUpperCase() === 'SUSTAIN') || offered[0];
+}
+
 test('Phase II marks a wounded ally and another Weaver can protect them from the thread', async ({ browser }) => {
   test.setTimeout(60000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -54,10 +60,10 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     const started = await post(leaderContext, '/api/dungeons/frayed-hollow/start');
     const runId = started.run.id;
 
-    // Clear the normal encounters through the same public command routes while reacting
-    // to every telegraph. If the authoritative lifecycle pauses for a discovery, resolve
-    // that shared leader decision before continuing toward the boss upgrade.
-    for (let guard = 0; guard < 80; guard += 1) {
+    // Clear the normal encounters through public command routes while reacting to every
+    // telegraph. Repeated power drafts and the discovery are real aggregate pauses, so
+    // resolve each using only choices returned by the authoritative dashboard.
+    for (let guard = 0; guard < 100; guard += 1) {
       const state = await dashboard(leaderContext);
       const phase = state.activeRun?.phase;
       if (phase === 'event') {
@@ -65,6 +71,13 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
         const safeChoice = choices.find((choice) => /bind|quiet/i.test(choice.id)) || choices[0];
         expect(safeChoice?.id).toBeTruthy();
         await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: safeChoice.id });
+        expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
+        continue;
+      }
+      if (phase === 'upgrade') {
+        if (!state.activeRun.runUpgradeResume) break;
+        const power = preferredOfferedPower(state);
+        await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: power.id });
         expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
         continue;
       }
@@ -76,9 +89,12 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
         : 'attack';
       await directAction(actorContext, runId, action);
     }
-    expect((await dashboard(leaderContext)).activeRun?.phase).toBe('upgrade');
 
-    await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: 'reinforce' });
+    const finalDraft = await dashboard(leaderContext);
+    expect(finalDraft.activeRun?.phase).toBe('upgrade');
+    expect(finalDraft.activeRun.runUpgradeResume).toBeNull();
+    const finalPower = preferredOfferedPower(finalDraft);
+    await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: finalPower.id });
     expect((await dashboard(leaderContext)).activeRun?.phase).toBe('boss');
 
     // Make B the clearly vulnerable Weaver using legal combat actions. Five partner
