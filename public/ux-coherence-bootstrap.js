@@ -34,6 +34,7 @@ if (stream) {
     await import('./ux-coherence.js');
     await import('./buildcraft-presentation.js');
     await import('./thread-first-ui.js');
+    await import('./interaction-budget.js');
 
     // Hidden command sources retain their event handlers while the visible, viewer-specific
     // controls live inside the private chat card. Never expose duplicate test IDs.
