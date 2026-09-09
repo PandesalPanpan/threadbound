@@ -7,25 +7,40 @@ const stream = document.querySelector('[data-testid="adventure-stream"]');
 if (stream) {
   const style = document.createElement('style');
   style.textContent = `
-    .stream-suggestions button[data-preview-label]::after {
-      content:attr(data-preview-label); display:inline-block; margin-left:6px; padding:2px 5px;
-      border-radius:999px; background:rgba(255,159,90,.12); color:#ffb477; font-size:.62rem;
-      font-weight:950; letter-spacing:.02em; vertical-align:1px;
+    .stream-suggestions button[data-preview-wired="true"] { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+    .stream-suggestions button[data-preview-wired="true"]::after {
+      content:attr(data-preview-label); display:inline-flex; align-items:center; justify-content:center;
+      min-width:46px; height:20px; margin-left:2px; padding:1px 5px; box-sizing:border-box;
+      border:1px solid rgba(255,255,255,.55); border-radius:999px; background:#ffe45c; color:#211a00;
+      font-size:.62rem; font-weight:1000; letter-spacing:.01em; vertical-align:1px;
+      font-variant-numeric:tabular-nums;
     }
-    .combat-skill[data-preview-label]::after {
-      content:attr(data-preview-label); display:block; width:max-content; max-width:100%; margin-top:2px;
-      padding:2px 5px; border-radius:6px; background:rgba(255,159,90,.11); color:#ffb477;
-      font-size:.58rem; font-weight:950;
+    .stream-suggestions button[data-preview-wired="true"][data-preview-label=""]::after { opacity:.25; content:'—'; }
+    .combat-skill[data-preview-wired="true"]::after {
+      content:attr(data-preview-label); display:flex; align-items:center; width:52px; height:18px; margin-top:3px;
+      padding:1px 5px; box-sizing:border-box; border:1px solid rgba(255,255,255,.5); border-radius:6px;
+      background:#ffe45c; color:#211a00; font-size:.58rem; font-weight:1000; font-variant-numeric:tabular-nums;
     }
+    .combat-skill[data-preview-wired="true"][data-preview-label=""]::after { opacity:.25; content:'—'; }
+    .stream-health-unit { position:relative; }
     .stream-health-track { position:relative; }
-    .stream-health-track > span:not(.stream-health-preview) { position:relative; z-index:1; transition:width .36s cubic-bezier(.2,.8,.2,1); }
+    .stream-health-track > span:not(.stream-health-preview) { position:relative; z-index:1; transition:width .32s cubic-bezier(.2,.8,.2,1); }
     .stream-health-preview {
       position:absolute !important; z-index:3 !important; top:0; bottom:0; height:100%; border-radius:999px;
-      background:linear-gradient(90deg,#ff9f5a,#ffd166) !important; box-shadow:0 0 10px rgba(255,159,90,.62);
-      pointer-events:none; animation:threadbound-preview-pulse .9s ease-in-out infinite alternate;
+      background:#ffe45c !important; box-shadow:0 0 12px rgba(255,228,92,.72),inset 0 0 0 1px rgba(255,255,255,.62);
+      pointer-events:none; animation:threadbound-preview-pulse .72s ease-in-out infinite alternate;
     }
-    .stream-health-preview-copy { display:block; grid-column:1/-1; margin-top:3px; color:#ffb477; font-size:.59rem; font-weight:950; text-align:right; }
-    @keyframes threadbound-preview-pulse { from { opacity:.72; } to { opacity:1; } }
+    .stream-health-preview-copy {
+      position:absolute; z-index:6; right:7px; bottom:7px; margin:0; padding:3px 6px; border-radius:6px;
+      border:1px solid rgba(255,228,92,.55); background:rgba(20,16,0,.94); color:#ffe45c;
+      font-size:.59rem; font-weight:1000; font-variant-numeric:tabular-nums; pointer-events:none;
+      box-shadow:0 5px 14px rgba(0,0,0,.28);
+    }
+    @keyframes threadbound-preview-pulse { from { opacity:.78; } to { opacity:1; } }
+    @keyframes threadbound-hit-nudge { 0% { transform:translateX(0); } 35% { transform:translateX(-2px); } 70% { transform:translateX(2px); } 100% { transform:translateX(0); } }
+    @keyframes threadbound-critical-pop { 0% { transform:scale(.88); opacity:.55; } 55% { transform:scale(1.07); opacity:1; } 100% { transform:scale(1); opacity:1; } }
+    .stream-entry-rich.is-new-combat-result .stream-rich-receipt { animation:threadbound-hit-nudge .18s ease-out; }
+    .stream-result-chip.critical { animation:threadbound-critical-pop .28s ease-out; }
 
     .stream-suggestions button.run-power-card {
       display:grid; grid-template-columns:1fr; align-content:start; gap:3px; width:min(232px,78vw); min-height:100px;
@@ -50,7 +65,10 @@ if (stream) {
       border:1px solid rgba(85,214,255,.18); border-radius:999px; background:rgba(8,13,26,.94);
       color:var(--muted); font-size:.58rem; font-weight:900; pointer-events:none;
     }
-    @media (prefers-reduced-motion:reduce) { .stream-health-track > span, .stream-health-preview { transition:none !important; animation:none !important; } }
+    @media (prefers-reduced-motion:reduce) {
+      .stream-health-track > span, .stream-health-preview, .stream-entry-rich.is-new-combat-result .stream-rich-receipt,
+      .stream-result-chip.critical { transition:none !important; animation:none !important; }
+    }
   `;
   document.head.append(style);
 
@@ -89,8 +107,8 @@ if (stream) {
 
   function previewLabel(preview) {
     if (!preview?.available) return '';
-    if (Number(preview.damage || 0) > 0) return `−${preview.damage} HP`;
-    if (Number(preview.healed || 0) > 0) return `+${preview.healed} HP`;
+    if (Number(preview.damage || 0) > 0) return `−${preview.damage}`;
+    if (Number(preview.healed || 0) > 0) return `+${preview.healed}`;
     if (Number(preview.retaliation || 0) > 0) return `take ${preview.retaliation}`;
     return '';
   }
@@ -118,20 +136,19 @@ if (stream) {
     const copy = document.createElement('span');
     copy.className = 'stream-health-preview-copy';
     copy.dataset.testid = 'enemy-damage-preview-copy';
-    copy.textContent = `${before} → ${after} HP if used now`;
+    copy.textContent = `${before} → ${after} HP`;
     unit.append(copy);
   }
 
   function wirePreview(button, preview) {
     if (!button) return;
     previewByButton.set(button, preview);
-    const label = previewLabel(preview);
-    if (label) button.dataset.previewLabel = label;
-    else delete button.dataset.previewLabel;
+    button.dataset.previewWired = 'true';
+    button.dataset.previewLabel = previewLabel(preview);
     if (preview?.available && Number(preview.damage || 0) > 0) button.dataset.previewDamage = String(preview.damage);
     else delete button.dataset.previewDamage;
-    if (button.dataset.previewWired === 'true') return;
-    button.dataset.previewWired = 'true';
+    if (button.dataset.previewListeners === 'true') return;
+    button.dataset.previewListeners = 'true';
     const show = () => showHealthPreview(previewByButton.get(button));
     button.addEventListener('pointerenter', show);
     button.addEventListener('focus', show);
@@ -178,8 +195,6 @@ if (stream) {
       button.append(category, name, description);
       if (effects.children.length) button.append(effects);
     }
-    // The legacy suggestion renderer may still have buttons for the full catalog. Only
-    // authoritative offered cards returned by the dashboard belong in this draft.
     for (const button of suggestions.querySelectorAll('button[data-command^="/upgrade "]')) {
       const id = String(button.dataset.command || '').split(/\s+/)[1] || '';
       button.hidden = !byId.has(id);
@@ -278,6 +293,8 @@ if (stream) {
         row.dataset.feelEventType = entry.eventType || '';
         row.dataset.feelRunId = entry.runId || '';
         if (entry.eventType !== 'CombatActionResolved') continue;
+        row.classList.add('is-new-combat-result');
+        setTimeout(() => row.classList.remove('is-new-combat-result'), 240);
         let previousRow = row.previousElementSibling;
         while (previousRow?.classList.contains('is-condensed-receipt')) previousRow = previousRow.previousElementSibling;
         const previousEntry = previousRow?.dataset?.entryId ? entries.get(previousRow.dataset.entryId) : null;
