@@ -29,6 +29,7 @@
     "lore": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/loreEntry" } },
     "enemies": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/enemy" } },
     "bosses": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/boss" } },
+    "runEvents": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/runEvent" } },
     "dungeons": { "type": "array", "minItems": 1, "maxItems": 30, "items": { "$ref": "#/$defs/dungeon" } },
     "itemPools": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/itemPool" } },
     "achievements": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/achievement" } },
@@ -54,7 +55,8 @@
         "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/nonEmpty" },
         "baseHp": { "type": "integer", "minimum": 1, "maximum": 10000 },
         "retaliation": { "type": "integer", "minimum": 0, "maximum": 1000 },
-        "abilities": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "type": "string" } }
+        "abilities": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "type": "string" } },
+        "intentCadence": { "type": "integer", "minimum": 1, "maximum": 6 }
       }
     },
     "boss": {
@@ -64,16 +66,57 @@
         "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/nonEmpty" },
         "baseHp": { "type": "integer", "minimum": 1, "maximum": 100000 },
         "retaliation": { "type": "integer", "minimum": 0, "maximum": 5000 },
-        "abilities": { "type": "array", "maxItems": 12, "uniqueItems": true, "items": { "type": "string" } }
+        "abilities": { "type": "array", "maxItems": 12, "uniqueItems": true, "items": { "type": "string" } },
+        "intentCadence": { "type": "integer", "minimum": 1, "maximum": 6 }
       }
     },
+    "runEventEffects": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "healAll": { "type": "integer", "minimum": 0, "maximum": 40 },
+        "damageAll": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "focusAll": { "type": "integer", "minimum": -4, "maximum": 4 },
+        "runAttackBonus": { "type": "integer", "minimum": 0, "maximum": 5 }
+      }
+    },
+    "runEventChoice": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "summary", "effects"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/nonEmpty" },
+        "summary": { "$ref": "#/$defs/nonEmpty" },
+        "effects": { "$ref": "#/$defs/runEventEffects" }
+      }
+    },
+    "runEvent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "prompt", "choices"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/nonEmpty" },
+        "prompt": { "$ref": "#/$defs/nonEmpty" },
+        "choices": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "$ref": "#/$defs/runEventChoice" } }
+      }
+    },
+    "runEventSchedule": {
+      "type": "object", "additionalProperties": false,
+      "required": ["afterEncounterIndex", "eventIds"],
+      "properties": {
+        "afterEncounterIndex": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "eventIds": { "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "encounterSequence": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "#/$defs/id" } },
     "dungeon": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "name", "recommendedPlayers", "encounters", "bossId", "rewardPoolId"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/nonEmpty" },
         "recommendedPlayers": { "type": "integer", "minimum": 1, "maximum": 4 },
-        "encounters": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/id" } },
+        "encounters": { "$ref": "#/$defs/encounterSequence" },
+        "encounterVariants": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/encounterSequence" } },
+        "runEventSchedule": { "$ref": "#/$defs/runEventSchedule" },
         "bossId": { "$ref": "#/$defs/id" }, "rewardPoolId": { "$ref": "#/$defs/id" }
       }
     },

@@ -113,29 +113,29 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
     const downed = actorState.activeRun.participants.find((participant) => participant.hp <= 0);
     if (downed && actorState.activeRun.viewer.reviveCharges > 0) {
       const revive = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
-      if (await revive.count()) {
-        await expect(revive).toBeVisible({ timeout: 5000 });
-        await revive.click();
-        await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout: 5000 }).toBeGreaterThan(actorState.activeRun.version);
-        turn += 1;
-        continue;
-      }
+      await expect(revive).toBeVisible({ timeout: 5000 });
+      await revive.click();
+      await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout: 5000 }).toBeGreaterThan(actorState.activeRun.version);
+      turn += 1;
+      continue;
     }
 
     // A proxy player should use the support action the UI offers rather than attack until
     // death. Only Mend between telegraphs so defensive reaction windows remain authoritative.
-    // The command itself picks a wounded ally first, mirroring normal cooperative play.
+    // Once authoritative state says Mend is needed, require the realtime UI to expose it;
+    // silently skipping a missing support control would turn a UI race into a fake party wipe.
     if (!actorState.activeRun.enemyIntent && actorState.activeRun.viewer.mendCharges > 0) {
       const wounded = actorState.activeRun.participants
         .filter((participant) => participant.hp > 0 && participant.maxHp - participant.hp >= 8)
         .sort((left, right) => (left.hp / left.maxHp) - (right.hp / right.maxHp))[0];
       if (wounded) {
-        const mend = page.getByTestId('stream-mend');
-        if (await mend.count()) {
-          await streamAction(page, context, 'stream-mend');
-          turn += 1;
-          continue;
-        }
+        const mend = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Mend ally' });
+        await expect(mend).toBeVisible({ timeout: 5000 });
+        await expect(mend).toBeEnabled({ timeout: 5000 });
+        await mend.click();
+        await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout: 5000 }).toBeGreaterThan(actorState.activeRun.version);
+        turn += 1;
+        continue;
       }
     }
 
@@ -217,6 +217,10 @@ test('Threaded login -> discrete dungeon thread -> mid-run discovery -> generate
 });
 
 test('two browser sessions share one discovery choice and complete one scaled dungeon through the thread', async ({ browser }) => {
+  // This is an intentionally long, real two-browser completion journey. Keep its local
+  // action/poll assertions strict, but do not let Playwright's 30s default kill a successful
+  // revive or protection action near the end of the boss fight.
+  test.setTimeout(90000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();

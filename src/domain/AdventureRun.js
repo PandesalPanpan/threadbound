@@ -27,7 +27,7 @@ export class AdventureRun {
   static start(args) {
     const combat = CombatDungeonRun.start(args);
     const state = combat.toJSON();
-    state.runEventSchedule = snapshotRunEventSchedule(state.dungeonId);
+    state.runEventSchedule = snapshotRunEventSchedule(state.dungeonId, state.dungeonDefinition?.runEventSchedule || null);
     state.runEvent = null;
     state.runEventResume = null;
     state.runEventHistory = [];

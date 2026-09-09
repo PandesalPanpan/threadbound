@@ -1,17 +1,23 @@
 import { randomUUID } from 'node:crypto';
 import { DUNGEONS, RUN_UPGRADES } from '../domain/DungeonRun.js';
 import { ITEM_EFFECTS } from '../domain/ItemGenerator.js';
+import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
+import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
 import { ALLOWED_ENEMY_ABILITIES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
+import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
 
 export class ArcManifestService {
-  constructor({ gameRepository, codexRepository, manifestRepository, validator = new ArcManifestValidator(), idFactory = randomUUID, rng = Math.random }) {
+  constructor({ gameRepository, codexRepository, manifestRepository, validator = new ArcManifestValidator(), replayabilityValidator = new ArcManifestReplayabilityValidator(), bundledManifests = BUNDLED_ARC_MANIFESTS, idFactory = randomUUID, rng = Math.random }) {
     this.gameRepository = gameRepository;
     this.codexRepository = codexRepository;
     this.manifestRepository = manifestRepository;
     this.validator = validator;
+    this.replayabilityValidator = replayabilityValidator;
+    this.bundledManifests = [...bundledManifests];
     this.idFactory = idFactory;
     this.rng = rng;
+    this.bundledContentEnsured = false;
   }
 
   worldContext() {
@@ -26,6 +32,11 @@ export class ArcManifestService {
         enemyAbilities: [...ALLOWED_ENEMY_ABILITIES],
         itemEffects: Object.values(ITEM_EFFECTS).map((effect) => ({ ...effect })),
         runUpgrades: Object.values(RUN_UPGRADES).map((upgrade) => ({ ...upgrade })),
+        replayability: {
+          intentCadence: { min: 1, max: 6 },
+          encounterVariants: true,
+          manifestRunEvents: true,
+        },
       },
       balanceBudgets: structuredClone(BALANCE_BUDGETS),
       publishedGeneratedArcs: this.manifestRepository.listPublished().map((entry) => ({
@@ -40,13 +51,23 @@ export class ArcManifestService {
         'Use only allowed enemy ability IDs and item effect IDs.',
         'Do not invent executable code or mechanics outside this context.',
         'Keep all numeric values inside the supplied balance budgets.',
+        'Encounter variants must reference enemies from the same manifest.',
+        'Run event schedules may only reference runEvents from the same manifest.',
         'All dungeon encounter, boss, and reward-pool references must resolve within the same manifest.',
         'Return JSON only when generating an Arc Manifest for upload.',
       ],
     };
   }
 
-  validate(manifest) { return this.validator.validate(manifest); }
+  validate(manifest) {
+    const base = this.validator.validate(manifest);
+    const replayability = this.replayabilityValidator.validate(manifest);
+    return {
+      valid: base.valid && replayability.valid,
+      errors: [...base.errors, ...replayability.errors],
+      warnings: [...base.warnings, ...replayability.warnings],
+    };
+  }
 
   saveDraft(manifest, { source = 'upload' } = {}) {
     const validation = this.validate(manifest);
@@ -116,24 +137,40 @@ export class ArcManifestService {
   }
 
   runtimeDungeons() {
+    this.#ensureBundledContent();
     const result = [];
     for (const record of this.manifestRepository.listPublished()) {
       const manifest = record.manifest;
       const enemies = new Map(manifest.enemies.map((enemy) => [enemy.id, enemy]));
       const bosses = new Map(manifest.bosses.map((boss) => [boss.id, boss]));
+      const runEvents = new Map((manifest.runEvents || []).map((event) => [event.id, event]));
+      const materializeEnemy = (enemy) => ({
+        id: enemy.id,
+        name: enemy.name,
+        hp: enemy.baseHp,
+        retaliation: enemy.retaliation,
+        abilities: [...enemy.abilities],
+        ...(Number.isInteger(enemy.intentCadence) ? { intentCadence: enemy.intentCadence } : {}),
+      });
       for (const dungeon of manifest.dungeons) {
         const boss = bosses.get(dungeon.bossId);
+        const materializeSequence = (sequence) => sequence.map((enemyId) => materializeEnemy(enemies.get(enemyId)));
+        const schedule = dungeon.runEventSchedule
+          ? {
+              afterEncounterIndex: dungeon.runEventSchedule.afterEncounterIndex,
+              events: dungeon.runEventSchedule.eventIds.map((eventId) => structuredClone(runEvents.get(eventId))).filter(Boolean),
+            }
+          : null;
         result.push({
           id: dungeon.id,
           name: dungeon.name,
           recommendedPlayers: dungeon.recommendedPlayers,
           minPlayers: 1,
           maxPlayers: 4,
-          encounters: dungeon.encounters.map((enemyId) => {
-            const enemy = enemies.get(enemyId);
-            return { id: enemy.id, name: enemy.name, hp: enemy.baseHp, retaliation: enemy.retaliation, abilities: [...enemy.abilities] };
-          }),
-          boss: { id: boss.id, name: boss.name, hp: boss.baseHp, retaliation: boss.retaliation, abilities: [...boss.abilities] },
+          encounters: materializeSequence(dungeon.encounters),
+          encounterVariants: (dungeon.encounterVariants || []).map(materializeSequence),
+          runEventSchedule: schedule,
+          boss: materializeEnemy({ ...boss, intentCadence: boss.intentCadence }),
           arcId: manifest.arc.id,
           arcTitle: manifest.arc.title,
           rewardPoolId: dungeon.rewardPoolId,
@@ -147,10 +184,18 @@ export class ArcManifestService {
 
   resolveDungeon(id) {
     if (DUNGEONS[id]) return structuredClone(DUNGEONS[id]);
-    return this.runtimeDungeons().find((dungeon) => dungeon.id === id) || null;
+    const dungeon = this.runtimeDungeons().find((candidate) => candidate.id === id);
+    if (!dungeon) return null;
+    const selection = selectEncounterSequence(dungeon, this.rng());
+    return {
+      ...structuredClone(dungeon),
+      encounters: selection.encounters,
+      encounterVariantIndex: selection.variantIndex,
+    };
   }
 
   generateReward(dungeonId) {
+    this.#ensureBundledContent();
     for (const record of this.manifestRepository.listPublished()) {
       const dungeon = record.manifest.dungeons.find((entry) => entry.id === dungeonId);
       if (!dungeon) continue;
@@ -172,6 +217,21 @@ export class ArcManifestService {
       };
     }
     return null;
+  }
+
+  #ensureBundledContent() {
+    if (this.bundledContentEnsured) return;
+    for (const manifest of this.bundledManifests) {
+      const manifestJson = JSON.stringify(manifest);
+      const existing = this.manifestRepository.list().find((record) => record.source === 'bundled' && record.arcId === manifest.arc.id && JSON.stringify(record.manifest) === manifestJson);
+      if (existing) {
+        if (existing.status !== 'published') this.publish(existing.id);
+        continue;
+      }
+      const saved = this.saveDraft(structuredClone(manifest), { source: 'bundled' });
+      this.publish(saved.id);
+    }
+    this.bundledContentEnsured = true;
   }
 
   #projectCodex(record) {
