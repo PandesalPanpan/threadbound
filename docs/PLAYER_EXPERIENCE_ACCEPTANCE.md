@@ -80,10 +80,10 @@ A roguelite run is player state, not disposable browser state. Temporary connect
 - [x] **PX-46 GREEN:** Run completion rewards are transactionally exactly-once even if completion processing is revisited.
 - [x] **PX-47 GREEN:** Optimistic run versions reject stale simultaneous persistence writes rather than silently losing one player's state.
 - [x] **PX-48 GREEN:** Mutating run commands use durable player-scoped idempotency keys. If an HTTP response is lost after a committed command, retrying the identical keyed request replays the stored response without advancing authoritative run state; mismatched key reuse and unresolved attempts fail closed.
-- [ ] **PX-49 PRODUCTION GATE:** Replace the in-memory Express session store so reconnect/re-auth survives process restart and multi-instance deployment.
+- [x] **PX-49 GREEN:** Authenticated HTTP sessions use a durable SQLite-backed `express-session` Store. A signed `threadbound.sid` continues to resolve after application/database restart, expired rows are rejected/pruned, and multiple Node processes sharing the same authoritative SQLite file read the same session state instead of relying on process memory.
 - [ ] **PX-50 PRODUCTION GATE:** Define explicit run expiry/abandon semantics: grace duration, manual abandon/forfeit, party-leader transfer if desired, and cleanup of indefinitely unfinished runs.
 
-Automated proxies: `player-experience.spec.js`, `run-command-idempotency.spec.js`, `support-combat.test.js`, `run-command-idempotency.test.js`, existing completion/idempotency tests.
+Automated proxies: `player-experience.spec.js`, `run-command-idempotency.spec.js`, `durable-session.test.js`, `support-combat.test.js`, `run-command-idempotency.test.js`, existing completion/idempotency tests.
 
 ## F. Mobile, accessibility, and cognitive load — Hodent + Krug
 
@@ -121,6 +121,7 @@ Automated proxies: contract/unit tests, `threadbound.spec.js`, `local-auth.spec.
 | **The Flaky Co-op Partner** | Joins a party, starts a shared run, goes offline while the leader continues, then reconnects. | Does one player's connection problem destroy the party experience? |
 | **The Economy Retrier** | Repeats the same Honey purchase command. | Are external-currency mutations exactly-once? |
 | **The Response-Loss Retrier** | Reissues the exact same run mutation after treating the first successful response as lost. | Does the server replay the original result without applying the command twice? |
+| **The Restarted Browser Session** | Reuses its signed session cookie after the app and DB connection are recreated. | Does authentication continuity depend on durable server state rather than one Node process? |
 
 ## Judge protocol
 
@@ -136,4 +137,4 @@ For every substantial player-facing change:
 
 ## Current release interpretation
 
-For the current manual-testing milestone, **all objective local/single-process player-experience gates must be green**. PX-48 ambiguous response-loss replay is now resolved; the two remaining production gates are durable distributed sessions (PX-49) and explicit long-lived run expiry/abandon policy (PX-50). They do not block local manual playtesting, but both must be resolved before multi-instance production.
+For the current manual-testing milestone, **all objective local/single-process player-experience gates must be green**. PX-48 ambiguous response-loss replay and PX-49 durable authenticated sessions are now resolved. PX-50 explicit long-lived run expiry/abandon policy is the remaining production gate; it does not block local manual playtesting, but it must be resolved before production.
