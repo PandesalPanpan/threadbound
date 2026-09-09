@@ -9,11 +9,7 @@ async function loginWithThreaded(page) {
   await expect(page.getByTestId('threaded-user')).toContainText('E2E Weaver');
   await expect(page.getByTestId('auth-source')).toHaveText('threaded');
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-}
-
-async function clickAndWait(page, testId) {
-  await page.getByTestId(testId).click();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout: 5000 });
 }
 
 async function dashboard(context) {
@@ -22,8 +18,20 @@ async function dashboard(context) {
   return response.json();
 }
 
+async function openThreadReply(page, command) {
+  await page.getByTestId('stream-message').fill(command);
+  await page.getByTestId('stream-send').click();
+  const reply = page.getByTestId('stream-command-card');
+  await expect(reply).toBeVisible({ timeout: 5000 });
+  expect(await reply.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
+  return reply;
+}
+
 async function startFromThread(page, context) {
-  await page.getByTestId('stream-start-dungeon').click();
+  const start = page.getByTestId('stream-start-dungeon');
+  await expect(start).toBeVisible({ timeout: 5000 });
+  expect(await start.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
+  await start.click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.id || null, { timeout: 5000 }).not.toBeNull();
 }
 
@@ -34,6 +42,7 @@ async function streamAction(page, context, testId) {
   const action = page.getByTestId(testId);
   await expect(action).toBeVisible({ timeout: 5000 });
   await expect(action).toBeEnabled({ timeout: 5000 });
+  expect(await action.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
   await action.click();
   await expect.poll(async () => {
     const after = await dashboard(context);
@@ -74,6 +83,7 @@ async function choosePowerDraft(page, context, expectedPhase) {
   const choice = state.runUpgrades[0];
   const button = page.getByTestId('stream-suggestions').getByRole('button', { name: choice.name, exact: true });
   await expect(button).toBeVisible({ timeout: 5000 });
+  expect(await button.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
   const beforeVersion = state.activeRun.version;
   await button.click();
   await expect.poll(async () => {
@@ -87,6 +97,7 @@ async function chooseRunDiscovery(page, context) {
   const state = await dashboard(context);
   expect(state.activeRun?.phase).toBe('event');
   await expect(page.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
+  expect(await page.getByTestId('run-event-card').evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
   await expect(page.getByTestId('run-event-name')).not.toHaveText('');
   const choice = state.activeRun.runEvent?.choices?.[0];
   expect(choice?.id).toBeTruthy();
@@ -126,8 +137,6 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
 
     const page = pages[index];
     const context = contexts[index];
-    await expect(page.getByTestId('run-state')).toContainText(`Phase: ${expectedPhase}`, { timeout: 5000 });
-
     const downed = actorState.activeRun.participants.find((participant) => participant.hp <= 0);
     if (downed && actorState.activeRun.viewer.reviveCharges > 0) {
       const revive = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
@@ -165,11 +174,32 @@ async function expectCountAtLeast(locator, minimum) {
   expect(count).toBeGreaterThanOrEqual(minimum);
 }
 
-test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
+async function createPartyThroughThread(page, context) {
+  let reply = await openThreadReply(page, '/party');
+  await reply.getByRole('button', { name: 'Create party' }).click();
+  await expect.poll(async () => (await dashboard(context)).party?.joinCode || null, { timeout: 5000 }).not.toBeNull();
+  reply = page.getByTestId('stream-command-card');
+  const party = (await dashboard(context)).party;
+  expect(party?.joinCode).toMatch(/^[A-Z0-9]{6}$/);
+  await expect(reply).toContainText(party.joinCode);
+  return party.joinCode;
+}
+
+async function joinPartyThroughThread(page, context, joinCode) {
+  const reply = await openThreadReply(page, '/party');
+  await reply.getByTestId('stream-party-code').fill(joinCode.toLowerCase());
+  await reply.getByRole('button', { name: 'Join', exact: true }).click();
+  await expect.poll(async () => (await dashboard(context)).party?.members?.length || 0, { timeout: 5000 }).toBe(2);
+  await page.getByTestId('stream-command-card').getByRole('button', { name: 'Ready', exact: true }).click();
+  await expect.poll(async () => (await dashboard(context)).party?.members?.find((member) => member.playerId === (await dashboard(context)).character.id)?.ready || false, { timeout: 5000 }).toBe(true);
+}
+
+test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -> inline gear -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
   await loginWithThreaded(page);
-  await expect(page.getByTestId('honey-balance')).toHaveText('100');
-  await expect(page.getByTestId('attack-power')).toHaveText('6');
-  const worldBefore = Number(await page.getByTestId('world-progress').textContent());
+  const before = await dashboard(context);
+  expect(before.wallet.balance).toBe(100);
+  expect(before.character.attackPower).toBe(6);
+  const worldBefore = before.world.frayedHollowClears;
 
   await startFromThread(page, context);
   await expect(page.getByTestId('combat-help')).toContainText('explicit');
@@ -178,16 +208,22 @@ test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -
   await choosePowerDraft(page, context, 'boss');
   await actionsUntilPhaseChanges(context, page, 'boss');
 
-  await expect(page.getByTestId('inventory-item')).toHaveCount(1);
-  await expect(page.getByTestId('thread-dust')).toHaveText('15');
-  await expect(page.getByTestId('world-progress')).toHaveText(String(worldBefore + 1));
-  await expect(page.getByTestId('achievement')).toHaveCount(2);
+  const completed = await dashboard(context);
+  expect(completed.inventory).toHaveLength(1);
+  expect(completed.character.threadDust).toBe(15);
+  expect(completed.world.frayedHollowClears).toBe(worldBefore + 1);
+  expect(completed.achievements).toHaveLength(2);
 
-  await page.getByRole('button', { name: 'Equip' }).first().click();
-  await expect(page.getByTestId('attack-power')).not.toHaveText('6');
-  const upgradedAttack = Number(await page.getByTestId('attack-power').textContent());
+  const gearReply = await openThreadReply(page, '/gear');
+  await expect(gearReply.locator('.thread-gear-list')).toBeVisible();
+  await expect(gearReply.getByTestId('stream-gear-item')).toHaveCount(1);
+  const rewardName = completed.inventory[0].name;
+  await expect(gearReply).toContainText(rewardName);
+  await gearReply.getByRole('button', { name: 'Equip' }).click();
+  await expect.poll(async () => (await dashboard(context)).character.attackPower, { timeout: 5000 }).toBeGreaterThan(6);
+  const upgradedAttack = (await dashboard(context)).character.attackPower;
   expect(upgradedAttack).toBeGreaterThan(6);
-  await expect(page.getByTestId('achievement')).toHaveCount(3);
+  expect((await dashboard(context)).achievements).toHaveLength(3);
 
   const key = 'e2e-retry-same-key';
   const request = page.context().request;
@@ -205,8 +241,10 @@ test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -
   expect(retryBody.wallet.balance).toBe(75);
 
   await page.reload();
-  await expect(page.getByTestId('honey-balance')).toHaveText('75');
-  await expect(page.getByTestId('inventory-item')).toHaveCount(2);
+  const reloaded = await dashboard(context);
+  expect(reloaded.wallet.balance).toBe(75);
+  expect(reloaded.inventory).toHaveLength(2);
+  await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout: 5000 });
 
   await page.getByTestId('nav-codex').click();
   await expect(page).toHaveURL(/\/codex/);
@@ -223,11 +261,11 @@ test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
   await startFromThread(page, context);
-  await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
-  await expect(page.getByTestId('attack-power')).not.toHaveText('6');
+  expect((await dashboard(context)).activeRun?.phase).toBe('combat');
+  expect((await dashboard(context)).character.attackPower).toBe(upgradedAttack);
 });
 
-test('two browser sessions share build drafts and one discovery choice and complete one scaled dungeon through the thread', async ({ browser }) => {
+test('two browser sessions get viewer-specific controls while sharing one durable combat thread', async ({ browser }) => {
   test.setTimeout(100000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
@@ -237,36 +275,31 @@ test('two browser sessions share build drafts and one discovery choice and compl
   try {
     await loginWithThreaded(leader);
     await loginWithThreaded(partner);
-    const worldBefore = Number(await leader.getByTestId('world-progress').textContent());
+    const worldBefore = (await dashboard(leaderContext)).world.frayedHollowClears;
 
-    await clickAndWait(leader, 'create-party');
-    const inviteCode = (await leader.getByTestId('party-code').textContent()).trim();
-    expect(inviteCode).toMatch(/^[A-Z0-9]{6}$/);
+    const inviteCode = await createPartyThroughThread(leader, leaderContext);
+    await joinPartyThroughThread(partner, partnerContext, inviteCode);
+    await expect.poll(async () => (await dashboard(leaderContext)).party?.allReady || false, { timeout: 5000 }).toBe(true);
 
-    await partner.getByTestId('party-code-input').fill(inviteCode.toLowerCase());
-    await clickAndWait(partner, 'join-party');
-    await expect(partner.getByTestId('party-member')).toHaveCount(2);
-    await clickAndWait(partner, 'toggle-ready');
-
-    await expect(leader.getByTestId('party-readiness')).toContainText('All members ready', { timeout: 5000 });
     await startFromThread(leader, leaderContext);
-
-    await expect(leader.getByTestId('run-state')).toContainText('2 Weavers');
-    await expect(leader.getByTestId('run-scaling')).toContainText('Enemy HP ×1.65');
-    await expect(leader.getByTestId('run-participant')).toHaveCount(2);
-    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers', { timeout: 5000 });
-    await expect(partner.getByTestId('party-readiness')).toContainText('locked', { timeout: 5000 });
+    const leaderRun = (await dashboard(leaderContext)).activeRun;
+    const partnerRun = (await dashboard(partnerContext)).activeRun;
+    expect(leaderRun.participants).toHaveLength(2);
+    expect(partnerRun.participants).toHaveLength(2);
+    await expect(leader.getByTestId('stream-thread-local')).toBeVisible();
+    await expect(partner.getByTestId('stream-thread-local')).toBeVisible();
 
     await attackFromThread(leader, leaderContext);
     await attackFromThread(partner, partnerContext);
-    await expect.poll(async () => {
-      const rows = await leader.getByTestId('run-participant').allTextContents();
-      return rows.length === 2 && rows.every((row) => /damage [1-9]\d*/.test(row));
-    }, { timeout: 5000 }).toBe(true);
+    const leaderReceipts = leader.getByTestId('stream-system-entry').filter({ hasText: /attacked/i });
+    const partnerReceipts = partner.getByTestId('stream-system-entry').filter({ hasText: /attacked/i });
+    await expect(leaderReceipts).toHaveCount(2, { timeout: 5000 });
+    await expect(partnerReceipts).toHaveCount(2, { timeout: 5000 });
 
     let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', 2);
-    await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade', { timeout: 5000 });
-    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
+    expect((await dashboard(leaderContext)).activeRun?.phase).toBe('upgrade');
+    await expect(leader.getByTestId('stream-suggestions').locator('button.run-power-card:not([hidden])')).toHaveCount(3, { timeout: 5000 });
+    await expect(partner.getByTestId('stream-suggestions').locator('button.run-power-card:not([hidden])')).toHaveCount(0);
     await choosePowerDraft(leader, leaderContext, 'combat');
     await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
 
@@ -280,8 +313,7 @@ test('two browser sessions share build drafts and one discovery choice and compl
     await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
 
     turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
-    await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade', { timeout: 5000 });
-    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
+    expect((await dashboard(leaderContext)).activeRun?.phase).toBe('upgrade');
     await choosePowerDraft(leader, leaderContext, 'boss');
     await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
 
@@ -296,16 +328,21 @@ test('two browser sessions share build drafts and one discovery choice and compl
 
     await leader.reload();
     await partner.reload();
-    await expect(leader.getByTestId('inventory-item')).toHaveCount(1);
-    await expect(partner.getByTestId('inventory-item')).toHaveCount(1);
-    await expect(leader.getByTestId('thread-dust')).toHaveText('15');
-    await expect(partner.getByTestId('thread-dust')).toHaveText('15');
-    await expect(leader.getByTestId('world-progress')).toHaveText(String(worldBefore + 1));
-    await expect(partner.getByTestId('world-progress')).toHaveText(String(worldBefore + 1));
-    await expect(leader.getByTestId('achievement').filter({ hasText: 'Hollow Cleared' })).toHaveCount(1);
-    await expect(partner.getByTestId('achievement').filter({ hasText: 'Hollow Cleared' })).toHaveCount(1);
-    await expect(leader.getByTestId('party-readiness')).toContainText('Waiting');
-    await expect(partner.getByTestId('party-readiness')).toContainText('Waiting');
+    const leaderAfter = await dashboard(leaderContext);
+    const partnerAfter = await dashboard(partnerContext);
+    expect(leaderAfter.inventory).toHaveLength(1);
+    expect(partnerAfter.inventory).toHaveLength(1);
+    expect(leaderAfter.character.threadDust).toBe(15);
+    expect(partnerAfter.character.threadDust).toBe(15);
+    expect(leaderAfter.world.frayedHollowClears).toBe(worldBefore + 1);
+    expect(partnerAfter.world.frayedHollowClears).toBe(worldBefore + 1);
+    expect(leaderAfter.achievements.some((achievement) => achievement.name === 'Hollow Cleared')).toBe(true);
+    expect(partnerAfter.achievements.some((achievement) => achievement.name === 'Hollow Cleared')).toBe(true);
+
+    const leaderParty = await openThreadReply(leader, '/party');
+    const partnerParty = await openThreadReply(partner, '/party');
+    await expect(leaderParty).toContainText('Not ready');
+    await expect(partnerParty).toContainText('Not ready');
   } finally {
     await leaderContext.close();
     await partnerContext.close();
