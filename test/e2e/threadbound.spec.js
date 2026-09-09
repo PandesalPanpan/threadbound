@@ -61,10 +61,26 @@ async function reactOrAttackFromThread(page, context) {
 async function actionsUntilPhaseChanges(context, page, expectedPhase, limit = 60) {
   for (let index = 0; index < limit; index += 1) {
     const state = await dashboard(context);
-    if (state.activeRun?.phase !== expectedPhase) return;
+    if (state.activeRun?.phase !== expectedPhase) return state;
     await reactOrAttackFromThread(page, context);
   }
   throw new Error(`Run did not leave ${expectedPhase} within ${limit} explicit actions.`);
+}
+
+async function choosePowerDraft(page, context, expectedPhase) {
+  const state = await dashboard(context);
+  expect(state.activeRun?.phase).toBe('upgrade');
+  expect(state.runUpgrades).toHaveLength(3);
+  const choice = state.runUpgrades[0];
+  const button = page.getByTestId('stream-suggestions').getByRole('button', { name: choice.name, exact: true });
+  await expect(button).toBeVisible({ timeout: 5000 });
+  const beforeVersion = state.activeRun.version;
+  await button.click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.phase === expectedPhase && after.activeRun.version > beforeVersion;
+  }, { timeout: 5000 }).toBe(true);
+  return choice.id;
 }
 
 async function chooseRunDiscovery(page, context) {
@@ -85,11 +101,13 @@ async function chooseRunDiscovery(page, context) {
 
 async function normalEncountersThroughDiscovery(context, page) {
   await actionsUntilPhaseChanges(context, page, 'combat');
-  const state = await dashboard(context);
-  if (state.activeRun?.phase === 'event') {
-    await chooseRunDiscovery(page, context);
-    await actionsUntilPhaseChanges(context, page, 'combat');
-  }
+  expect((await dashboard(context)).activeRun?.phase).toBe('upgrade');
+  await choosePowerDraft(page, context, 'combat');
+  await actionsUntilPhaseChanges(context, page, 'combat');
+  expect((await dashboard(context)).activeRun?.phase).toBe('event');
+  await chooseRunDiscovery(page, context);
+  await actionsUntilPhaseChanges(context, page, 'combat');
+  expect((await dashboard(context)).activeRun?.phase).toBe('upgrade');
 }
 
 async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expectedPhase, startTurn = 0) {
@@ -120,10 +138,6 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
       continue;
     }
 
-    // A proxy player should use the support action the UI offers rather than attack until
-    // death. Only Mend between telegraphs so defensive reaction windows remain authoritative.
-    // Once authoritative state says Mend is needed, require the realtime UI to expose it;
-    // silently skipping a missing support control would turn a UI race into a fake party wipe.
     if (!actorState.activeRun.enemyIntent && actorState.activeRun.viewer.mendCharges > 0) {
       const wounded = actorState.activeRun.participants
         .filter((participant) => participant.hp > 0 && participant.maxHp - participant.hp >= 8)
@@ -151,7 +165,7 @@ async function expectCountAtLeast(locator, minimum) {
   expect(count).toBeGreaterThanOrEqual(minimum);
 }
 
-test('Threaded login -> discrete dungeon thread -> mid-run discovery -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
+test('Threaded login -> responsive dungeon thread -> build drafts -> discovery -> generated loot -> codex -> equip -> idempotent Honey spend', async ({ page, context }) => {
   await loginWithThreaded(page);
   await expect(page.getByTestId('honey-balance')).toHaveText('100');
   await expect(page.getByTestId('attack-power')).toHaveText('6');
@@ -161,10 +175,7 @@ test('Threaded login -> discrete dungeon thread -> mid-run discovery -> generate
   await expect(page.getByTestId('combat-help')).toContainText('explicit');
   await expect(page.getByTestId('combat-coach')).toContainText('Nothing attacks automatically');
   await normalEncountersThroughDiscovery(context, page);
-  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-
-  await page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
+  await choosePowerDraft(page, context, 'boss');
   await actionsUntilPhaseChanges(context, page, 'boss');
 
   await expect(page.getByTestId('inventory-item')).toHaveCount(1);
@@ -216,11 +227,8 @@ test('Threaded login -> discrete dungeon thread -> mid-run discovery -> generate
   await expect(page.getByTestId('attack-power')).not.toHaveText('6');
 });
 
-test('two browser sessions share one discovery choice and complete one scaled dungeon through the thread', async ({ browser }) => {
-  // This is an intentionally long, real two-browser completion journey. Keep its local
-  // action/poll assertions strict, but do not let Playwright's 30s default kill a successful
-  // revive or protection action near the end of the boss fight.
-  test.setTimeout(90000);
+test('two browser sessions share build drafts and one discovery choice and complete one scaled dungeon through the thread', async ({ browser }) => {
+  test.setTimeout(100000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
@@ -246,7 +254,6 @@ test('two browser sessions share one discovery choice and complete one scaled du
     await expect(leader.getByTestId('run-state')).toContainText('2 Weavers');
     await expect(leader.getByTestId('run-scaling')).toContainText('Enemy HP ×1.65');
     await expect(leader.getByTestId('run-participant')).toHaveCount(2);
-
     await expect(partner.getByTestId('run-state')).toContainText('2 Weavers', { timeout: 5000 });
     await expect(partner.getByTestId('party-readiness')).toContainText('locked', { timeout: 5000 });
 
@@ -258,6 +265,12 @@ test('two browser sessions share one discovery choice and complete one scaled du
     }, { timeout: 5000 }).toBe(true);
 
     let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', 2);
+    await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade', { timeout: 5000 });
+    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
+    await choosePowerDraft(leader, leaderContext, 'combat');
+    await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+
+    turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
     const discovery = await dashboard(leaderContext);
     expect(discovery.activeRun?.phase).toBe('event');
     await expect(leader.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
@@ -269,22 +282,18 @@ test('two browser sessions share one discovery choice and complete one scaled du
     turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
     await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade', { timeout: 5000 });
     await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
+    await choosePowerDraft(leader, leaderContext, 'boss');
+    await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
 
-    await leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Disruptor Knot' }).click();
-    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
     turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
     expect(turn).toBeGreaterThan(2);
 
     const completedState = await dashboard(leaderContext);
     expect(completedState.activeRun).toBeNull();
-    // No active run can mean either complete or failed. Require the synchronous atomic
-    // completion side effects here so a wiped party can never masquerade as a victory.
     expect(completedState.inventory).toHaveLength(1);
     expect(completedState.character.threadDust).toBe(15);
     expect(completedState.world.frayedHollowClears).toBe(worldBefore + 1);
 
-    // A final reload is intentional: rewards and party state must reconstruct durably,
-    // while combat synchronization above is proven through realtime updates only.
     await leader.reload();
     await partner.reload();
     await expect(leader.getByTestId('inventory-item')).toHaveCount(1);
@@ -295,7 +304,6 @@ test('two browser sessions share one discovery choice and complete one scaled du
     await expect(partner.getByTestId('world-progress')).toHaveText(String(worldBefore + 1));
     await expect(leader.getByTestId('achievement').filter({ hasText: 'Hollow Cleared' })).toHaveCount(1);
     await expect(partner.getByTestId('achievement').filter({ hasText: 'Hollow Cleared' })).toHaveCount(1);
-
     await expect(leader.getByTestId('party-readiness')).toContainText('Waiting');
     await expect(partner.getByTestId('party-readiness')).toContainText('Waiting');
   } finally {
