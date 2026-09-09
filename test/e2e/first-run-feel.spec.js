@@ -49,6 +49,27 @@ async function attackUntilPhaseChanges(page, context, expectedPhase, maxActions 
   throw new Error(`Run stayed in ${expectedPhase} after ${maxActions} explicit attacks.`);
 }
 
+async function choosePower(page, context, shotName) {
+  const state = await dashboard(context);
+  expect(state.activeRun?.phase).toBe('upgrade');
+  expect(state.runUpgrades).toHaveLength(3);
+  const cards = page.getByTestId('stream-suggestions').locator('button.run-power-card:not([hidden])');
+  await expect(cards).toHaveCount(3);
+  for (const card of await cards.all()) {
+    await expect(card.locator('.run-power-description')).not.toBeEmpty();
+    await expect(card.locator('.run-power-effect').first()).toBeVisible();
+  }
+  await reviewShot(page, shotName, page.locator('#stream'));
+  const expectedPhase = state.activeRun.runUpgradeResume ? 'combat' : 'boss';
+  const beforeVersion = state.activeRun.version;
+  await cards.first().click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.phase === expectedPhase && after.activeRun.version > beforeVersion;
+  }, { timeout: 5000 }).toBe(true);
+  return state.runUpgrades[0];
+}
+
 async function chooseDiscovery(page, context) {
   const state = await dashboard(context);
   expect(state.activeRun?.phase).toBe('event');
@@ -69,7 +90,7 @@ async function chooseDiscovery(page, context) {
     expect(box.height).toBeGreaterThanOrEqual(44);
   }
   expect(await page.getByTestId('run-event-card').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
-  await reviewShot(page, '03-run-discovery', page.locator('#stream'));
+  await reviewShot(page, '04-run-discovery', page.locator('#stream'));
 
   const safeChoice = choices.find((choice) => /bind|quiet/i.test(choice.id)) || choices[0];
   const beforeVersion = state.activeRun.version;
@@ -81,8 +102,8 @@ async function chooseDiscovery(page, context) {
   return safeChoice;
 }
 
-test('first 60 seconds explain a discrete command-result loop inside the adventure thread', async ({ page, context }) => {
-  test.setTimeout(70000);
+test('first run explains responsive combat, build drafts, discovery, boss, and permanent reward', async ({ page, context }) => {
+  test.setTimeout(80000);
   await loginWithThreaded(page);
 
   await expect(page.getByTestId('first-run-guide')).toContainText('Each attack is a deliberate turn');
@@ -115,25 +136,32 @@ test('first 60 seconds explain a discrete command-result loop inside the adventu
   await page.getByTestId('stream-guard').click();
   await expect(page.getByTestId('stream-system-entry').filter({ hasText: /guarded/i }).last()).toBeVisible();
 
-  // The run now deliberately interrupts the old combat→upgrade rhythm with a readable
-  // discovery. A first-time player must understand both tradeoffs before continuing.
+  // First encounter pays out a real roguelite build choice rather than waiting until boss.
+  await attackUntilPhaseChanges(page, context, 'combat');
+  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
+  await choosePower(page, context, '03-first-power-draft');
+
+  // The second encounter reaches the durable narrative discovery.
   await attackUntilPhaseChanges(page, context, 'combat');
   await chooseDiscovery(page, context);
-  await attackUntilPhaseChanges(page, context, 'combat');
 
+  // The third encounter pays out a second, rotated draft before the boss.
+  await attackUntilPhaseChanges(page, context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  const sharpen = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' });
-  await expect(sharpen).toBeVisible();
-  await reviewShot(page, '04-upgrade-choice', page.locator('#stream'));
-  await sharpen.click();
+  const finalPower = await choosePower(page, context, '05-final-power-draft');
   await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
   await expect(page.getByTestId('stream-system-entry').filter({ hasText: /First Needle awakens/i }).last()).toBeVisible();
+  expect(finalPower.name).toBeTruthy();
+
+  const built = await dashboard(context);
+  expect(built.activeRun.selectedUpgrades).toHaveLength(2);
+  expect(new Set(built.activeRun.selectedUpgrades).size).toBe(2);
 
   await attackUntilPhaseChanges(page, context, 'boss');
   await expect(page.getByTestId('reward-reveal')).toBeVisible();
   const rewardName = await page.getByTestId('reward-name').textContent();
   expect(rewardName).toBeTruthy();
-  await reviewShot(page, '05-reward-reveal', page.locator('#dungeon'));
+  await reviewShot(page, '06-reward-reveal', page.locator('#dungeon'));
 
   await page.getByTestId('stream-message').fill('/gear');
   await page.getByTestId('stream-send').click();
@@ -150,7 +178,7 @@ test('first 60 seconds explain a discrete command-result loop inside the adventu
   await page.getByTestId('stream-send').click();
   await expect(page.getByTestId('stream-command-card')).toContainText(`ATK ${attackAfterEquip}`);
   await expect(page.getByTestId('stream-command-card')).toContainText(rewardName);
-  await reviewShot(page, '06-equipped-reward', page.locator('#stream'));
+  await reviewShot(page, '07-equipped-reward', page.locator('#stream'));
 
   await page.getByTestId('stream-start-dungeon').click();
   await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
