@@ -21,6 +21,8 @@ function previewResult({ before, outcome, playerId, kind, targetPlayerId = null 
     damage,
     healed,
     retaliation: Number(outcome.retaliation || 0),
+    critical: Boolean(outcome.critical),
+    criticalMultiplier: outcome.criticalMultiplier === null || outcome.criticalMultiplier === undefined ? null : Number(outcome.criticalMultiplier),
     enemyHpBefore: enemyBefore?.hp ?? null,
     enemyMaxHp: enemyBefore?.maxHp ?? null,
     enemyHpAfter: enemyBefore ? Math.max(0, Number(enemyBefore.hp || 0) - damage) : null,

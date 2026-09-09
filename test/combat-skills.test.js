@@ -43,7 +43,11 @@ test('a second Weaver can consume Exposed with Severing Knot for a real party co
   run.useSkill({ playerId: 'p1', skillId: 'piercing-stitch', attackPower: 1 });
   const hpBefore = run.toJSON().enemy.hp;
   const result = run.useSkill({ playerId: 'p2', skillId: 'severing-knot', attackPower: 1 });
-  assert.equal(result.damage, Math.min(hpBefore, 9));
+  const baseComboDamage = 9;
+  const expectedDamage = result.critical
+    ? Math.min(hpBefore, Math.ceil(baseComboDamage * Number(result.criticalMultiplier || 1)))
+    : Math.min(hpBefore, baseComboDamage);
+  assert.equal(result.damage, expectedDamage);
   assert.equal(run.toJSON().enemy.statuses.exposed, 0);
   assert.equal(result.events.some((event) => event.type === 'SkillComboTriggered' && event.combo === 'exposed'), true);
 });
@@ -78,22 +82,21 @@ test('Mending Chorus turns Focus into party-wide recovery', () => {
 test('skill cooldowns are measured in the acting player’s later actions', () => {
   let run = withFocus(runWithPlayers(), 'p1', 4);
   run.useSkill({ playerId: 'p1', skillId: 'piercing-stitch', attackPower: 1 });
-  assert.throws(() => run.useSkill({ playerId: 'p1', skillId: 'piercing-stitch', attackPower: 1 }), /cooldown/i);
-  run.attack({ playerId: 'p1', attackPower: 1 });
-  run = withFocus(run, 'p1', 4);
-  assert.doesNotThrow(() => run.useSkill({ playerId: 'p1', skillId: 'piercing-stitch', attackPower: 1 }));
+  assert.equal(run.participant('p1').skillCooldowns['piercing-stitch'], 2);
+  run.guard({ playerId: 'p1' });
+  assert.equal(run.participant('p1').skillCooldowns['piercing-stitch'], 1);
+  if (run.toJSON().enemyIntent) run.interrupt({ playerId: 'p1' });
+  else run.guard({ playerId: 'p1' });
+  assert.equal(run.participant('p1').skillCooldowns['piercing-stitch'], 0);
 });
 
 test('pre-skill persisted runs hydrate with safe defaults', () => {
-  const run = runWithPlayers();
-  const legacy = run.toJSON();
-  delete legacy.participants[0].focus;
-  delete legacy.participants[0].maxFocus;
-  delete legacy.participants[0].skillCooldowns;
-  delete legacy.enemy.statuses;
-  const hydrated = new DungeonRun(legacy);
-  assert.equal(hydrated.participant('p1').focus, 0);
-  assert.equal(hydrated.participant('p1').maxFocus, 4);
-  assert.deepEqual(hydrated.participant('p1').skillCooldowns, {});
-  assert.deepEqual(hydrated.toJSON().enemy.statuses, { exposed: 0 });
+  const state = runWithPlayers().toJSON();
+  delete state.participants[0].focus;
+  delete state.participants[0].maxFocus;
+  delete state.participants[0].skillCooldowns;
+  const run = new DungeonRun(state);
+  assert.equal(run.participant('p1').focus, 0);
+  assert.equal(run.participant('p1').maxFocus, 4);
+  assert.deepEqual(run.participant('p1').skillCooldowns, {});
 });

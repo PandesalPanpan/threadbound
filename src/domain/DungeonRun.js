@@ -1,5 +1,6 @@
 import { nextEnemyIntent, resolveEnemyIntent } from './CombatIntentPolicy.js';
 import { combatSkill, MAX_FOCUS } from './CombatSkillCatalog.js';
+import { criticalStrike } from './CriticalStrikePolicy.js';
 
 export const DUNGEONS = Object.freeze({
   'frayed-hollow': Object.freeze({
@@ -156,29 +157,42 @@ export class DungeonRun {
     const events = [];
     const participant = this.#actingParticipant(playerId);
     this.#beginAction(participant);
-    let ignoredRetaliation = 0;
-    if (this.state.enemyIntent) {
-      const ignoredIntent = structuredClone(this.state.enemyIntent);
-      const resolved = this.#resolveIntent(events, now, 'ignored');
-      ignoredRetaliation = resolved.damage || 0;
-      events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: ignoredIntent.id, reaction: ignoredIntent.reaction, result: resolved });
-      if (this.state.phase === 'failed') return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
-      if (this.participant(playerId)?.hp <= 0) return { state: this.toJSON(), events, damage: 0, retaliation: ignoredRetaliation };
-    }
-    let damage = attackPower + this.state.runAttackBonus + participant.reactionDamageBonus;
+    const pendingIntent = this.state.enemyIntent ? structuredClone(this.state.enemyIntent) : null;
+    if (pendingIntent) this.state.enemyIntent = null;
+
+    let baseDamage = attackPower + this.state.runAttackBonus + participant.reactionDamageBonus;
     participant.reactionDamageBonus = 0;
-    if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) damage += 2;
-    if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) damage += 2;
+    if (equipmentEffect === 'opening_strike' && !participant.firstStrikeUsed) baseDamage += 2;
+    if (equipmentEffect === 'boss_bane' && this.state.enemy.isBoss) baseDamage += 2;
     participant.firstStrikeUsed = true;
-    const effectiveDamage = this.#damageEnemy(participant, damage, events, playerId);
+    const critical = criticalStrike({
+      runId: this.state.id,
+      runVersion: this.state.version,
+      playerId,
+      enemyId: this.state.enemy.id,
+      actionKey: 'attack',
+      baseDamage,
+      exposed: Number(this.state.enemy.statuses?.exposed || 0) > 0,
+    });
+    if (critical.critical) events.push({ type: 'CriticalStrikeLanded', playerId, runId: this.state.id, enemyId: this.state.enemy.id, baseDamage, damage: critical.damage, multiplier: critical.multiplier });
+    const effectiveDamage = this.#damageEnemy(participant, critical.damage, events, playerId);
     this.#grantFocus(participant, 1, events);
     if (this.state.enemy.hp === 0) {
-      this.#defeatCurrentEnemy(events, playerId, now);
-      return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: ignoredRetaliation };
+      if (pendingIntent) events.push({ type: 'EnemyIntentCancelledByDefeat', playerId, runId: this.state.id, enemyId: this.state.enemy.id, intentId: pendingIntent.id });
+      const deathRetaliation = this.#defeatCurrentEnemy(events, playerId, now);
+      return { state: this.toJSON(), events, damage: effectiveDamage, retaliation: deathRetaliation, critical: critical.critical, criticalMultiplier: critical.multiplier };
     }
-    const retaliation = ignoredRetaliation || this.#retaliate(events);
+
+    let retaliation = 0;
+    if (pendingIntent) {
+      this.state.enemyIntent = pendingIntent;
+      const resolved = this.#resolveIntent(events, now, 'ignored');
+      retaliation = resolved.damage || 0;
+      events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: pendingIntent.id, reaction: pendingIntent.reaction, result: resolved });
+      if (this.state.phase === 'failed' || this.participant(playerId)?.hp <= 0) return { state: this.toJSON(), events, damage: effectiveDamage, retaliation, critical: critical.critical, criticalMultiplier: critical.multiplier };
+    } else retaliation = this.#retaliate(events);
     if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
-    return { state: this.toJSON(), events, damage: effectiveDamage, retaliation };
+    return { state: this.toJSON(), events, damage: effectiveDamage, retaliation, critical: critical.critical, criticalMultiplier: critical.multiplier };
   }
 
   guard({ playerId, now = new Date().toISOString() }) {
@@ -276,20 +290,15 @@ export class DungeonRun {
     const events = [];
     let retaliation = 0;
     let interruptedIntent = null;
-    if (this.state.enemyIntent) {
+    const pendingIntent = this.state.enemyIntent ? structuredClone(this.state.enemyIntent) : null;
+    if (pendingIntent) {
       if (skill.interrupts) {
-        interruptedIntent = structuredClone(this.state.enemyIntent);
+        interruptedIntent = pendingIntent;
         this.state.enemyIntent = null;
         participant.successfulInterrupts += 1;
         events.push({ type: 'EnemyInterrupted', playerId, runId: this.state.id, intentId: interruptedIntent.id, enemyId: this.state.enemy.id, bySkillId: skill.id });
         events.push({ type: 'CombatReactionSucceeded', playerId, runId: this.state.id, reaction: 'interrupt', intentId: interruptedIntent.id, bySkillId: skill.id, bonusDamage: 0 });
-      } else {
-        const ignoredIntent = structuredClone(this.state.enemyIntent);
-        const resolved = this.#resolveIntent(events, now, 'ignored');
-        retaliation = resolved.damage || 0;
-        events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: ignoredIntent.id, reaction: ignoredIntent.reaction, result: resolved });
-        if (this.state.phase === 'failed' || this.participant(playerId)?.hp <= 0) return { state: this.toJSON(), events, skillId: skill.id, damage: 0, healed: 0, retaliation };
-      }
+      } else this.state.enemyIntent = null;
     }
 
     participant.focus -= skill.cost;
@@ -299,6 +308,7 @@ export class DungeonRun {
 
     let damage = 0;
     let healed = 0;
+    let criticalResult = null;
     if (skill.kind === 'damage') {
       let rawDamage = attackPower + this.state.runAttackBonus + skill.damageBonus + participant.reactionDamageBonus;
       participant.reactionDamageBonus = 0;
@@ -308,17 +318,26 @@ export class DungeonRun {
         this.state.enemy.statuses.exposed = Math.max(0, exposed - 1);
         events.push({ type: 'SkillComboTriggered', playerId, runId: this.state.id, skillId: skill.id, combo: 'exposed', bonusDamage: skill.comboBonus });
       }
-      damage = this.#damageEnemy(participant, rawDamage, events, playerId);
+      criticalResult = criticalStrike({
+        runId: this.state.id,
+        runVersion: this.state.version,
+        playerId,
+        enemyId: this.state.enemy.id,
+        actionKey: `skill:${skill.id}`,
+        baseDamage: rawDamage,
+        exposed: exposed > 0,
+      });
+      if (criticalResult.critical) events.push({ type: 'CriticalStrikeLanded', playerId, runId: this.state.id, enemyId: this.state.enemy.id, skillId: skill.id, baseDamage: rawDamage, damage: criticalResult.damage, multiplier: criticalResult.multiplier });
+      damage = this.#damageEnemy(participant, criticalResult.damage, events, playerId);
       if (this.state.enemy.hp === 0) {
-        this.#defeatCurrentEnemy(events, playerId, now);
-        return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation };
+        if (pendingIntent && !interruptedIntent) events.push({ type: 'EnemyIntentCancelledByDefeat', playerId, runId: this.state.id, enemyId: this.state.enemy.id, intentId: pendingIntent.id });
+        retaliation = this.#defeatCurrentEnemy(events, playerId, now);
+        return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation, critical: criticalResult.critical, criticalMultiplier: criticalResult.multiplier };
       }
       if (skill.id === 'piercing-stitch') {
         this.state.enemy.statuses.exposed = 1;
         events.push({ type: 'EnemyStatusApplied', playerId, runId: this.state.id, enemyId: this.state.enemy.id, status: 'exposed', charges: 1 });
       }
-      if (!interruptedIntent && !retaliation) retaliation = this.#retaliate(events);
-      if (this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
     } else if (skill.kind === 'party-heal') {
       for (const target of this.state.participants.filter((candidate) => candidate.hp > 0)) {
         const amount = Math.min(skill.heal, target.maxHp - target.hp);
@@ -328,10 +347,17 @@ export class DungeonRun {
         participant.healingDone += amount;
         events.push({ type: 'PlayerHealed', playerId, targetPlayerId: target.playerId, runId: this.state.id, amount, bySkillId: skill.id });
       }
-      if (!retaliation) retaliation = this.#retaliate(events);
     }
 
-    return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation };
+    if (pendingIntent && !interruptedIntent) {
+      this.state.enemyIntent = pendingIntent;
+      const resolved = this.#resolveIntent(events, now, 'ignored');
+      retaliation = resolved.damage || 0;
+      events.push({ type: 'EnemyIntentIgnored', playerId, runId: this.state.id, intentId: pendingIntent.id, reaction: pendingIntent.reaction, result: resolved });
+    } else if (!interruptedIntent) retaliation = this.#retaliate(events);
+    if (skill.kind === 'damage' && this.state.phase !== 'failed') this.#maybeTelegraphIntent(events, now);
+
+    return { state: this.toJSON(), events, skillId: skill.id, damage, healed, retaliation, critical: Boolean(criticalResult?.critical), criticalMultiplier: criticalResult?.multiplier || null };
   }
 
   chooseUpgrade(upgradeId) {
@@ -421,10 +447,20 @@ export class DungeonRun {
     });
   }
 
+  #resolveDeathEffects(defeated, events) {
+    if (!defeated?.abilities?.includes('death_burst')) return 0;
+    const rawDamage = Math.max(1, Number(defeated.retaliation || 1));
+    const damage = this.#retaliate(events, rawDamage);
+    events.push({ type: 'EnemyDeathEffectResolved', runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, effect: 'death_burst', damage, rawDamage });
+    return damage;
+  }
+
   #defeatCurrentEnemy(events, playerId, now) {
     const defeated = structuredClone(this.state.enemy);
     events.push({ type: 'EnemyDefeated', playerId, runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, isBoss: defeated.isBoss });
-    this.#advanceAfterDefeat(events, now);
+    const deathRetaliation = this.#resolveDeathEffects(defeated, events);
+    if (this.state.phase !== 'failed') this.#advanceAfterDefeat(events, now);
+    return deathRetaliation;
   }
 
   #applyParticipantDamage(target, rawDamage, events) {

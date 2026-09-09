@@ -150,7 +150,9 @@ test('first run explains responsive combat, build drafts, discovery, boss, and p
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
   const finalPower = await choosePower(page, context, '05-final-power-draft');
   await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
-  await expect(page.getByTestId('stream-system-entry').filter({ hasText: /First Needle awakens/i }).last()).toBeVisible();
+  const bossState = await dashboard(context);
+  await expect(page.getByTestId('stream-next-enemy').last()).toContainText('The First Needle', { timeout: 5000 });
+  await expect(page.getByTestId('stream-next-enemy-hp').last()).toHaveText(`${bossState.activeRun.enemy.maxHp} / ${bossState.activeRun.enemy.maxHp} HP`);
   expect(finalPower.name).toBeTruthy();
 
   const built = await dashboard(context);
