@@ -37,7 +37,7 @@ async function expectTouchTarget(locator, minimum = 44) {
   }, { timeout: 5000 }).toBeGreaterThanOrEqual(minimum);
 }
 
-test('mobile play is one scaled thread with private legal actions and no competing game panels', async ({ page, context }) => {
+test('mobile play is one scaled thread with a simple contextual action budget and no competing game panels', async ({ page, context }) => {
   await loginWithThreaded(page);
 
   const log = page.getByTestId('adventure-stream-log');
@@ -69,10 +69,11 @@ test('mobile play is one scaled thread with private legal actions and no competi
   const attack = page.getByTestId('stream-attack');
   const guard = page.getByTestId('stream-guard');
   await expectTouchTarget(attack, 44);
-  await expectTouchTarget(guard, 44);
+  await expect(guard).toBeHidden();
   expect(await attack.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
   await expect(page.getByTestId('combat-skill-panel')).toBeVisible({ timeout: 5000 });
   expect(await page.getByTestId('combat-skill-panel').evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
+  await expect(page.locator('.interaction-technique-hint')).toContainText('Techniques charge with Focus');
   await expect(page.getByTestId('stream-decision-snapshot')).toContainText(/YOU/i);
   await expect(page.getByTestId('stream-decision-snapshot')).toContainText(/Frayed Wisp/i);
   await expectNoHorizontalOverflow(page);
@@ -85,6 +86,13 @@ test('mobile play is one scaled thread with private legal actions and no competi
   const result = page.getByTestId('stream-system-entry').filter({ hasText: /attacked Frayed Wisp/i }).last();
   await expect(result).toBeVisible();
   await expect(result).toContainText(/Frayed Wisp \d+\/12/);
+
+  // The first Wisp attack creates an interruptible recovery telegraph. Only then should
+  // the relevant reaction enter the mobile action budget; irrelevant Guard remains hidden.
+  const interrupt = page.getByTestId('stream-interrupt');
+  await expectTouchTarget(interrupt, 44);
+  await expect(guard).toBeHidden();
+  await expectNoHorizontalOverflow(page);
 
   await page.getByTestId('stream-message').fill('/status');
   await page.getByTestId('stream-send').click();
