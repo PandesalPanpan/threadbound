@@ -3,6 +3,7 @@ import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunE
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 
 export { DUNGEONS, RUN_UPGRADES };
+export const ACTIVE_RUN_PHASES = Object.freeze(['combat', 'event', 'upgrade', 'boss']);
 
 function aliveParticipants(state) {
   return state.participants.filter((participant) => participant.hp > 0);
@@ -22,6 +23,8 @@ export class AdventureRun {
     this.state.runEvent ??= null;
     this.state.runEventResume ??= null;
     this.state.runEventHistory ??= [];
+    this.state.terminalReason ??= null;
+    this.state.endedAt ??= this.state.completedAt ?? null;
   }
 
   static start(args) {
@@ -31,7 +34,13 @@ export class AdventureRun {
     state.runEvent = null;
     state.runEventResume = null;
     state.runEventHistory = [];
+    state.terminalReason = null;
+    state.endedAt = null;
     return new AdventureRun(state);
+  }
+
+  get isActive() {
+    return ACTIVE_RUN_PHASES.includes(this.state.phase);
   }
 
   hasParticipant(playerId) {
@@ -48,6 +57,43 @@ export class AdventureRun {
   mend(args) { return this.#combat('mend', args); }
   revive(args) { return this.#combat('revive', args); }
   useSkill(args) { return this.#combat('useSkill', args); }
+
+  abandon({ playerId, now = new Date().toISOString() }) {
+    if (!this.isActive) throw new Error('Only an active dungeon can be abandoned.');
+    if (!this.hasParticipant(playerId)) throw new Error('Run not found.');
+    if (this.state.startedByPlayerId !== playerId) {
+      const error = new Error('Only the Weaver who started the run can forfeit it for the party.');
+      error.code = 'run_abandon_requires_leader';
+      throw error;
+    }
+    this.#terminate('abandoned', now);
+    return {
+      state: this.toJSON(),
+      events: [{
+        type: 'DungeonAbandoned',
+        playerId,
+        participantIds: this.state.participants.map((participant) => participant.playerId),
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        endedAt: this.state.endedAt,
+      }],
+    };
+  }
+
+  expire({ now = new Date().toISOString() } = {}) {
+    if (!this.isActive) throw new Error('Only an active dungeon can expire.');
+    this.#terminate('expired', now);
+    return {
+      state: this.toJSON(),
+      events: [{
+        type: 'DungeonExpired',
+        participantIds: this.state.participants.map((participant) => participant.playerId),
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        endedAt: this.state.endedAt,
+      }],
+    };
+  }
 
   // The existing /upgrade command is the public run-choice transport. Dispatching by
   // authoritative phase keeps that boundary backwards-compatible while the Domain Model
@@ -141,8 +187,21 @@ export class AdventureRun {
       outcome.healed = Number(outcome.healed || 0) + Number(attuned.triggered.amount || 0);
     }
 
+    if (this.state.phase === 'failed') {
+      this.state.terminalReason ??= 'party_wipe';
+      this.state.endedAt ??= args?.now || new Date().toISOString();
+    }
+
     this.#pauseForRunEvent(before, outcome.events);
     return { ...outcome, relicTrigger: attuned.triggered, state: this.toJSON() };
+  }
+
+  #terminate(reason, now) {
+    if (!ACTIVE_RUN_PHASES.includes(this.state.phase)) throw new Error('The dungeon is already terminal.');
+    this.state.phase = 'failed';
+    this.state.terminalReason = reason;
+    this.state.endedAt = now;
+    this.state.enemyIntent = null;
   }
 
   #pauseForRunEvent(before, events) {
