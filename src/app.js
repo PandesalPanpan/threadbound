@@ -19,6 +19,7 @@ import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
 import { SQLiteInventoryRepository } from './infrastructure/SQLiteInventoryRepository.js';
 import { SQLiteRunCommandRepository } from './infrastructure/SQLiteRunCommandRepository.js';
+import { SQLiteSessionStore } from './infrastructure/SQLiteSessionStore.js';
 
 const LOCAL_PROFILES = Object.freeze({
   a: Object.freeze({ id: 'local:a', name: 'Local Weaver A', username: 'local-a' }),
@@ -66,6 +67,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const streamRepository = new SQLiteActivityStreamRepository({ database: repository.db });
   const inventoryRepository = new SQLiteInventoryRepository({ database: repository.db });
   const runCommandRepository = new SQLiteRunCommandRepository({ database: repository.db });
+  const sessionStore = new SQLiteSessionStore({ database: repository.db });
+  app.locals.sessionStore = sessionStore;
   const activityStream = new ActivityStreamService({ streamRepository, gameRepository: repository });
   const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
   const achievements = new AchievementProjector(repository);
@@ -114,7 +117,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.use(express.urlencoded({ extended: false, limit: '4kb' }));
   app.use(express.json({ limit: '512kb' }));
   app.use(express.static('public'));
-  app.use(session({ name: 'threadbound.sid', secret: config.sessionSecret, resave: false, saveUninitialized: false, cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 60 * 60 * 1000 } }));
+  app.use(session({ store: sessionStore, name: 'threadbound.sid', secret: config.sessionSecret, resave: false, saveUninitialized: false, cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 60 * 60 * 1000 } }));
 
   const requireConnection = (request, response, next) => {
     if (!request.session.threaded?.playerId) return response.status(401).json({ error: 'identity_not_connected', message: 'Sign in to Threadbound first.' });
