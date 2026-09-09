@@ -72,15 +72,11 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   const cinderDungeon = page.getByTestId('dungeon-option').filter({ hasText: 'Cinder Vault' });
   await expect(cinderDungeon).toContainText('The Ashen Thread');
 
-  // Provenance is part of the game/application contract, not player-facing debug copy.
-  // Keep the streamlined dungeon card clean while proving the published revision survives
-  // the Workshop -> runtime boundary.
   const runtimeState = await dashboard(context);
   const runtimeDungeon = runtimeState.dungeons.find((dungeon) => dungeon.id === 'cinder-vault');
   expect(runtimeDungeon).toBeTruthy();
   expect(String(runtimeDungeon.sourceManifestRevision)).toBe(String(revision));
 
-  // Imported content must be playable through the same tap-first thread surface as built-in content.
   await page.getByTestId('stream-dungeons').click();
   const dungeonReply = page.getByTestId('stream-command-card');
   await expect(dungeonReply).toContainText('Cinder Vault');
@@ -91,9 +87,12 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
 
   await attackUntilPhaseChanges(page, context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  const sharpen = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' });
-  await expect(sharpen).toBeVisible();
-  await sharpen.click();
+  const powerState = await dashboard(context);
+  expect(powerState.runUpgrades).toHaveLength(3);
+  const power = powerState.runUpgrades[0];
+  const powerButton = page.getByTestId('stream-suggestions').getByRole('button', { name: power.name, exact: true });
+  await expect(powerButton).toBeVisible();
+  await powerButton.click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
   await expect(page.getByTestId('run-state')).toContainText('The Ember Loomkeeper');
   await attackUntilPhaseChanges(page, context, 'boss');
