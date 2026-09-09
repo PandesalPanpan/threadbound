@@ -38,7 +38,9 @@ async function directAction(context, runId, action) {
 function preferredOfferedPower(state) {
   const offered = state.runUpgrades || [];
   expect(offered).toHaveLength(3);
-  return offered.find((upgrade) => String(upgrade.category || '').toUpperCase() === 'SUSTAIN') || offered[0];
+  return [...offered].sort((left, right) => Number(left.attackBonus || 0) - Number(right.attackBonus || 0)
+    || Number(right.heal || 0) - Number(left.heal || 0)
+    || String(left.id).localeCompare(String(right.id)))[0];
 }
 
 test('Phase II marks a wounded ally and another Weaver can protect them from the thread', async ({ browser }) => {
@@ -62,7 +64,9 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
 
     // Clear the normal encounters through public command routes while reacting to every
     // telegraph. Repeated power drafts and the discovery are real aggregate pauses, so
-    // resolve each using only choices returned by the authoritative dashboard.
+    // resolve each using only choices returned by the authoritative dashboard. This
+    // mechanics fixture deliberately takes the lowest-attack offer so draft variance does
+    // not move the boss's 50% threshold before the Phase-II assertion below.
     for (let guard = 0; guard < 100; guard += 1) {
       const state = await dashboard(leaderContext);
       const phase = state.activeRun?.phase;
