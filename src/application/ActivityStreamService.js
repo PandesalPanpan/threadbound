@@ -26,6 +26,10 @@ export class ActivityStreamService {
     return this.streamRepository.listRecent({ limit });
   }
 
+  page({ limit = 30, before = null } = {}) {
+    return this.streamRepository.listPage({ limit, beforeId: before || null });
+  }
+
   postChat({ playerId, body }) {
     const player = this.gameRepository.getPlayer(playerId);
     if (!player) throw new Error('Player not found.');
