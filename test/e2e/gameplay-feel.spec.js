@@ -73,6 +73,7 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
   const previewState = await dashboard(context, true);
   const expectedDamage = previewState.actionPreviews.actions.attack.damage;
+  const expectedRetaliation = previewState.actionPreviews.actions.attack.retaliation;
   expect(expectedDamage).toBeGreaterThan(0);
   const attack = page.getByTestId('stream-attack');
   await expect.poll(async () => Number(await attack.getAttribute('data-preview-damage') || 0), { timeout: 5000 }).toBe(expectedDamage);
@@ -86,12 +87,19 @@ test('gameplay feel pass previews outcomes, uses semantic colors, condenses rece
   const attackReceipt = page.locator('.stream-entry-rich.stream-action-attack').last();
   await expect(attackReceipt.locator('.combat-metric.damage')).toHaveText(String(expectedDamage));
   await expect(attackReceipt.locator('.stream-result-chip.damage-out')).toContainText(`−${expectedDamage}`);
+  if (expectedRetaliation > 0) {
+    await expect(attackReceipt.locator('.stream-result-chip.damage-in')).toContainText(`−${expectedRetaliation} HP`);
+  }
   const confirmedColor = await attackReceipt.locator('.combat-metric.damage').evaluate((element) => getComputedStyle(element).color);
   expect(confirmedColor).not.toBe(forecastColor);
 
+  // The Wisp's first telegraph is a self-mend. Guarding it deals no player damage, so the
+  // receipt must not invent a red incoming-damage chip. Red is reserved for HP actually
+  // lost; cyan only appears when damage was truly blocked/prevented.
   await actAndWait(page, context, 'stream-guard');
   const guardReceipt = page.locator('.stream-entry-rich.stream-action-guard').last();
-  await expect(guardReceipt.locator('.stream-result-chip.damage-in')).toBeVisible();
+  await expect(guardReceipt).toBeVisible();
+  await expect(guardReceipt.locator('.stream-result-chip.damage-in')).toHaveCount(0);
   await expect.poll(async () => page.locator('[data-live-combat-receipt="true"]').count(), { timeout: 5000 }).toBeGreaterThan(0);
   const liveReceipt = page.locator('[data-live-combat-receipt="true"]').last();
   await expect(liveReceipt).toHaveAttribute('data-coalesced-count', '2');
