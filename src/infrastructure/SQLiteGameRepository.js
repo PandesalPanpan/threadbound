@@ -146,20 +146,28 @@ export class SQLiteGameRepository {
   saveRun(state) {
     const expectedVersion = Number.isInteger(state.version) ? state.version : 0;
     const nextState = { ...state, version: expectedVersion + 1 };
-    const result = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
-      nextState.phase,
-      JSON.stringify(nextState),
-      nextState.version,
-      new Date().toISOString(),
-      nextState.id,
-      expectedVersion,
-    );
-    if (result.changes !== 1) {
-      const error = new Error('Dungeon state changed before this action could be saved. Refresh and retry.');
-      error.code = 'stale_run_version';
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
+        nextState.phase,
+        JSON.stringify(nextState),
+        nextState.version,
+        new Date().toISOString(),
+        nextState.id,
+        expectedVersion,
+      );
+      if (result.changes !== 1) {
+        const error = new Error('Dungeon state changed before this action could be saved. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+      if (nextState.phase === 'failed' && nextState.ownerType === 'party') this.#resetPartyAfterRun(nextState.ownerId);
+      this.db.exec('COMMIT');
+      return nextState;
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
     }
-    return nextState;
   }
 
   getActiveRun(playerId) {
@@ -167,6 +175,11 @@ export class SQLiteGameRepository {
     // reconnects, and party/run creation guards until the aggregate reaches complete/failed.
     const row = this.db.prepare("SELECT dr.state_json, dr.version FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
     return this.#decodeRunRow(row);
+  }
+
+  listInactiveRuns(cutoffIso, { limit = 100 } = {}) {
+    const safeLimit = Math.max(1, Math.min(1000, Number.parseInt(limit, 10) || 100));
+    return this.db.prepare("SELECT state_json, version FROM dungeon_runs WHERE phase IN ('combat', 'event', 'upgrade', 'boss') AND updated_at <= ? ORDER BY updated_at ASC LIMIT ?").all(String(cutoffIso), safeLimit).map((row) => this.#decodeRunRow(row));
   }
 
   completeRunWithRewards(state, rewardsByPlayer, { threadDust = 15, worldProgressKey }) {
@@ -200,10 +213,7 @@ export class SQLiteGameRepository {
         throw error;
       }
 
-      if (nextState.ownerType === 'party') {
-        this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(nextState.ownerId);
-        this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(nextState.ownerId, nextState.ownerId);
-      }
+      if (nextState.ownerType === 'party') this.#resetPartyAfterRun(nextState.ownerId);
 
       this.db.exec('COMMIT');
       return { applied: true, state: nextState };
@@ -240,6 +250,11 @@ export class SQLiteGameRepository {
       playerId, threadedUserId, idempotencyKey, threadedTransactionId, itemInstanceId,
     );
     return { grant: this.getPurchaseGrant(playerId, idempotencyKey), created: result.changes === 1 };
+  }
+
+  #resetPartyAfterRun(partyId) {
+    this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(partyId);
+    this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(partyId, partyId);
   }
 
   #insertItem(playerId, item, ignoreExisting) {
@@ -328,6 +343,7 @@ export class SQLiteGameRepository {
         PRIMARY KEY (run_id, player_id)
       );
       CREATE INDEX IF NOT EXISTS idx_run_participants_player ON dungeon_run_participants(player_id);
+      CREATE INDEX IF NOT EXISTS idx_dungeon_runs_phase_updated ON dungeon_runs(phase, updated_at);
       CREATE TABLE IF NOT EXISTS player_achievements (
         player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
         achievement_id TEXT NOT NULL,
