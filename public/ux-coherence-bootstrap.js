@@ -40,9 +40,13 @@ if (stream) {
     sourceObserver.observe(suggestions, { childList:true, subtree:true, attributes:true, attributeFilter:['data-testid','class'] });
 
     // Keep the established semantic contract: yellow (#ffe45c) means projected damage.
-    // The new dark backing/border supplies the improved contrast without changing meaning.
+    // The dark backing/border supplies the improved contrast without changing meaning.
+    // Navigation remains a separate visual surface while preserving 44px touch targets.
     const style = document.createElement('style');
-    style.textContent = '#stream .stream-health-preview-copy { color:#ffe45c !important; }';
+    style.textContent = `
+      #stream .stream-health-preview-copy { color:#ffe45c !important; }
+      #stream .stream-meta-actions-row button { min-height:44px !important; }
+    `;
     document.head.append(style);
 
     window.addEventListener('beforeunload', () => sourceObserver.disconnect(), { once:true });
