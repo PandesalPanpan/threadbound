@@ -5,6 +5,8 @@ const power = (definition) => Object.freeze({
   category: 'TECHNIQUE',
   accent: 'special',
   ...definition,
+  archetypes: Object.freeze([...(definition.archetypes || [])]),
+  mechanics: Object.freeze({ ...(definition.mechanics || {}) }),
   effectSummary: Object.freeze([...(definition.effectSummary || [])]),
 });
 
@@ -12,8 +14,9 @@ const power = (definition) => Object.freeze({
  * Constrained temporary-run power vocabulary.
  *
  * Like generated item effects, run powers are data, not executable content. AdventureRun
- * is the aggregate boundary that applies these whitelisted effects. This lets the offer
- * pool grow without allowing generated manifests or browser code to invent mechanics.
+ * stores only selected power IDs; RunBuildPolicy derives the whitelisted mechanics and
+ * DungeonRun applies them inside the Domain Model. Generated manifests and browser code
+ * can therefore reference vocabulary, but cannot inject executable combat behavior.
  */
 export const RUN_UPGRADES = Object.freeze({
   sharpen: power({
@@ -22,8 +25,10 @@ export const RUN_UPGRADES = Object.freeze({
     category: 'OFFENSE',
     accent: 'damage',
     attackBonus: 3,
-    description: '+3 Attack for the rest of this run.',
-    effectSummary: ['+3 Attack'],
+    archetypes: ['pressure', 'expose'],
+    mechanics: { exposedDamageBonus: 2 },
+    description: '+3 Attack. Hits against Exposed targets gain +2 additional damage.',
+    effectSummary: ['+3 Attack', 'Exposed → +2 damage'],
   }),
   'needle-rush': power({
     id: 'needle-rush',
@@ -31,8 +36,10 @@ export const RUN_UPGRADES = Object.freeze({
     category: 'OFFENSE',
     accent: 'damage',
     attackBonus: 4,
-    description: 'Commit to raw pressure: +4 Attack for the rest of this run.',
-    effectSummary: ['+4 Attack'],
+    archetypes: ['pressure', 'expose'],
+    mechanics: { exposedCritChanceBonus: 0.2 },
+    description: '+4 Attack. Exposed targets grant +20% additional critical-strike chance.',
+    effectSummary: ['+4 Attack', 'Exposed → +20% crit'],
   }),
   'tempered-edge': power({
     id: 'tempered-edge',
@@ -41,8 +48,10 @@ export const RUN_UPGRADES = Object.freeze({
     accent: 'damage',
     attackBonus: 2,
     heal: 5,
-    description: 'Gain +2 Attack and restore 5 HP to every living Weaver.',
-    effectSummary: ['+2 Attack', '+5 HP now'],
+    archetypes: ['focus', 'pressure'],
+    mechanics: { skillFocusRefund: 1 },
+    description: 'Gain +2 Attack, restore 5 HP, and refund 1 Focus after a damage skill connects.',
+    effectSummary: ['+2 Attack', '+5 HP now', 'Damage skill → refund 1 Focus'],
   }),
   reinforce: power({
     id: 'reinforce',
@@ -50,6 +59,7 @@ export const RUN_UPGRADES = Object.freeze({
     category: 'SUSTAIN',
     accent: 'heal',
     heal: 12,
+    archetypes: ['sustain'],
     description: 'Restore 12 HP to every living Weaver.',
     effectSummary: ['+12 HP now'],
   }),
@@ -60,6 +70,7 @@ export const RUN_UPGRADES = Object.freeze({
     accent: 'heal',
     attackBonus: 1,
     heal: 9,
+    archetypes: ['sustain', 'pressure'],
     description: 'Restore 9 HP to every living Weaver and gain +1 Attack.',
     effectSummary: ['+9 HP now', '+1 Attack'],
   }),
@@ -70,8 +81,10 @@ export const RUN_UPGRADES = Object.freeze({
     accent: 'heal',
     heal: 8,
     reactionStyle: 'guard',
-    description: 'Restore 8 HP. Successful Guards prime +3 damage on your next strike.',
-    effectSummary: ['+8 HP now', 'Guard → +3 next damage'],
+    archetypes: ['guard', 'sustain'],
+    mechanics: { guardFocusBonus: 1 },
+    description: 'Restore 8 HP. Successful Guards prime a counter and generate +1 extra Focus.',
+    effectSummary: ['+8 HP now', 'Guard → counter', 'Guard → +1 extra Focus'],
   }),
   riposte: power({
     id: 'riposte',
@@ -80,8 +93,10 @@ export const RUN_UPGRADES = Object.freeze({
     accent: 'guard',
     heal: 4,
     reactionStyle: 'guard',
-    description: 'Restore 4 HP. Successful Guards prime +3 damage on your next strike.',
-    effectSummary: ['+4 HP now', 'Guard → +3 next damage'],
+    archetypes: ['guard'],
+    mechanics: { guardCounterBonus: 2 },
+    description: 'Restore 4 HP. Successful Guards add +2 extra damage on top of the primed riposte.',
+    effectSummary: ['+4 HP now', 'Guard → +2 extra counter damage'],
   }),
   disrupt: power({
     id: 'disrupt',
@@ -90,8 +105,10 @@ export const RUN_UPGRADES = Object.freeze({
     accent: 'special',
     heal: 4,
     reactionStyle: 'interrupt',
-    description: 'Restore 4 HP. Successful Interrupts prime +4 damage on your next strike.',
-    effectSummary: ['+4 HP now', 'Interrupt → +4 next damage'],
+    archetypes: ['control', 'focus'],
+    mechanics: { interruptFocusBonus: 1 },
+    description: 'Restore 4 HP. Successful Interrupts prime a counter and generate +1 extra Focus.',
+    effectSummary: ['+4 HP now', 'Interrupt → counter', 'Interrupt → +1 extra Focus'],
   }),
   'warping-riposte': power({
     id: 'warping-riposte',
@@ -101,8 +118,10 @@ export const RUN_UPGRADES = Object.freeze({
     attackBonus: 2,
     heal: 2,
     reactionStyle: 'guard',
-    description: 'Gain +2 Attack, restore 2 HP, and turn successful Guards into +3 next damage.',
-    effectSummary: ['+2 Attack', '+2 HP now', 'Guard → +3 next damage'],
+    archetypes: ['guard', 'pressure'],
+    mechanics: { guardCounterBonus: 3, guardFocusBonus: 1 },
+    description: 'Gain +2 Attack and 2 HP. Successful Guards add +3 extra counter damage and +1 extra Focus.',
+    effectSummary: ['+2 Attack', '+2 HP now', 'Guard → +3 extra counter', 'Guard → +1 extra Focus'],
   }),
   'breaker-knot': power({
     id: 'breaker-knot',
@@ -112,8 +131,10 @@ export const RUN_UPGRADES = Object.freeze({
     attackBonus: 2,
     heal: 2,
     reactionStyle: 'interrupt',
-    description: 'Gain +2 Attack, restore 2 HP, and turn successful Interrupts into +4 next damage.',
-    effectSummary: ['+2 Attack', '+2 HP now', 'Interrupt → +4 next damage'],
+    archetypes: ['control', 'pressure'],
+    mechanics: { interruptCounterBonus: 3, interruptFocusBonus: 1 },
+    description: 'Gain +2 Attack and 2 HP. Successful Interrupts add +3 extra counter damage and +1 extra Focus.',
+    effectSummary: ['+2 Attack', '+2 HP now', 'Interrupt → +3 extra counter', 'Interrupt → +1 extra Focus'],
   }),
 });
 
