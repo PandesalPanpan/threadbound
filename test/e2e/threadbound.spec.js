@@ -217,6 +217,10 @@ test('Threaded login -> discrete dungeon thread -> mid-run discovery -> generate
 });
 
 test('two browser sessions share one discovery choice and complete one scaled dungeon through the thread', async ({ browser }) => {
+  // This is an intentionally long, real two-browser completion journey. Keep its local
+  // action/poll assertions strict, but do not let Playwright's 30s default kill a successful
+  // revive or protection action near the end of the boss fight.
+  test.setTimeout(90000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
