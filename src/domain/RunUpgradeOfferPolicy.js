@@ -66,20 +66,23 @@ export function offeredRunUpgradeIds(runState, upgrades) {
     : [];
   if (snapshotted.length) return snapshotted.slice(0, RUN_UPGRADE_OFFER_SIZE);
 
-  // Sharpen is the baseline offensive option so a player is never forced into an
-  // all-defensive draft. The remaining two slots vary deterministically by run id.
-  const guaranteed = catalog.find((upgrade) => upgrade.id === 'sharpen') || catalog[0];
+  // Always give the player one clean offense card and one clean sustain card. The final
+  // slot is a run-specific reaction technique, so the draft varies without ever becoming
+  // an all-defensive or all-technical dead offer.
+  const guaranteedIds = ['sharpen', 'reinforce']
+    .filter((id) => validIds.has(id));
+  if (!guaranteedIds.length && catalog[0]) guaranteedIds.push(catalog[0].id);
   const version = Number(runState.runUpgradeOfferVersion || RUN_UPGRADE_OFFER_VERSION);
   const remaining = catalog
-    .filter((upgrade) => upgrade.id !== guaranteed.id)
+    .filter((upgrade) => !guaranteedIds.includes(upgrade.id))
     .map((upgrade) => ({
       upgrade,
       score: stableHash(`${runState.id}:${version}:${upgrade.id}`),
     }))
     .sort((left, right) => left.score - right.score || left.upgrade.id.localeCompare(right.upgrade.id))
-    .slice(0, Math.max(0, RUN_UPGRADE_OFFER_SIZE - 1))
+    .slice(0, Math.max(0, RUN_UPGRADE_OFFER_SIZE - guaranteedIds.length))
     .map(({ upgrade }) => upgrade.id);
-  return [guaranteed.id, ...remaining];
+  return [...guaranteedIds, ...remaining].slice(0, RUN_UPGRADE_OFFER_SIZE);
 }
 
 export function decorateRunUpgradeOffers(runState, upgrades) {
