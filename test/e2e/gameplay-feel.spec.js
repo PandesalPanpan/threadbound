@@ -31,11 +31,16 @@ async function attackUntilPhaseChanges(page, context, phase, maxActions = 24) {
   throw new Error(`Run did not leave ${phase} after ${maxActions} attacks.`);
 }
 
-test('gameplay feel pass previews outcomes, condenses live receipts, pages history, and presents stable power cards', async ({ page, context }) => {
-  test.setTimeout(90000);
+async function offeredCards(page) {
+  const cards = page.getByTestId('stream-suggestions').locator('button.run-power-card:not([hidden])');
+  await expect(cards).toHaveCount(3);
+  return cards;
+}
+
+test('gameplay feel pass previews outcomes, uses semantic colors, condenses receipts, pages history, and builds through repeated drafts', async ({ page, context }) => {
+  test.setTimeout(100000);
   await loginWithThreaded(page);
 
-  // Build enough durable chat history to prove the first paint stays bounded.
   for (let index = 1; index <= 42; index += 1) {
     const response = await context.request.post('/api/stream/messages', { data: { body: `history message ${index}` } });
     expect(response.ok()).toBe(true);
@@ -54,8 +59,6 @@ test('gameplay feel pass previews outcomes, condenses live receipts, pages histo
 
   await page.getByTestId('stream-start-dungeon').click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
-  await expect(page.getByTestId('stream-attack')).toBeVisible();
-
   const previewState = await dashboard(context, true);
   const expectedDamage = previewState.actionPreviews.actions.attack.damage;
   expect(expectedDamage).toBeGreaterThan(0);
@@ -66,7 +69,16 @@ test('gameplay feel pass previews outcomes, condenses live receipts, pages histo
   await expect(page.getByTestId('enemy-damage-preview-copy')).toContainText(`${previewState.actionPreviews.actions.attack.enemyHpBefore} → ${previewState.actionPreviews.actions.attack.enemyHpAfter} HP`);
 
   await actAndWait(page, context, 'stream-attack');
+  const attackReceipt = page.locator('.stream-entry-rich.stream-action-attack').last();
+  await expect(attackReceipt.locator('.combat-metric.damage')).toHaveText(String(expectedDamage));
+  await expect(attackReceipt.locator('.stream-result-chip.damage-out')).toContainText(`−${expectedDamage}`);
+  const forecastColor = await page.getByTestId('enemy-damage-preview-copy').evaluate((element) => getComputedStyle(element).color).catch(() => null);
+  const confirmedColor = await attackReceipt.locator('.combat-metric.damage').evaluate((element) => getComputedStyle(element).color);
+  if (forecastColor) expect(confirmedColor).not.toBe(forecastColor);
+
   await actAndWait(page, context, 'stream-guard');
+  const guardReceipt = page.locator('.stream-entry-rich.stream-action-guard').last();
+  await expect(guardReceipt.locator('.stream-result-chip.damage-in')).toBeVisible();
   await expect.poll(async () => page.locator('[data-live-combat-receipt="true"]').count(), { timeout: 5000 }).toBeGreaterThan(0);
   const liveReceipt = page.locator('[data-live-combat-receipt="true"]').last();
   await expect(liveReceipt).toHaveAttribute('data-coalesced-count', '2');
@@ -82,25 +94,43 @@ test('gameplay feel pass previews outcomes, condenses live receipts, pages histo
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
   state = await attackUntilPhaseChanges(page, context, 'combat');
   expect(state.activeRun.phase).toBe('upgrade');
+  expect(state.activeRun.runUpgradeResume).toBeTruthy();
 
-  const cards = page.getByTestId('stream-suggestions').locator('button.run-power-card');
-  await expect(cards).toHaveCount(3);
-  await expect(page.getByTestId('upgrade-description-sharpen')).toContainText(/Attack/i);
-  const offeredBeforeReload = await cards.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')));
-  expect(offeredBeforeReload).toContain('Sharpen the Thread');
-  expect(new Set(offeredBeforeReload).size).toBe(3);
+  let cards = await offeredCards(page);
+  const categories = await cards.locator('.run-power-category').allTextContents();
+  expect(categories.some((text) => text.includes('OFFENSE'))).toBe(true);
+  expect(categories.some((text) => text.includes('SUSTAIN'))).toBe(true);
+  expect(categories.some((text) => text.includes('TECHNIQUE'))).toBe(true);
+  await expect(cards.locator('.run-power-description').first()).not.toBeEmpty();
+  await expect.poll(async () => cards.evaluateAll((buttons) => buttons.every((button) => Boolean(button.dataset.powerTone))), { timeout: 5000 }).toBe(true);
+  const firstOffer = (await dashboard(context)).runUpgrades.map((upgrade) => upgrade.id);
+  expect(firstOffer).toHaveLength(3);
 
-  const allUpgradeIds = ['sharpen', 'reinforce', 'riposte', 'disrupt'];
-  const offeredIds = (await dashboard(context)).runUpgrades.map((upgrade) => upgrade.id);
-  const omittedId = allUpgradeIds.find((id) => !offeredIds.includes(id));
+  const allUpgradeIds = ['sharpen', 'needle-rush', 'tempered-edge', 'reinforce', 'deep-bind', 'silk-ward', 'riposte', 'disrupt', 'warping-riposte', 'breaker-knot'];
+  const omittedId = allUpgradeIds.find((id) => !firstOffer.includes(id));
   expect(omittedId).toBeTruthy();
   const rejected = await context.request.post(`/api/runs/${state.activeRun.id}/upgrade`, { data: { upgradeId: omittedId } });
   expect(rejected.status()).toBe(409);
 
+  const offeredBeforeReload = await cards.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')));
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  const cardsAfterReload = page.getByTestId('stream-suggestions').locator('button.run-power-card');
-  await expect(cardsAfterReload).toHaveCount(3);
-  const offeredAfterReload = await cardsAfterReload.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')));
-  expect(offeredAfterReload).toEqual(offeredBeforeReload);
+  cards = await offeredCards(page);
+  expect(await cards.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')))).toEqual(offeredBeforeReload);
+
+  await cards.first().click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+  await expect.poll(async () => (await dashboard(context)).activeRun?.selectedUpgrades?.length || 0, { timeout: 5000 }).toBe(1);
+
+  state = await attackUntilPhaseChanges(page, context, 'combat');
+  expect(state.activeRun.phase).toBe('upgrade');
+  expect(state.activeRun.runUpgradeResume).toBeNull();
+  cards = await offeredCards(page);
+  const secondOffer = (await dashboard(context)).runUpgrades.map((upgrade) => upgrade.id);
+  expect(secondOffer).toHaveLength(3);
+  expect(secondOffer).not.toEqual(firstOffer);
+
+  await cards.first().click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
+  await expect.poll(async () => (await dashboard(context)).activeRun?.selectedUpgrades?.length || 0, { timeout: 5000 }).toBe(2);
 });
