@@ -1,28 +1,5 @@
-export const RUN_UPGRADE_OFFER_VERSION = 1;
+export const RUN_UPGRADE_OFFER_VERSION = 2;
 export const RUN_UPGRADE_OFFER_SIZE = 3;
-
-const PRESENTATION = Object.freeze({
-  sharpen: Object.freeze({
-    category: 'OFFENSE',
-    description: '+3 Attack for the rest of this run.',
-    accent: 'damage',
-  }),
-  reinforce: Object.freeze({
-    category: 'SUSTAIN',
-    description: 'Restore 12 HP to every living Weaver before the boss.',
-    accent: 'heal',
-  }),
-  riposte: Object.freeze({
-    category: 'REACTION',
-    description: 'Restore 4 HP. Successful Guards prime +3 damage on your next strike.',
-    accent: 'guard',
-  }),
-  disrupt: Object.freeze({
-    category: 'REACTION',
-    description: 'Restore 4 HP. Successful Interrupts prime +4 damage on your next strike.',
-    accent: 'special',
-  }),
-});
 
 function stableHash(value) {
   let hash = 2166136261;
@@ -41,19 +18,28 @@ function normalizeCatalog(upgrades) {
 
 export function enrichRunUpgrade(upgrade) {
   if (!upgrade) return null;
-  const presentation = PRESENTATION[upgrade.id] || {};
-  const effectParts = [];
-  if (Number(upgrade.attackBonus || 0) > 0) effectParts.push(`+${upgrade.attackBonus} Attack`);
-  if (Number(upgrade.heal || 0) > 0) effectParts.push(`+${upgrade.heal} HP`);
-  if (upgrade.reactionStyle === 'guard') effectParts.push('Guard → +3 next damage');
-  if (upgrade.reactionStyle === 'interrupt') effectParts.push('Interrupt → +4 next damage');
+  const effectParts = Array.isArray(upgrade.effectSummary) ? [...upgrade.effectSummary] : [];
+  if (!effectParts.length) {
+    if (Number(upgrade.attackBonus || 0) > 0) effectParts.push(`+${upgrade.attackBonus} Attack`);
+    if (Number(upgrade.heal || 0) > 0) effectParts.push(`+${upgrade.heal} HP now`);
+    if (upgrade.reactionStyle === 'guard') effectParts.push('Guard → +3 next damage');
+    if (upgrade.reactionStyle === 'interrupt') effectParts.push('Interrupt → +4 next damage');
+  }
   return {
     ...upgrade,
-    category: presentation.category || 'POWER',
-    description: presentation.description || effectParts.join(' · ') || 'Temporary run power.',
-    accent: presentation.accent || 'special',
+    category: upgrade.category || 'TECHNIQUE',
+    description: upgrade.description || effectParts.join(' · ') || 'Temporary run power.',
+    accent: upgrade.accent || 'special',
     effectSummary: effectParts,
   };
+}
+
+function deterministicPick(items, seed) {
+  if (!items.length) return null;
+  const ranked = items
+    .map((item) => ({ item, score: stableHash(`${seed}:${item.id}`) }))
+    .sort((left, right) => left.score - right.score || left.item.id.localeCompare(right.item.id));
+  return ranked[0]?.item || null;
 }
 
 export function offeredRunUpgradeIds(runState, upgrades) {
@@ -66,23 +52,31 @@ export function offeredRunUpgradeIds(runState, upgrades) {
     : [];
   if (snapshotted.length) return snapshotted.slice(0, RUN_UPGRADE_OFFER_SIZE);
 
-  // Always give the player one clean offense card and one clean sustain card. The final
-  // slot is a run-specific reaction technique, so the draft varies without ever becoming
-  // an all-defensive or all-technical dead offer.
-  const guaranteedIds = ['sharpen', 'reinforce']
-    .filter((id) => validIds.has(id));
-  if (!guaranteedIds.length && catalog[0]) guaranteedIds.push(catalog[0].id);
   const version = Number(runState.runUpgradeOfferVersion || RUN_UPGRADE_OFFER_VERSION);
-  const remaining = catalog
-    .filter((upgrade) => !guaranteedIds.includes(upgrade.id))
-    .map((upgrade) => ({
-      upgrade,
-      score: stableHash(`${runState.id}:${version}:${upgrade.id}`),
-    }))
-    .sort((left, right) => left.score - right.score || left.upgrade.id.localeCompare(right.upgrade.id))
-    .slice(0, Math.max(0, RUN_UPGRADE_OFFER_SIZE - guaranteedIds.length))
-    .map(({ upgrade }) => upgrade.id);
-  return [...guaranteedIds, ...remaining].slice(0, RUN_UPGRADE_OFFER_SIZE);
+  const draftIndex = Number(runState.runUpgradeDraftIndex || 0);
+  const seed = `${runState.id}:${version}:draft-${draftIndex}`;
+  const categories = ['OFFENSE', 'SUSTAIN', 'TECHNIQUE'];
+  const chosen = [];
+
+  // One card from each role makes every draft readable at a glance while the actual card
+  // in that role varies per run and per draft. This avoids both dead all-defense offers and
+  // a static tutorial menu that stops feeling roguelite after one clear.
+  for (const category of categories) {
+    const candidate = deterministicPick(catalog.filter((upgrade) => String(upgrade.category || '').toUpperCase() === category), `${seed}:${category}`);
+    if (candidate && !chosen.some((upgrade) => upgrade.id === candidate.id)) chosen.push(candidate);
+  }
+
+  if (chosen.length < RUN_UPGRADE_OFFER_SIZE) {
+    const remaining = catalog
+      .filter((upgrade) => !chosen.some((candidate) => candidate.id === upgrade.id))
+      .map((upgrade) => ({ upgrade, score: stableHash(`${seed}:fallback:${upgrade.id}`) }))
+      .sort((left, right) => left.score - right.score || left.upgrade.id.localeCompare(right.upgrade.id));
+    for (const { upgrade } of remaining) {
+      chosen.push(upgrade);
+      if (chosen.length >= RUN_UPGRADE_OFFER_SIZE) break;
+    }
+  }
+  return chosen.slice(0, RUN_UPGRADE_OFFER_SIZE).map((upgrade) => upgrade.id);
 }
 
 export function decorateRunUpgradeOffers(runState, upgrades) {
