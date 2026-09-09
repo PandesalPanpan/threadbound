@@ -22,7 +22,7 @@ if (stream) {
   }
 
   function stripHiddenSourceTestIds(suggestions) {
-    for (const source of suggestions.querySelectorAll('.ux-meta-source[data-testid]')) {
+    for (const source of suggestions.querySelectorAll('.ux-meta-source[data-testid], button[data-meta-command][data-testid]')) {
       const testId = source.getAttribute('data-testid');
       if (testId && !source.dataset.uxOriginalTestid) source.dataset.uxOriginalTestid = testId;
       source.removeAttribute('data-testid');
@@ -33,16 +33,15 @@ if (stream) {
   if (suggestions) {
     await import('./ux-coherence.js');
     await import('./buildcraft-presentation.js');
+    await import('./thread-first-ui.js');
 
-    // Meta command buttons keep their original event handlers as hidden Presentation Model
-    // sources while visible mirrors live in Navigation. Never expose duplicate test IDs.
+    // Hidden command sources retain their event handlers while the visible, viewer-specific
+    // controls live inside the private chat card. Never expose duplicate test IDs.
     stripHiddenSourceTestIds(suggestions);
     const sourceObserver = new MutationObserver(() => stripHiddenSourceTestIds(suggestions));
     sourceObserver.observe(suggestions, { childList:true, subtree:true, attributes:true, attributeFilter:['data-testid','class'] });
 
-    // Keep the established semantic contract: yellow (#ffe45c) means projected damage.
-    // The dark backing/border supplies the improved contrast without changing meaning.
-    // Navigation remains a separate visual surface while preserving 44px touch targets.
+    // Yellow remains the semantic forecast color; the dark backing carries the contrast.
     const style = document.createElement('style');
     style.textContent = `
       #stream .stream-health-preview-copy { color:#ffe45c !important; }
