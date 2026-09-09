@@ -32,21 +32,35 @@ async function dashboard(context) {
   return response.json();
 }
 
+async function clickAttackAndWait(page, context) {
+  const state = await dashboard(context);
+  const attack = page.getByTestId('stream-attack');
+  await expect(attack).toBeVisible();
+  await attack.click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    if (!after.activeRun) return true;
+    if (after.activeRun.id !== state.activeRun.id) return true;
+    return after.activeRun.version > state.activeRun.version;
+  }, { timeout:5000 }).toBe(true);
+}
+
 async function attackUntilPhaseChanges(page, context, expectedPhase, maxActions = 24) {
   for (let index = 0; index < maxActions; index += 1) {
     const state = await dashboard(context);
     if (state.activeRun?.phase !== expectedPhase) return state;
-    const attack = page.getByTestId('stream-attack');
-    await expect(attack).toBeVisible();
-    await attack.click();
-    await expect.poll(async () => {
-      const after = await dashboard(context);
-      if (!after.activeRun) return true;
-      if (after.activeRun.id !== state.activeRun.id) return true;
-      return after.activeRun.version > state.activeRun.version;
-    }, { timeout: 5000 }).toBe(true);
+    await clickAttackAndWait(page, context);
   }
   throw new Error(`Run stayed in ${expectedPhase} after ${maxActions} explicit attacks.`);
+}
+
+async function attackUntilEncounterChanges(page, context, encounterIndex, maxActions = 12) {
+  for (let index = 0; index < maxActions; index += 1) {
+    const state = await dashboard(context);
+    if (!state.activeRun || state.activeRun.encounterIndex !== encounterIndex || state.activeRun.phase !== 'combat') return state;
+    await clickAttackAndWait(page, context);
+  }
+  throw new Error(`Encounter ${encounterIndex} did not resolve after ${maxActions} explicit attacks.`);
 }
 
 async function choosePower(page, context, shotName) {
@@ -128,7 +142,7 @@ test('first run stays chat-simple: baseline attack, contextual reactions, one di
   expect(afterIdle.activeRun.enemy.hp).toBe(enemyHpBeforeIdle);
   expect(afterIdle.activeRun.version).toBe(versionBeforeIdle);
 
-  await page.getByTestId('stream-attack').click();
+  await clickAttackAndWait(page, context);
   const firstResult = page.getByTestId('stream-system-entry').filter({ hasText: /attacked Frayed Wisp/i }).last();
   await expect(firstResult).toBeVisible();
   await expect(firstResult).toContainText(/Frayed Wisp \d+\/12/);
@@ -139,16 +153,16 @@ test('first run stays chat-simple: baseline attack, contextual reactions, one di
   // the primary decision surface because it is not the answer to this telegraph.
   await expect(page.getByTestId('stream-interrupt')).toBeVisible({ timeout: 5000 });
   await expect(page.getByTestId('stream-guard')).toBeHidden();
+  const beforeInterrupt = await dashboard(context);
   await page.getByTestId('stream-interrupt').click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout:5000 }).toBeGreaterThan(beforeInterrupt.activeRun.version);
   await expect(page.getByTestId('stream-system-entry').filter({ hasText: /interrupt/i }).last()).toBeVisible();
 
   // Encounter one flows straight into encounter two: there is no between-fight power draft.
-  await expect.poll(async () => {
-    const state = await dashboard(context);
-    return state.activeRun?.encounterIndex;
-  }, { timeout: 10000 }).toBe(1);
+  await attackUntilEncounterChanges(page, context, 0);
   const secondEncounter = await dashboard(context);
   expect(secondEncounter.activeRun.phase).toBe('combat');
+  expect(secondEncounter.activeRun.encounterIndex).toBe(1);
   expect(secondEncounter.activeRun.runUpgradeResume).toBeNull();
   expect(secondEncounter.activeRun.selectedUpgrades).toHaveLength(0);
 
