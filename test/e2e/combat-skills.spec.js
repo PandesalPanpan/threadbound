@@ -130,6 +130,32 @@ async function resolveRunEventIfPresent(leader, leaderContext, partner = null) {
   return choice.id;
 }
 
+async function chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack = false } = {}) {
+  const state = await dashboard(leaderContext);
+  expect(state.activeRun?.phase).toBe('upgrade');
+  expect(state.runUpgrades).toHaveLength(3);
+  const candidates = [...state.runUpgrades];
+  if (preferMinimalAttack) {
+    candidates.sort((left, right) => Number(left.attackBonus || 0) - Number(right.attackBonus || 0)
+      || Number(right.heal || 0) - Number(left.heal || 0)
+      || String(left.id).localeCompare(String(right.id)));
+  }
+  const chosen = candidates[0];
+  expect(chosen?.id).toBeTruthy();
+  const expectedPhase = state.activeRun.runUpgradeResume ? 'combat' : 'boss';
+  const beforeVersion = state.activeRun.version;
+
+  await leader.reload();
+  const button = leader.getByTestId('stream-suggestions').getByRole('button', { name: chosen.name });
+  await expect(button).toBeVisible({ timeout: 7000 });
+  await button.click();
+  await expect.poll(async () => {
+    const after = await dashboard(leaderContext);
+    return after.activeRun?.phase === expectedPhase && after.activeRun.version > beforeVersion;
+  }, { timeout: 7000 }).toBe(true);
+  return chosen;
+}
+
 test('Focus, cooldowns, reconnect persistence, cross-player combos, and party healing are playable from the thread', async ({ browser }) => {
   test.setTimeout(90000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -164,6 +190,15 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await reactToIntent(partner, partnerContext);
     await action(partner, partnerContext, 'stream-attack');
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.encounterIndex, { timeout: 7000 }).toBe(1);
+
+    // Encounter one now pays out a build draft. Choose the lowest-attack offered card so
+    // this skill-specific fixture preserves its damage pacing while proving Focus survives
+    // the aggregate's draft/reload boundary.
+    const firstDraft = await dashboard(leaderContext);
+    expect(firstDraft.activeRun.phase).toBe('upgrade');
+    expect(firstDraft.activeRun.runUpgradeResume).toBeTruthy();
+    await chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack: true });
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('combat');
 
     // Weaver A creates Exposed, then refreshes: status + cooldown must survive reconstruction.
     await leader.reload();
@@ -209,8 +244,9 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await finishCurrentCombatPhase(partner, partnerContext);
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('upgrade');
 
-    await leader.reload();
-    await leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
+    const finalDraft = await dashboard(leaderContext);
+    expect(finalDraft.activeRun.runUpgradeResume).toBeNull();
+    await chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack: true });
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('boss');
 
     // Deliberately wound both Weavers, then turn Focus into a party-wide recovery.
