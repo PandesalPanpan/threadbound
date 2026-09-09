@@ -102,21 +102,22 @@ async function chooseDiscovery(page, context) {
   return safeChoice;
 }
 
-test('first run explains responsive combat, build drafts, discovery, boss, and permanent reward', async ({ page, context }) => {
+test('first run explains responsive combat, build drafts, discovery, boss, and permanent reward entirely through the thread', async ({ page, context }) => {
   test.setTimeout(80000);
   await loginWithThreaded(page);
 
   await expect(page.getByTestId('first-run-guide')).toContainText('Each attack is a deliberate turn');
+  await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout: 5000 });
   await expect(page.getByTestId('stream-start-dungeon')).toContainText('Frayed Hollow');
-  await expect(page.locator('.stream-hint')).toContainText('result of every action');
+  await expect(page.locator('.stream-hint')).toContainText('Shared receipts stay in this thread');
   await reviewShot(page, '01-first-run');
 
   await page.getByTestId('stream-start-dungeon').click();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   await expect(page.getByTestId('combat-coach')).toContainText('Nothing attacks automatically');
-  await expect(page.getByTestId('stream-combat-dock')).toBeHidden();
   await expect(page.getByTestId('stream-attack')).toBeVisible();
   await expect(page.getByTestId('stream-guard')).toBeVisible();
+  expect(await page.getByTestId('stream-attack').evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
 
   const beforeIdle = await dashboard(context);
   const enemyHpBeforeIdle = beforeIdle.activeRun.enemy.hp;
@@ -136,16 +137,13 @@ test('first run explains responsive combat, build drafts, discovery, boss, and p
   await page.getByTestId('stream-guard').click();
   await expect(page.getByTestId('stream-system-entry').filter({ hasText: /guarded/i }).last()).toBeVisible();
 
-  // First encounter pays out a real roguelite build choice rather than waiting until boss.
   await attackUntilPhaseChanges(page, context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
   await choosePower(page, context, '03-first-power-draft');
 
-  // The second encounter reaches the durable narrative discovery.
   await attackUntilPhaseChanges(page, context, 'combat');
   await chooseDiscovery(page, context);
 
-  // The third encounter pays out a second, rotated draft before the boss.
   await attackUntilPhaseChanges(page, context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
   const finalPower = await choosePower(page, context, '05-final-power-draft');
@@ -160,17 +158,24 @@ test('first run explains responsive combat, build drafts, discovery, boss, and p
   expect(new Set(built.activeRun.selectedUpgrades).size).toBe(2);
 
   await attackUntilPhaseChanges(page, context, 'boss');
-  await expect(page.getByTestId('reward-reveal')).toBeVisible();
-  const rewardName = await page.getByTestId('reward-name').textContent();
+  const completed = await dashboard(context);
+  expect(completed.activeRun).toBeNull();
+  expect(completed.inventory.length).toBeGreaterThan(0);
+  const rewardName = completed.inventory.at(-1).name;
   expect(rewardName).toBeTruthy();
-  await reviewShot(page, '06-reward-reveal', page.locator('#dungeon'));
+  const rewardReceipt = page.getByTestId('stream-system-entry').filter({ hasText: rewardName }).last();
+  await expect(rewardReceipt).toBeVisible({ timeout: 5000 });
+  await expect(rewardReceipt).toContainText(/found/i);
+  await reviewShot(page, '06-reward-in-thread', page.locator('#stream'));
 
   await page.getByTestId('stream-message').fill('/gear');
   await page.getByTestId('stream-send').click();
   const gearCard = page.getByTestId('stream-command-card');
   await expect(gearCard).toContainText(rewardName);
+  expect(await gearCard.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
+  await expect(gearCard.locator('.thread-gear-list')).toBeVisible();
   await expect(gearCard.locator('img[src="/sprites/relic.svg"]').first()).toBeVisible();
-  const attackBeforeEquip = (await dashboard(context)).character.attackPower;
+  const attackBeforeEquip = completed.character.attackPower;
   await gearCard.getByRole('button', { name: 'Equip' }).first().click();
   await expect(gearCard).toContainText('EQUIPPED');
   await expect.poll(async () => (await dashboard(context)).character.attackPower).toBeGreaterThan(attackBeforeEquip);
