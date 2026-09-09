@@ -142,7 +142,18 @@ test('players chat, inspect state, and exchange discrete game results in one rea
     await expect(second.getByTestId('stream-connection')).toHaveText('WebSocket live');
     await expect(second.getByTestId('stream-chat-entry').filter({ hasText: 'heal or attack?' })).toBeVisible();
     await expect(second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C entered Frayed Hollow/ })).toBeVisible();
-    const reloadedAttack = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ });
+
+    // Reload reconstruction preserves the append-only combat receipt, while the presentation
+    // model is allowed to hide older consecutive receipts inside the condensed exchange.
+    // Expand that exchange and prove the original rich attack card is still durable/readable.
+    const reloadedAttack = second.getByTestId('stream-system-entry').filter({ hasText: /Local Weaver C attacked Frayed Wisp/ }).last();
+    await expect(reloadedAttack).toBeAttached();
+    const condensedInto = await reloadedAttack.getAttribute('data-condensed-into');
+    if (condensedInto) {
+      const currentExchange = second.locator(`[data-entry-id="${condensedInto}"]`);
+      await expect(currentExchange.getByRole('button', { name: 'Show previous' })).toBeVisible({ timeout: 7000 });
+      await currentExchange.getByRole('button', { name: 'Show previous' }).click();
+    }
     await expect(reloadedAttack).toBeVisible();
     await expect(reloadedAttack.getByTestId('stream-combat-result-card')).toBeVisible({ timeout: 7000 });
   } finally {
