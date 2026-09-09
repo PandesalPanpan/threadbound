@@ -171,6 +171,27 @@ async function ensureViewerWounded(page, context, minimumMissingHp = 5) {
   throw new Error(`Could not wound Weaver by ${minimumMissingHp} HP without leaving combat.`);
 }
 
+async function ensureViewerFocus(page, context, minimumFocus = 3) {
+  for (let step = 0; step < 8; step += 1) {
+    const state = await dashboard(context);
+    const viewer = state.activeRun?.viewer;
+    if (!viewer || !['combat', 'boss'].includes(state.activeRun.phase)) throw new Error('Cannot build Focus outside combat.');
+    if (viewer.hp <= 0) throw new Error('Focus preparation downed the acting Weaver.');
+    if (viewer.focus >= minimumFocus) return viewer.focus;
+
+    await page.reload();
+    if (state.activeRun.enemyIntent) {
+      if (state.activeRun.enemyIntent.reaction === 'interrupt') await action(page, context, 'stream-interrupt');
+      else await action(page, context, 'stream-guard');
+    } else {
+      // A normal attack is the baseline Focus generator and keeps this acceptance journey
+      // on the same public thread surface as a real player.
+      await action(page, context, 'stream-attack');
+    }
+  }
+  throw new Error(`Could not build ${minimumFocus} Focus without leaving combat.`);
+}
+
 test('Focus, cooldowns, reconnect persistence, cross-player combos, and party healing are playable from the thread', async ({ browser }) => {
   test.setTimeout(90000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -266,9 +287,11 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
 
     // Draft healing can enter the boss with either Weaver close to full HP. Prepare a
     // deterministic party-heal fixture through real thread actions: both living Weavers
-    // must be missing at least one full Mending Chorus tick before the skill is used.
+    // must be missing at least one full Mending Chorus tick and the caster must have its
+    // three-Focus cost before the skill is used.
     await ensureViewerWounded(partner, partnerContext, 5);
     await ensureViewerWounded(leader, leaderContext, 5);
+    await ensureViewerFocus(leader, leaderContext, 3);
     const beforeChorus = await dashboard(leaderContext);
     const leaderBefore = beforeChorus.activeRun.participants.find((p) => p.playerId === beforeChorus.activeRun.viewer.playerId);
     const partnerBefore = beforeChorus.activeRun.participants.find((p) => p.playerId !== beforeChorus.activeRun.viewer.playerId);
