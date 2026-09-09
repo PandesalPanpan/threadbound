@@ -106,13 +106,41 @@ test('PX-42/43 Commuter: offline thread action cannot mutate confirmed run state
   expect(afterContinuedPlay.version).toBeGreaterThan(confirmedBeforeOffline.version);
 });
 
-test('PX-44 Interrupted Decision Maker: refresh preserves both discovery and upgrade choices', async ({ page, context }) => {
+test('PX-44 Interrupted Decision Maker: refresh preserves both power draft and discovery choices', async ({ page, context }) => {
   await loginWithThreaded(page);
   await startFromThread(page, context);
   await actUntilPhaseChanges(context, page, 'combat');
 
-  // First interruption: the new mid-run discovery is durable and reconstructs the exact
-  // same snapshotted event/choices after refresh rather than rerolling on the client.
+  // First interruption: a power draft is a server-snapshotted decision, not a browser reroll.
+  const draftDataBefore = await dashboard(context);
+  const draftSnapshotBefore = confirmedRunSnapshot(draftDataBefore);
+  expect(draftSnapshotBefore.phase).toBe('upgrade');
+  expect(draftDataBefore.runUpgrades).toHaveLength(3);
+  const offeredIdsBefore = draftDataBefore.runUpgrades.map((upgrade) => upgrade.id);
+  const offeredNamesBefore = draftDataBefore.runUpgrades.map((upgrade) => upgrade.name);
+  for (const name of offeredNamesBefore) {
+    await expect(page.getByTestId('stream-suggestions').getByRole('button', { name, exact: true })).toBeVisible();
+  }
+
+  await page.reload();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  const draftDataAfter = await dashboard(context);
+  expect(confirmedRunSnapshot(draftDataAfter)).toEqual(draftSnapshotBefore);
+  expect(draftDataAfter.runUpgrades.map((upgrade) => upgrade.id)).toEqual(offeredIdsBefore);
+  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
+  for (const name of offeredNamesBefore) {
+    await expect(page.getByTestId('stream-suggestions').getByRole('button', { name, exact: true })).toBeVisible();
+  }
+
+  const draftVersion = draftDataAfter.activeRun.version;
+  await page.getByTestId('stream-suggestions').getByRole('button', { name: offeredNamesBefore[0], exact: true }).click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.phase === 'combat' && after.activeRun.version > draftVersion;
+  }, { timeout: 5000 }).toBe(true);
+
+  // Second interruption: the narrative discovery remains equally durable.
+  await actUntilPhaseChanges(context, page, 'combat');
   const eventDataBefore = await dashboard(context);
   const eventSnapshotBefore = confirmedRunSnapshot(eventDataBefore);
   expect(eventSnapshotBefore.phase).toBe('event');
@@ -138,23 +166,6 @@ test('PX-44 Interrupted Decision Maker: refresh preserves both discovery and upg
     const after = await dashboard(context);
     return after.activeRun?.phase === 'combat' && after.activeRun.version > eventVersion;
   }, { timeout: 5000 }).toBe(true);
-
-  // Second interruption: the original between-encounters upgrade remains equally durable.
-  await actUntilPhaseChanges(context, page, 'combat');
-  const upgradeBeforeRefresh = confirmedRunSnapshot(await dashboard(context));
-  expect(upgradeBeforeRefresh.phase).toBe('upgrade');
-  await expect(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' })).toBeVisible();
-  await expect(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Reinforce the Weave' })).toBeVisible();
-
-  await page.reload();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  expect(confirmedRunSnapshot(await dashboard(context))).toEqual(upgradeBeforeRefresh);
-  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  await expect(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' })).toBeVisible();
-
-  await page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
-  await expect(page.getByTestId('run-state')).toContainText('Phase: boss');
 });
 
 test('PX-36/45 Flaky Co-op Partner: one player can disconnect, leader continues through thread, partner rejoins same shared run', async ({ browser }) => {
