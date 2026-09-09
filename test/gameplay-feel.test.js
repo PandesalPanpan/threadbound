@@ -3,11 +3,20 @@ import assert from 'node:assert/strict';
 import { EventBus } from '../src/application/EventBus.js';
 import { CombatPreviewService } from '../src/application/CombatPreviewService.js';
 import { GameService } from '../src/application/GameService.js';
-import { AdventureRun } from '../src/domain/AdventureRun.js';
-import { DungeonRun, RUN_UPGRADES } from '../src/domain/DungeonRun.js';
-import { decorateRunUpgradeOffers, offeredRunUpgradeIds } from '../src/domain/RunUpgradeOfferPolicy.js';
+import { AdventureRun, RUN_UPGRADES } from '../src/domain/AdventureRun.js';
+import { DungeonRun } from '../src/domain/DungeonRun.js';
+import { decorateRunUpgradeOffers, offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from '../src/domain/RunUpgradeOfferPolicy.js';
 import { SQLiteActivityStreamRepository } from '../src/infrastructure/SQLiteActivityStreamRepository.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
+
+function reactiveTurn(game, repository, runId, playerId) {
+  const state = repository.getRun(runId);
+  if (state.enemyIntent) {
+    if (state.enemyIntent.reaction === 'interrupt') return game.interrupt(playerId, runId);
+    return game.guard(playerId, runId);
+  }
+  return game.attack(playerId, runId);
+}
 
 test('combat preview simulates the authoritative aggregate without mutating the run', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-preview' });
@@ -33,18 +42,23 @@ test('combat preview simulates the authoritative aggregate without mutating the 
   repository.close();
 });
 
-test('run upgrade offer policy returns a stable three-card draft with readable effects', () => {
-  const run = { id: 'offer-run-a', phase: 'upgrade', runUpgradeOfferVersion: 1, runUpgradeOfferIds: [] };
+test('run power catalog produces stable role-balanced three-card drafts that change across draft index', () => {
   const catalog = Object.values(RUN_UPGRADES);
+  assert.ok(catalog.length >= 10, 'the run needs enough powers for actual draft variation');
+  const run = { id: 'offer-run-a', phase: 'upgrade', runUpgradeOfferVersion: RUN_UPGRADE_OFFER_VERSION, runUpgradeOfferIds: [], runUpgradeDraftIndex: 0 };
   const first = offeredRunUpgradeIds(run, catalog);
-  const second = offeredRunUpgradeIds(run, catalog);
-  assert.deepEqual(second, first);
+  const repeated = offeredRunUpgradeIds(run, catalog);
+  assert.deepEqual(repeated, first);
   assert.equal(first.length, 3);
-  assert.ok(first.includes('sharpen'));
 
   const cards = decorateRunUpgradeOffers(run, catalog);
   assert.equal(cards.length, 3);
-  assert.ok(cards.every((card) => card.description && card.category && card.effectSummary.length > 0));
+  assert.deepEqual(new Set(cards.map((card) => card.category)), new Set(['OFFENSE', 'SUSTAIN', 'TECHNIQUE']));
+  assert.ok(cards.every((card) => card.description && card.effectSummary.length > 0));
+
+  const later = offeredRunUpgradeIds({ ...run, runUpgradeDraftIndex: 1 }, catalog);
+  assert.equal(later.length, 3);
+  assert.notDeepEqual(later, first, 'a later build moment should not simply repeat the same draft');
 });
 
 test('AdventureRun aggregate rejects powers outside its snapshotted offer', () => {
@@ -59,13 +73,53 @@ test('AdventureRun aggregate rejects powers outside its snapshotted offer', () =
   const state = combat.toJSON();
   state.phase = 'upgrade';
   state.enemy = null;
-  state.runUpgradeOfferVersion = 1;
+  state.runUpgradeOfferVersion = RUN_UPGRADE_OFFER_VERSION;
   state.runUpgradeOfferIds = ['sharpen', 'reinforce', 'riposte'];
+  state.runUpgradeDraftIndex = 0;
   const run = new AdventureRun(state);
   assert.throws(() => run.chooseUpgrade('disrupt'), /offered powers/i);
   const chosen = run.chooseUpgrade('sharpen');
   assert.equal(chosen.state.phase, 'boss');
   assert.equal(chosen.state.selectedUpgrade, 'sharpen');
+  assert.deepEqual(chosen.state.selectedUpgrades, ['sharpen']);
+});
+
+test('a normal run pauses for a mid-run power draft and a second pre-boss draft', () => {
+  let sequence = 0;
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++sequence}` });
+  const game = new GameService({ repository, eventBus: new EventBus(), idFactory: () => 'multi-draft-run' });
+  const player = game.ensurePlayer({ id: 'threaded-multi-draft', name: 'Draft Weaver' });
+  const started = game.startDungeon(player.id, 'frayed-hollow');
+
+  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
+  let state = repository.getRun(started.id);
+  assert.equal(state.phase, 'event');
+  game.chooseUpgrade(player.id, started.id, state.runEvent.choices[0].id);
+
+  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
+  state = repository.getRun(started.id);
+  assert.equal(state.phase, 'upgrade');
+  assert.ok(state.runUpgradeResume?.enemy, 'first draft should pause before the next normal encounter');
+  const firstOffer = [...state.runUpgradeOfferIds];
+  assert.equal(firstOffer.length, 3);
+  game.chooseUpgrade(player.id, started.id, firstOffer[0]);
+  state = repository.getRun(started.id);
+  assert.equal(state.phase, 'combat');
+  assert.equal(state.runUpgradeDraftIndex, 1);
+  assert.equal(state.selectedUpgrades.length, 1);
+
+  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) reactiveTurn(game, repository, started.id, player.id);
+  state = repository.getRun(started.id);
+  assert.equal(state.phase, 'upgrade');
+  assert.equal(state.runUpgradeResume, null, 'final draft should lead into the boss');
+  const secondOffer = [...state.runUpgradeOfferIds];
+  assert.equal(secondOffer.length, 3);
+  assert.notDeepEqual(secondOffer, firstOffer);
+  game.chooseUpgrade(player.id, started.id, secondOffer[0]);
+  state = repository.getRun(started.id);
+  assert.equal(state.phase, 'boss');
+  assert.equal(state.selectedUpgrades.length, 2);
+  repository.close();
 });
 
 test('activity stream pages backward without loading the full retained timeline', () => {
