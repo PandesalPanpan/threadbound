@@ -101,6 +101,9 @@ test('manifest-owned run event is snapshotted into AdventureRun and resumes the 
     dungeonId: dungeon.id,
     dungeonDefinition: dungeon,
   });
+  // This test specifies generated event snapshot/replay only. Draft pacing is covered by
+  // gameplay-feel tests and is disabled here so it cannot obscure the event contract.
+  run.state.runPowerDraftsEnabled = false;
 
   run.attack({ playerId: 'weaver-a', attackPower: 50 });
   assert.equal(run.toJSON().encounterIndex, 1);

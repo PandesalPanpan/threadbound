@@ -130,6 +130,68 @@ async function resolveRunEventIfPresent(leader, leaderContext, partner = null) {
   return choice.id;
 }
 
+async function chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack = false } = {}) {
+  const state = await dashboard(leaderContext);
+  expect(state.activeRun?.phase).toBe('upgrade');
+  expect(state.runUpgrades).toHaveLength(3);
+  const candidates = [...state.runUpgrades];
+  if (preferMinimalAttack) {
+    candidates.sort((left, right) => Number(left.attackBonus || 0) - Number(right.attackBonus || 0)
+      || Number(right.heal || 0) - Number(left.heal || 0)
+      || String(left.id).localeCompare(String(right.id)));
+  }
+  const chosen = candidates[0];
+  expect(chosen?.id).toBeTruthy();
+  const expectedPhase = state.activeRun.runUpgradeResume ? 'combat' : 'boss';
+  const beforeVersion = state.activeRun.version;
+
+  await leader.reload();
+  const button = leader.getByTestId('stream-suggestions').getByRole('button', { name: chosen.name });
+  await expect(button).toBeVisible({ timeout: 7000 });
+  await button.click();
+  await expect.poll(async () => {
+    const after = await dashboard(leaderContext);
+    return after.activeRun?.phase === expectedPhase && after.activeRun.version > beforeVersion;
+  }, { timeout: 7000 }).toBe(true);
+  return chosen;
+}
+
+async function ensureViewerWounded(page, context, minimumMissingHp = 5) {
+  for (let guard = 0; guard < 12; guard += 1) {
+    const state = await dashboard(context);
+    const viewer = state.activeRun?.viewer;
+    if (!viewer || !['combat', 'boss'].includes(state.activeRun.phase)) throw new Error('Cannot prepare party-heal fixture outside combat.');
+    if (viewer.hp <= 0) throw new Error('Party-heal fixture downed a Weaver while preparing damage.');
+    if (viewer.maxHp - viewer.hp >= minimumMissingHp) return viewer;
+
+    await page.reload();
+    if (state.activeRun.enemyIntent?.reaction === 'interrupt') await action(page, context, 'stream-interrupt');
+    else await action(page, context, 'stream-guard');
+  }
+  throw new Error(`Could not wound Weaver by ${minimumMissingHp} HP without leaving combat.`);
+}
+
+async function ensureViewerFocus(page, context, minimumFocus = 3) {
+  for (let step = 0; step < 8; step += 1) {
+    const state = await dashboard(context);
+    const viewer = state.activeRun?.viewer;
+    if (!viewer || !['combat', 'boss'].includes(state.activeRun.phase)) throw new Error('Cannot build Focus outside combat.');
+    if (viewer.hp <= 0) throw new Error('Focus preparation downed the acting Weaver.');
+    if (viewer.focus >= minimumFocus) return viewer.focus;
+
+    await page.reload();
+    if (state.activeRun.enemyIntent) {
+      if (state.activeRun.enemyIntent.reaction === 'interrupt') await action(page, context, 'stream-interrupt');
+      else await action(page, context, 'stream-guard');
+    } else {
+      // A normal attack is the baseline Focus generator and keeps this acceptance journey
+      // on the same public thread surface as a real player.
+      await action(page, context, 'stream-attack');
+    }
+  }
+  throw new Error(`Could not build ${minimumFocus} Focus without leaving combat.`);
+}
+
 test('Focus, cooldowns, reconnect persistence, cross-player combos, and party healing are playable from the thread', async ({ browser }) => {
   test.setTimeout(90000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -164,6 +226,15 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await reactToIntent(partner, partnerContext);
     await action(partner, partnerContext, 'stream-attack');
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.encounterIndex, { timeout: 7000 }).toBe(1);
+
+    // Encounter one now pays out a build draft. Choose the lowest-attack offered card so
+    // this skill-specific fixture preserves its damage pacing while proving Focus survives
+    // the aggregate's draft/reload boundary.
+    const firstDraft = await dashboard(leaderContext);
+    expect(firstDraft.activeRun.phase).toBe('upgrade');
+    expect(firstDraft.activeRun.runUpgradeResume).toBeTruthy();
+    await chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack: true });
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('combat');
 
     // Weaver A creates Exposed, then refreshes: status + cooldown must survive reconstruction.
     await leader.reload();
@@ -209,42 +280,48 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await finishCurrentCombatPhase(partner, partnerContext);
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('upgrade');
 
-    await leader.reload();
-    await leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' }).click();
+    const finalDraft = await dashboard(leaderContext);
+    expect(finalDraft.activeRun.runUpgradeResume).toBeNull();
+    await chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack: true });
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('boss');
 
-    // Deliberately wound both Weavers, then turn Focus into a party-wide recovery.
-    await partner.reload();
-    await action(partner, partnerContext, 'stream-guard');
-    await leader.reload();
-    await action(leader, leaderContext, 'stream-attack');
+    // Draft healing can enter the boss with either Weaver close to full HP. Prepare a
+    // deterministic party-heal fixture through real thread actions: both living Weavers
+    // must be missing at least one full Mending Chorus tick and the caster must have its
+    // three-Focus cost before the skill is used.
+    await ensureViewerWounded(partner, partnerContext, 5);
+    await ensureViewerWounded(leader, leaderContext, 5);
+    await ensureViewerFocus(leader, leaderContext, 3);
     const beforeChorus = await dashboard(leaderContext);
     const leaderBefore = beforeChorus.activeRun.participants.find((p) => p.playerId === beforeChorus.activeRun.viewer.playerId);
     const partnerBefore = beforeChorus.activeRun.participants.find((p) => p.playerId !== beforeChorus.activeRun.viewer.playerId);
-    expect(leaderBefore.hp).toBeLessThan(leaderBefore.maxHp);
-    expect(partnerBefore.hp).toBeLessThan(partnerBefore.maxHp);
+    expect(leaderBefore.maxHp - leaderBefore.hp).toBeGreaterThanOrEqual(5);
+    expect(partnerBefore.maxHp - partnerBefore.hp).toBeGreaterThanOrEqual(5);
+    expect(beforeChorus.activeRun.viewer.focus).toBeGreaterThanOrEqual(3);
+    const focusBeforeChorus = beforeChorus.activeRun.viewer.focus;
     const healingBefore = leaderBefore.healingDone;
 
     await leader.reload();
-    await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 3/4');
+    await expect(leader.getByTestId('skill-mending-chorus')).toBeEnabled();
     await skill(leader, leaderContext, 'mending-chorus');
     const afterChorus = await dashboard(leaderContext);
     const leaderAfter = afterChorus.activeRun.participants.find((p) => p.playerId === afterChorus.activeRun.viewer.playerId);
     const partnerAfter = afterChorus.activeRun.participants.find((p) => p.playerId !== afterChorus.activeRun.viewer.playerId);
-    expect(leaderAfter.healingDone - healingBefore).toBeGreaterThanOrEqual(10);
-    expect(partnerAfter.hp).toBeGreaterThan(partnerBefore.hp);
+    expect(leaderAfter.healingDone - healingBefore).toBe(10);
     expect(leaderAfter.hp + partnerAfter.hp).toBeGreaterThan(leaderBefore.hp + partnerBefore.hp);
 
     const chorusEntry = leader.getByTestId('stream-system-entry').filter({ hasText: /Mending Chorus/ }).last();
     await expect(chorusEntry).toContainText(/restored 10 total party HP/i);
-    await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 0/4');
+    const focusAfterChorus = focusBeforeChorus - 3;
+    await expect(leader.getByTestId('skill-focus')).toHaveText(`Focus ${focusAfterChorus}/4`);
     await expect(leader.getByTestId('skill-mending-chorus-state')).toHaveText('Cooldown 3');
     await reviewShot(leader, `combat-v2-skills-chorus-${authSource}`);
 
-    // Refresh/reconnect must reconstruct the resource and cooldown from persisted run state.
+    // Refresh/reconnect must reconstruct the exact resource and cooldown persisted by the
+    // aggregate rather than relying on a hard-coded pre-draft Focus value.
     await leader.reload();
     await expect(leader.getByTestId('combat-skill-panel')).toBeVisible();
-    await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 0/4');
+    await expect(leader.getByTestId('skill-focus')).toHaveText(`Focus ${focusAfterChorus}/4`);
     await expect(leader.getByTestId('skill-mending-chorus-state')).toHaveText('Cooldown 3');
   } finally {
     await leaderContext.close();

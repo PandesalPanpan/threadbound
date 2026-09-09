@@ -26,7 +26,10 @@ async function clearSoloRun(page) {
       continue;
     }
     if (run.phase === 'upgrade') {
-      await post(page, `/api/runs/${run.id}/upgrade`, { upgradeId: 'reinforce' });
+      const offered = state.runUpgrades || [];
+      const power = offered.find((candidate) => String(candidate.category || '').toUpperCase() === 'SUSTAIN') || offered[0];
+      if (!power) throw new Error('Run power draft exposed no offered power.');
+      await post(page, `/api/runs/${run.id}/upgrade`, { upgradeId: power.id });
       continue;
     }
     if (!['combat', 'boss'].includes(run.phase)) throw new Error(`Unexpected run phase: ${run.phase}`);

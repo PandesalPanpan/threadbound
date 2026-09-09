@@ -47,6 +47,23 @@ export class SQLiteActivityStreamRepository {
     return decode(this.db.prepare('SELECT * FROM activity_stream_entries WHERE id = ?').get(id));
   }
 
+  listPage({ limit = 30, beforeId = null } = {}) {
+    const bounded = Math.max(1, Math.min(50, Number(limit) || 30));
+    const rows = beforeId
+      ? this.db.prepare(`
+          SELECT * FROM activity_stream_entries
+          WHERE rowid < COALESCE((SELECT rowid FROM activity_stream_entries WHERE id = ?), 0)
+          ORDER BY rowid DESC
+          LIMIT ?
+        `).all(String(beforeId), bounded + 1)
+      : this.db.prepare('SELECT * FROM activity_stream_entries ORDER BY rowid DESC LIMIT ?').all(bounded + 1);
+    const hasMore = rows.length > bounded;
+    return {
+      entries: rows.slice(0, bounded).map(decode).reverse(),
+      hasMore,
+    };
+  }
+
   listRecent({ limit = 80 } = {}) {
     const bounded = Math.max(1, Math.min(200, Number(limit) || 80));
     return this.db.prepare('SELECT * FROM activity_stream_entries ORDER BY rowid DESC LIMIT ?')

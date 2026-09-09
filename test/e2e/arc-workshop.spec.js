@@ -25,6 +25,23 @@ async function attackUntilPhaseChanges(page, context, expectedPhase, limit = 40)
   throw new Error(`Generated dungeon stayed in ${expectedPhase} after ${limit} explicit attacks.`);
 }
 
+async function choosePowerDraft(page, context) {
+  const before = await dashboard(context);
+  expect(before.activeRun?.phase).toBe('upgrade');
+  expect(before.runUpgrades).toHaveLength(3);
+  const power = before.runUpgrades[0];
+  const expectedPhase = before.activeRun.runUpgradeResume ? 'combat' : 'boss';
+  const version = before.activeRun.version;
+  const powerButton = page.getByTestId('stream-suggestions').getByRole('button', { name: power.name, exact: true });
+  await expect(powerButton).toBeVisible();
+  await powerButton.click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.version > version && after.activeRun?.phase === expectedPhase;
+  }, { timeout: 5000 }).toBe(true);
+  return dashboard(context);
+}
+
 test('external Arc Manifest can be uploaded, validated, published, played, and documented', async ({ page, context }) => {
   test.setTimeout(70000);
   await page.goto('/');
@@ -72,15 +89,11 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   const cinderDungeon = page.getByTestId('dungeon-option').filter({ hasText: 'Cinder Vault' });
   await expect(cinderDungeon).toContainText('The Ashen Thread');
 
-  // Provenance is part of the game/application contract, not player-facing debug copy.
-  // Keep the streamlined dungeon card clean while proving the published revision survives
-  // the Workshop -> runtime boundary.
   const runtimeState = await dashboard(context);
   const runtimeDungeon = runtimeState.dungeons.find((dungeon) => dungeon.id === 'cinder-vault');
   expect(runtimeDungeon).toBeTruthy();
   expect(String(runtimeDungeon.sourceManifestRevision)).toBe(String(revision));
 
-  // Imported content must be playable through the same tap-first thread surface as built-in content.
   await page.getByTestId('stream-dungeons').click();
   const dungeonReply = page.getByTestId('stream-command-card');
   await expect(dungeonReply).toContainText('Cinder Vault');
@@ -89,12 +102,20 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect.poll(async () => (await dashboard(context)).activeRun?.dungeonId || null, { timeout: 5000 }).toBe('cinder-vault');
   await expect(page.getByTestId('run-state')).toContainText('Ashling');
 
+  // Generated dungeons use the same repeated run-power lifecycle as bundled content.
+  // Cinder Vault has two normal encounters, so the first draft resumes encounter two
+  // and the second (with no resume snapshot) is the pre-boss draft.
   await attackUntilPhaseChanges(page, context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  const sharpen = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Sharpen the Thread' });
-  await expect(sharpen).toBeVisible();
-  await sharpen.click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
+  const resumed = await choosePowerDraft(page, context);
+  expect(resumed.activeRun.phase).toBe('combat');
+  expect(resumed.activeRun.runUpgradeResume).toBeNull();
+  await expect(page.getByTestId('run-state')).toContainText('Ashling');
+
+  await attackUntilPhaseChanges(page, context, 'combat');
+  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
+  const bossStart = await choosePowerDraft(page, context);
+  expect(bossStart.activeRun.phase).toBe('boss');
   await expect(page.getByTestId('run-state')).toContainText('The Ember Loomkeeper');
   await attackUntilPhaseChanges(page, context, 'boss');
 

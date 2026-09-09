@@ -70,9 +70,6 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
     const downed = state.activeRun?.participants.find((participant) => participant.hp <= 0);
     if (downed && state.activeRun.viewer.reviveCharges > 0) {
       const revive = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Revive ally' });
-      // Realtime context rendering follows the authoritative dashboard by a short debounce.
-      // If the aggregate says Revive is legal, require the contextual UI action to appear
-      // instead of racing it with an immediate count() and accidentally attacking past it.
       await expect(revive).toBeVisible({ timeout: 5000 });
       await threadAction(page, context, revive);
       turn += 1;
@@ -86,6 +83,24 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
     turn += 1;
   }
   throw new Error(`Local co-op run did not leave ${expectedPhase} within the guard limit.`);
+}
+
+async function resolveSharedPowerDraft(leader, leaderContext, partner, partnerContext, { preferCategory = 'SUSTAIN' } = {}) {
+  const state = await dashboard(leaderContext);
+  expect(state.activeRun?.phase).toBe('upgrade');
+  expect(state.runUpgrades).toHaveLength(3);
+  const chosen = state.runUpgrades.find((upgrade) => String(upgrade.category || '').toUpperCase() === String(preferCategory).toUpperCase()) || state.runUpgrades[0];
+  expect(chosen?.id).toBeTruthy();
+  const expectedPhase = state.activeRun.runUpgradeResume ? 'combat' : 'boss';
+
+  await leader.reload();
+  await partner.reload();
+  await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting', { timeout: 5000 });
+  const button = leader.getByTestId('stream-suggestions').getByRole('button', { name: chosen.name });
+  await expect(button).toBeVisible({ timeout: 5000 });
+  await threadAction(leader, leaderContext, button);
+  await expect.poll(async () => (await dashboard(partnerContext)).activeRun?.phase, { timeout: 5000 }).toBe(expectedPhase);
+  return chosen;
 }
 
 async function resolveSharedDiscovery(leader, leaderContext, partner, partnerContext) {
@@ -195,22 +210,22 @@ test('standalone local mode supports thread-driven co-op combat, shared discover
       return Number(text?.match(/prevented (\d+)/)?.[1] || 0);
     }, { timeout: 5000 }).toBeGreaterThan(preventedBefore);
 
+    // Canonical lifecycle: encounter -> shared build draft -> encounter -> discovery ->
+    // encounter -> rotated shared draft -> boss. Both non-combat decisions remain leader
+    // authoritative while the partner sees a waiting state.
     let turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat');
+    await resolveSharedPowerDraft(leader, leaderContext, partner, partnerContext);
+    turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
     await resolveSharedDiscovery(leader, leaderContext, partner, partnerContext);
     turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'combat', turn);
 
-    await leader.reload();
-    await expect(leader.getByTestId('run-state')).toContainText('Phase: upgrade');
-    await partner.reload();
-    await expect(partner.getByTestId('upgrade-intro')).toContainText('Waiting');
-
-    const reinforce = leader.getByTestId('stream-suggestions').getByRole('button', { name: 'Reinforce the Weave' });
-    await threadAction(leader, leaderContext, reinforce);
+    const finalDraft = await dashboard(leaderContext);
+    expect(finalDraft.activeRun?.phase).toBe('upgrade');
+    expect(finalDraft.activeRun.runUpgradeResume).toBeNull();
+    await resolveSharedPowerDraft(leader, leaderContext, partner, partnerContext);
     turn = await alternateReactiveTurnsUntilPhaseChanges([leaderContext, partnerContext], [leader, partner], 'boss', turn);
     expect(turn).toBeGreaterThan(0);
 
-    // Completion is an authoritative condition, not "phase changed somehow". A wipe is
-    // rejected above; a successful boss kill removes the active run after rewards commit.
     const completed = await dashboard(leaderContext);
     expect(completed.activeRun).toBeNull();
 
@@ -226,9 +241,6 @@ test('standalone local mode supports thread-driven co-op combat, shared discover
     await leader.getByTestId('nav-codex').click();
     await expect(leader).toHaveURL(/\/codex/);
     await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
-    // This journey owns local-auth/Codex integration, not the global catalog size. Keep
-    // minimums high enough to prove the bundled Glasswake content is present while allowing
-    // future Arc manifests to add records without breaking an unrelated auth acceptance test.
     await expectCodexCountAtLeast(leader, 'enemies', 6);
     await expectCodexCountAtLeast(leader, 'bosses', 2);
     await expectCodexCountAtLeast(leader, 'lore', 7);

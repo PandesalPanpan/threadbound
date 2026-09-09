@@ -35,6 +35,14 @@ async function directAction(context, runId, action) {
   return post(context, `/api/runs/${encodeURIComponent(runId)}/${action}`);
 }
 
+function preferredOfferedPower(state) {
+  const offered = state.runUpgrades || [];
+  expect(offered).toHaveLength(3);
+  return [...offered].sort((left, right) => Number(left.attackBonus || 0) - Number(right.attackBonus || 0)
+    || Number(right.heal || 0) - Number(left.heal || 0)
+    || String(left.id).localeCompare(String(right.id)))[0];
+}
+
 test('Phase II marks a wounded ally and another Weaver can protect them from the thread', async ({ browser }) => {
   test.setTimeout(60000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -54,10 +62,12 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     const started = await post(leaderContext, '/api/dungeons/frayed-hollow/start');
     const runId = started.run.id;
 
-    // Clear the normal encounters through the same public command routes while reacting
-    // to every telegraph. If the authoritative lifecycle pauses for a discovery, resolve
-    // that shared leader decision before continuing toward the boss upgrade.
-    for (let guard = 0; guard < 80; guard += 1) {
+    // Clear the normal encounters through public command routes while reacting to every
+    // telegraph. Repeated power drafts and the discovery are real aggregate pauses, so
+    // resolve each using only choices returned by the authoritative dashboard. This
+    // mechanics fixture deliberately takes the lowest-attack offer so draft variance does
+    // not dominate the boss threshold behavior being exercised below.
+    for (let guard = 0; guard < 100; guard += 1) {
       const state = await dashboard(leaderContext);
       const phase = state.activeRun?.phase;
       if (phase === 'event') {
@@ -65,6 +75,13 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
         const safeChoice = choices.find((choice) => /bind|quiet/i.test(choice.id)) || choices[0];
         expect(safeChoice?.id).toBeTruthy();
         await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: safeChoice.id });
+        expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
+        continue;
+      }
+      if (phase === 'upgrade') {
+        if (!state.activeRun.runUpgradeResume) break;
+        const power = preferredOfferedPower(state);
+        await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: power.id });
         expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
         continue;
       }
@@ -76,35 +93,49 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
         : 'attack';
       await directAction(actorContext, runId, action);
     }
-    expect((await dashboard(leaderContext)).activeRun?.phase).toBe('upgrade');
 
-    await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: 'reinforce' });
+    const finalDraft = await dashboard(leaderContext);
+    expect(finalDraft.activeRun?.phase).toBe('upgrade');
+    expect(finalDraft.activeRun.runUpgradeResume).toBeNull();
+    const finalPower = preferredOfferedPower(finalDraft);
+    await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: finalPower.id });
     expect((await dashboard(leaderContext)).activeRun?.phase).toBe('boss');
 
-    // Make B the clearly vulnerable Weaver using legal combat actions. Five partner
-    // attacks cross the 50% boss threshold; the Phase-I telegraph between them is
-    // deliberately interrupted by A so the next Phase-II intent is Threadmark.
+    // Make B the clearly vulnerable Weaver, then drive the boss from authoritative state
+    // instead of assuming a fixed number of hits. Draft attack bonuses can move the exact
+    // 50% crossing action. Any Phase-I telegraph is cancelled safely; once the aggregate
+    // reports Phase II, its two-action cadence deterministically produces Threadmark first.
     await directAction(partnerContext, runId, 'guard');
-    await directAction(partnerContext, runId, 'attack');
-    await directAction(partnerContext, runId, 'attack');
-    await directAction(partnerContext, runId, 'attack');
-    let state = await dashboard(leaderContext);
-    expect(state.activeRun.enemyIntent).not.toBeNull();
-    await directAction(leaderContext, runId, 'interrupt');
-    await directAction(partnerContext, runId, 'attack');
-    await directAction(partnerContext, runId, 'attack');
+    for (let step = 0; step < 12; step += 1) {
+      const boss = (await dashboard(leaderContext)).activeRun;
+      if (boss.enemy.battlePhase >= 2) break;
+      if (boss.enemyIntent) {
+        await directAction(leaderContext, runId, 'interrupt');
+        continue;
+      }
+      await directAction(partnerContext, runId, 'attack');
+    }
 
-    state = await dashboard(leaderContext);
+    let state = await dashboard(leaderContext);
     expect(state.activeRun.enemy.battlePhase).toBe(2);
     expect(state.activeRun.enemy.phaseName).toBe('Unraveling');
+
+    for (let step = 0; step < 3 && !state.activeRun.enemyIntent; step += 1) {
+      await directAction(partnerContext, runId, 'attack');
+      state = await dashboard(leaderContext);
+    }
     expect(state.activeRun.enemyIntent?.id).toBe('threadmark-lunge');
+
     const marked = state.activeRun.participants.find((participant) => participant.playerId === partnerPlayerId);
     expect(marked).toBeTruthy();
+    expect(marked.hp).toBeGreaterThan(0);
     expect(state.activeRun.enemyIntent.targetPlayerId).toBe(partnerPlayerId);
     const markedHpBefore = marked.hp;
     const leaderBefore = state.activeRun.participants.find((participant) => participant.playerId === leaderPlayerId);
     expect(leaderBefore).toBeTruthy();
 
+    await leader.reload();
+    await partner.reload();
     await expect(leader.getByTestId('boss-phase-badge')).toContainText('PHASE II', { timeout: 5000 });
     await expect(leader.getByTestId('boss-phase-badge')).toContainText('UNRAVELING');
     await expect(leader.getByTestId('threadmark-warning')).toContainText('PROTECT LOCAL WEAVER B');
