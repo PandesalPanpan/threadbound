@@ -10,11 +10,13 @@ import { WorldHistoryProjector } from './application/WorldHistoryProjector.js';
 import { CodexService } from './application/CodexService.js';
 import { ArcManifestService } from './application/ArcManifestService.js';
 import { ActivityStreamService } from './application/ActivityStreamService.js';
+import { CombatPreviewService } from './application/CombatPreviewService.js';
 import { GameService } from './application/GameService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
 import { RunCommandIdempotencyService } from './application/RunCommandIdempotencyService.js';
+import { decorateRunUpgradeOffers } from './domain/RunUpgradeOfferPolicy.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
 import { SQLiteInventoryRepository } from './infrastructure/SQLiteInventoryRepository.js';
@@ -27,6 +29,7 @@ const LOCAL_PROFILES = Object.freeze({
   c: Object.freeze({ id: 'local:c', name: 'Local Weaver C', username: 'local-c' }),
   d: Object.freeze({ id: 'local:d', name: 'Local Weaver D', username: 'local-d' }),
 });
+const INITIAL_STREAM_LIMIT = 30;
 
 function sharedHead(title) {
   return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1020"><title>${title}</title><link rel="stylesheet" href="/threadbound-theme.css">`;
@@ -38,7 +41,7 @@ function topNav(active, authMode = 'threaded') {
 }
 
 function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Read the thread, build Focus, react to telegraphs, and chain skills with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/combat-skills.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Read the thread, build Focus, react to telegraphs, and chain skills with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/combat-skills.js"></script><script type="module" src="/gameplay-feel.js"></script></body></html>`;
 }
 
 function codexPage(authMode) {
@@ -107,6 +110,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     }
   });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
+  const combatPreview = new CombatPreviewService({ repository });
   const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
   const partyService = new PartyService({ repository, eventBus });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
@@ -220,8 +224,20 @@ export function createApp({ config, threadedGateway, repository, codexRepository
 
   app.get('/api/dashboard', requireConnection, (request, response) => {
     const connection = request.session.threaded;
+    const dashboard = gameService.dashboard(connection.playerId);
+    const runUpgrades = decorateRunUpgradeOffers(dashboard.activeRun, dashboard.runUpgrades);
+    const actionPreviews = request.query.previews === '1' && dashboard.activeRun
+      ? combatPreview.preview(connection.playerId, dashboard.activeRun.id)
+      : null;
     response.setHeader('Cache-Control', 'no-store');
-    response.json({ authSource: connection.source || 'threaded', threadedUser: connection.profile, wallet: connection.wallet, ...gameService.dashboard(connection.playerId) });
+    response.json({
+      authSource: connection.source || 'threaded',
+      threadedUser: connection.profile,
+      wallet: connection.wallet,
+      ...dashboard,
+      runUpgrades,
+      actionPreviews,
+    });
   });
 
   app.get('/api/events', requireConnection, (request, response) => realtimeHub.attach(response, { playerId: request.session.threaded.playerId }));
@@ -230,8 +246,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     return response.json(realtimeHub.issueWebSocketToken(request.session.threaded.playerId));
   });
   app.get('/api/stream', requireConnection, (request, response) => {
+    const before = String(request.query.before || '').trim() || null;
+    const requested = Math.max(1, Number(request.query.limit) || INITIAL_STREAM_LIMIT);
+    const limit = before ? Math.min(50, requested) : Math.min(INITIAL_STREAM_LIMIT, requested);
     response.setHeader('Cache-Control', 'no-store');
-    return response.json({ entries: activityStream.recent(request.query.limit) });
+    return response.json(activityStream.page({ limit, before }));
   });
   app.post('/api/stream/messages', requireConnection, (request, response) => {
     try {
