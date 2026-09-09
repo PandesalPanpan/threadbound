@@ -36,10 +36,11 @@ test('mobile combat is tap-first, message-driven, and never auto-attacks', async
 
   await expect(page.getByTestId('mobile-game-nav')).toBeVisible();
   await expect(page.getByTestId('stream-suggestions')).toBeVisible();
+  await expect(page.getByTestId('stream-meta-actions')).toBeVisible({ timeout: 5000 });
   await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message your party…');
   await expect(page.locator('.stream-hint')).toContainText('result of every action');
-  await expectTouchTarget(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Status' }), 44);
-  await expectTouchTarget(page.getByTestId('stream-suggestions').getByRole('button', { name: 'Gear' }), 44);
+  await expectTouchTarget(page.getByTestId('stream-meta-actions').getByRole('button', { name: 'Status' }), 44);
+  await expectTouchTarget(page.getByTestId('stream-meta-actions').getByRole('button', { name: 'Gear' }), 44);
   await expectNoHorizontalOverflow(page);
 
   for (const label of ['Play', 'Gear', 'Party', 'World', 'Codex']) {
