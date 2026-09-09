@@ -156,6 +156,21 @@ async function chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack 
   return chosen;
 }
 
+async function ensureViewerWounded(page, context, minimumMissingHp = 5) {
+  for (let guard = 0; guard < 12; guard += 1) {
+    const state = await dashboard(context);
+    const viewer = state.activeRun?.viewer;
+    if (!viewer || !['combat', 'boss'].includes(state.activeRun.phase)) throw new Error('Cannot prepare party-heal fixture outside combat.');
+    if (viewer.hp <= 0) throw new Error('Party-heal fixture downed a Weaver while preparing damage.');
+    if (viewer.maxHp - viewer.hp >= minimumMissingHp) return viewer;
+
+    await page.reload();
+    if (state.activeRun.enemyIntent?.reaction === 'interrupt') await action(page, context, 'stream-interrupt');
+    else await action(page, context, 'stream-guard');
+  }
+  throw new Error(`Could not wound Weaver by ${minimumMissingHp} HP without leaving combat.`);
+}
+
 test('Focus, cooldowns, reconnect persistence, cross-player combos, and party healing are playable from the thread', async ({ browser }) => {
   test.setTimeout(90000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -249,38 +264,41 @@ test('Focus, cooldowns, reconnect persistence, cross-player combos, and party he
     await chooseRunPowerDraft(leader, leaderContext, { preferMinimalAttack: true });
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.phase, { timeout: 7000 }).toBe('boss');
 
-    // Deliberately wound both Weavers, then turn Focus into a party-wide recovery.
-    await partner.reload();
-    await action(partner, partnerContext, 'stream-guard');
-    await leader.reload();
-    await action(leader, leaderContext, 'stream-attack');
+    // Draft healing can enter the boss with either Weaver close to full HP. Prepare a
+    // deterministic party-heal fixture through real thread actions: both living Weavers
+    // must be missing at least one full Mending Chorus tick before the skill is used.
+    await ensureViewerWounded(partner, partnerContext, 5);
+    await ensureViewerWounded(leader, leaderContext, 5);
     const beforeChorus = await dashboard(leaderContext);
     const leaderBefore = beforeChorus.activeRun.participants.find((p) => p.playerId === beforeChorus.activeRun.viewer.playerId);
     const partnerBefore = beforeChorus.activeRun.participants.find((p) => p.playerId !== beforeChorus.activeRun.viewer.playerId);
-    expect(leaderBefore.hp).toBeLessThan(leaderBefore.maxHp);
-    expect(partnerBefore.hp).toBeLessThan(partnerBefore.maxHp);
+    expect(leaderBefore.maxHp - leaderBefore.hp).toBeGreaterThanOrEqual(5);
+    expect(partnerBefore.maxHp - partnerBefore.hp).toBeGreaterThanOrEqual(5);
+    expect(beforeChorus.activeRun.viewer.focus).toBeGreaterThanOrEqual(3);
+    const focusBeforeChorus = beforeChorus.activeRun.viewer.focus;
     const healingBefore = leaderBefore.healingDone;
 
     await leader.reload();
-    await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 3/4');
+    await expect(leader.getByTestId('skill-mending-chorus')).toBeEnabled();
     await skill(leader, leaderContext, 'mending-chorus');
     const afterChorus = await dashboard(leaderContext);
     const leaderAfter = afterChorus.activeRun.participants.find((p) => p.playerId === afterChorus.activeRun.viewer.playerId);
     const partnerAfter = afterChorus.activeRun.participants.find((p) => p.playerId !== afterChorus.activeRun.viewer.playerId);
-    expect(leaderAfter.healingDone - healingBefore).toBeGreaterThanOrEqual(10);
-    expect(partnerAfter.hp).toBeGreaterThan(partnerBefore.hp);
+    expect(leaderAfter.healingDone - healingBefore).toBe(10);
     expect(leaderAfter.hp + partnerAfter.hp).toBeGreaterThan(leaderBefore.hp + partnerBefore.hp);
 
     const chorusEntry = leader.getByTestId('stream-system-entry').filter({ hasText: /Mending Chorus/ }).last();
     await expect(chorusEntry).toContainText(/restored 10 total party HP/i);
-    await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 0/4');
+    const focusAfterChorus = focusBeforeChorus - 3;
+    await expect(leader.getByTestId('skill-focus')).toHaveText(`Focus ${focusAfterChorus}/4`);
     await expect(leader.getByTestId('skill-mending-chorus-state')).toHaveText('Cooldown 3');
     await reviewShot(leader, `combat-v2-skills-chorus-${authSource}`);
 
-    // Refresh/reconnect must reconstruct the resource and cooldown from persisted run state.
+    // Refresh/reconnect must reconstruct the exact resource and cooldown persisted by the
+    // aggregate rather than relying on a hard-coded pre-draft Focus value.
     await leader.reload();
     await expect(leader.getByTestId('combat-skill-panel')).toBeVisible();
-    await expect(leader.getByTestId('skill-focus')).toHaveText('Focus 0/4');
+    await expect(leader.getByTestId('skill-focus')).toHaveText(`Focus ${focusAfterChorus}/4`);
     await expect(leader.getByTestId('skill-mending-chorus-state')).toHaveText('Cooldown 3');
   } finally {
     await leaderContext.close();
