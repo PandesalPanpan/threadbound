@@ -1,4 +1,5 @@
 import './combat-transition-presentation.js';
+import './ux-coherence.js';
 
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
