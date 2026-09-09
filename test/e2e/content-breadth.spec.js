@@ -37,6 +37,29 @@ async function versionedAction(page, context, testId) {
   return versionedLocatorAction(page, context, () => page.getByTestId(testId));
 }
 
+async function chooseOfferedPower(page, context, { preferCategory = null } = {}) {
+  const state = await dashboard(context);
+  expect(state.activeRun?.phase).toBe('upgrade');
+  expect(state.runUpgrades).toHaveLength(3);
+  const chosen = (preferCategory
+    ? state.runUpgrades.find((upgrade) => String(upgrade.category || '').toUpperCase() === String(preferCategory).toUpperCase())
+    : null) || state.runUpgrades[0];
+  expect(chosen?.id).toBeTruthy();
+  const expectedPhase = state.activeRun.runUpgradeResume ? 'combat' : 'boss';
+  const beforeVersion = state.activeRun.version;
+
+  await page.reload();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  const button = page.getByTestId('stream-suggestions').getByRole('button', { name: chosen.name });
+  await expect(button).toBeVisible({ timeout: 5000 });
+  await button.click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    return after.activeRun?.phase === expectedPhase && after.activeRun.version > beforeVersion;
+  }, { timeout: 5000 }).toBe(true);
+  return chosen;
+}
+
 async function playUntilPhase(page, context, targetPhase, limit = 100) {
   for (let index = 0; index < limit; index += 1) {
     const state = await dashboard(context);
@@ -51,6 +74,14 @@ async function playUntilPhase(page, context, targetPhase, limit = 100) {
       expect(recovery?.id).toBeTruthy();
       await page.getByTestId(`run-event-choice-${recovery.id}`).click();
       await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+      continue;
+    }
+
+    // Generated dungeons use the same repeated build-draft lifecycle as canonical ones.
+    // When a caller is trying to reach a later phase, consume only a card the server
+    // actually offered instead of hard-coding a legacy upgrade name.
+    if (run.phase === 'upgrade') {
+      await chooseOfferedPower(page, context);
       continue;
     }
 
@@ -94,10 +125,24 @@ test('bundled Glasswake dungeon is discoverable and completable through the same
   expect(started.activeRun.dungeonDefinition.encounterVariantIndex).toBeGreaterThanOrEqual(0);
   expect(started.activeRun.runEventSchedule?.events?.length).toBe(2);
 
+  // First normal encounter must stop at a durable three-card draft. Reload and choose
+  // the actual offered sustain card to prove generated content survives the same draft
+  // reconstruction path instead of relying on Reinforce always being present.
   await playUntilPhase(page, context, 'upgrade');
-  await page.reload();
-  await page.getByTestId('stream-suggestions').getByRole('button', { name: 'Reinforce the Weave' }).click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('boss');
+  const firstDraft = await dashboard(context);
+  expect(firstDraft.activeRun.runUpgradeResume).toBeTruthy();
+  expect(firstDraft.runUpgrades).toHaveLength(3);
+  const firstOfferIds = firstDraft.runUpgrades.map((upgrade) => upgrade.id);
+  await chooseOfferedPower(page, context, { preferCategory: 'SUSTAIN' });
+  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout: 5000 }).toBe('combat');
+
+  // Continue through the narrative discovery and the rotated pre-boss draft. The helper
+  // consumes only authoritative offers while keeping combat reactions intent-aware.
+  await playUntilPhase(page, context, 'boss');
+  const bossState = await dashboard(context);
+  expect(bossState.activeRun.selectedUpgrades).toHaveLength(2);
+  expect(new Set(bossState.activeRun.selectedUpgrades).size).toBe(2);
+  expect(bossState.activeRun.selectedUpgrades.some((id) => firstOfferIds.includes(id))).toBe(true);
   await expect(page.getByTestId('run-state')).toContainText('The Hollow Mirror');
 
   await playUntilPhase(page, context, 'complete');
