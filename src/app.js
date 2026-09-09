@@ -14,9 +14,11 @@ import { GameService } from './application/GameService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
+import { RunCommandIdempotencyService } from './application/RunCommandIdempotencyService.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
 import { SQLiteInventoryRepository } from './infrastructure/SQLiteInventoryRepository.js';
+import { SQLiteRunCommandRepository } from './infrastructure/SQLiteRunCommandRepository.js';
 
 const LOCAL_PROFILES = Object.freeze({
   a: Object.freeze({ id: 'local:a', name: 'Local Weaver A', username: 'local-a' }),
@@ -35,7 +37,7 @@ function topNav(active, authMode = 'threaded') {
 }
 
 function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Read the thread, build Focus, react to telegraphs, and chain skills with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/combat-skills.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Read the thread, build Focus, react to telegraphs, and chain skills with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/combat-skills.js"></script></body></html>`;
 }
 
 function codexPage(authMode) {
@@ -63,6 +65,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.locals.realtimeHub = realtimeHub;
   const streamRepository = new SQLiteActivityStreamRepository({ database: repository.db });
   const inventoryRepository = new SQLiteInventoryRepository({ database: repository.db });
+  const runCommandRepository = new SQLiteRunCommandRepository({ database: repository.db });
   const activityStream = new ActivityStreamService({ streamRepository, gameRepository: repository });
   const arcManifestService = new ArcManifestService({ gameRepository: repository, codexRepository, manifestRepository });
   const achievements = new AchievementProjector(repository);
@@ -105,6 +108,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const partyService = new PartyService({ repository, eventBus });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
   const purchaseService = threadedGateway ? new HoneyPurchaseService({ repository, threadedGateway }) : null;
+  const runCommandIdempotency = new RunCommandIdempotencyService({ repository: runCommandRepository });
 
   app.disable('x-powered-by');
   app.use(express.urlencoded({ extended: false, limit: '4kb' }));
@@ -120,6 +124,43 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     if (!request.session.threaded?.playerId) return response.status(401).json({ error: 'identity_not_connected', message: 'Sign in to Threadbound first.' });
     if (config.authMode !== 'local' || request.session.threaded.source !== 'local') return response.status(403).json({ error: 'arc_workshop_unavailable', message: 'Arc Workshop mutation is currently restricted to standalone local development mode until production admin authorization exists.' });
     next();
+  };
+  const idempotentRunCommand = (request, response, next) => {
+    if (request.method !== 'POST') return next();
+    const idempotencyKey = String(request.get('Idempotency-Key') || '').trim();
+    if (!idempotencyKey) return next();
+
+    let claim;
+    try {
+      claim = runCommandIdempotency.begin({
+        playerId: request.session.threaded.playerId,
+        idempotencyKey,
+        method: request.method,
+        path: request.originalUrl.split('?')[0],
+        body: request.body ?? null,
+        runId: request.params.runId,
+      });
+    } catch (error) {
+      if (error.code === 'invalid_idempotency_key') return response.status(422).json({ error: error.code, message: error.message });
+      if (error.code === 'run_command_replay_mismatch' || error.code === 'run_command_in_progress') return response.status(409).json({ error: error.code, message: error.message });
+      throw error;
+    }
+
+    if (claim.mode === 'replay') {
+      response.setHeader('Idempotency-Replayed', 'true');
+      return response.status(claim.responseStatus).json(claim.responseBody);
+    }
+    if (claim.mode !== 'claimed') return next();
+
+    const originalJson = response.json.bind(response);
+    response.json = (body) => {
+      if (response.statusCode < 500) {
+        runCommandIdempotency.complete(claim, { responseStatus: response.statusCode, responseBody: body });
+        response.setHeader('Idempotency-Replayed', 'false');
+      }
+      return originalJson(body);
+    };
+    return next();
   };
 
   app.get('/health', (_request, response) => response.json({ status: 'ok', service: 'threadbound', auth_mode: config.authMode }));
@@ -257,6 +298,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/party/leave', requireConnection, (request, response) => { partyService.leaveParty(request.session.threaded.playerId); response.json({ party: null }); });
 
   app.post('/api/dungeons/:dungeonId/start', requireConnection, (request, response) => response.status(201).json({ run: gameService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
+  app.use('/api/runs/:runId', requireConnection, idempotentRunCommand);
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/guard', requireConnection, (request, response) => response.json(gameService.guard(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/interrupt', requireConnection, (request, response) => response.json(gameService.interrupt(request.session.threaded.playerId, request.params.runId)));
