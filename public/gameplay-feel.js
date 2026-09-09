@@ -1,137 +1,56 @@
+import './semantic-combat-colors.js';
+
 const INITIAL_STREAM_LIMIT = 30;
 const HISTORY_PAGE_SIZE = 24;
-
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
 if (stream) {
   const style = document.createElement('style');
   style.textContent = `
-    /* Action previews stay presentation-only; authoritative numbers come from /api/dashboard. */
     .stream-suggestions button[data-preview-label]::after {
-      content: attr(data-preview-label);
-      display:inline-block;
-      margin-left:6px;
-      padding:2px 5px;
-      border-radius:999px;
-      background:rgba(255,157,72,.12);
-      color:#ffbd76;
-      font-size:.62rem;
-      font-weight:950;
-      letter-spacing:.02em;
-      vertical-align:1px;
+      content:attr(data-preview-label); display:inline-block; margin-left:6px; padding:2px 5px;
+      border-radius:999px; background:rgba(255,159,90,.12); color:#ffb477; font-size:.62rem;
+      font-weight:950; letter-spacing:.02em; vertical-align:1px;
     }
     .combat-skill[data-preview-label]::after {
-      content: attr(data-preview-label);
-      display:block;
-      width:max-content;
-      max-width:100%;
-      margin-top:2px;
-      padding:2px 5px;
-      border-radius:6px;
-      background:rgba(255,157,72,.11);
-      color:#ffbd76;
-      font-size:.58rem;
-      font-weight:950;
+      content:attr(data-preview-label); display:block; width:max-content; max-width:100%; margin-top:2px;
+      padding:2px 5px; border-radius:6px; background:rgba(255,159,90,.11); color:#ffb477;
+      font-size:.58rem; font-weight:950;
     }
     .stream-health-track { position:relative; }
-    .stream-health-track > span:not(.stream-health-preview) {
-      position:relative;
-      z-index:1;
-      transition:width .36s cubic-bezier(.2,.8,.2,1);
-    }
+    .stream-health-track > span:not(.stream-health-preview) { position:relative; z-index:1; transition:width .36s cubic-bezier(.2,.8,.2,1); }
     .stream-health-preview {
-      position:absolute !important;
-      z-index:3 !important;
-      top:0;
-      bottom:0;
-      height:100%;
-      border-radius:999px;
-      background:linear-gradient(90deg,#ff9f43,#ffd166) !important;
-      box-shadow:0 0 10px rgba(255,159,67,.62);
-      pointer-events:none;
-      animation:threadbound-preview-pulse .9s ease-in-out infinite alternate;
+      position:absolute !important; z-index:3 !important; top:0; bottom:0; height:100%; border-radius:999px;
+      background:linear-gradient(90deg,#ff9f5a,#ffd166) !important; box-shadow:0 0 10px rgba(255,159,90,.62);
+      pointer-events:none; animation:threadbound-preview-pulse .9s ease-in-out infinite alternate;
     }
-    .stream-health-preview-copy {
-      display:block;
-      grid-column:1 / -1;
-      margin-top:3px;
-      color:#ffbd76;
-      font-size:.59rem;
-      font-weight:950;
-      text-align:right;
-    }
+    .stream-health-preview-copy { display:block; grid-column:1/-1; margin-top:3px; color:#ffb477; font-size:.59rem; font-weight:950; text-align:right; }
     @keyframes threadbound-preview-pulse { from { opacity:.72; } to { opacity:1; } }
 
-    /* Run powers read as draft cards instead of unlabeled command pills. */
     .stream-suggestions button.run-power-card {
-      display:grid;
-      grid-template-columns:1fr;
-      align-content:start;
-      gap:3px;
-      width:min(232px,78vw);
-      min-height:92px;
-      padding:9px 11px !important;
-      border-radius:13px;
-      text-align:left;
-      white-space:normal;
-      background:linear-gradient(145deg,rgba(37,22,57,.96),rgba(11,18,32,.98));
-      border-color:rgba(179,109,255,.34);
+      display:grid; grid-template-columns:1fr; align-content:start; gap:3px; width:min(232px,78vw); min-height:100px;
+      padding:9px 11px !important; border-radius:13px; text-align:left; white-space:normal;
+      background:linear-gradient(145deg,rgba(30,22,48,.96),rgba(11,18,32,.98));
       box-shadow:inset 0 2px 0 rgba(255,255,255,.035);
     }
-    .run-power-card .run-power-category { color:#d9b8ff; font-size:.54rem; font-weight:950; letter-spacing:.12em; }
+    .run-power-card .run-power-category { font-size:.54rem; font-weight:950; letter-spacing:.12em; }
     .run-power-card .run-power-name { color:var(--text); font-size:.78rem; font-weight:950; }
     .run-power-card .run-power-description { color:var(--muted); font-size:.62rem; line-height:1.3; }
     .run-power-card .run-power-effects { display:flex; flex-wrap:wrap; gap:4px; margin-top:2px; }
-    .run-power-card .run-power-effect {
-      padding:2px 5px;
-      border-radius:6px;
-      background:rgba(255,255,255,.055);
-      color:#ffe097;
-      font-size:.55rem;
-      font-weight:900;
-    }
+    .run-power-card .run-power-effect { padding:2px 5px; border-radius:6px; background:rgba(255,255,255,.055); font-size:.55rem; font-weight:900; }
 
-    .stream-exchange-count {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      padding-top:2px;
-      color:var(--muted);
-      font-size:.58rem;
-      font-weight:850;
-    }
-    .stream-exchange-count button {
-      min-height:28px;
-      margin:0 !important;
-      padding:3px 7px !important;
-      border-radius:8px;
-      font-size:.57rem;
-    }
+    .stream-exchange-count { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:2px; color:var(--muted); font-size:.58rem; font-weight:850; }
+    .stream-exchange-count button { min-height:28px; margin:0 !important; padding:3px 7px !important; border-radius:8px; font-size:.57rem; }
     .stream-entry.is-condensed-receipt:not(.is-expanded-receipt) { display:none; }
     .stream-entry.is-condensed-receipt.is-expanded-receipt { opacity:.72; }
-
     .stream-history-entry { opacity:.82; }
     .stream-history-entry .stream-system-tag::after { content:' · HISTORY'; }
     .stream-history-loader {
-      position:sticky;
-      top:0;
-      z-index:4;
-      width:max-content;
-      margin:0 auto 5px;
-      padding:4px 8px;
-      border:1px solid rgba(85,214,255,.18);
-      border-radius:999px;
-      background:rgba(8,13,26,.94);
-      color:var(--muted);
-      font-size:.58rem;
-      font-weight:900;
-      pointer-events:none;
+      position:sticky; top:0; z-index:4; width:max-content; margin:0 auto 5px; padding:4px 8px;
+      border:1px solid rgba(85,214,255,.18); border-radius:999px; background:rgba(8,13,26,.94);
+      color:var(--muted); font-size:.58rem; font-weight:900; pointer-events:none;
     }
-
-    @media (prefers-reduced-motion:reduce) {
-      .stream-health-track > span, .stream-health-preview { transition:none !important; animation:none !important; }
-    }
+    @media (prefers-reduced-motion:reduce) { .stream-health-track > span, .stream-health-preview { transition:none !important; animation:none !important; } }
   `;
   document.head.append(style);
 
@@ -157,12 +76,12 @@ if (stream) {
         observer.disconnect();
         resolve(document.querySelector(selector));
       }, timeoutMs);
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      observer.observe(document.documentElement, { childList:true, subtree:true });
     });
   }
 
   async function json(path) {
-    const response = await fetch(path, { headers: { Accept: 'application/json' } });
+    const response = await fetch(path, { headers:{ Accept:'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.message || `Request failed (${response.status})`);
     return payload;
@@ -183,21 +102,18 @@ if (stream) {
   function showHealthPreview(preview) {
     clearHealthPreview();
     if (!preview?.available || Number(preview.damage || 0) <= 0) return;
-    const units = [...document.querySelectorAll('[data-testid="adventure-stream-log"] .stream-health-unit.enemy')];
-    const unit = units.at(-1);
+    const unit = [...document.querySelectorAll('[data-testid="adventure-stream-log"] .stream-health-unit.enemy')].at(-1);
     const track = unit?.querySelector('.stream-health-track');
     if (!unit || !track || preview.enemyHpBefore === null || preview.enemyMaxHp === null || preview.enemyHpAfter === null) return;
     const max = Math.max(1, Number(preview.enemyMaxHp));
     const before = Math.max(0, Math.min(max, Number(preview.enemyHpBefore)));
     const after = Math.max(0, Math.min(max, Number(preview.enemyHpAfter)));
     if (before <= after) return;
-    const beforePercent = (before / max) * 100;
-    const afterPercent = (after / max) * 100;
     const ghost = document.createElement('span');
     ghost.className = 'stream-health-preview';
     ghost.dataset.testid = 'enemy-damage-preview';
-    ghost.style.left = `${afterPercent}%`;
-    ghost.style.width = `${Math.max(0, beforePercent - afterPercent)}%`;
+    ghost.style.left = `${(after / max) * 100}%`;
+    ghost.style.width = `${((before - after) / max) * 100}%`;
     track.append(ghost);
     const copy = document.createElement('span');
     copy.className = 'stream-health-preview-copy';
@@ -228,11 +144,16 @@ if (stream) {
     for (const button of suggestions.querySelectorAll('button[data-command^="/upgrade "]')) {
       const id = String(button.dataset.command || '').split(/\s+/)[1] || '';
       const upgrade = byId.get(id);
-      if (!upgrade) continue;
-      const revision = JSON.stringify([upgrade.name, upgrade.description, upgrade.effectSummary]);
+      if (!upgrade) {
+        button.hidden = true;
+        continue;
+      }
+      button.hidden = false;
+      const revision = JSON.stringify([upgrade.name, upgrade.description, upgrade.effectSummary, upgrade.accent]);
       if (button.dataset.upgradeRevision === revision) continue;
       button.dataset.upgradeRevision = revision;
       button.dataset.upgradeCard = id;
+      button.dataset.powerTone = upgrade.accent || 'special';
       button.classList.add('run-power-card');
       button.setAttribute('aria-label', upgrade.name);
       button.innerHTML = '';
@@ -257,6 +178,12 @@ if (stream) {
       button.append(category, name, description);
       if (effects.children.length) button.append(effects);
     }
+    // The legacy suggestion renderer may still have buttons for the full catalog. Only
+    // authoritative offered cards returned by the dashboard belong in this draft.
+    for (const button of suggestions.querySelectorAll('button[data-command^="/upgrade "]')) {
+      const id = String(button.dataset.command || '').split(/\s+/)[1] || '';
+      button.hidden = !byId.has(id);
+    }
   }
 
   async function refreshDashboardPresentation(log, suggestions) {
@@ -268,14 +195,12 @@ if (stream) {
       wirePreview(suggestions.querySelector('[data-testid="stream-interrupt"]'), previews?.actions?.interrupt);
       wirePreview(suggestions.querySelector('[data-testid="stream-mend"]'), previews?.actions?.mend);
       wirePreview(suggestions.querySelector('[data-testid="stream-revive"]'), previews?.actions?.revive);
-      for (const [skillId, preview] of Object.entries(previews?.skills || {})) {
-        wirePreview(document.querySelector(`[data-testid="skill-${CSS.escape(skillId)}"]`), preview);
-      }
+      for (const [skillId, preview] of Object.entries(previews?.skills || {})) wirePreview(document.querySelector(`[data-testid="skill-${CSS.escape(skillId)}"]`), preview);
       decorateRunPowerButtons(data, suggestions);
-      if (!data.activeRun || !['combat', 'boss'].includes(data.activeRun.phase)) clearHealthPreview();
+      if (!data.activeRun || !['combat','boss'].includes(data.activeRun.phase)) clearHealthPreview();
       if (!historyBeforeId) historyBeforeId = log.querySelector('.stream-entry[data-entry-id]')?.dataset.entryId || null;
     } catch {
-      // The core Adventure Stream owns connection and error messaging.
+      // Core Adventure Stream owns connection/error messaging.
     }
   }
 
@@ -328,45 +253,28 @@ if (stream) {
     if (!currentEntry.runId || currentEntry.runId !== previousEntry.runId) return;
     if (previousEntry.metadata?.defeatedEnemyId) return;
     if (currentEntry.metadata?.enemyId && previousEntry.metadata?.enemyId && currentEntry.metadata.enemyId !== previousEntry.metadata.enemyId) return;
-
     const currentId = currentRow.dataset.entryId;
     const previousId = previousRow.dataset.entryId;
-    const inherited = [...document.querySelectorAll(`[data-condensed-into="${CSS.escape(previousId)}"]`)];
-    for (const row of inherited) row.dataset.condensedInto = currentId;
+    for (const row of document.querySelectorAll(`[data-condensed-into="${CSS.escape(previousId)}"]`)) row.dataset.condensedInto = currentId;
     previousRow.dataset.condensedInto = currentId;
     previousRow.classList.add('is-condensed-receipt');
     previousRow.classList.remove('is-expanded-receipt');
-
-    const previousCount = Math.max(1, Number(previousRow.dataset.coalescedCount || 1));
-    const count = previousCount + 1;
+    const count = Math.max(1, Number(previousRow.dataset.coalescedCount || 1)) + 1;
     currentRow.dataset.coalescedCount = String(count);
     currentRow.dataset.liveCombatReceipt = 'true';
     installExchangeToggle(currentRow, count);
-
-    animateUnitFrom(
-      currentRow.querySelector('.stream-health-unit.enemy'),
-      previousEntry.metadata?.enemyHp ?? null,
-      currentEntry.metadata?.enemyMaxHp ?? previousEntry.metadata?.enemyMaxHp ?? null,
-    );
-    animateUnitFrom(
-      currentRow.querySelector('.stream-health-unit:not(.enemy)'),
-      previousEntry.metadata?.actorHp ?? null,
-      currentEntry.metadata?.actorMaxHp ?? previousEntry.metadata?.actorMaxHp ?? null,
-    );
+    animateUnitFrom(currentRow.querySelector('.stream-health-unit.enemy'), previousEntry.metadata?.enemyHp ?? null, currentEntry.metadata?.enemyMaxHp ?? previousEntry.metadata?.enemyMaxHp ?? null);
+    animateUnitFrom(currentRow.querySelector('.stream-health-unit:not(.enemy)'), previousEntry.metadata?.actorHp ?? null, currentEntry.metadata?.actorMaxHp ?? previousEntry.metadata?.actorMaxHp ?? null);
   }
 
   async function syncReceipts(log) {
     try {
       const page = await json(`/api/stream?limit=${INITIAL_STREAM_LIMIT}`);
       const entries = new Map((page.entries || []).map((entry) => [entry.id, entry]));
-      const rows = [...log.querySelectorAll('.stream-entry-rich[data-entry-id]:not([data-feel-processed="true"])')];
-      for (const row of rows) {
+      for (const row of log.querySelectorAll('.stream-entry-rich[data-entry-id]:not([data-feel-processed="true"])')) {
         const entry = entries.get(row.dataset.entryId);
-        if (!entry) {
-          row.dataset.feelProcessed = 'true';
-          continue;
-        }
         row.dataset.feelProcessed = 'true';
+        if (!entry) continue;
         row.dataset.feelEventType = entry.eventType || '';
         row.dataset.feelRunId = entry.runId || '';
         if (entry.eventType !== 'CombatActionResolved') continue;
@@ -376,7 +284,7 @@ if (stream) {
         condenseInto(row, previousRow, entry, previousEntry);
       }
     } catch {
-      // Presentation enhancement is non-blocking; durable stream remains readable.
+      // Enhancement is non-blocking; the durable stream remains readable.
     }
   }
 
@@ -388,7 +296,7 @@ if (stream) {
   function historyTime(value) {
     const date = value ? new Date(value) : null;
     if (!date || Number.isNaN(date.getTime())) return '';
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   }
 
   function historyRow(entry) {
@@ -399,7 +307,7 @@ if (stream) {
     if (entry.kind === 'system') row.dataset.richFormatted = 'true';
     const avatar = document.createElement('span');
     avatar.className = 'stream-avatar';
-    avatar.textContent = entry.kind === 'chat' ? (entry.actorName || '?').slice(0, 1).toUpperCase() : '✦';
+    avatar.textContent = entry.kind === 'chat' ? (entry.actorName || '?').slice(0,1).toUpperCase() : '✦';
     const content = document.createElement('div');
     content.className = 'stream-entry-content';
     const meta = document.createElement('div');
@@ -409,24 +317,23 @@ if (stream) {
     const time = document.createElement('time');
     time.dateTime = entry.createdAt || '';
     time.textContent = historyTime(entry.createdAt);
-    meta.append(author, time);
+    meta.append(author,time);
     const body = document.createElement('p');
     body.textContent = entry.body || '';
-    content.append(meta, body);
+    content.append(meta,body);
     if (entry.kind === 'system' && entry.eventType) {
       const tag = document.createElement('span');
       tag.className = 'stream-system-tag';
-      tag.textContent = entry.eventType.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
+      tag.textContent = entry.eventType.replace(/([a-z])([A-Z])/g,'$1 $2').toUpperCase();
       content.append(tag);
     }
-    row.append(avatar, content);
+    row.append(avatar,content);
     return row;
   }
 
   async function loadOlder(log) {
     if (historyLoading || !historyHasMore) return;
-    const first = log.querySelector('.stream-entry[data-entry-id]');
-    const before = historyBeforeId || first?.dataset.entryId;
+    const before = historyBeforeId || log.querySelector('.stream-entry[data-entry-id]')?.dataset.entryId;
     if (!before) return;
     historyLoading = true;
     const loader = document.createElement('div');
@@ -438,17 +345,16 @@ if (stream) {
       const page = await json(`/api/stream?limit=${HISTORY_PAGE_SIZE}&before=${encodeURIComponent(before)}`);
       const entries = page.entries || [];
       historyHasMore = Boolean(page.hasMore);
-      if (entries.length) {
-        const fragment = document.createDocumentFragment();
-        for (const entry of entries) fragment.append(historyRow(entry));
-        loader.replaceWith(fragment);
-        historyBeforeId = entries[0].id;
-        const addedHeight = log.scrollHeight - oldHeight;
-        log.scrollTop += Math.max(0, addedHeight);
-      } else {
+      if (!entries.length) {
         loader.remove();
         historyHasMore = false;
+        return;
       }
+      const fragment = document.createDocumentFragment();
+      for (const entry of entries) fragment.append(historyRow(entry));
+      loader.replaceWith(fragment);
+      historyBeforeId = entries[0].id;
+      log.scrollTop += Math.max(0, log.scrollHeight - oldHeight);
     } catch {
       loader.textContent = 'EARLIER THREAD UNAVAILABLE · SCROLL UP TO RETRY';
       setTimeout(() => loader.remove(), 1400);
@@ -457,33 +363,24 @@ if (stream) {
     }
   }
 
-  Promise.all([
-    waitFor('[data-testid="adventure-stream-log"]'),
-    waitFor('[data-testid="stream-suggestions"]'),
-  ]).then(([log, suggestions]) => {
+  Promise.all([waitFor('[data-testid="adventure-stream-log"]'), waitFor('[data-testid="stream-suggestions"]')]).then(([log,suggestions]) => {
     if (!log || !suggestions) return;
     historyBeforeId = log.querySelector('.stream-entry[data-entry-id]')?.dataset.entryId || null;
-    scheduleDashboard(log, suggestions, 0);
-    scheduleReceipts(log, 140);
-
-    log.addEventListener('scroll', () => {
-      if (log.scrollTop <= 64) loadOlder(log);
-    }, { passive: true });
-
+    scheduleDashboard(log,suggestions,0);
+    scheduleReceipts(log,140);
+    log.addEventListener('scroll', () => { if (log.scrollTop <= 64) loadOlder(log); }, { passive:true });
     const observer = new MutationObserver((mutations) => {
-      const changed = mutations.some((mutation) => mutation.type === 'childList');
-      if (!changed) return;
-      scheduleDashboard(log, suggestions);
+      if (!mutations.some((mutation) => mutation.type === 'childList')) return;
+      scheduleDashboard(log,suggestions);
       scheduleReceipts(log);
       if (!historyBeforeId) historyBeforeId = log.querySelector('.stream-entry[data-entry-id]')?.dataset.entryId || null;
     });
-    observer.observe(stream, { childList: true, subtree: true });
-
+    observer.observe(stream,{ childList:true, subtree:true });
     window.addEventListener('beforeunload', () => {
       clearTimeout(dashboardTimer);
       clearTimeout(receiptTimer);
       observer.disconnect();
       clearHealthPreview();
-    }, { once: true });
+    }, { once:true });
   });
 }
