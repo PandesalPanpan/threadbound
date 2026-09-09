@@ -129,8 +129,11 @@ async function alternateReactiveTurnsUntilPhaseChanges(contexts, pages, expected
         .filter((participant) => participant.hp > 0 && participant.maxHp - participant.hp >= 8)
         .sort((left, right) => (left.hp / left.maxHp) - (right.hp / right.maxHp))[0];
       if (wounded) {
-        await expect(page.getByTestId('stream-mend')).toBeVisible({ timeout: 5000 });
-        await streamAction(page, context, 'stream-mend');
+        const mend = page.getByTestId('stream-suggestions').getByRole('button', { name: 'Mend ally' });
+        await expect(mend).toBeVisible({ timeout: 5000 });
+        await expect(mend).toBeEnabled({ timeout: 5000 });
+        await mend.click();
+        await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout: 5000 }).toBeGreaterThan(actorState.activeRun.version);
         turn += 1;
         continue;
       }
