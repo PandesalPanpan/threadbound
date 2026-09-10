@@ -25,15 +25,7 @@ async function action(page, context, testId) {
   await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout:7000 }).toBeGreaterThan(version);
 }
 
-async function reactiveAction(page, context) {
-  const state = await dashboard(context);
-  const reaction = state.activeRun?.enemyIntent?.reaction;
-  if (reaction === 'interrupt') return action(page, context, 'stream-interrupt');
-  if (reaction === 'guard') return action(page, context, 'stream-guard');
-  return action(page, context, 'stream-attack');
-}
-
-test('skills stay a compact secondary row and persist their authoritative cooldown across refresh', async ({ page, context }) => {
+test('new-run skills are compact, immediately usable, and persist cooldowns without Focus or Exposed', async ({ page, context }) => {
   test.setTimeout(90000);
   await login(page);
   await page.getByTestId('stream-start-dungeon').click();
@@ -46,41 +38,51 @@ test('skills stay a compact secondary row and persist their authoritative cooldo
   expect(await panel.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
   expect(await panel.evaluate((element) => Boolean(element.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
 
+  let state = await dashboard(context);
+  expect(state.activeRun.streamlinedSkills).toBe(true);
+  expect(Number(state.activeRun.viewer.focus || 0)).toBe(0);
+  expect(Number(state.activeRun.enemy?.statuses?.exposed || 0)).toBe(0);
+  await expect(page.getByTestId('skill-focus')).toHaveCount(0);
+  await expect(page.getByTestId('stream-decision-focus')).toHaveCount(0);
+
   const piercing = page.getByTestId('skill-piercing-stitch');
   await expect(piercing).toBeVisible();
+  await expect(piercing).toBeEnabled();
+  await expect(page.getByTestId('skill-piercing-stitch-state')).toHaveText('Ready');
   const box = await piercing.boundingBox();
   expect(box).not.toBeNull();
   expect(box.height).toBeGreaterThanOrEqual(40);
 
-  // Focus is still a compatibility-backed skill resource for this pass, but it no longer
-  // creates a separate dashboard. Build enough through ordinary thread actions.
-  for (let turn = 0; turn < 30; turn += 1) {
-    const state = await dashboard(context);
-    if (!['combat', 'boss'].includes(state.activeRun?.phase)) break;
-    if (Number(state.activeRun.viewer.focus || 0) >= 2 && !state.activeRun.enemyIntent) break;
-    await reactiveAction(page, context);
-  }
-
-  let state = await dashboard(context);
-  expect(['combat', 'boss']).toContain(state.activeRun.phase);
-  expect(Number(state.activeRun.viewer.focus || 0)).toBeGreaterThanOrEqual(2);
-  await page.reload();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await expect(page.getByTestId('skill-piercing-stitch')).toBeEnabled({ timeout:7000 });
-
   const version = state.activeRun.version;
-  await page.getByTestId('skill-piercing-stitch').click();
+  await piercing.click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout:7000 }).toBeGreaterThan(version);
   state = await dashboard(context);
-  expect(Number(state.activeRun.viewer.skillCooldowns['piercing-stitch'] || 0)).toBeGreaterThan(0);
+  expect(Number(state.activeRun.viewer.focus || 0)).toBe(0);
+  expect(Number(state.activeRun.enemy?.statuses?.exposed || 0)).toBe(0);
+  expect(Number(state.activeRun.viewer.skillCooldowns['piercing-stitch'] || 0)).toBe(2);
+  await expect(page.getByTestId('enemy-status-exposed')).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const afterReload = await dashboard(context);
-  expect(Number(afterReload.activeRun.viewer.skillCooldowns['piercing-stitch'] || 0)).toBe(Number(state.activeRun.viewer.skillCooldowns['piercing-stitch'] || 0));
-  await expect(page.getByTestId('skill-piercing-stitch')).toBeDisabled();
+  expect(afterReload.activeRun.streamlinedSkills).toBe(true);
+  expect(Number(afterReload.activeRun.viewer.focus || 0)).toBe(0);
+  expect(Number(afterReload.activeRun.viewer.skillCooldowns['piercing-stitch'] || 0)).toBe(2);
+  await expect(page.getByTestId('skill-focus')).toHaveCount(0);
+  await expect(page.getByTestId('skill-piercing-stitch')).toBeDisabled({ timeout:7000 });
+  await expect(page.getByTestId('skill-piercing-stitch-state')).toHaveText('Cooldown 2');
 
+  await action(page, context, 'stream-attack');
+  await expect(page.getByTestId('skill-piercing-stitch-state')).toHaveText('Cooldown 1', { timeout:7000 });
+  await action(page, context, 'stream-attack');
+  await expect(page.getByTestId('skill-piercing-stitch')).toBeEnabled({ timeout:7000 });
+  await expect(page.getByTestId('skill-piercing-stitch-state')).toHaveText('Ready');
+
+  const ready = await dashboard(context);
+  expect(Number(ready.activeRun.viewer.focus || 0)).toBe(0);
+  expect(Number(ready.activeRun.enemy?.statuses?.exposed || 0)).toBe(0);
+  expect(ready.runUpgrades).toEqual([]);
   await expect(page.getByTestId('stream-build-summary')).toBeHidden();
-  expect(afterReload.activeRun.runEventSchedule).toBeNull();
-  expect(afterReload.activeRun.runUpgradeOfferIds).toEqual([]);
+  expect(ready.activeRun.runEventSchedule).toBeNull();
+  expect(ready.activeRun.runUpgradeOfferIds).toEqual([]);
 });
