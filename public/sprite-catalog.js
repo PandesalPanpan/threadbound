@@ -15,11 +15,11 @@ const ENEMY_SPRITES = Object.freeze({
 
 // Generated image sheets intentionally stay as single source assets. Presentation
 // code crops stable frames with CSS background positioning instead of duplicating
-// dozens of derived PNG files in the repository.
+// dozens of derived files in the repository.
 export const GENERATED_SPRITE_ATLASES = Object.freeze({
   maleWeavers: Object.freeze({
     id: 'male-weavers-v1',
-    src: '/assets/generated/threadbound-male-characters-v1.png',
+    src: '/assets/generated/threadbound-male-characters-v1.svg',
     width: 1024,
     height: 127,
     columns: 8,
@@ -27,7 +27,7 @@ export const GENERATED_SPRITE_ATLASES = Object.freeze({
   }),
   femaleWeavers: Object.freeze({
     id: 'female-weavers-v1',
-    src: '/assets/generated/threadbound-female-characters-v1.png',
+    src: '/assets/generated/threadbound-female-characters-v1.svg',
     width: 1024,
     height: 133,
     columns: 8,
@@ -35,7 +35,7 @@ export const GENERATED_SPRITE_ATLASES = Object.freeze({
   }),
   enemies: Object.freeze({
     id: 'enemies-v1',
-    src: '/assets/generated/threadbound-enemies-v1.png',
+    src: '/assets/generated/threadbound-enemies-v1.svg',
     width: 1024,
     height: 283,
     columns: 8,
