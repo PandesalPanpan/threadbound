@@ -88,7 +88,6 @@ if (stream) {
     body.threadbound-player #stream .simple-loop-action[data-kind="hunt"] { color:#a98eff !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="attack"] { color:#ff7080 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="dungeon"] { color:#f0b541 !important; }
-    body.threadbound-player #stream .simple-loop-action[data-kind="inventory"] { color:#58aaff !important; }
     body.threadbound-player #stream .simple-loop-action:disabled { opacity:.55 !important; }
     body.threadbound-player #stream .simple-loop-gear-warning { display:none !important; }
     body.threadbound-player #stream .simple-loop-help {
@@ -113,6 +112,7 @@ if (stream) {
 
   let dashboard = null;
   let syncing = false;
+  let resyncRequested = false;
   let scheduled = null;
   let acting = false;
   let lastSignature = '';
@@ -201,15 +201,6 @@ if (stream) {
     return button;
   }
 
-  function openInventory() {
-    const gear = document.querySelector('.mobile-game-nav a[data-view="gear"]');
-    if (gear) gear.click();
-    else {
-      document.body.dataset.gameView = 'gear';
-      document.querySelector('#inventory')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    }
-  }
-
   function firstDungeon() {
     const dungeon = dashboard?.dungeons?.[0];
     const readiness = dashboard?.simpleLoop?.dungeonReadiness?.find((entry) => entry.dungeonId === dungeon?.id);
@@ -240,6 +231,11 @@ if (stream) {
     help.className = 'simple-loop-help';
     help.innerHTML = '<strong>Simple loop</strong><br>/hunt — quick solo battle for Dust and gear<br>/dungeon — enter the harder stat-check dungeon<br>/attack — attack the current dungeon enemy<br>Gear, Party, World, and Codex live in the bottom navigation.';
     commandCard.append(help);
+    decorateFigmaSurface();
+  }
+
+  function isSimpleSurface() {
+    return Boolean(dashboard && (!dashboard.activeRun || dashboard.activeRun.simpleCombat));
   }
 
   function renderControls() {
@@ -247,8 +243,7 @@ if (stream) {
     const simple = Boolean(dashboard.activeRun?.simpleCombat);
     const noRun = !dashboard.activeRun;
 
-    // Existing Adventure Stream controls remain in the DOM only as a compatibility source
-    // for persisted legacy runs. The default player surface renders one tiny contextual row.
+    // Legacy controls are a migration source only. The player sees one contextual Figma row.
     suggestions.classList.toggle('simple-loop-controls', noRun || simple);
     normalizeLegacyControls();
     suggestions.querySelectorAll('.simple-loop-action,.simple-loop-gear-warning').forEach((node) => node.remove());
@@ -272,8 +267,19 @@ if (stream) {
     }
   }
 
+  function restorePresentationAfterExternalRender() {
+    normalizeLegacyControls();
+    decorateFigmaSurface();
+    if (isSimpleSurface() && suggestions && !suggestions.querySelector('.simple-loop-action')) {
+      renderControls();
+    }
+  }
+
   async function sync({ force = false } = {}) {
-    if (syncing) return;
+    if (syncing) {
+      resyncRequested = true;
+      return;
+    }
     syncing = true;
     try {
       dashboard = await api('/api/dashboard');
@@ -284,19 +290,24 @@ if (stream) {
         dashboard.activeRun?.simpleCombat || false,
         dashboard.character?.attackPower || 0,
         dashboard.inventory?.length || 0,
+        dashboard.party?.id || null,
+        dashboard.party?.allReady || false,
       ]);
       if (force || signature !== lastSignature) {
         lastSignature = signature;
         renderControls();
-      } else if (suggestions && !suggestions.querySelector('.simple-loop-action') && (!dashboard.activeRun || dashboard.activeRun.simpleCombat)) {
+      } else if (suggestions && !suggestions.querySelector('.simple-loop-action') && isSimpleSurface()) {
         renderControls();
       }
       if (input) input.placeholder = dashboard.activeRun?.simpleCombat ? 'Message party or /attack…' : 'Message party or /hunt…';
-      document.body.classList.toggle('simple-gameplay-loop', !dashboard.activeRun || Boolean(dashboard.activeRun.simpleCombat));
-      normalizeLegacyControls();
-      decorateFigmaSurface();
+      document.body.classList.toggle('simple-gameplay-loop', isSimpleSurface());
+      restorePresentationAfterExternalRender();
     } finally {
       syncing = false;
+      if (resyncRequested) {
+        resyncRequested = false;
+        queueMicrotask(() => sync({ force: true }).catch((error) => showError(error.message)));
+      }
     }
   }
 
@@ -342,16 +353,15 @@ if (stream) {
   }
 
   const observer = suggestions ? new MutationObserver(() => {
-    normalizeLegacyControls();
+    // adventure-stream.js can redraw its legacy suggestion source after party/realtime changes.
+    // Restore the simple player-facing row immediately instead of waiting on another network race.
+    queueMicrotask(restorePresentationAfterExternalRender);
     scheduleSync();
   }) : null;
   if (suggestions) observer.observe(suggestions, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-testid'] });
 
-  // Realtime stream entries/state changes mutate the stream even if suggestion markup does
-  // not change immediately, so this keeps the tiny control row and APP treatment in sync.
   const streamObserver = new MutationObserver(() => {
-    normalizeLegacyControls();
-    decorateFigmaSurface();
+    queueMicrotask(restorePresentationAfterExternalRender);
     scheduleSync(70);
   });
   streamObserver.observe(stream, { childList: true, subtree: true });
