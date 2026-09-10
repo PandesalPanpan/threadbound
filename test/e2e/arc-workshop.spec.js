@@ -101,13 +101,9 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   expect(runtimeDungeon).toBeTruthy();
   expect(String(runtimeDungeon.sourceManifestRevision)).toBe(String(revision));
 
-  // The Figma-minimal play surface intentionally hides the legacy Dungeons button.
-  // Exercise the same capability through the visible chat-first command surface instead.
-  await sendCommand(page, '/dungeons');
-  const dungeonReply = page.getByTestId('stream-command-card');
-  await expect(dungeonReply).toContainText('Cinder Vault');
-  await expect(dungeonReply.getByTestId('stream-enter-cinder-vault')).toBeVisible();
-  await dungeonReply.getByTestId('stream-enter-cinder-vault').click();
+  // The Figma-minimal surface avoids a permanent dungeon picker, but explicit chat
+  // commands must still reach generated content. This exercises that real player path.
+  await sendCommand(page, '/run cinder-vault');
   await expect.poll(async () => (await dashboard(context)).activeRun?.dungeonId || null, { timeout: 5000 }).toBe('cinder-vault');
   await expect(page.getByTestId('run-state')).toContainText('Ashling');
 
