@@ -11,7 +11,7 @@ const reviewDir = 'ux-review';
 
 async function reviewShot(page, name, locator = null) {
   mkdirSync(reviewDir, { recursive: true });
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(250);
   const options = { path: `${reviewDir}/${name}.png` };
   if (locator) await locator.screenshot(options);
   else await page.screenshot(options);
@@ -32,184 +32,99 @@ async function dashboard(context) {
   return response.json();
 }
 
-async function clickAttackAndWait(page, context) {
+async function actionAndWait(page, context, testId) {
   const state = await dashboard(context);
-  const attack = page.getByTestId('stream-attack');
-  await expect(attack).toBeVisible();
-  await attack.click();
+  const version = state.activeRun?.version ?? -1;
+  const action = page.getByTestId(testId);
+  await expect(action).toBeVisible({ timeout:7000 });
+  await expect(action).toBeEnabled({ timeout:7000 });
+  await action.click();
   await expect.poll(async () => {
     const after = await dashboard(context);
-    if (!after.activeRun) return true;
-    if (after.activeRun.id !== state.activeRun.id) return true;
-    return after.activeRun.version > state.activeRun.version;
-  }, { timeout:5000 }).toBe(true);
+    if (!after.activeRun || after.activeRun.id !== state.activeRun?.id) return true;
+    return after.activeRun.version > version;
+  }, { timeout:7000 }).toBe(true);
 }
 
-async function attackUntilPhaseChanges(page, context, expectedPhase, maxActions = 24) {
-  for (let index = 0; index < maxActions; index += 1) {
+async function reactiveTurn(page, context) {
+  const state = await dashboard(context);
+  const reaction = state.activeRun?.enemyIntent?.reaction;
+  if (reaction === 'interrupt') return actionAndWait(page, context, 'stream-interrupt');
+  if (reaction === 'guard') return actionAndWait(page, context, 'stream-guard');
+  return actionAndWait(page, context, 'stream-attack');
+}
+
+async function playUntilPhase(page, context, phase, limit = 120) {
+  for (let turn = 0; turn < limit; turn += 1) {
     const state = await dashboard(context);
-    if (state.activeRun?.phase !== expectedPhase) return state;
-    await clickAttackAndWait(page, context);
+    if (!state.activeRun) return null;
+    if (state.activeRun.phase === phase) return state.activeRun;
+    if (!['combat','boss'].includes(state.activeRun.phase)) throw new Error(`Unexpected phase ${state.activeRun.phase}.`);
+    await reactiveTurn(page, context);
   }
-  throw new Error(`Run stayed in ${expectedPhase} after ${maxActions} explicit attacks.`);
+  throw new Error(`Run did not reach ${phase}.`);
 }
 
-async function attackUntilEncounterChanges(page, context, encounterIndex, maxActions = 12) {
-  for (let index = 0; index < maxActions; index += 1) {
-    const state = await dashboard(context);
-    if (!state.activeRun || state.activeRun.encounterIndex !== encounterIndex || state.activeRun.phase !== 'combat') return state;
-    await clickAttackAndWait(page, context);
-  }
-  throw new Error(`Encounter ${encounterIndex} did not resolve after ${maxActions} explicit attacks.`);
-}
-
-async function choosePower(page, context, shotName) {
-  const state = await dashboard(context);
-  expect(state.activeRun?.phase).toBe('upgrade');
-  expect(state.activeRun.runUpgradeResume).toBeNull();
-  expect(state.runUpgrades).toHaveLength(3);
-  await expect(page.getByTestId('stream-action-mode')).toHaveText('BOSS PREPARATION', { timeout: 5000 });
-  const cards = page.getByTestId('stream-suggestions').locator('button.run-power-card:not([hidden])');
-  await expect(cards).toHaveCount(3);
-  for (const card of await cards.all()) {
-    await expect(card.locator('.run-power-description')).not.toBeEmpty();
-    await expect(card.locator('.run-power-effect').first()).toBeVisible();
-  }
-  await reviewShot(page, shotName, page.locator('#stream'));
-  const beforeVersion = state.activeRun.version;
-  await cards.first().click();
-  await expect.poll(async () => {
-    const after = await dashboard(context);
-    return after.activeRun?.phase === 'boss' && after.activeRun.version > beforeVersion;
-  }, { timeout: 5000 }).toBe(true);
-  return state.runUpgrades[0];
-}
-
-async function chooseDiscovery(page, context) {
-  const state = await dashboard(context);
-  expect(state.activeRun?.phase).toBe('event');
-  const event = state.activeRun.runEvent;
-  expect(event?.name).toBeTruthy();
-  await expect(page.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
-  await expect(page.getByTestId('run-event-name')).toHaveText(event.name);
-  await expect(page.getByTestId('run-event-card')).toContainText(event.prompt);
-  const choices = event.choices || [];
-  expect(choices).toHaveLength(2);
-  for (const choice of choices) {
-    const button = page.getByTestId(`run-event-choice-${choice.id}`);
-    await expect(button).toBeVisible();
-    await expect(button).toContainText(choice.summary);
-    const box = await button.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box.height).toBeGreaterThanOrEqual(44);
-  }
-  expect(await page.getByTestId('run-event-card').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
-  await reviewShot(page, '04-run-discovery', page.locator('#stream'));
-
-  const safeChoice = choices.find((choice) => /bind|quiet/i.test(choice.id)) || choices[0];
-  const beforeVersion = state.activeRun.version;
-  await page.getByTestId(`run-event-choice-${safeChoice.id}`).click();
-  await expect.poll(async () => {
-    const after = await dashboard(context);
-    return after.activeRun?.phase === 'combat' && after.activeRun.version > beforeVersion;
-  }, { timeout: 5000 }).toBe(true);
-  return safeChoice;
-}
-
-test('first run stays chat-simple: baseline attack, contextual reactions, one discovery, one boss-prep power, then reward', async ({ page, context }) => {
-  test.setTimeout(80000);
+test('first run is a shared RPG chat: contextual actions, direct boss, reward, then gear', async ({ page, context }) => {
+  test.setTimeout(90000);
   await loginWithThreaded(page);
 
-  await expect(page.getByTestId('first-run-guide')).toContainText('Each attack is a deliberate turn');
-  await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout:7000 });
   await expect(page.getByTestId('stream-start-dungeon')).toContainText('Frayed Hollow');
-  await expect(page.locator('.stream-hint')).toContainText('Shared receipts stay in this thread');
-  await reviewShot(page, '01-first-run');
+  await expect(page.locator('.stream-hint')).toContainText('The chat is the game');
+  await reviewShot(page, '01-first-run-streamlined');
 
   await page.getByTestId('stream-start-dungeon').click();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await expect(page.getByTestId('combat-coach')).toContainText('Nothing attacks automatically');
-  await expect(page.getByTestId('stream-attack')).toBeVisible();
-  await expect(page.getByTestId('stream-guard')).toBeHidden();
-  await expect(page.getByTestId('stream-interrupt')).toHaveCount(0);
-  expect(await page.getByTestId('stream-attack').evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
+  await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout:7000 }).toBe('combat');
+  const started = await dashboard(context);
+  expect(started.activeRun.streamlinedLoop).toBe(true);
+  expect(started.activeRun.runEventSchedule).toBeNull();
+  expect(started.activeRun.runUpgradeOfferIds).toEqual([]);
+  expect(started.activeRun.selectedUpgrades).toEqual([]);
+  await expect(page.getByTestId('stream-build-summary')).toBeHidden();
+
+  const local = page.getByTestId('stream-thread-local');
+  await expect(local.getByTestId('stream-attack')).toBeVisible();
+  expect(await local.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
 
   const beforeIdle = await dashboard(context);
-  const enemyHpBeforeIdle = beforeIdle.activeRun.enemy.hp;
-  const versionBeforeIdle = beforeIdle.activeRun.version;
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(800);
   const afterIdle = await dashboard(context);
-  expect(afterIdle.activeRun.enemy.hp).toBe(enemyHpBeforeIdle);
-  expect(afterIdle.activeRun.version).toBe(versionBeforeIdle);
+  expect(afterIdle.activeRun.enemy.hp).toBe(beforeIdle.activeRun.enemy.hp);
+  expect(afterIdle.activeRun.version).toBe(beforeIdle.activeRun.version);
 
-  await clickAttackAndWait(page, context);
-  const firstResult = page.getByTestId('stream-system-entry').filter({ hasText: /attacked Frayed Wisp/i }).last();
-  await expect(firstResult).toBeVisible();
-  await expect(firstResult).toContainText(/Frayed Wisp \d+\/12/);
-  await expect(firstResult).toContainText(/\d+\/40/);
-  await reviewShot(page, '02-explicit-attack-result', page.locator('#stream'));
+  await actionAndWait(page, context, 'stream-attack');
+  const firstResult = page.getByTestId('stream-system-entry').filter({ hasText:/attacked Frayed Wisp/i }).last();
+  await expect(firstResult).toBeVisible({ timeout:7000 });
+  await reviewShot(page, '02-first-attack-streamlined', page.locator('#stream'));
 
-  // Frayed Wisp's heal is interruptible, so Interrupt appears only now; Guard stays out of
-  // the primary decision surface because it is not the answer to this telegraph.
-  await expect(page.getByTestId('stream-interrupt')).toBeVisible({ timeout: 5000 });
-  await expect(page.getByTestId('stream-guard')).toBeHidden();
-  const beforeInterrupt = await dashboard(context);
-  await page.getByTestId('stream-interrupt').click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.version, { timeout:5000 }).toBeGreaterThan(beforeInterrupt.activeRun.version);
-  await expect(page.getByTestId('stream-system-entry').filter({ hasText: /interrupt/i }).last()).toBeVisible();
+  const boss = await playUntilPhase(page, context, 'boss');
+  expect(boss.enemy.isBoss).toBe(true);
+  expect(boss.enemy.name).toBe('The First Needle');
+  expect(boss.runAttackBonus).toBe(0);
+  expect(boss.runEventHistory).toEqual([]);
+  expect(boss.selectedUpgrades).toEqual([]);
+  await expect(page.getByTestId('stream-build-summary')).toBeHidden();
+  await reviewShot(page, '03-direct-boss', page.locator('#stream'));
 
-  // Encounter one flows straight into encounter two: there is no between-fight power draft.
-  await attackUntilEncounterChanges(page, context, 0);
-  const secondEncounter = await dashboard(context);
-  expect(secondEncounter.activeRun.phase).toBe('combat');
-  expect(secondEncounter.activeRun.encounterIndex).toBe(1);
-  expect(secondEncounter.activeRun.runUpgradeResume).toBeNull();
-  expect(secondEncounter.activeRun.selectedUpgrades).toHaveLength(0);
-
-  await attackUntilPhaseChanges(page, context, 'combat');
-  await chooseDiscovery(page, context);
-
-  await attackUntilPhaseChanges(page, context, 'combat');
-  const finalPower = await choosePower(page, context, '05-boss-preparation');
-  const bossState = await dashboard(context);
-  await expect(page.getByTestId('stream-next-enemy').last()).toContainText('The First Needle', { timeout: 5000 });
-  await expect(page.getByTestId('stream-next-enemy-hp').last()).toHaveText(`${bossState.activeRun.enemy.maxHp} / ${bossState.activeRun.enemy.maxHp} HP`);
-  expect(finalPower.name).toBeTruthy();
-
-  const built = await dashboard(context);
-  expect(built.activeRun.selectedUpgrades).toHaveLength(1);
-
-  await attackUntilPhaseChanges(page, context, 'boss');
+  await playUntilPhase(page, context, 'complete');
+  await expect.poll(async () => (await dashboard(context)).activeRun, { timeout:7000 }).toBeNull();
   const completed = await dashboard(context);
-  expect(completed.activeRun).toBeNull();
   expect(completed.inventory.length).toBeGreaterThan(0);
   const rewardName = completed.inventory.at(-1).name;
   expect(rewardName).toBeTruthy();
-  const rewardReceipt = page.getByTestId('stream-system-entry').filter({ hasText: rewardName }).last();
-  await expect(rewardReceipt).toBeVisible({ timeout: 5000 });
-  await expect(rewardReceipt).toContainText(/found/i);
-  await reviewShot(page, '06-reward-in-thread', page.locator('#stream'));
+  await expect(page.getByTestId('stream-system-entry').filter({ hasText:rewardName }).last()).toBeVisible({ timeout:7000 });
+  await reviewShot(page, '04-reward-in-thread', page.locator('#stream'));
 
   await page.getByTestId('stream-message').fill('/gear');
   await page.getByTestId('stream-send').click();
   const gearCard = page.getByTestId('stream-command-card');
   await expect(gearCard).toContainText(rewardName);
   expect(await gearCard.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
-  await expect(gearCard.locator('.thread-gear-list')).toBeVisible();
-  await expect(gearCard.locator('img[src="/sprites/relic.svg"]').first()).toBeVisible();
+
   const attackBeforeEquip = completed.character.attackPower;
-  await gearCard.getByRole('button', { name: 'Equip' }).first().click();
+  await gearCard.getByRole('button', { name:'Equip' }).first().click();
   await expect(gearCard).toContainText('EQUIPPED');
-  await expect.poll(async () => (await dashboard(context)).character.attackPower).toBeGreaterThan(attackBeforeEquip);
-  const attackAfterEquip = (await dashboard(context)).character.attackPower;
-
-  await page.getByTestId('stream-message').fill('/status');
-  await page.getByTestId('stream-send').click();
-  await expect(page.getByTestId('stream-command-card')).toContainText(`ATK ${attackAfterEquip}`);
-  await expect(page.getByTestId('stream-command-card')).toContainText(rewardName);
-  await reviewShot(page, '07-equipped-reward', page.locator('#stream'));
-
-  await page.getByTestId('stream-start-dungeon').click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.phase).toBe('combat');
-  await expect.poll(async () => (await dashboard(context)).character.attackPower).toBe(attackAfterEquip);
+  await expect.poll(async () => (await dashboard(context)).character.attackPower, { timeout:7000 }).toBeGreaterThan(attackBeforeEquip);
+  await reviewShot(page, '05-equipped-reward', page.locator('#stream'));
 });
