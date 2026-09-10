@@ -9,6 +9,7 @@ Threadbound keeps generated art as source atlases under `public/assets/generated
 | Male Weavers v1 | `threadbound-male-characters-v1.svg` | 1024×127, 8×1 | Active in chat combat/status portraits |
 | Female Weavers v1 | `threadbound-female-characters-v1.svg` | 1024×133, 8×1 | Ready; waiting for an explicit player avatar/gender selection instead of assigning one randomly |
 | Enemies v1 | `threadbound-enemies-v1.svg` | 1024×283, 8×2 | Active in Hunt and dungeon chat receipts |
+| Equipment v1 | `threadbound-equipment-v1.svg` | 1024×128, 8×1 | Active in mobile Gear, `/gear`, and equipped-status surfaces |
 | Hero animation reference | `threadbound-hero-animation-reference.png` | Reference sheet | Not used as a runtime atlas |
 
 The atlas grid is defined in `public/sprite-catalog.js`. `public/generated-sprite-presentation.js` is a presentation adapter that applies frames to the existing chat-first UI.
@@ -44,12 +45,16 @@ The female atlas is deliberately **not** assigned randomly. Once Threadbound has
 - Hunt result receipt: generated enemy portrait and compact encounter summary.
 - Rich dungeon combat receipt: generated Weaver and enemy/boss portraits beside HP bars.
 - `/status` response: generated Weaver and active enemy/boss portraits.
+- Mobile Gear inventory: deterministic generated equipment icon per persisted item.
+- `/gear` thread response and equipped loadout: the same item-to-frame mapping used by the inventory surface.
 
 The visual adapter is progressive enhancement. If the sprite presentation cannot load its read model, the underlying chat, commands, persistence, and realtime behavior continue to work.
 
 ## Items and equipment
 
-There is currently **no generated equipment/item atlas committed to the repository**. Relics therefore continue to use the existing `relic.svg` fallback. Do not mark generated equipment coverage as complete until an item atlas is added and mapped.
+Equipment uses an eight-frame generated atlas. Item frame selection is deterministic from the item ID (falling back to the item name/effect identity), so the same persisted relic keeps the same visual cue across reloads without storing presentation data in the domain model or database.
+
+This is intentionally a presentation mapping rather than an item-type mechanic. Future authored weapon/armor/accessory families can add explicit mappings once those classifications exist in authoritative item data.
 
 ## Adding future art
 
