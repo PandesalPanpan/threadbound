@@ -1,3 +1,5 @@
+import './generated-sprite-presentation.js';
+
 const stream = document.querySelector('#stream');
 
 if (stream) {

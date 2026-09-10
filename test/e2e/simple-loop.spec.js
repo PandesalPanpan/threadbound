@@ -54,6 +54,9 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await expect(huntReceipt).toContainText('Thread Dust');
   await expect(huntReceipt).toContainText(/remaining HP is \d+\/40/);
   await expect(huntReceipt.locator('.stream-app-badge')).toHaveText('APP');
+  const huntSprite = huntReceipt.getByTestId('stream-hunt-sprite');
+  await expect(huntSprite).toBeVisible({ timeout: 5000 });
+  await expect(huntSprite).toHaveAttribute('data-sprite-atlas', 'enemies-v1');
   const afterHunt = await dashboard(context);
   expect(afterHunt.character.threadDust).toBeGreaterThan(0);
   await screenshot(page, 'simple-loop-hunt');
@@ -80,6 +83,13 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   expect(afterAttack.activeRun.enemyIntent).toBeNull();
   expect(afterAttack.activeRun.viewer.focus).toBe(0);
   expect(afterAttack.activeRun.selectedUpgrades).toEqual([]);
+
+  const generatedWeaver = page.getByTestId('stream-generated-weaver-sprite').last();
+  const generatedEnemy = page.getByTestId('stream-generated-enemy-sprite').last();
+  await expect(generatedWeaver).toBeVisible({ timeout: 5000 });
+  await expect(generatedWeaver).toHaveAttribute('data-sprite-atlas', 'male-weavers-v1');
+  await expect(generatedEnemy).toBeVisible();
+  await expect(generatedEnemy).toHaveAttribute('data-sprite-atlas', 'enemies-v1');
 
   await page.getByTestId('stream-message').fill('/guard');
   await page.getByTestId('stream-send').click();
