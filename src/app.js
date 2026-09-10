@@ -12,6 +12,8 @@ import { ArcManifestService } from './application/ArcManifestService.js';
 import { ActivityStreamService } from './application/ActivityStreamService.js';
 import { CombatPreviewService } from './application/CombatPreviewService.js';
 import { GameService } from './application/GameService.js';
+import { HuntService } from './application/HuntService.js';
+import { SimpleDungeonService } from './application/SimpleDungeonService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
@@ -41,7 +43,7 @@ function topNav(active, authMode = 'threaded') {
 }
 
 function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Read the thread, build Focus, react to telegraphs, and chain skills with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/combat-skills.js"></script><script type="module" src="/gameplay-feel.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Hunt for gear, grow stronger, then challenge dangerous dungeons with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/simple-loop.js"></script></body></html>`;
 }
 
 function codexPage(authMode) {
@@ -110,6 +112,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     }
   });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
+  const huntService = new HuntService({ repository, eventBus });
+  const simpleDungeonService = new SimpleDungeonService({ repository, eventBus, arcManifestService });
   const combatPreview = new CombatPreviewService({ repository });
   const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
   const partyService = new PartyService({ repository, eventBus });
@@ -226,17 +230,26 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const connection = request.session.threaded;
     const dashboard = gameService.dashboard(connection.playerId);
     const runUpgrades = decorateRunUpgradeOffers(dashboard.activeRun, dashboard.runUpgrades);
-    const actionPreviews = request.query.previews === '1' && dashboard.activeRun
+    const actionPreviews = request.query.previews === '1' && dashboard.activeRun && !dashboard.activeRun.simpleCombat
       ? combatPreview.preview(connection.playerId, dashboard.activeRun.id)
       : null;
+    const dungeonReadiness = dashboard.dungeons.map((dungeon) => {
+      try { return simpleDungeonService.readiness(connection.playerId, dungeon.id); }
+      catch { return { dungeonId: dungeon.id, dungeonName: dungeon.name, recommendedAttack: 9, ready: false, members: [] }; }
+    });
     response.setHeader('Cache-Control', 'no-store');
     response.json({
       authSource: connection.source || 'threaded',
       threadedUser: connection.profile,
       wallet: connection.wallet,
       ...dashboard,
-      runUpgrades,
+      runUpgrades: dashboard.activeRun?.simpleCombat ? [] : runUpgrades,
+      combatSkills: dashboard.activeRun?.simpleCombat ? [] : dashboard.combatSkills,
       actionPreviews,
+      simpleLoop: {
+        huntAvailable: !dashboard.activeRun,
+        dungeonReadiness,
+      },
     });
   });
 
@@ -319,6 +332,16 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/party/ready', requireConnection, (request, response) => response.json({ party: partyService.setReady(request.session.threaded.playerId, Boolean(request.body?.ready)) }));
   app.post('/api/party/leave', requireConnection, (request, response) => { partyService.leaveParty(request.session.threaded.playerId); response.json({ party: null }); });
 
+  app.post('/api/hunt', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const hunt = huntService.hunt(playerId);
+    return response.json({ hunt, dashboard: gameService.dashboard(playerId) });
+  });
+  app.post('/api/dungeons/:dungeonId/start-simple', requireConnection, (request, response) => response.status(201).json({ run: simpleDungeonService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
+
+  // Legacy tactical start remains during migration so old persisted journeys and focused
+  // regression fixtures can still exercise the former combat model. The player UI no
+  // longer calls this route.
   app.post('/api/dungeons/:dungeonId/start', requireConnection, (request, response) => response.status(201).json({ run: gameService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
   app.use('/api/runs/:runId', requireConnection, idempotentRunCommand);
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
@@ -373,8 +396,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'relic_max_level',
       'invalid_relic_attunement',
       'relic_attunement_locked',
+      'hunt_during_dungeon',
+      'simple_combat_attack_only',
     ]);
-    const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic/i.test(knownMessage) ? 409 : 500;
+    const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic|simple combat|hunting/i.test(knownMessage) ? 409 : 500;
     response.status(status).json({ error: error?.code || (status === 409 ? 'game_rule_violation' : 'internal_error'), message: knownMessage });
   });
 
