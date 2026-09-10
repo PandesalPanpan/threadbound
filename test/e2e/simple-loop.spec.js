@@ -6,9 +6,9 @@ const REVIEW_DIR = 'ux-review';
 function preserveSpriteAtlases() {
   mkdirSync(REVIEW_DIR, { recursive: true });
   for (const name of [
-    'threadbound-male-characters-v1.png',
-    'threadbound-female-characters-v1.png',
-    'threadbound-enemies-v1.png',
+    'threadbound-male-characters-v1.svg',
+    'threadbound-female-characters-v1.svg',
+    'threadbound-enemies-v1.svg',
   ]) copyFileSync(`public/assets/generated/${name}`, `${REVIEW_DIR}/${name}`);
 }
 
@@ -31,9 +31,15 @@ async function expectVisibleAtlasFrame(sprite) {
 
     const response = await fetch(imageMatch[1]);
     const blob = await response.blob();
-    const bitmap = await createImageBitmap(blob);
-    const frameWidth = bitmap.width / layout.columns;
-    const frameHeight = bitmap.height / layout.rows;
+    const objectUrl = URL.createObjectURL(blob);
+    const image = await new Promise((resolve, reject) => {
+      const candidate = new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error(`Could not decode sprite atlas ${atlasId}`));
+      candidate.src = objectUrl;
+    });
+    const frameWidth = image.naturalWidth / layout.columns;
+    const frameHeight = image.naturalHeight / layout.rows;
     const column = frameIndex % layout.columns;
     const row = Math.floor(frameIndex / layout.columns);
     const canvas = document.createElement('canvas');
@@ -41,7 +47,7 @@ async function expectVisibleAtlasFrame(sprite) {
     canvas.height = 48;
     const context = canvas.getContext('2d', { willReadFrequently: true });
     context.drawImage(
-      bitmap,
+      image,
       column * frameWidth,
       row * frameHeight,
       frameWidth,
@@ -51,7 +57,7 @@ async function expectVisibleAtlasFrame(sprite) {
       canvas.width,
       canvas.height,
     );
-    bitmap.close();
+    URL.revokeObjectURL(objectUrl);
 
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
     const colors = new Set();
