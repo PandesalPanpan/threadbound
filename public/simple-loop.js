@@ -5,16 +5,66 @@ if (stream) {
   const composer = stream.querySelector('[data-testid="stream-composer"]');
   const input = stream.querySelector('[data-testid="stream-message"]');
   const commandCard = stream.querySelector('[data-testid="stream-command-card"]');
+  const log = stream.querySelector('[data-testid="adventure-stream-log"]');
   const errorEl = stream.querySelector('[data-testid="stream-error"]');
 
   const style = document.createElement('style');
   style.textContent = `
-    body.threadbound-player #stream .stream-combat-dock { display:none !important; }
+    /* The default Figma-inspired loop is a chat, not a compressed dashboard. */
+    body.threadbound-player.simple-gameplay-loop[data-game-view="play"] #character,
+    body.threadbound-player.simple-gameplay-loop[data-game-view="play"] #dungeon,
+    body.threadbound-player.simple-gameplay-loop #stream .stream-combat-dock,
+    body.threadbound-player.simple-gameplay-loop #stream .stream-heading {
+      display:none !important;
+    }
+    body.threadbound-player.simple-gameplay-loop #stream {
+      padding-top:0 !important;
+    }
+    body.threadbound-player.simple-gameplay-loop #stream .adventure-stream-log {
+      height:min(70vh,720px) !important;
+      min-height:430px !important;
+      padding-top:8px !important;
+    }
     body.threadbound-player #stream .stream-entry-system p { white-space:pre-line; }
+
+    /* Discord/Figma-like bot identity. The APP badge is presentation only. */
+    body.threadbound-player #stream .stream-app-badge,
+    body.threadbound-player #stream .threadbound-app-kicker::after {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:14px;
+      margin-left:5px;
+      padding:1px 4px;
+      border-radius:4px;
+      background:#5b45b7;
+      color:#fff;
+      font-size:.47rem;
+      font-weight:800;
+      line-height:1;
+      letter-spacing:.03em;
+      vertical-align:middle;
+    }
+    body.threadbound-player #stream .threadbound-app-kicker::after { content:'APP'; }
+
+    /* Command responses are ordinary Threadbound responses, never a private-view concept. */
+    body.threadbound-player #stream .thread-reply-header .threadbound-app-kicker {
+      display:inline-flex !important;
+      align-items:center;
+      color:#9b7bff !important;
+      font-size:.61rem !important;
+      font-weight:760;
+      letter-spacing:.02em !important;
+    }
+
+    /* Only the decision needed right now stays beside the composer. */
     body.threadbound-player #stream .stream-suggestions.simple-loop-controls {
       display:grid !important;
-      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
       gap:7px !important;
+    }
+    body.threadbound-player #stream .stream-suggestions.simple-loop-controls:has(.simple-loop-action[data-kind="attack"]) {
+      grid-template-columns:1fr !important;
     }
     body.threadbound-player #stream .stream-suggestions.simple-loop-controls > button:not(.simple-loop-action) {
       display:none !important;
@@ -25,28 +75,22 @@ if (stream) {
       justify-content:center !important;
       min-width:0 !important;
       min-height:44px !important;
-      padding:7px 8px !important;
+      padding:7px 10px !important;
       border:1px solid #292c34 !important;
       border-radius:9px !important;
-      background:#202228 !important;
+      background:#15171d !important;
       color:#d6d7dc !important;
       box-shadow:none !important;
       font-size:.68rem !important;
       font-weight:650 !important;
       white-space:nowrap !important;
     }
-    body.threadbound-player #stream .simple-loop-action[data-kind="hunt"] { color:#9b7bff !important; }
+    body.threadbound-player #stream .simple-loop-action[data-kind="hunt"] { color:#a98eff !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="attack"] { color:#ff7080 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="dungeon"] { color:#f0b541 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="inventory"] { color:#58aaff !important; }
     body.threadbound-player #stream .simple-loop-action:disabled { opacity:.55 !important; }
-    body.threadbound-player #stream .simple-loop-gear-warning {
-      grid-column:1 / -1;
-      margin:0;
-      color:#8d909b;
-      font-size:.56rem;
-      text-align:center;
-    }
+    body.threadbound-player #stream .simple-loop-gear-warning { display:none !important; }
     body.threadbound-player #stream .simple-loop-help {
       margin:4px 0 0;
       padding:7px 0;
@@ -55,8 +99,14 @@ if (stream) {
       font-size:.67rem;
       line-height:1.45;
     }
+    @media (max-width:720px) {
+      body.threadbound-player.simple-gameplay-loop #stream .adventure-stream-log {
+        height:calc(100dvh - 226px) !important;
+        min-height:430px !important;
+      }
+    }
     @media (max-width:390px) {
-      body.threadbound-player #stream .simple-loop-action { font-size:.63rem !important; padding-inline:5px !important; }
+      body.threadbound-player #stream .simple-loop-action { font-size:.63rem !important; padding-inline:7px !important; }
     }
   `;
   document.head.append(style);
@@ -92,6 +142,35 @@ if (stream) {
     if (!testId || button.classList.contains('simple-loop-action')) return;
     if (['stream-start-dungeon', 'stream-attack', 'stream-guard', 'stream-interrupt'].includes(testId)) {
       button.dataset.testid = `${testId}-legacy`;
+    }
+  }
+
+  function normalizeLegacyControls() {
+    if (!suggestions) return;
+    for (const button of suggestions.querySelectorAll('button:not(.simple-loop-action)')) legacyTestId(button);
+  }
+
+  function decorateFigmaSurface() {
+    if (log) {
+      for (const meta of log.querySelectorAll('.stream-entry-system .stream-entry-meta')) {
+        if (meta.querySelector('.stream-app-badge')) continue;
+        const author = meta.querySelector('strong');
+        if (!author) continue;
+        const badge = document.createElement('span');
+        badge.className = 'stream-app-badge';
+        badge.textContent = 'APP';
+        author.after(badge);
+      }
+    }
+
+    if (commandCard) {
+      const kicker = commandCard.querySelector('.thread-reply-header span');
+      if (kicker) {
+        kicker.textContent = 'THREADBOUND';
+        kicker.classList.add('threadbound-app-kicker');
+      }
+      const close = commandCard.querySelector('.thread-reply-close');
+      if (close) close.setAttribute('aria-label', 'Dismiss Threadbound response');
     }
   }
 
@@ -159,7 +238,7 @@ if (stream) {
     commandCard.innerHTML = '';
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
-    help.innerHTML = '<strong>Simple loop</strong><br>/hunt — quick solo battle for Dust and gear<br>/dungeon — enter the harder stat-check dungeon<br>/attack — attack the current dungeon enemy<br>/inventory — view and equip permanent gear';
+    help.innerHTML = '<strong>Simple loop</strong><br>/hunt — quick solo battle for Dust and gear<br>/dungeon — enter the harder stat-check dungeon<br>/attack — attack the current dungeon enemy<br>Gear, Party, World, and Codex live in the bottom navigation.';
     commandCard.append(help);
   }
 
@@ -168,11 +247,10 @@ if (stream) {
     const simple = Boolean(dashboard.activeRun?.simpleCombat);
     const noRun = !dashboard.activeRun;
 
-    // Existing Adventure Stream controls remain in the DOM as a compatibility source for
-    // legacy runs, but the new player loop owns the visible controls whenever no old run
-    // is being resumed.
+    // Existing Adventure Stream controls remain in the DOM only as a compatibility source
+    // for persisted legacy runs. The default player surface renders one tiny contextual row.
     suggestions.classList.toggle('simple-loop-controls', noRun || simple);
-    for (const button of suggestions.querySelectorAll('button:not(.simple-loop-action)')) legacyTestId(button);
+    normalizeLegacyControls();
     suggestions.querySelectorAll('.simple-loop-action,.simple-loop-gear-warning').forEach((node) => node.remove());
 
     if (!noRun && !simple) return;
@@ -186,16 +264,11 @@ if (stream) {
         const recommended = Number(readiness?.recommendedAttack ?? 9);
         addButton(`/dungeon · ${current}/${recommended}`, 'dungeon', startDungeon, 'stream-start-dungeon');
       }
-      addButton('/inventory', 'inventory', async () => openInventory(), 'stream-inventory');
       return;
     }
 
     if (['combat', 'boss'].includes(dashboard.activeRun.phase) && dashboard.activeRun.viewer?.hp > 0) {
       addButton('/attack', 'attack', attack, 'stream-attack');
-      const hint = document.createElement('p');
-      hint.className = 'simple-loop-gear-warning';
-      hint.textContent = `${dashboard.activeRun.enemy?.name || 'Enemy'} · ${dashboard.activeRun.enemy?.hp ?? 0}/${dashboard.activeRun.enemy?.maxHp ?? 0} HP · no temporary combat buffs`;
-      suggestions.append(hint);
     }
   }
 
@@ -220,6 +293,8 @@ if (stream) {
       }
       if (input) input.placeholder = dashboard.activeRun?.simpleCombat ? 'Message party or /attack…' : 'Message party or /hunt…';
       document.body.classList.toggle('simple-gameplay-loop', !dashboard.activeRun || Boolean(dashboard.activeRun.simpleCombat));
+      normalizeLegacyControls();
+      decorateFigmaSurface();
     } finally {
       syncing = false;
     }
@@ -266,14 +341,23 @@ if (stream) {
     }, { capture: true });
   }
 
-  const observer = suggestions ? new MutationObserver(() => scheduleSync()) : null;
-  if (suggestions) observer.observe(suggestions, { childList: true });
+  const observer = suggestions ? new MutationObserver(() => {
+    normalizeLegacyControls();
+    scheduleSync();
+  }) : null;
+  if (suggestions) observer.observe(suggestions, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-testid'] });
 
   // Realtime stream entries/state changes mutate the stream even if suggestion markup does
-  // not change immediately, so this keeps the tiny control row in sync with authoritative state.
-  const streamObserver = new MutationObserver(() => scheduleSync(70));
+  // not change immediately, so this keeps the tiny control row and APP treatment in sync.
+  const streamObserver = new MutationObserver(() => {
+    normalizeLegacyControls();
+    decorateFigmaSurface();
+    scheduleSync(70);
+  });
   streamObserver.observe(stream, { childList: true, subtree: true });
 
+  normalizeLegacyControls();
+  decorateFigmaSurface();
   sync({ force: true }).catch((error) => showError(error.message));
   window.addEventListener('beforeunload', () => {
     clearTimeout(scheduled);
