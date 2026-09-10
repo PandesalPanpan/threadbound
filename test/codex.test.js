@@ -125,21 +125,20 @@ test('world history projection is retry-safe and records generated relic discove
   projector.handle({ type: 'ItemGenerated', playerId: player.id, itemId: 'history-item-1' });
 
   const history = service.browse(player.id, { category: 'history' });
-  assert.ok(history.entries.some((entry) => entry.entityId === 'history-item-1'));
-  assert.equal(history.entries.filter((entry) => entry.id.includes('run-history-1')).length, 1);
+  assert.equal(history.entries.filter((entry) => entry.id === 'run:run-history-1:completed').length, 1);
+  assert.equal(history.entries.filter((entry) => entry.id === 'item:history-item-1:discovered').length, 1);
+  assert.match(history.entries.find((entry) => entry.id === 'item:history-item-1:discovered').title, /Gleaming Spindle of Dawn/);
   gameRepository.close();
 });
 
 test('achievement codex shows locked definitions and player-specific unlocked status', () => {
   const { gameRepository, service, player } = setup();
   let achievements = service.browse(player.id, { category: 'achievements' });
-  assert.ok(achievements.entries.length > 0);
-  assert.ok(achievements.entries.some((entry) => entry.unlocked === false));
+  assert.equal(achievements.total, 3);
+  assert.ok(achievements.entries.every((entry) => entry.unlocked === false));
 
-  gameRepository.unlockAchievement(player.id, 'first-clear', '2026-09-07T00:00:00.000Z');
+  gameRepository.unlockAchievement(player.id, { id: 'first_blood', name: 'First Blood', description: 'Defeat your first enemy.' });
   achievements = service.browse(player.id, { category: 'achievements' });
-  const firstClear = achievements.entries.find((entry) => entry.id === 'first-clear');
-  assert.equal(firstClear.unlocked, true);
-  assert.equal(firstClear.unlockedAt, '2026-09-07T00:00:00.000Z');
+  assert.equal(achievements.entries.find((entry) => entry.id === 'first_blood').unlocked, true);
   gameRepository.close();
 });
