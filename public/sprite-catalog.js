@@ -169,3 +169,12 @@ export function createSpriteElement(frame, { className = '', testId = null, labe
   }
   return applySpriteFrame(element, frame);
 }
+
+// `sprite-catalog.js` is on the current /game module graph through game.js and the
+// Adventure Stream. Mount generated art from this active boundary instead of relying
+// on older optional presentation bootstraps that the minimal page no longer loads.
+// Dynamic import runs after this module is initialized, avoiding a static import cycle
+// because generated-sprite-presentation.js consumes the frame helpers above.
+if (globalThis.document) {
+  queueMicrotask(() => import('./generated-sprite-presentation.js').catch(() => {}));
+}
