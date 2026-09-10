@@ -30,9 +30,10 @@ export class AdventureRun {
     this.state.runUpgradeResume ??= null;
     this.state.selectedUpgrades ??= this.state.selectedUpgrade ? [this.state.selectedUpgrade] : [];
     // Compatibility boundary: only newly-created runs opt into the streamlined loop.
-    // Persisted runs from the previous design keep their snapshotted event/power phase and
-    // can therefore finish truthfully without destructive state migration.
+    // Persisted runs from the previous design keep their snapshotted event/power/skill rules
+    // and can therefore finish truthfully without destructive state migration.
     this.state.streamlinedLoop = state.streamlinedLoop === true;
+    this.state.streamlinedSkills = state.streamlinedSkills === true;
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
   }
 
@@ -43,6 +44,7 @@ export class AdventureRun {
     // still contain run-event data for legacy compatibility/reference, but the core chat
     // loop no longer pauses combat to ask for random run buffs or discovery choices.
     state.streamlinedLoop = true;
+    state.streamlinedSkills = true;
     state.runEventSchedule = null;
     state.runEvent = null;
     state.runEventResume = null;
