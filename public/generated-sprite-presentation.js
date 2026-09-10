@@ -1,4 +1,4 @@
-import { createSpriteElement, enemySpriteFrame, weaverSpriteFrame } from './sprite-catalog.js';
+import { createSpriteElement, enemySpriteFrame, itemSpriteFrame, weaverSpriteFrame } from './sprite-catalog.js';
 
 const stream = document.querySelector('#stream');
 
@@ -7,7 +7,8 @@ if (stream) {
   style.textContent = `
     /* Generated art stays presentation-only. Atlas frames are cropped with CSS so the
        original sheets remain the single source of truth in /public/assets/generated. */
-    #stream .thread-generated-sprite {
+    #stream .thread-generated-sprite,
+    #inventory .thread-generated-sprite {
       display:inline-block;
       flex:0 0 auto;
       overflow:hidden;
@@ -26,6 +27,12 @@ if (stream) {
     #stream .thread-generated-status-sprite {
       width:38px;
       min-width:38px;
+    }
+    #stream .thread-generated-item-sprite,
+    #inventory .thread-generated-item-sprite {
+      width:38px;
+      min-width:38px;
+      align-self:center;
     }
     #stream .stream-hunt-visual {
       display:grid;
@@ -71,6 +78,8 @@ if (stream) {
       #stream .stream-health-unit .thread-generated-sprite { width:28px; min-width:28px; }
       #stream .stream-hunt-visual { grid-template-columns:40px minmax(0,1fr); gap:8px; padding:7px; }
       #stream .stream-hunt-visual .thread-generated-sprite { width:40px; min-width:40px; }
+      #stream .thread-generated-item-sprite,
+      #inventory .thread-generated-item-sprite { width:34px; min-width:34px; }
     }
   `;
   document.head.append(style);
@@ -204,10 +213,54 @@ if (stream) {
     }
   }
 
+  function itemForName(name) {
+    return dashboard?.inventory?.find((item) => String(item.name) === String(name)) || null;
+  }
+
+  function decorateGear() {
+    if (!dashboard) return;
+
+    const inventoryRows = document.querySelectorAll('#inventory [data-testid="inventory-item"]');
+    inventoryRows.forEach((row, index) => {
+      const image = row.querySelector('img[src="/sprites/relic.svg"]');
+      const item = dashboard.inventory?.[index];
+      if (!image || !item) return;
+      replaceImage(image, itemSpriteFrame(item), {
+        className: 'thread-generated-item-sprite generated-item-sprite',
+        testId: 'generated-inventory-item-sprite',
+        label: item.name,
+      });
+    });
+
+    for (const row of stream.querySelectorAll('.thread-gear-row')) {
+      const image = row.querySelector('img[src="/sprites/relic.svg"]');
+      if (!image) continue;
+      const name = row.querySelector('.thread-gear-copy strong')?.textContent?.trim();
+      const item = itemForName(name);
+      if (!item) continue;
+      replaceImage(image, itemSpriteFrame(item), {
+        className: 'thread-generated-item-sprite generated-item-sprite',
+        testId: 'stream-generated-item-sprite',
+        label: item.name,
+      });
+    }
+
+    const loadout = stream.querySelector('.thread-loadout-line');
+    const loadoutImage = loadout?.querySelector('img[src="/sprites/relic.svg"]');
+    if (loadoutImage && dashboard.character?.equippedItem) {
+      replaceImage(loadoutImage, itemSpriteFrame(dashboard.character.equippedItem), {
+        className: 'thread-generated-item-sprite generated-item-sprite',
+        testId: 'stream-equipped-item-sprite',
+        label: dashboard.character.equippedItem.name,
+      });
+    }
+  }
+
   function decorate() {
     decorateHealthUnits();
     decorateStatusUnits();
     decorateHuntRows();
+    decorateGear();
   }
 
   async function refresh() {
@@ -242,7 +295,7 @@ if (stream) {
   }
 
   const observer = new MutationObserver(() => scheduleRefresh());
-  observer.observe(stream, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('threadbound:activity', () => scheduleRefresh(25));
   window.addEventListener('threadbound:context-refresh', () => scheduleRefresh(25));
   window.addEventListener('beforeunload', () => observer.disconnect(), { once: true });
