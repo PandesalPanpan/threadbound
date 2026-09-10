@@ -49,15 +49,6 @@ function takeReactivePartyTurn(game, repository, runId, players, turn) {
   return turn + 1;
 }
 
-function chooseOfferedPower(game, repository, runId, playerId) {
-  const state = repository.getRun(runId);
-  assert.equal(state.phase, 'upgrade');
-  assert.equal(state.runUpgradeOfferIds.length, 3);
-  const choiceId = state.runUpgradeOfferIds[0];
-  game.chooseUpgrade(playerId, runId, choiceId);
-  return choiceId;
-}
-
 test('character and solo dungeon domain rules preserve the complete first run loop', () => {
   const character = new Character({ id: 'p1', threadedUserId: '42', displayName: 'Tester', equippedItem: { attackBonus: 3 } });
   assert.equal(character.attackPower, 9);
@@ -123,7 +114,7 @@ test('generated rewards only use registered effect vocabulary', () => {
   assert.ok(item.attackBonus >= 1 && item.attackBonus <= 3);
 });
 
-test('service layer preserves solo reward, progression, achievements, and equipment power across one discovery and one boss-prep power', () => {
+test('service layer preserves solo reward, progression, achievements, and equipment power across the streamlined run', () => {
   let id = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++id}` });
   const bus = new EventBus();
@@ -138,28 +129,28 @@ test('service layer preserves solo reward, progression, achievements, and equipm
   const player = service.ensurePlayer({ id: 1001, name: 'Tester' });
   const run = service.startDungeon(player.id, 'frayed-hollow');
 
-  for (let turn = 0; turn < 60 && repository.getRun(run.id).phase === 'combat'; turn += 1) takeReactiveSoloTurn(service, repository, run.id, player.id);
-  const discovery = repository.getRun(run.id);
-  assert.equal(discovery.phase, 'event');
-  assert.ok(discovery.runEvent?.choices?.length === 2);
-  assert.equal(discovery.selectedUpgrades.length, 0);
-  assert.equal(discovery.runUpgradeResume, null);
-  service.chooseUpgrade(player.id, run.id, discovery.runEvent.choices[0].id);
-  assert.equal(repository.getRun(run.id).phase, 'combat');
-
-  for (let turn = 0; turn < 60 && repository.getRun(run.id).phase === 'combat'; turn += 1) takeReactiveSoloTurn(service, repository, run.id, player.id);
-  const finalPower = repository.getRun(run.id);
-  assert.equal(finalPower.phase, 'upgrade');
-  assert.equal(finalPower.runUpgradeResume, null);
-  assert.equal(finalPower.selectedUpgrades.length, 0);
-  chooseOfferedPower(service, repository, run.id, player.id);
+  for (let turn = 0; turn < 180 && repository.getRun(run.id).phase === 'combat'; turn += 1) {
+    takeReactiveSoloTurn(service, repository, run.id, player.id);
+  }
+  const boss = repository.getRun(run.id);
+  assert.equal(boss.phase, 'boss');
+  assert.equal(boss.streamlinedLoop, true);
+  assert.equal(boss.runEvent, null);
+  assert.equal(boss.runEventHistory.length, 0);
+  assert.equal(boss.runUpgradeResume, null);
+  assert.equal(boss.runUpgradeOfferIds.length, 0);
+  assert.equal(boss.runAttackBonus, 0);
+  assert.equal(boss.selectedUpgrade, null);
+  assert.equal(boss.selectedUpgrades.length, 0);
 
   let completed = null;
-  for (let turn = 0; turn < 60 && repository.getRun(run.id).phase === 'boss'; turn += 1) completed = takeReactiveSoloTurn(service, repository, run.id, player.id);
+  for (let turn = 0; turn < 60 && repository.getRun(run.id).phase === 'boss'; turn += 1) {
+    completed = takeReactiveSoloTurn(service, repository, run.id, player.id);
+  }
 
   assert.equal(completed?.state.phase, 'complete');
-  assert.equal(repository.getRun(run.id).runEventHistory.length, 1);
-  assert.equal(repository.getRun(run.id).selectedUpgrades.length, 1);
+  assert.equal(repository.getRun(run.id).runEventHistory.length, 0);
+  assert.equal(repository.getRun(run.id).selectedUpgrades.length, 0);
   assert.equal(repository.listItems(player.id).length, 1);
   assert.equal(repository.getPlayer(player.id).threadDust, 15);
   assert.equal(repository.getWorldState().frayedHollowClears, 1);
@@ -171,7 +162,7 @@ test('service layer preserves solo reward, progression, achievements, and equipm
   repository.close();
 });
 
-test('two-player party owns one run, leader owns the shared discovery and boss preparation, and both players receive completion rewards', () => {
+test('two-player party owns one streamlined run and both players receive completion rewards', () => {
   let playerSequence = 0;
   let rewardSequence = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++playerSequence}` });
@@ -201,32 +192,26 @@ test('two-player party owns one run, leader owns the shared discovery and boss p
 
   let turn = 0;
   const players = [leader.id, partner.id];
-  while (repository.getRun(run.id).phase === 'combat') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
+  while (repository.getRun(run.id).phase === 'combat') {
+    turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
+  }
 
-  let choiceState = repository.getRun(run.id);
-  assert.equal(choiceState.phase, 'event');
-  assert.equal(choiceState.selectedUpgrades.length, 0);
-  const eventChoice = choiceState.runEvent.choices[0].id;
-  assert.throws(() => game.chooseUpgrade(partner.id, run.id, eventChoice), /party leader/i);
-  game.chooseUpgrade(leader.id, run.id, eventChoice);
-  assert.equal(repository.getRun(run.id).runEventHistory.length, 1);
-  assert.equal(repository.getRun(run.id).phase, 'combat');
+  const boss = repository.getRun(run.id);
+  assert.equal(boss.phase, 'boss');
+  assert.equal(boss.streamlinedLoop, true);
+  assert.equal(boss.runEvent, null);
+  assert.equal(boss.runEventHistory.length, 0);
+  assert.equal(boss.runUpgradeOfferIds.length, 0);
+  assert.equal(boss.selectedUpgrades.length, 0);
 
-  while (repository.getRun(run.id).phase === 'combat') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
-  choiceState = repository.getRun(run.id);
-  assert.equal(choiceState.phase, 'upgrade');
-  assert.equal(choiceState.runUpgradeResume, null);
-  const powerId = choiceState.runUpgradeOfferIds[0];
-  assert.throws(() => game.chooseUpgrade(partner.id, run.id, powerId), /party leader/i);
-  game.chooseUpgrade(leader.id, run.id, powerId);
-  assert.equal(repository.getRun(run.id).phase, 'boss');
-
-  while (repository.getRun(run.id).phase === 'boss') turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
+  while (repository.getRun(run.id).phase === 'boss') {
+    turn = takeReactivePartyTurn(game, repository, run.id, players, turn);
+  }
 
   const completed = repository.getRun(run.id);
   assert.equal(completed.phase, 'complete');
   assert.equal(completed.rewardsGranted, true);
-  assert.equal(completed.selectedUpgrades.length, 1);
+  assert.equal(completed.selectedUpgrades.length, 0);
   assert.ok(completed.participants.every((participant) => participant.contributionDamage > 0));
   assert.ok(completed.participants.some((participant) => participant.successfulGuards + participant.successfulInterrupts > 0));
   assert.equal(repository.listItems(leader.id).length, 1);
