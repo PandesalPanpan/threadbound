@@ -1,7 +1,18 @@
-import { mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 const REVIEW_DIR = 'ux-review';
+
+function preserveSpriteAtlases() {
+  mkdirSync(REVIEW_DIR, { recursive: true });
+  for (const name of [
+    'threadbound-male-characters-v1.png',
+    'threadbound-female-characters-v1.png',
+    'threadbound-enemies-v1.png',
+  ]) {
+    copyFileSync(`public/assets/generated/${name}`, `${REVIEW_DIR}/${name}`);
+  }
+}
 
 async function login(page) {
   await page.goto('/');
@@ -27,6 +38,7 @@ async function screenshot(page, name) {
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
 test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeon chat', async ({ page, context }) => {
+  preserveSpriteAtlases();
   await login(page);
 
   const hunt = page.locator('.simple-loop-action[data-testid="stream-hunt"]');
