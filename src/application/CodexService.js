@@ -1,4 +1,6 @@
 import { DUNGEONS } from '../domain/DungeonRun.js';
+import { HUNT_ENEMIES } from '../domain/HuntEncounter.js';
+import { prepareSimpleDungeon } from '../domain/SimpleDungeonPolicy.js';
 import { ACHIEVEMENTS } from './AchievementProjector.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 
@@ -23,15 +25,33 @@ function enemyEntries(dungeons) {
         id: enemy.id,
         category: 'enemies',
         title: enemy.name,
-        summary: `Encountered in ${dungeon.name}.`,
-        body: `${enemy.name} is documented directly from the published dungeon definition. Base HP ${enemy.hp}; base retaliation ${enemy.retaliation}. Actual combat values scale with party size.`,
-        mechanics: { baseHp: enemy.hp, baseRetaliation: enemy.retaliation, dungeonId: dungeon.id, abilities: enemy.abilities || [] },
+        summary: `Dungeon enemy encountered in ${dungeon.name}.`,
+        body: `${enemy.name} is encountered in ${dungeon.name}. Its hardened dungeon values are ${enemy.hp} HP and ${enemy.retaliation} retaliation before party-size scaling. Dungeons use permanent character stats rather than temporary combat buffs.`,
+        mechanics: { hp: enemy.hp, retaliation: enemy.retaliation, dungeonId: dungeon.id, recommendedAttack: dungeon.recommendedAttack || 9 },
         source: dungeon.sourceManifestId ? 'arc-manifest' : 'domain-model',
-        tags: [dungeon.id, dungeon.arcId, 'enemy'].filter(Boolean),
+        tags: [dungeon.id, dungeon.arcId, 'enemy', 'dungeon'].filter(Boolean),
       });
     }
   }
   return entries;
+}
+
+function huntEnemyEntries() {
+  return HUNT_ENEMIES.map((enemy) => ({
+    id: enemy.id,
+    category: 'enemies',
+    title: enemy.name,
+    summary: 'A creature that can appear during /hunt.',
+    body: `${enemy.name} is a Hunt enemy. A Hunt resolves the entire battle in one command using your permanent Attack and Health. It has ${enemy.hp} HP, deals ${enemy.retaliation} damage per exchange, and awards ${enemy.threadDust} Thread Dust when defeated.`,
+    mechanics: {
+      hp: enemy.hp,
+      retaliation: enemy.retaliation,
+      threadDust: enemy.threadDust,
+      dropChance: `${Math.round(enemy.dropChance * 100)}%`,
+    },
+    source: 'hunt-catalog',
+    tags: ['enemy', 'hunt'],
+  }));
 }
 
 function bossEntries(dungeons) {
@@ -40,10 +60,10 @@ function bossEntries(dungeons) {
     category: 'bosses',
     title: dungeon.boss.name,
     summary: `Boss of ${dungeon.name}.`,
-    body: `${dungeon.boss.name} is documented directly from the published dungeon definition. Base HP ${dungeon.boss.hp}; base retaliation ${dungeon.boss.retaliation}. Party-size scaling is applied at run start.`,
-    mechanics: { baseHp: dungeon.boss.hp, baseRetaliation: dungeon.boss.retaliation, dungeonId: dungeon.id, abilities: dungeon.boss.abilities || [] },
+    body: `${dungeon.boss.name} is the final stat check of ${dungeon.name}. Its hardened values are ${dungeon.boss.hp} HP and ${dungeon.boss.retaliation} retaliation before party-size scaling. The dungeon recommends ${dungeon.recommendedAttack || 9}+ Attack.`,
+    mechanics: { hp: dungeon.boss.hp, retaliation: dungeon.boss.retaliation, dungeonId: dungeon.id, recommendedAttack: dungeon.recommendedAttack || 9 },
     source: dungeon.sourceManifestId ? 'arc-manifest' : 'domain-model',
-    tags: [dungeon.id, dungeon.arcId, 'boss'].filter(Boolean),
+    tags: [dungeon.id, dungeon.arcId, 'boss', 'dungeon'].filter(Boolean),
   }));
 }
 
@@ -136,10 +156,11 @@ export class CodexService {
 
   browse(playerId, { category = 'all', query = '' } = {}) {
     const q = normalize(query);
-    const dungeons = [...Object.values(DUNGEONS), ...(this.arcManifestService?.runtimeDungeons() || [])];
+    const sourceDungeons = [...Object.values(DUNGEONS), ...(this.arcManifestService?.runtimeDungeons() || [])];
+    const dungeons = sourceDungeons.map((dungeon) => prepareSimpleDungeon(dungeon));
     const groups = {
       items: itemEntries(this.codexRepository),
-      enemies: enemyEntries(dungeons),
+      enemies: [...huntEnemyEntries(), ...enemyEntries(dungeons)],
       bosses: bossEntries(dungeons),
       lore: narrativeEntries(this.gameRepository, this.codexRepository),
       achievements: achievementEntries(this.gameRepository, playerId, this.arcManifestService),
