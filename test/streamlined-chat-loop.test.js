@@ -63,10 +63,14 @@ test('streamlined skills are immediately usable, cooldown-only, and do not leak 
     /cooldown/i,
   );
 
-  const attack = run.attack({ playerId: 'p1', attackPower: 3 });
-  assert.equal(attack.state.participants[0].focus, 0);
-  assert.equal(attack.state.participants[0].skillCooldowns['piercing-stitch'], 0);
-  assert.equal(attack.events.some((event) => event.type === 'FocusChanged'), false);
+  const firstAttack = run.attack({ playerId: 'p1', attackPower: 1 });
+  assert.equal(firstAttack.state.participants[0].focus, 0);
+  assert.equal(firstAttack.state.participants[0].skillCooldowns['piercing-stitch'], 1);
+  assert.equal(firstAttack.events.some((event) => event.type === 'FocusChanged'), false);
+
+  const secondAttack = run.attack({ playerId: 'p1', attackPower: 1 });
+  assert.equal(secondAttack.state.participants[0].focus, 0);
+  assert.equal(secondAttack.state.participants[0].skillCooldowns['piercing-stitch'], 0);
 });
 
 test('streamlined runs reject obsolete temporary run choices instead of silently applying them', () => {
