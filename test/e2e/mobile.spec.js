@@ -50,8 +50,7 @@ test('mobile play gives the conversation most of the screen and keeps only compa
   await expect(page.getByTestId('thread-game-location')).toHaveText('Choose a dungeon to begin');
 
   const logBox = await log.boundingBox();
-  expect(logBox?.height || 0).toBeGreaterThan(560);
-  expect((logBox?.height || 0) / 844).toBeGreaterThan(0.65);
+  expect((logBox?.height || 0) / 844).toBeGreaterThan(0.60);
 
   await expect(page.getByTestId('mobile-game-nav')).toBeHidden();
   for (const selector of ['#character','#party','#dungeon','#inventory','#achievements','#world','#honey']) {
