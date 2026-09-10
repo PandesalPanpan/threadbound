@@ -342,8 +342,8 @@ if (stream) {
       name:data.character?.displayName || run.viewer.displayName || 'Weaver',
       hp:run.viewer.hp,
       maxHp:run.viewer.maxHp,
-      focus:run.viewer.focus,
-      maxFocus:run.viewer.maxFocus,
+      focus:run.streamlinedSkills ? null : run.viewer.focus,
+      maxFocus:run.streamlinedSkills ? null : run.viewer.maxFocus,
       sprite:weaverSprite(data.character?.id || run.viewer.playerId),
       testId:'stream-decision-you-hp',
     }));
@@ -368,7 +368,8 @@ if (stream) {
       for (const ally of allies) {
         const chip = document.createElement('span');
         chip.className = `stream-party-vital${percent(ally.hp, ally.maxHp) <= 30 ? ' is-low' : ''}`;
-        chip.textContent = `${ally.displayName || 'Ally'} · ${ally.hp}/${ally.maxHp} HP${ally.focus !== undefined ? ` · F ${ally.focus}/${ally.maxFocus}` : ''}`;
+        const focusCopy = !run.streamlinedSkills && ally.focus !== undefined ? ` · F ${ally.focus}/${ally.maxFocus}` : '';
+        chip.textContent = `${ally.displayName || 'Ally'} · ${ally.hp}/${ally.maxHp} HP${focusCopy}`;
         party.append(chip);
       }
       decisionSnapshot.append(party);
@@ -413,11 +414,14 @@ if (stream) {
     const hp = document.createElement('span');
     hp.dataset.testid = 'stream-transition-you-hp';
     hp.textContent = `YOU · ${run.viewer.hp}/${run.viewer.maxHp} HP`;
-    const focus = document.createElement('span');
-    focus.className = 'focus';
-    focus.dataset.testid = 'stream-transition-you-focus';
-    focus.textContent = `Focus ${run.viewer.focus}/${run.viewer.maxFocus}`;
-    vitals.append(hp, focus);
+    vitals.append(hp);
+    if (!run.streamlinedSkills) {
+      const focus = document.createElement('span');
+      focus.className = 'focus';
+      focus.dataset.testid = 'stream-transition-you-focus';
+      focus.textContent = `Focus ${run.viewer.focus}/${run.viewer.maxFocus}`;
+      vitals.append(focus);
+    }
     state.append(head, vitals);
     const projected = forecast(data.actionPreviews?.actions?.attack, { compact:true });
     if (projected) state.append(projected);
