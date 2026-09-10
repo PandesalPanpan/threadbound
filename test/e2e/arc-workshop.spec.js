@@ -123,8 +123,9 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const emberNeedle = page.getByTestId('inventory-item').filter({ hasText: 'Ember Needle of the Loom' }).first();
   await expect(emberNeedle).toContainText('+3 Attack');
-  await expect(page.getByTestId('achievement').filter({ hasText: 'Through the Cinders' })).toBeVisible();
 
+  // Achievements are intentionally no longer a competing dashboard panel in the
+  // minimal UI; validate the unlock through the player-facing Codex instead.
   await page.getByTestId('nav-codex').click();
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
 
