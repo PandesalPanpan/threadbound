@@ -5,7 +5,7 @@ import { GameService } from '../src/application/GameService.js';
 import { DungeonRun } from '../src/domain/DungeonRun.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
-test('GameService exposes the skill catalog and persists one rich skill result', () => {
+test('GameService exposes cooldown-only skills and persists one rich streamlined skill result', () => {
   let sequence = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++sequence}` });
   const bus = new EventBus();
@@ -17,37 +17,28 @@ test('GameService exposes the skill catalog and persists one rich skill result',
 
   const initialDashboard = game.dashboard(player.id);
   assert.deepEqual(initialDashboard.combatSkills.map((skill) => skill.id), ['piercing-stitch', 'severing-knot', 'mending-chorus']);
+  assert.equal(initialDashboard.activeRun.streamlinedSkills, true);
   assert.equal(initialDashboard.activeRun.viewer.focus, 0);
-  assert.equal(initialDashboard.activeRun.viewer.maxFocus, 4);
-
-  game.attack(player.id, started.id);
-  game.attack(player.id, started.id); // player-first lethal may now finish the Wisp before its mend resolves
-  let focused = game.dashboard(player.id);
-  assert.equal(focused.activeRun.viewer.focus, 2);
-  if (focused.activeRun.phase === 'upgrade') {
-    assert.ok(focused.runUpgrades.length > 0);
-    game.chooseUpgrade(player.id, started.id, focused.runUpgrades[0].id);
-    focused = game.dashboard(player.id);
-  }
-  assert.equal(focused.activeRun.phase, 'combat');
+  assert.deepEqual(initialDashboard.runUpgrades, []);
 
   const outcome = game.useSkill(player.id, started.id, 'piercing-stitch');
   assert.equal(outcome.skillId, 'piercing-stitch');
   assert.equal(outcome.state.viewer.focus, 0);
   assert.equal(outcome.state.viewer.skillCooldowns['piercing-stitch'], 2);
-  assert.equal(outcome.state.enemy.statuses.exposed, 1);
+  assert.equal(outcome.state.enemy.statuses.exposed, 0);
 
   const publicResult = events.filter((event) => event.type === 'CombatActionResolved').at(-1);
   assert.equal(publicResult.action, 'skill');
   assert.equal(publicResult.skillId, 'piercing-stitch');
-  assert.equal(publicResult.actorFocus, 0);
-  assert.equal(publicResult.actorMaxFocus, 4);
+  assert.equal(publicResult.actorFocus, null);
+  assert.equal(publicResult.actorMaxFocus, null);
   assert.equal(publicResult.actorSkillCooldowns['piercing-stitch'], 2);
-  assert.equal(publicResult.enemyStatuses.exposed, 1);
+  assert.deepEqual(publicResult.enemyStatuses, {});
+  assert.equal(publicResult.streamlinedSkills, true);
   repository.close();
 });
 
-test('optimistic run versioning prevents two stale skill spends from both committing', () => {
+test('optimistic run versioning prevents two stale legacy skill spends from both committing', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-1' });
   const bus = new EventBus();
   const game = new GameService({ repository, eventBus: bus, idFactory: () => 'skills-race-run' });
@@ -55,6 +46,7 @@ test('optimistic run versioning prevents two stale skill spends from both commit
   const started = game.startDungeon(player.id, 'frayed-hollow');
 
   const seeded = repository.getRun(started.id);
+  seeded.streamlinedSkills = false;
   seeded.participants[0].focus = 4;
   repository.saveRun(seeded);
 
