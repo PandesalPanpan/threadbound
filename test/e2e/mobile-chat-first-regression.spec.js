@@ -28,9 +28,9 @@ test('mobile play stays chat-first and Gear stays a clean secondary surface', as
   await expect(page.getByText(/PRIVATE THREAD REPLY/i)).toHaveCount(0);
   await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or /hunt…');
 
-  // Gear remains one tap away rather than competing with the chat. The current
-  // relic artwork is intentionally the compatibility fallback until a generated
-  // item/equipment atlas is committed and mapped in the presentation layer.
+  // Gear remains one tap away rather than competing with the chat. Inventory art
+  // is presentation-only and must come from the generated equipment atlas rather
+  // than the old generic relic fallback whenever an item is present.
   const bottomNav = page.getByTestId('mobile-game-nav');
   await expect(bottomNav).toBeVisible();
   await bottomNav.getByText('Gear', { exact: true }).click();
@@ -41,7 +41,10 @@ test('mobile play stays chat-first and Gear stays a clean secondary surface', as
   if (await items.count()) {
     const firstItem = items.first();
     await expect(firstItem).toBeVisible();
-    await expect(firstItem.locator('img').first()).toHaveAttribute('src', /\/sprites\/relic\.svg$/);
+    const sprite = firstItem.getByTestId('generated-inventory-item-sprite');
+    await expect(sprite).toBeVisible();
+    await expect(sprite).toHaveAttribute('data-sprite-atlas', 'equipment-v1');
+    await expect(firstItem.locator('img[src="/sprites/relic.svg"]')).toHaveCount(0);
   }
 
   // Returning to Play restores the same uncluttered chat-first surface.
