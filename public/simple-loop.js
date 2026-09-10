@@ -8,13 +8,25 @@ if (stream) {
   const log = stream.querySelector('[data-testid="adventure-stream-log"]');
   const errorEl = stream.querySelector('[data-testid="stream-error"]');
 
+  // Keep the Figma-simple action surface separate from the legacy suggestion renderer.
+  // adventure-stream.js remains available for persisted tactical runs, but cannot redraw
+  // or erase this player-facing bar during realtime/party updates.
+  const actionBar = document.createElement('div');
+  actionBar.className = 'simple-loop-actions';
+  actionBar.dataset.testid = 'simple-loop-actions';
+  actionBar.setAttribute('aria-label', 'Current actions');
+  actionBar.hidden = true;
+  if (composer) composer.before(actionBar);
+  else stream.append(actionBar);
+
   const style = document.createElement('style');
   style.textContent = `
     /* The default Figma-inspired loop is a chat, not a compressed dashboard. */
     body.threadbound-player.simple-gameplay-loop[data-game-view="play"] #character,
     body.threadbound-player.simple-gameplay-loop[data-game-view="play"] #dungeon,
     body.threadbound-player.simple-gameplay-loop #stream .stream-combat-dock,
-    body.threadbound-player.simple-gameplay-loop #stream .stream-heading {
+    body.threadbound-player.simple-gameplay-loop #stream .stream-heading,
+    body.threadbound-player.simple-gameplay-loop #stream > .stream-suggestions {
       display:none !important;
     }
     body.threadbound-player.simple-gameplay-loop #stream {
@@ -58,16 +70,18 @@ if (stream) {
     }
 
     /* Only the decision needed right now stays beside the composer. */
-    body.threadbound-player #stream .stream-suggestions.simple-loop-controls {
+    body.threadbound-player #stream .simple-loop-actions {
+      display:none;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+      padding:7px 0 5px;
+      border-top:1px solid #292c34;
+    }
+    body.threadbound-player.simple-gameplay-loop #stream .simple-loop-actions:not([hidden]) {
       display:grid !important;
-      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-      gap:7px !important;
     }
-    body.threadbound-player #stream .stream-suggestions.simple-loop-controls:has(.simple-loop-action[data-kind="attack"]) {
-      grid-template-columns:1fr !important;
-    }
-    body.threadbound-player #stream .stream-suggestions.simple-loop-controls > button:not(.simple-loop-action) {
-      display:none !important;
+    body.threadbound-player #stream .simple-loop-actions:has(.simple-loop-action[data-kind="attack"]) {
+      grid-template-columns:1fr;
     }
     body.threadbound-player #stream .simple-loop-action {
       display:inline-flex !important;
@@ -89,7 +103,6 @@ if (stream) {
     body.threadbound-player #stream .simple-loop-action[data-kind="attack"] { color:#ff7080 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="dungeon"] { color:#f0b541 !important; }
     body.threadbound-player #stream .simple-loop-action:disabled { opacity:.55 !important; }
-    body.threadbound-player #stream .simple-loop-gear-warning { display:none !important; }
     body.threadbound-player #stream .simple-loop-help {
       margin:4px 0 0;
       padding:7px 0;
@@ -197,7 +210,7 @@ if (stream) {
         button.disabled = false;
       }
     });
-    suggestions.append(button);
+    actionBar.append(button);
     return button;
   }
 
@@ -239,14 +252,13 @@ if (stream) {
   }
 
   function renderControls() {
-    if (!suggestions || !dashboard) return;
+    if (!dashboard) return;
     const simple = Boolean(dashboard.activeRun?.simpleCombat);
     const noRun = !dashboard.activeRun;
 
-    // Legacy controls are a migration source only. The player sees one contextual Figma row.
-    suggestions.classList.toggle('simple-loop-controls', noRun || simple);
     normalizeLegacyControls();
-    suggestions.querySelectorAll('.simple-loop-action,.simple-loop-gear-warning').forEach((node) => node.remove());
+    actionBar.replaceChildren();
+    actionBar.hidden = !(noRun || simple);
 
     if (!noRun && !simple) return;
 
@@ -270,9 +282,7 @@ if (stream) {
   function restorePresentationAfterExternalRender() {
     normalizeLegacyControls();
     decorateFigmaSurface();
-    if (isSimpleSurface() && suggestions && !suggestions.querySelector('.simple-loop-action')) {
-      renderControls();
-    }
+    if (isSimpleSurface() && actionBar.childElementCount === 0) renderControls();
   }
 
   async function sync({ force = false } = {}) {
@@ -293,10 +303,8 @@ if (stream) {
         dashboard.party?.id || null,
         dashboard.party?.allReady || false,
       ]);
-      if (force || signature !== lastSignature) {
+      if (force || signature !== lastSignature || (isSimpleSurface() && actionBar.childElementCount === 0)) {
         lastSignature = signature;
-        renderControls();
-      } else if (suggestions && !suggestions.querySelector('.simple-loop-action') && isSimpleSurface()) {
         renderControls();
       }
       if (input) input.placeholder = dashboard.activeRun?.simpleCombat ? 'Message party or /attack…' : 'Message party or /hunt…';
@@ -352,9 +360,9 @@ if (stream) {
     }, { capture: true });
   }
 
+  // Legacy suggestions may redraw for old persisted runs. Keep their test hooks normalized,
+  // but never mount the Figma controls inside a container another renderer owns.
   const observer = suggestions ? new MutationObserver(() => {
-    // adventure-stream.js can redraw its legacy suggestion source after party/realtime changes.
-    // Restore the simple player-facing row immediately instead of waiting on another network race.
     queueMicrotask(restorePresentationAfterExternalRender);
     scheduleSync();
   }) : null;
