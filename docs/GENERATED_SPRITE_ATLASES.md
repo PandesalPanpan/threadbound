@@ -6,12 +6,14 @@ Threadbound keeps generated art as source atlases under `public/assets/generated
 
 | Atlas | Source | Layout | Runtime status |
 | --- | --- | --- | --- |
-| Male Weavers v1 | `threadbound-male-characters-v1.png` | 1024×127, 8×1 | Active in chat combat/status portraits |
-| Female Weavers v1 | `threadbound-female-characters-v1.png` | 1024×133, 8×1 | Ready; waiting for an explicit player avatar/gender selection instead of assigning one randomly |
-| Enemies v1 | `threadbound-enemies-v1.png` | 1024×283, 8×2 | Active in Hunt and dungeon chat receipts |
+| Male Weavers v1 | `threadbound-male-characters-v1.svg` | 1024×127, 8×1 | Active in chat combat/status portraits |
+| Female Weavers v1 | `threadbound-female-characters-v1.svg` | 1024×133, 8×1 | Ready; waiting for an explicit player avatar/gender selection instead of assigning one randomly |
+| Enemies v1 | `threadbound-enemies-v1.svg` | 1024×283, 8×2 | Active in Hunt and dungeon chat receipts |
 | Hero animation reference | `threadbound-hero-animation-reference.png` | Reference sheet | Not used as a runtime atlas |
 
 The atlas grid is defined in `public/sprite-catalog.js`. `public/generated-sprite-presentation.js` is a presentation adapter that applies frames to the existing chat-first UI.
+
+The original generated PNG sheets remain historical source references, but they are not used at runtime because the committed files are truncated/corrupt and cannot be decoded reliably in Chromium. The SVG atlases are valid, reviewable source sheets with the same stable grid dimensions, so this recovery stays entirely in the presentation layer.
 
 ## Current enemy frame coverage
 
@@ -58,4 +60,4 @@ There is currently **no generated equipment/item atlas committed to the reposito
 5. Add Playwright assertions for the surface that consumes the art.
 6. Review the `ux-review` screenshots on mobile before merging.
 
-Do not duplicate dozens of derived PNGs solely to expose frames. Keep atlas cropping inside the presentation layer unless a later performance measurement shows that pre-splitting is necessary.
+Do not duplicate dozens of derived files solely to expose frames. Keep atlas cropping inside the presentation layer unless a later performance measurement shows that pre-splitting is necessary.
