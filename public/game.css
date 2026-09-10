@@ -1,4 +1,5 @@
 /* Player-specific compatibility entrypoint.
-   Base tokens remain shared; the minimal layer is intentionally presentation-only. */
+   Base tokens remain shared; the minimal layers are intentionally presentation-only. */
 @import url('/threadbound-theme.css');
 @import url('/minimal-ui.css');
+@import url('/minimal-stream-cleanup.css');
