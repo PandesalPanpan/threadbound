@@ -1,3 +1,6 @@
-/* Player-specific stylesheet retained as a compatibility entrypoint.
-   The actual visual system is shared with Codex and Arc Workshop. */
+/* Player-specific compatibility entrypoint.
+   Base tokens remain shared; the minimal layers are intentionally presentation-only. */
 @import url('/threadbound-theme.css');
+@import url('/minimal-ui.css');
+@import url('/minimal-stream-cleanup.css');
+@import url('/minimal-interaction.css');

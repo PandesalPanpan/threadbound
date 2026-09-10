@@ -5,6 +5,8 @@ import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexReposito
 import { CodexService } from '../src/application/CodexService.js';
 import { WorldHistoryProjector } from '../src/application/WorldHistoryProjector.js';
 import { DUNGEONS } from '../src/domain/DungeonRun.js';
+import { HUNT_ENEMIES } from '../src/domain/HuntEncounter.js';
+import { prepareSimpleDungeon } from '../src/domain/SimpleDungeonPolicy.js';
 
 function setup() {
   let id = 0;
@@ -15,15 +17,18 @@ function setup() {
   return { gameRepository, codexRepository, player, service };
 }
 
-test('codex derives enemies and bosses from the live dungeon model', () => {
+test('codex documents Hunt enemies plus the actual hardened dungeon values', () => {
   const { gameRepository, service, player } = setup();
   const enemies = service.browse(player.id, { category: 'enemies' });
   const bosses = service.browse(player.id, { category: 'bosses' });
+  const hardened = prepareSimpleDungeon(DUNGEONS['frayed-hollow']);
 
-  assert.equal(enemies.entries.length, DUNGEONS['frayed-hollow'].encounters.length);
+  assert.equal(enemies.entries.length, HUNT_ENEMIES.length + hardened.encounters.length);
+  assert.ok(enemies.entries.some((entry) => entry.id === 'thread-wolf' && entry.tags.includes('hunt')));
   assert.equal(bosses.entries.length, 1);
-  assert.equal(bosses.entries[0].mechanics.baseHp, DUNGEONS['frayed-hollow'].boss.hp);
-  assert.equal(bosses.entries[0].mechanics.baseRetaliation, DUNGEONS['frayed-hollow'].boss.retaliation);
+  assert.equal(bosses.entries[0].mechanics.hp, hardened.boss.hp);
+  assert.equal(bosses.entries[0].mechanics.retaliation, hardened.boss.retaliation);
+  assert.equal(bosses.entries[0].mechanics.recommendedAttack, 9);
   gameRepository.close();
 });
 

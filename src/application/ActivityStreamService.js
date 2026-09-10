@@ -70,36 +70,41 @@ export class ActivityStreamService {
     return this.gameRepository.getPlayer(playerId)?.displayName || 'Unknown Weaver';
   }
 
+  #isSimpleRun(runId) {
+    return Boolean(runId && this.gameRepository.getRun(runId)?.simpleCombat);
+  }
+
   #combatResult(event, actorName) {
     const action = String(event.action || 'action').toLowerCase();
+    const simple = this.#isSimpleRun(event.runId);
     const actorHp = event.actorHp === null || event.actorHp === undefined ? '' : `❤️ ${event.actorHp}/${event.actorMaxHp}`;
-    const actorFocus = event.actorFocus === null || event.actorFocus === undefined ? '' : `🧵 Focus ${event.actorFocus}/${event.actorMaxFocus}`;
+    const actorFocus = simple || event.actorFocus === null || event.actorFocus === undefined ? '' : `🧵 Focus ${event.actorFocus}/${event.actorMaxFocus}`;
     const enemyName = event.enemyName || (event.enemyId ? titleize(event.enemyId) : 'enemy');
     const enemyHp = event.enemyHp === null || event.enemyHp === undefined ? '' : `👾 ${enemyName} ${event.enemyHp}/${event.enemyMaxHp}`;
-    const exposed = Number(event.enemyStatuses?.exposed || 0) > 0 ? ' · ✦ EXPOSED' : '';
+    const exposed = !simple && Number(event.enemyStatuses?.exposed || 0) > 0 ? ' · ✦ EXPOSED' : '';
     const targetName = event.targetPlayerId ? this.#playerName(event.targetPlayerId) : null;
     const protectedName = event.protectedPlayerId ? this.#playerName(event.protectedPlayerId) : null;
     const retaliation = event.retaliation > 0
       ? ` · ${targetName && event.targetPlayerId !== event.playerId ? `${targetName} took ${event.retaliation}` : `took ${event.retaliation}`}`
       : '';
     const intentTargetName = event.enemyIntent?.targetPlayerId ? this.#playerName(event.enemyIntent.targetPlayerId) : null;
-    const intent = event.enemyIntent
+    const intent = simple ? '' : event.enemyIntent
       ? event.enemyIntent.id === 'threadmark-lunge'
         ? ` · ⚠ THREADMARK: ${intentTargetName || 'an ally'} is marked for ${event.enemyIntent.damage} damage — Guard to protect them.`
         : ` · ⚠ ${event.enemyIntent.name} incoming (${event.enemyIntent.damage})`
       : '';
-    const phaseChange = event.bossPhaseChanged
+    const phaseChange = !simple && event.bossPhaseChanged
       ? ` · ⚡ PHASE ${event.bossPhaseChanged.battlePhase}: ${event.bossPhaseChanged.phaseName}. Telegraphs accelerate.`
       : '';
-    const runEvent = event.phase === 'event' && event.runEvent
+    const runEvent = !simple && event.phase === 'event' && event.runEvent
       ? ` · ✦ DISCOVERY: ${event.runEvent.name}. ${event.runEvent.prompt} Choose the party's path.`
       : '';
-    const phase = event.phase === 'upgrade'
+    const phase = !simple && event.phase === 'upgrade'
       ? ' · ✦ Choose the run upgrade.'
       : event.phase === 'complete'
         ? ' · ✦ Dungeon cleared.'
         : runEvent;
-    const relic = relicTriggerCopy(event.relicAttunement);
+    const relic = simple ? '' : relicTriggerCopy(event.relicAttunement);
 
     let result;
     if (action === 'attack') {
@@ -127,7 +132,7 @@ export class ActivityStreamService {
       else result = `${actorName} used ${skillName}${interrupted}${retaliation}.`;
     } else result = `${actorName} used ${titleize(action)}.`;
 
-    const bossPhase = event.bossBattlePhase ? ` · PHASE ${event.bossBattlePhase}${event.bossPhaseName ? ` ${event.bossPhaseName.toUpperCase()}` : ''}` : '';
+    const bossPhase = !simple && event.bossBattlePhase ? ` · PHASE ${event.bossBattlePhase}${event.bossPhaseName ? ` ${event.bossPhaseName.toUpperCase()}` : ''}` : '';
     const state = [actorHp, actorFocus, ['upgrade', 'complete', 'event'].includes(event.phase) ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
     return `${result}${state ? ` ${state}.` : ''}${relic}${phaseChange}${intent}${phase}`;
   }
@@ -138,14 +143,32 @@ export class ActivityStreamService {
     const dungeonName = event.dungeonId ? titleize(event.dungeonId) : null;
 
     switch (event.type) {
+      case 'HuntResolved': {
+        const result = event.victory
+          ? `${actorName} found and killed ${event.enemyName || enemyName}.`
+          : `${actorName} found ${event.enemyName || enemyName} but was defeated.`;
+        const rewards = event.victory ? `\nEarned ${event.threadDust} Thread Dust.` : '\nEarned no rewards.';
+        const hp = `\nLost ${event.damageTaken} HP · remaining HP is ${event.remainingHp}/${event.maxHp}.`;
+        const loot = event.itemName ? `\nGot ${event.itemName} (+${event.itemAttackBonus} Attack).` : '';
+        return { actorName: 'THREADBOUND', body: `${result}${rewards}${hp}${loot}` };
+      }
       case 'DungeonStarted': {
         const foe = event.enemyName || enemyName || 'an enemy';
         const enemyState = event.enemyHp === null || event.enemyHp === undefined ? '' : ` 👾 ${foe} ${event.enemyHp}/${event.enemyMaxHp} HP.`;
         const playerState = event.actorHp === null || event.actorHp === undefined ? '' : ` ❤️ ${event.actorHp}/${event.actorMaxHp} HP.`;
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} entered ${dungeonName}.${enemyState}${playerState} Choose your first action.` };
+        const copy = event.simpleCombat
+          ? `${actorName} entered ${dungeonName}.${enemyState}${playerState} Recommended Attack ${event.recommendedAttack || 9}+. Attack until the room is clear.`
+          : `${actorName} entered ${dungeonName}.${enemyState}${playerState} Choose your first action.`;
+        return { actorPlayerId: event.simpleCombat ? null : event.playerId, actorName: event.simpleCombat ? 'THREADBOUND' : actorName, body: copy };
       }
-      case 'CombatActionResolved':
-        return { actorPlayerId: event.playerId, actorName, body: this.#combatResult(event, actorName) };
+      case 'CombatActionResolved': {
+        const simple = this.#isSimpleRun(event.runId);
+        return { actorPlayerId: simple ? null : event.playerId, actorName: simple ? 'THREADBOUND' : actorName, body: this.#combatResult(event, actorName) };
+      }
+      case 'BossEncounterStarted':
+        return { actorName: 'THREADBOUND', body: `${event.enemyName || enemyName || 'The boss'} enters — ${event.enemyHp}/${event.enemyMaxHp} HP.` };
+      case 'DungeonRecoveryApplied':
+        return null;
       case 'CriticalStrikeLanded':
         return {
           actorPlayerId: event.playerId,
@@ -226,6 +249,7 @@ export class ActivityStreamService {
         return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} cleared ${dungeonName}.` };
       }
       case 'ItemGenerated': {
+        if (event.silentStream) return null;
         const item = this.gameRepository.getItem(event.itemId);
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}. Open Gear to equip, Temper, compare, or salvage it.` };
       }

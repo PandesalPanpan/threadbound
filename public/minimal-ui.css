@@ -1,0 +1,1288 @@
+/*
+ * Threadbound minimal presentation layer.
+ *
+ * This file intentionally changes presentation only. Game outcomes, realtime
+ * transport, stream persistence, commands, and domain mechanics remain owned by
+ * their existing services and domain objects.
+ */
+
+:root {
+  --minimal-bg: #0b0c10;
+  --minimal-surface: #101116;
+  --minimal-surface-2: #15171d;
+  --minimal-surface-3: #1c1e24;
+  --minimal-line: #292c34;
+  --minimal-text: #ececf2;
+  --minimal-muted: #8d909b;
+  --minimal-purple: #9b7bff;
+  --minimal-blue: #58aaff;
+  --minimal-red: #ff596a;
+  --minimal-green: #4fd08b;
+  --minimal-gold: #f0b541;
+}
+
+/* ---------- Shared flattening ---------- */
+
+body.threadbound-player,
+body:has(.codex-shell) {
+  background: var(--minimal-bg);
+}
+
+body.threadbound-player .threadbound-topnav,
+body:has(.codex-shell) .threadbound-topnav {
+  min-height: 56px;
+  padding-top: calc(8px + env(safe-area-inset-top));
+  padding-bottom: 8px;
+  background: rgba(11, 12, 16, .96);
+  border-color: var(--minimal-line);
+  backdrop-filter: blur(14px);
+}
+
+body.threadbound-player .threadbound-topnav .brand,
+body:has(.codex-shell) .threadbound-topnav .brand {
+  letter-spacing: .04em;
+  font-size: .88rem;
+}
+
+body.threadbound-player .threadbound-page {
+  width: min(900px, calc(100% - 24px));
+  padding-top: 10px;
+}
+
+body.threadbound-player .page-hero {
+  display: none;
+}
+
+body.threadbound-player .threadbound-game-page {
+  display: block;
+}
+
+body.threadbound-player .threadbound-game-page > section {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.threadbound-player #status[role="status"] {
+  top: calc(60px + env(safe-area-inset-top));
+  min-height: 28px;
+  padding-inline: 9px;
+  border-color: var(--minimal-line);
+  background: rgba(17, 18, 23, .94);
+  font-size: .7rem;
+}
+
+/* ---------- Play shell: information stays, dashboard chrome goes ---------- */
+
+body.threadbound-player[data-game-view="play"] #identity,
+body.threadbound-player[data-game-view="play"] #party,
+body.threadbound-player[data-game-view="play"] #inventory,
+body.threadbound-player[data-game-view="play"] #achievements,
+body.threadbound-player[data-game-view="play"] #world,
+body.threadbound-player[data-game-view="play"] #honey,
+body.threadbound-player[data-game-view="play"] .signout {
+  display: none !important;
+}
+
+body.threadbound-player[data-game-view="play"] #character {
+  display: flex !important;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 6px 4px 8px;
+  border-bottom: 1px solid var(--minimal-line);
+}
+
+body.threadbound-player[data-game-view="play"] #character .section-heading {
+  flex: 0 0 auto;
+  min-width: 84px;
+}
+
+body.threadbound-player[data-game-view="play"] #character .section-heading > span,
+body.threadbound-player[data-game-view="play"] #character .equipped-summary,
+body.threadbound-player[data-game-view="play"] #character .attack-stat,
+body.threadbound-player[data-game-view="play"] #character .dust-stat {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+body.threadbound-player[data-game-view="play"] #character .section-heading h2 {
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 760;
+}
+
+body.threadbound-player[data-game-view="play"] #character .weaver-summary {
+  flex: 1;
+  gap: 8px;
+}
+
+body.threadbound-player[data-game-view="play"] #character .thread-sprite {
+  width: 30px;
+  height: 30px;
+}
+
+body.threadbound-player[data-game-view="play"] #character .stat-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.threadbound-player[data-game-view="play"] #character .stat-chip {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+body.threadbound-player[data-game-view="play"] #character .stat-chip:nth-child(2) span {
+  font-size: .61rem;
+  color: var(--minimal-muted);
+}
+
+body.threadbound-player[data-game-view="play"] #character .stat-chip:nth-child(2) strong {
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon:not(:has(.enemy-card)) {
+  display: none !important;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon:has(.enemy-card) {
+  display: block !important;
+  padding: 7px 4px 8px;
+  border-bottom: 1px solid var(--minimal-line);
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .section-heading,
+body.threadbound-player[data-game-view="play"] #dungeon .run-summary,
+body.threadbound-player[data-game-view="play"] #dungeon [data-testid="run-scaling"],
+body.threadbound-player[data-game-view="play"] #dungeon .combat-party-strip,
+body.threadbound-player[data-game-view="play"] #dungeon .combat-coach,
+body.threadbound-player[data-game-view="play"] #dungeon [data-testid="combat-help"],
+body.threadbound-player[data-game-view="play"] #dungeon .choice-intro,
+body.threadbound-player[data-game-view="play"] #dungeon .reward-reveal,
+body.threadbound-player[data-game-view="play"] #dungeon .combat-dock,
+body.threadbound-player[data-game-view="play"] #dungeon .support-actions {
+  display: none !important;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 38px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-card .thread-sprite {
+  width: 32px;
+  height: 32px;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-card .enemy-name {
+  font-size: .74rem;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-card .health-bar {
+  height: 5px;
+  margin-top: 5px;
+  border: 0;
+  background: #24262d;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-intent {
+  display: block;
+  margin: 6px 0 0 40px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(240, 181, 65, .08);
+  color: #e8c46d;
+  font-size: .68rem;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-intent > div > span,
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-intent .intent-timer {
+  display: none !important;
+}
+
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-intent strong,
+body.threadbound-player[data-game-view="play"] #dungeon .enemy-intent small {
+  display: inline;
+  margin-right: 4px;
+}
+
+/* ---------- Chat is the primary game surface ---------- */
+
+body.threadbound-player #stream {
+  display: block !important;
+  padding: 9px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.threadbound-player #stream .stream-heading {
+  align-items: center;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid var(--minimal-line);
+}
+
+body.threadbound-player #stream .stream-heading > div > span {
+  display: none;
+}
+
+body.threadbound-player #stream .stream-heading h2 {
+  margin: 0;
+  font-size: .8rem;
+  font-weight: 760;
+  letter-spacing: .01em;
+}
+
+body.threadbound-player #stream .stream-heading h2::before {
+  content: 'THREADBOUND · ';
+  color: var(--minimal-purple);
+}
+
+body.threadbound-player #stream .stream-heading small {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(79, 208, 139, .08);
+  font-size: .61rem;
+}
+
+body.threadbound-player #stream .stream-hint {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+body.threadbound-player #stream .adventure-stream-log {
+  height: min(58vh, 560px);
+  min-height: 330px;
+  padding: 9px 2px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  scrollbar-color: #30323a transparent;
+}
+
+body.threadbound-player #stream .stream-entry {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  padding: 7px 4px;
+  margin: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.threadbound-player #stream .stream-entry + .stream-entry {
+  margin-top: 1px;
+}
+
+body.threadbound-player #stream .stream-avatar,
+body.threadbound-player #stream .stream-entry-rich .stream-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #24202f;
+  color: var(--minimal-purple);
+  font-size: .72rem;
+}
+
+body.threadbound-player #stream .stream-entry-chat .stream-avatar {
+  background: #173049;
+  color: var(--minimal-blue);
+}
+
+body.threadbound-player #stream .stream-entry-meta {
+  justify-content: flex-start;
+  gap: 7px;
+  margin: 0;
+}
+
+body.threadbound-player #stream .stream-entry-meta strong {
+  color: var(--minimal-purple);
+  font-size: .75rem;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+body.threadbound-player #stream .stream-entry-chat .stream-entry-meta strong {
+  color: var(--minimal-blue);
+}
+
+body.threadbound-player #stream .stream-entry-meta time {
+  color: #747782;
+  font-size: .59rem;
+}
+
+body.threadbound-player #stream .stream-entry p {
+  margin: 2px 0 0;
+  color: var(--minimal-text);
+  font-size: .75rem;
+  font-weight: 430;
+  line-height: 1.38;
+}
+
+body.threadbound-player #stream .stream-system-tag {
+  display: none !important;
+}
+
+/* Rich receipts keep their test hooks and semantic data, but visually become
+   two or three lightweight lines like a Discord RPG response. */
+body.threadbound-player #stream .stream-entry-rich {
+  grid-template-columns: 34px minmax(0, 1fr);
+  padding: 7px 4px;
+}
+
+body.threadbound-player #stream .stream-rich-receipt {
+  display: block;
+  min-width: 0;
+}
+
+body.threadbound-player #stream .stream-rich-header {
+  display: block;
+}
+
+body.threadbound-player #stream .stream-rich-kicker,
+body.threadbound-player #stream .stream-rich-phase {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+body.threadbound-player #stream .stream-rich-summary {
+  display: block;
+  margin: 1px 0 2px;
+  color: var(--minimal-text);
+  font-size: .76rem;
+  font-weight: 470;
+  line-height: 1.38;
+}
+
+body.threadbound-player #stream .stream-result-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+}
+
+body.threadbound-player #stream .stream-result-chip {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--minimal-muted);
+  font-size: .69rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+body.threadbound-player #stream .stream-result-chip + .stream-result-chip::before {
+  content: ' · ';
+  margin-inline: 5px;
+  color: #60636c;
+}
+
+body.threadbound-player #stream .stream-result-chip.damage { color: var(--minimal-red); }
+body.threadbound-player #stream .stream-result-chip.heal { color: var(--minimal-green); }
+body.threadbound-player #stream .stream-result-chip.guard { color: var(--minimal-blue); }
+body.threadbound-player #stream .stream-result-chip.special { color: var(--minimal-gold); }
+
+body.threadbound-player #stream .stream-health-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+
+body.threadbound-player #stream .stream-health-unit {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.threadbound-player #stream .stream-health-unit img,
+body.threadbound-player #stream .stream-health-label,
+body.threadbound-player #stream .stream-health-track,
+body.threadbound-player #stream .stream-health-top strong {
+  display: none !important;
+}
+
+body.threadbound-player #stream .stream-health-value {
+  display: inline;
+  color: var(--minimal-muted);
+  font-size: .67rem;
+  font-weight: 560;
+}
+
+body.threadbound-player #stream .stream-health-unit.enemy .stream-health-value {
+  color: #d6d7dc;
+}
+
+body.threadbound-player #stream .stream-intent-receipt,
+body.threadbound-player #stream .stream-outcome-banner {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--minimal-gold);
+  font-size: .68rem;
+  font-weight: 620;
+}
+
+body.threadbound-player #stream .stream-outcome-banner {
+  color: var(--minimal-green);
+}
+
+body.threadbound-player #stream .stream-outcome-banner.upgrade {
+  color: var(--minimal-purple);
+}
+
+body.threadbound-player #stream .stream-transition-card,
+body.threadbound-player #stream .stream-critical-card {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.threadbound-player #stream .stream-transition-kicker {
+  display: none;
+}
+
+body.threadbound-player #stream .stream-transition-summary,
+body.threadbound-player #stream .stream-critical-card span,
+body.threadbound-player #stream .stream-critical-card strong {
+  font-size: .7rem;
+  line-height: 1.38;
+}
+
+body.threadbound-player #stream .stream-critical-card strong {
+  color: var(--minimal-gold);
+}
+
+body.threadbound-player #stream .stream-transition-foe {
+  display: flex;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+body.threadbound-player #stream .stream-transition-foe img,
+body.threadbound-player #stream .stream-transition-track {
+  display: none !important;
+}
+
+/* Slash-command reply = private bot response, not a modal card. */
+body.threadbound-player #stream .stream-command-card {
+  margin: 5px 4px 0 43px;
+  padding: 8px 0 4px;
+  border: 0;
+  border-top: 1px solid var(--minimal-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.threadbound-player #stream .thread-reply-header {
+  margin-bottom: 6px;
+}
+
+body.threadbound-player #stream .thread-reply-header span {
+  color: var(--minimal-purple);
+  font-size: .56rem;
+  letter-spacing: .05em;
+}
+
+body.threadbound-player #stream .thread-reply-header strong {
+  font-size: .8rem;
+}
+
+body.threadbound-player #stream .thread-reply-header small {
+  font-size: .66rem;
+}
+
+body.threadbound-player #stream .thread-reply-close {
+  min-width: 30px;
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
+  border: 0;
+  background: var(--minimal-surface-2);
+}
+
+body.threadbound-player #stream .thread-status-grid,
+body.threadbound-player #stream .thread-gear-list {
+  gap: 0;
+}
+
+body.threadbound-player #stream .thread-status-unit,
+body.threadbound-player #stream .thread-loadout-line,
+body.threadbound-player #stream .thread-gear-row,
+body.threadbound-player #stream .thread-codex-results article {
+  border: 0;
+  border-bottom: 1px solid var(--minimal-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+body.threadbound-player #stream .thread-gear-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  padding: 8px 0;
+}
+
+body.threadbound-player #stream .thread-gear-row .thread-sprite.small {
+  width: 30px;
+  height: 30px;
+}
+
+body.threadbound-player #stream .thread-gear-copy strong {
+  font-size: .75rem;
+}
+
+body.threadbound-player #stream .thread-gear-copy span,
+body.threadbound-player #stream .thread-gear-copy small {
+  font-size: .62rem;
+}
+
+body.threadbound-player #stream .thread-gear-actions button {
+  min-height: 34px;
+  padding: 5px 8px;
+  border-color: var(--minimal-line);
+  border-radius: 8px;
+  background: var(--minimal-surface-2);
+  font-size: .65rem;
+}
+
+/* The only persistent play controls are command shortcuts plus the composer. */
+body.threadbound-player #stream .stream-suggestions {
+  position: sticky;
+  bottom: calc(105px + env(safe-area-inset-bottom));
+  z-index: 25;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 7px 0;
+  overflow: visible;
+  background: linear-gradient(180deg, rgba(11, 12, 16, .2), var(--minimal-bg) 26%);
+}
+
+body.threadbound-player #stream .stream-suggestions::before {
+  display: none !important;
+}
+
+body.threadbound-player #stream .stream-suggestions button {
+  display: none;
+  min-height: 44px;
+  padding: 7px 8px;
+  border: 1px solid var(--minimal-line);
+  border-radius: 9px;
+  background: #202228;
+  color: #cfd0d6;
+  font-size: 0;
+  font-weight: 650;
+}
+
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-start-dungeon"],
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-attack"],
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-guard"],
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-interrupt"],
+body.threadbound-player #stream .stream-suggestions [data-command="/mend"],
+body.threadbound-player #stream .stream-suggestions [data-command="/revive"],
+body.threadbound-player #stream .stream-suggestions [data-command="/gear"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-start-dungeon"]::after { content: '✦  /enter'; font-size: .69rem; }
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-attack"]::after { content: '●  /strike'; color: var(--minimal-red); font-size: .69rem; }
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-guard"]::after { content: '●  /guard'; color: var(--minimal-blue); font-size: .69rem; }
+body.threadbound-player #stream .stream-suggestions [data-testid="stream-interrupt"]::after { content: '●  /interrupt'; color: var(--minimal-gold); font-size: .69rem; }
+body.threadbound-player #stream .stream-suggestions [data-command="/mend"]::after { content: '●  /mend'; color: var(--minimal-green); font-size: .69rem; }
+body.threadbound-player #stream .stream-suggestions [data-command="/revive"]::after { content: '●  /revive'; color: var(--minimal-green); font-size: .69rem; }
+body.threadbound-player #stream .stream-suggestions [data-command="/gear"]::after { content: '●  /item'; color: var(--minimal-gold); font-size: .69rem; }
+
+body.threadbound-player #stream .stream-suggestions:has([data-testid="stream-interrupt"]) [data-command="/gear"],
+body.threadbound-player #stream .stream-suggestions:has([data-command="/mend"]) [data-command="/gear"],
+body.threadbound-player #stream .stream-suggestions:has([data-command="/revive"]) [data-command="/gear"] {
+  display: none;
+}
+
+body.threadbound-player #stream .adventure-stream-composer {
+  position: sticky;
+  bottom: calc(57px + env(safe-area-inset-bottom));
+  z-index: 26;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 6px;
+  margin-top: 0;
+  padding: 0 0 7px;
+  background: var(--minimal-bg);
+}
+
+body.threadbound-player #stream .adventure-stream-composer input {
+  min-height: 46px;
+  border: 1px solid #24262d;
+  border-radius: 10px;
+  background: #08090d;
+  color: var(--minimal-text);
+  font-size: .72rem;
+}
+
+body.threadbound-player #stream .adventure-stream-composer input::placeholder {
+  color: #70737e;
+}
+
+body.threadbound-player #stream .adventure-stream-composer button {
+  min-height: 42px;
+  width: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--minimal-purple);
+  color: white;
+  font-size: 0;
+}
+
+body.threadbound-player #stream .adventure-stream-composer button::after {
+  content: '›';
+  font-size: 1.15rem;
+}
+
+/* ---------- Inventory / gear view ---------- */
+
+body.threadbound-player[data-game-view="gear"] #character,
+body.threadbound-player[data-game-view="gear"] #stream,
+body.threadbound-player[data-game-view="gear"] #dungeon,
+body.threadbound-player[data-game-view="gear"] #party,
+body.threadbound-player[data-game-view="gear"] #world,
+body.threadbound-player[data-game-view="gear"] #achievements,
+body.threadbound-player[data-game-view="gear"] #honey {
+  display: none !important;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory {
+  display: block !important;
+  padding: 13px 2px 18px;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .section-heading {
+  margin: 0 0 10px;
+  padding: 0 2px 9px;
+  border-bottom: 1px solid var(--minimal-line);
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .section-heading > span {
+  color: var(--minimal-purple);
+  font-size: .57rem;
+  letter-spacing: .06em;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .section-heading h2 {
+  margin: 2px 0 0;
+  font-size: 0;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .section-heading h2::after {
+  content: 'Inventory';
+  font-size: 1rem;
+  font-weight: 760;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card {
+  order: 0;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon top action'
+    'icon title action'
+    'icon power action'
+    'icon effect action';
+  gap: 1px 9px;
+  min-height: 66px;
+  padding: 10px 3px;
+  border: 0;
+  border-bottom: 1px solid var(--minimal-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card.is-equipped {
+  order: -1;
+  background: rgba(155, 123, 255, .035);
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card .gear-card-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card .thread-sprite {
+  grid-area: icon;
+  width: 36px;
+  height: 36px;
+  align-self: center;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card h3 {
+  grid-area: title;
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 680;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card .gear-power {
+  grid-area: power;
+  margin: 1px 0 0;
+  color: var(--minimal-muted);
+  font-size: .65rem;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card > p:not(.gear-power) {
+  grid-area: effect;
+  margin: 1px 0 0;
+  color: var(--minimal-muted);
+  font-size: .62rem;
+  line-height: 1.35;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card > p:not(.gear-power) strong {
+  color: #c7c8ce;
+  font-weight: 580;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .rarity-badge,
+body.threadbound-player[data-game-view="gear"] #inventory .equipped-chip {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--minimal-purple);
+  font-size: .55rem;
+  letter-spacing: .04em;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .equipped-chip {
+  color: var(--minimal-green);
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card > button {
+  grid-area: action;
+  align-self: center;
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid var(--minimal-line);
+  border-radius: 8px;
+  background: var(--minimal-surface-2);
+  box-shadow: none;
+  font-size: .64rem;
+}
+
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card > button:disabled {
+  color: var(--minimal-green);
+  opacity: .9;
+}
+
+/* ---------- Other game views stay available, but lose giant cards ---------- */
+
+body.threadbound-player[data-game-view="party"] #party,
+body.threadbound-player[data-game-view="world"] #world,
+body.threadbound-player[data-game-view="world"] #achievements,
+body.threadbound-player[data-game-view="world"] #honey {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.threadbound-player .mobile-game-nav {
+  background: rgba(8, 9, 13, .98);
+  border-color: var(--minimal-line);
+  backdrop-filter: blur(14px);
+}
+
+body.threadbound-player .mobile-game-nav a {
+  border-radius: 8px;
+  color: #7d808b;
+}
+
+body.threadbound-player .mobile-game-nav a strong {
+  color: #a8aab2;
+  font-size: .9rem;
+}
+
+body.threadbound-player .mobile-game-nav a[aria-current="true"] {
+  color: var(--minimal-purple);
+  background: rgba(155, 123, 255, .06);
+}
+
+/* ---------- Codex: built-in official wiki ---------- */
+
+body:has(.codex-shell) {
+  color: var(--minimal-text);
+}
+
+body:has(.codex-shell) .threadbound-page.codex-shell {
+  width: min(1040px, calc(100% - 24px));
+  padding-top: 12px;
+}
+
+.codex-shell .page-hero {
+  margin: 0 0 10px;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.codex-shell .page-hero::after,
+.codex-shell .page-hero .eyebrow {
+  display: none;
+}
+
+.codex-shell .page-hero h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -.02em;
+}
+
+.codex-shell .page-hero p {
+  margin-top: 3px;
+  color: var(--minimal-muted);
+  font-size: .72rem;
+}
+
+#codex-status {
+  min-height: 22px;
+  color: var(--minimal-muted);
+  font-size: .65rem;
+}
+
+.codex-shell .toolbar {
+  display: block;
+  margin: 6px 0 10px;
+}
+
+.codex-shell .toolbar input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #24262d;
+  border-radius: 9px;
+  background: var(--minimal-surface-2);
+  font-size: .72rem;
+}
+
+.codex-shell .tabs {
+  display: flex;
+  gap: 0 12px;
+  margin-top: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+
+.codex-shell .tabs button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--minimal-blue);
+  font-size: .68rem;
+  font-weight: 580;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.codex-shell .tabs button[aria-pressed="true"] {
+  color: var(--minimal-text);
+  background: transparent;
+  text-decoration: none;
+}
+
+.codex-shell .counts {
+  gap: 5px 10px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--minimal-line);
+}
+
+.codex-shell .count {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--minimal-muted);
+  font-size: .61rem;
+}
+
+.codex-layout {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.codex-list,
+.codex-detail {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.codex-list {
+  max-height: 72vh;
+  padding: 0 12px 0 0;
+  border-right: 1px solid var(--minimal-line);
+}
+
+.codex-list .entry {
+  min-height: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid #202229;
+  border-radius: 0;
+  background: transparent;
+}
+
+.codex-list .entry:hover,
+.codex-list .entry[aria-selected="true"] {
+  background: rgba(88, 170, 255, .045);
+}
+
+.codex-list .entry .badge {
+  padding: 0;
+  background: transparent;
+  color: var(--minimal-muted);
+  font-size: .52rem;
+}
+
+.codex-list .entry h3 {
+  margin: 2px 0;
+  color: var(--minimal-blue);
+  font-size: .73rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.codex-list .entry p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--minimal-muted);
+  font-size: .6rem;
+  line-height: 1.35;
+}
+
+.codex-detail {
+  min-height: 0;
+  padding: 0;
+}
+
+.codex-detail .wiki-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 9px;
+  color: var(--minimal-muted);
+  font-size: .59rem;
+}
+
+.codex-detail .wiki-link,
+.codex-detail a,
+.codex-detail button.wiki-link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--minimal-blue);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  box-shadow: none;
+}
+
+.codex-detail .wiki-title-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.codex-detail .wiki-entry-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #2c1d4a;
+  color: var(--minimal-purple);
+  font-size: 1.25rem;
+}
+
+.codex-detail .wiki-title-row h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -.02em;
+}
+
+.codex-detail .wiki-subtitle {
+  margin-top: 2px;
+  color: var(--minimal-purple);
+  font-size: .62rem;
+}
+
+.codex-detail .wiki-lead,
+.codex-detail .wiki-section p {
+  margin: 7px 0;
+  color: #d8d9df;
+  font-size: .7rem;
+  line-height: 1.5;
+}
+
+.codex-detail .wiki-infobox {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 8px 0 10px;
+  overflow: hidden;
+  border: 1px solid #30333b;
+  border-radius: 9px;
+  background: #121318;
+}
+
+.codex-detail .wiki-infobox-title {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--minimal-line);
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+.codex-detail .wiki-infobox-cell {
+  display: grid;
+  grid-template-columns: minmax(58px, .8fr) 1.2fr;
+  gap: 6px;
+  padding: 7px 8px;
+  border-bottom: 1px solid #202229;
+  font-size: .61rem;
+}
+
+.codex-detail .wiki-infobox-cell span:first-child {
+  color: var(--minimal-muted);
+}
+
+.codex-detail .wiki-contents {
+  margin: 10px 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--minimal-line);
+  border-bottom: 1px solid var(--minimal-line);
+  font-size: .61rem;
+}
+
+.codex-detail .wiki-contents strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: .7rem;
+}
+
+.codex-detail .wiki-contents nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+}
+
+.codex-detail .wiki-section {
+  scroll-margin-top: 72px;
+}
+
+.codex-detail .wiki-section h3 {
+  margin: 11px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--minimal-line);
+  font-size: .79rem;
+}
+
+.codex-detail .wiki-mechanics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  margin: 5px 0;
+}
+
+.codex-detail .wiki-mechanics div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid #1f2127;
+  font-size: .61rem;
+}
+
+.codex-detail .wiki-mechanics dt {
+  color: var(--minimal-muted);
+}
+
+.codex-detail .wiki-mechanics dd {
+  margin: 0;
+}
+
+.codex-detail .wiki-related {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 5px;
+}
+
+.codex-detail .wiki-history {
+  color: var(--minimal-muted);
+  font-size: .6rem;
+}
+
+.codex-detail .empty {
+  padding: 16px 0;
+  font-size: .7rem;
+}
+
+@media (max-width: 720px) {
+  body.threadbound-player .threadbound-page {
+    width: calc(100% - 24px);
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  body.threadbound-player[data-game-view="play"] #character {
+    padding-inline: 2px;
+  }
+
+  body.threadbound-player #stream .adventure-stream-log {
+    height: calc(100dvh - 315px);
+    min-height: 300px;
+  }
+
+  body.threadbound-player #stream .stream-command-card {
+    margin-left: 43px;
+  }
+
+  body.threadbound-player #stream .stream-suggestions {
+    bottom: calc(105px + env(safe-area-inset-bottom));
+  }
+
+  body.threadbound-player .mobile-game-nav {
+    padding: 3px 5px calc(3px + env(safe-area-inset-bottom));
+  }
+
+  body.threadbound-player .mobile-game-nav a {
+    min-height: 48px;
+    font-size: .61rem;
+  }
+
+  body.threadbound-player .mobile-game-nav a strong {
+    font-size: .82rem;
+  }
+
+  body:has(.codex-shell) .threadbound-topnav .nav-links {
+    display: none;
+  }
+
+  body:has(.codex-shell) .threadbound-page.codex-shell {
+    width: calc(100% - 28px);
+    padding-top: 8px;
+  }
+
+  .codex-shell .page-hero {
+    padding-top: 4px;
+  }
+
+  .codex-layout {
+    display: block;
+  }
+
+  .codex-list {
+    max-height: 185px;
+    margin-bottom: 12px;
+    padding: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--minimal-line);
+  }
+
+  .codex-list .entry {
+    padding: 7px 2px;
+  }
+
+  .codex-detail .wiki-infobox,
+  .codex-detail .wiki-mechanics {
+    grid-template-columns: 1fr;
+  }
+
+  .codex-detail .wiki-title-row h2 {
+    font-size: 1.16rem;
+  }
+}
+
+@media (min-width: 721px) {
+  body.threadbound-player[data-game-view="play"] #character,
+  body.threadbound-player[data-game-view="play"] #dungeon:has(.enemy-card),
+  body.threadbound-player[data-game-view="play"] #stream {
+    width: min(760px, 100%);
+    margin-inline: auto;
+  }
+
+  body.threadbound-player[data-game-view="gear"] #inventory {
+    width: min(760px, 100%);
+    margin-inline: auto;
+  }
+}

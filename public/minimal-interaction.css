@@ -1,0 +1,23 @@
+/* Compact does not mean hard to tap. Keep the approved minimal visuals while
+   preserving Threadbound's existing mobile interaction contract. */
+
+body.threadbound-player #stream .adventure-stream-composer button {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+}
+
+body.threadbound-player #stream .stream-meta-actions-row button,
+body.threadbound-player #stream .thread-gear-actions button,
+body.threadbound-player[data-game-view="gear"] #inventory .gear-card > button {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+body.threadbound-player #stream .stream-suggestions button,
+body.threadbound-player #stream .combat-skill,
+body.threadbound-player #stream .run-event-choice,
+body.threadbound-player #stream .stream-primary-actions[data-mode="upgrade"] .stream-suggestions button.run-power-card {
+  min-height: 44px !important;
+}

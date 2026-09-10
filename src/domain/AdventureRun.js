@@ -3,6 +3,7 @@ import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunE
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 import { RUN_UPGRADES, runUpgrade } from './RunPowerCatalog.js';
 import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
+import { prepareSimpleDungeon, recoverBetweenEncounters } from './SimpleDungeonPolicy.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -10,12 +11,37 @@ function aliveParticipants(state) {
   return state.participants.filter((participant) => participant.hp > 0);
 }
 
+function resetSimpleParticipant(participant) {
+  participant.focus = 0;
+  participant.skillCooldowns = {};
+  participant.reactionDamageBonus = 0;
+  participant.guarding = false;
+  participant.mendCharges = 0;
+  participant.reviveCharges = 0;
+}
+
+function simpleEvent(event) {
+  return !new Set([
+    'EnemyIntentTelegraphed',
+    'EnemyIntentResolved',
+    'EnemyIntentIgnored',
+    'EnemyIntentCancelledByDefeat',
+    'CombatReactionSucceeded',
+    'CombatSkillUsed',
+    'FocusChanged',
+    'EnemyStatusApplied',
+    'SkillComboTriggered',
+    'RunPowerTriggered',
+    'BossPhaseChanged',
+  ]).has(event.type);
+}
+
 /**
  * Aggregate facade for the whole dungeon run lifecycle.
  *
- * CombatDungeonRun remains the combat Domain Model. AdventureRun coordinates the
- * additional non-combat phases and cross-cutting run policies while keeping one
- * persisted/versioned run state as the aggregate consistency boundary.
+ * Legacy runs still support the tactical systems while new player-facing simple
+ * runs use a much smaller state machine: Attack -> next enemy -> boss -> reward.
+ * The migration is explicit so persisted old runs can still hydrate safely.
  */
 export class AdventureRun {
   constructor(state) {
@@ -29,9 +55,24 @@ export class AdventureRun {
     this.state.runUpgradeDraftIndex ??= 0;
     this.state.runUpgradeResume ??= null;
     this.state.selectedUpgrades ??= this.state.selectedUpgrade ? [this.state.selectedUpgrade] : [];
-    // Compatibility rule: old persisted runs predate repeated drafts. They must hydrate
-    // exactly where they were rather than acquiring a surprise blocking decision.
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
+    this.state.simpleCombat = state.simpleCombat === true;
+    if (this.state.simpleCombat) {
+      this.state.runPowerDraftsEnabled = false;
+      this.state.runEventSchedule = null;
+      this.state.runEvent = null;
+      this.state.runEventResume = null;
+      this.state.runUpgradeResume = null;
+      this.state.runUpgradeOfferIds = [];
+      this.state.selectedUpgrade = null;
+      this.state.selectedUpgrades = [];
+      this.state.runAttackBonus = 0;
+      this.state.reactionStyle = null;
+      this.state.enemyIntent = null;
+      this.state.attacksSinceIntent = 0;
+      this.state.intentCount = 0;
+      for (const participant of this.state.participants || []) resetSimpleParticipant(participant);
+    }
   }
 
   static start(args) {
@@ -47,6 +88,35 @@ export class AdventureRun {
     state.runUpgradeResume = null;
     state.selectedUpgrades = [];
     state.runPowerDraftsEnabled = true;
+    state.simpleCombat = false;
+    return new AdventureRun(state);
+  }
+
+  static startSimple(args) {
+    const sourceDefinition = args.dungeonDefinition || DUNGEONS[args.dungeonId];
+    const combat = CombatDungeonRun.start({
+      ...args,
+      dungeonDefinition: prepareSimpleDungeon(sourceDefinition),
+    });
+    const state = combat.toJSON();
+    state.simpleCombat = true;
+    state.runEventSchedule = null;
+    state.runEvent = null;
+    state.runEventResume = null;
+    state.runEventHistory = [];
+    state.runUpgradeOfferVersion = RUN_UPGRADE_OFFER_VERSION;
+    state.runUpgradeOfferIds = [];
+    state.runUpgradeDraftIndex = 0;
+    state.runUpgradeResume = null;
+    state.selectedUpgrade = null;
+    state.selectedUpgrades = [];
+    state.runPowerDraftsEnabled = false;
+    state.runAttackBonus = 0;
+    state.reactionStyle = null;
+    state.enemyIntent = null;
+    state.attacksSinceIntent = 0;
+    state.intentCount = 0;
+    for (const participant of state.participants) resetSimpleParticipant(participant);
     return new AdventureRun(state);
   }
 
@@ -65,10 +135,8 @@ export class AdventureRun {
   revive(args) { return this.#combat('revive', args); }
   useSkill(args) { return this.#combat('useSkill', args); }
 
-  // The existing /upgrade command remains the transport boundary. AdventureRun owns the
-  // repeated draft lifecycle while CombatDungeonRun is still responsible for resetting
-  // encounter combat state and constructing the boss transition.
   chooseUpgrade(choiceId) {
+    if (this.state.simpleCombat) throw new Error('Simple dungeons do not use temporary run upgrades.');
     if (this.state.phase === 'event') return this.chooseRunEvent(choiceId);
     if (this.state.phase !== 'upgrade') throw new Error('An upgrade can only be chosen from a waiting run power draft.');
 
@@ -79,10 +147,6 @@ export class AdventureRun {
     const previousReactionStyle = this.state.reactionStyle || null;
     const selectedUpgrades = [...(this.state.selectedUpgrades || [])];
 
-    // Sharpen is used only as a compatibility carrier into the mature combat transition:
-    // it performs the authoritative encounter reset and boss construction. We then replace
-    // its +3 Attack with the constrained selected power from RunPowerCatalog. Keeping this
-    // adaptation here prevents presentation code from owning any run mechanics.
     const combat = new CombatDungeonRun(this.state);
     const outcome = combat.chooseUpgrade('sharpen');
     this.state = outcome.state;
@@ -125,6 +189,7 @@ export class AdventureRun {
   }
 
   chooseRunEvent(choiceId) {
+    if (this.state.simpleCombat) throw new Error('Simple dungeons do not use temporary run events.');
     if (this.state.phase !== 'event' || !this.state.runEvent || !this.state.runEventResume) {
       throw new Error('There is no run event choice waiting for the party.');
     }
@@ -187,6 +252,7 @@ export class AdventureRun {
   }
 
   #combat(method, args) {
+    if (this.state.simpleCombat) return this.#simpleCombat(method, args);
     if (this.state.phase === 'event') throw new Error('Choose the run event before taking another combat action.');
     if (this.state.phase === 'upgrade') throw new Error('Choose a run power before taking another combat action.');
     const before = structuredClone(this.state);
@@ -212,6 +278,85 @@ export class AdventureRun {
     return { ...outcome, relicTrigger: attuned.triggered, state: this.toJSON() };
   }
 
+  #simpleCombat(method, args) {
+    if (method !== 'attack') {
+      const error = new Error('This dungeon uses the simple combat loop. Attack is the only combat action.');
+      error.code = 'simple_combat_attack_only';
+      throw error;
+    }
+    if (!['combat', 'boss'].includes(this.state.phase)) throw new Error('The run is not currently in combat.');
+
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+    this.state.runAttackBonus = 0;
+    this.state.reactionStyle = null;
+    for (const participant of this.state.participants) resetSimpleParticipant(participant);
+
+    const before = structuredClone(this.state);
+    const combat = new CombatDungeonRun(this.state);
+    const outcome = combat.attack(args);
+    this.state = outcome.state;
+    let events = outcome.events.filter(simpleEvent);
+
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+    this.state.runAttackBonus = 0;
+    this.state.reactionStyle = null;
+    this.state.runEvent = null;
+    this.state.runEventResume = null;
+    this.state.runUpgradeResume = null;
+    this.state.runUpgradeOfferIds = [];
+    this.state.selectedUpgrade = null;
+    this.state.selectedUpgrades = [];
+    for (const participant of this.state.participants) resetSimpleParticipant(participant);
+
+    // CombatDungeonRun historically pauses before the boss in an upgrade phase. The
+    // simple loop removes that temporary-buff decision and transitions immediately.
+    if (this.state.phase === 'upgrade') {
+      const transition = new CombatDungeonRun(this.state).chooseUpgrade('sharpen');
+      this.state = transition.state;
+      this.state.runAttackBonus = Math.max(0, Number(this.state.runAttackBonus || 0) - Number(LEGACY_RUN_UPGRADES.sharpen.attackBonus || 0));
+      this.state.selectedUpgrade = null;
+      this.state.selectedUpgrades = [];
+      this.state.reactionStyle = null;
+      this.state.enemyIntent = null;
+      this.state.attacksSinceIntent = 0;
+      this.state.intentCount = 0;
+      for (const participant of this.state.participants) resetSimpleParticipant(participant);
+      events.push({
+        type: 'BossEncounterStarted',
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        enemyId: this.state.enemy?.id || null,
+        enemyName: this.state.enemy?.name || null,
+        enemyHp: this.state.enemy?.hp ?? null,
+        enemyMaxHp: this.state.enemy?.maxHp ?? null,
+      });
+    }
+
+    const defeatedEnemy = events.some((event) => event.type === 'EnemyDefeated');
+    if (defeatedEnemy && ['combat', 'boss'].includes(this.state.phase) && before.enemy?.id !== this.state.enemy?.id) {
+      const recovered = recoverBetweenEncounters(this.state.participants);
+      if (recovered.length) {
+        events.push({
+          type: 'DungeonRecoveryApplied',
+          runId: this.state.id,
+          dungeonId: this.state.dungeonId,
+          recovered,
+        });
+      }
+    }
+
+    return {
+      ...outcome,
+      events,
+      state: this.toJSON(),
+      simpleCombat: true,
+    };
+  }
+
   #runUpgradeOffers() {
     const offered = offeredRunUpgradeIds(this.state, Object.values(RUN_UPGRADES));
     if (!this.state.runUpgradeOfferIds.length) this.state.runUpgradeOfferIds = [...offered];
@@ -224,6 +369,7 @@ export class AdventureRun {
   }
 
   #pauseForRunEvent(before, events) {
+    if (this.state.simpleCombat) return;
     const schedule = this.state.runEventSchedule;
     if (!schedule || this.state.runEventHistory.length > 0) return;
     if (before.phase !== 'combat' || this.state.phase !== 'combat') return;
@@ -252,13 +398,10 @@ export class AdventureRun {
   }
 
   #pauseForRunPowerDraft(before, events) {
-    if (!this.state.runPowerDraftsEnabled) return;
+    if (this.state.simpleCombat || !this.state.runPowerDraftsEnabled) return;
     if (before.phase !== 'combat' || this.state.phase !== 'combat') return;
     if (!events.some((event) => event.type === 'EnemyDefeated')) return;
     if (this.state.encounterIndex !== before.encounterIndex + 1) return;
-    // A narrative discovery owns its scheduled transition. Every other transition between
-    // normal encounters is eligible for a build draft. Frayed Hollow therefore drafts
-    // after encounter 1, discovers its event after encounter 2, and drafts again pre-boss.
     if (this.state.runEventSchedule?.afterEncounterIndex === before.encounterIndex && this.state.runEventHistory.length === 0) return;
 
     this.state.runUpgradeResume = {

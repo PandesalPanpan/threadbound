@@ -2,7 +2,9 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testIgnore: ['**/local-auth.spec.js', '**/adventure-stream.spec.js', '**/arc-workshop.spec.js', '**/encounter-mechanics.local.spec.js', '**/relic-progression.local.spec.js'],
+  // The player-facing contract is intentionally small now. Tactical-era journeys remain
+  // in the repository as migration coverage but no longer define the default product UI.
+  testMatch: ['**/simple-loop.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
