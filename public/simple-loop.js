@@ -194,7 +194,9 @@ if (stream) {
     button.dataset.kind = kind;
     button.dataset.testid = testId;
     button.textContent = label;
-    button.disabled = acting;
+    // Concurrency is guarded by `acting` in the handler. Fresh controls must never
+    // inherit a disabled state from the action that triggered their rerender.
+    button.disabled = false;
     button.addEventListener('click', async () => {
       if (acting) return;
       acting = true;
