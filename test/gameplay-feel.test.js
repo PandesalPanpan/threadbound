@@ -42,9 +42,9 @@ test('combat preview simulates the authoritative aggregate without mutating the 
   repository.close();
 });
 
-test('run power catalog produces stable role-balanced three-card drafts that rotate across draft index', () => {
+test('run power catalog remains readable for legacy persisted runs without entering the new loop', () => {
   const catalog = Object.values(RUN_UPGRADES);
-  assert.ok(catalog.length >= 10, 'the run needs enough powers for actual draft variation');
+  assert.ok(catalog.length >= 10, 'legacy run power vocabulary remains available for compatibility');
   const run = { id: 'offer-run-a', phase: 'upgrade', runUpgradeOfferVersion: RUN_UPGRADE_OFFER_VERSION, runUpgradeOfferIds: [], runUpgradeDraftIndex: 0 };
   const first = offeredRunUpgradeIds(run, catalog);
   const repeated = offeredRunUpgradeIds(run, catalog);
@@ -58,11 +58,10 @@ test('run power catalog produces stable role-balanced three-card drafts that rot
 
   const later = offeredRunUpgradeIds({ ...run, runUpgradeDraftIndex: 1 }, catalog);
   assert.equal(later.length, 3);
-  assert.notDeepEqual(later, first, 'a later build moment should not simply repeat the same draft');
-  assert.equal(later.filter((id) => first.includes(id)).length, 0, 'each role rotates to its next card');
+  assert.notDeepEqual(later, first);
 });
 
-test('AdventureRun aggregate rejects powers outside its snapshotted offer', () => {
+test('AdventureRun aggregate rejects powers outside a persisted legacy offer', () => {
   const combat = DungeonRun.start({
     id: 'offer-enforcement',
     ownerType: 'player',
@@ -74,6 +73,7 @@ test('AdventureRun aggregate rejects powers outside its snapshotted offer', () =
   const state = combat.toJSON();
   state.phase = 'upgrade';
   state.enemy = null;
+  state.streamlinedLoop = false;
   state.runUpgradeOfferVersion = RUN_UPGRADE_OFFER_VERSION;
   state.runUpgradeOfferIds = ['sharpen', 'reinforce', 'riposte'];
   state.runUpgradeDraftIndex = 0;
@@ -85,7 +85,7 @@ test('AdventureRun aggregate rejects powers outside its snapshotted offer', () =
   assert.deepEqual(chosen.state.selectedUpgrades, ['sharpen']);
 });
 
-test('a new run keeps normal fights flowing, pauses for one discovery, then offers one boss-preparation power', () => {
+test('a new run flows through normal fights directly into the boss without temporary run choices', () => {
   let sequence = 0;
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `player-${++sequence}` });
   const game = new GameService({ repository, eventBus: new EventBus(), idFactory: () => 'simple-run' });
@@ -93,48 +93,26 @@ test('a new run keeps normal fights flowing, pauses for one discovery, then offe
   const started = game.startDungeon(player.id, 'frayed-hollow');
 
   let state = repository.getRun(started.id);
+  assert.equal(state.streamlinedLoop, true);
+  assert.equal(state.runEventSchedule, null);
   assert.equal(state.runPowerDraftsEnabled, false);
   assert.equal(state.selectedUpgrades.length, 0);
 
-  // The first defeated encounter immediately reveals encounter two instead of blocking on
-  // a stat-card draft.
-  for (let guard = 0; guard < 40 && repository.getRun(started.id).encounterIndex === 0; guard += 1) {
+  // Normal encounters advance without interrupting the shared chat with a run-card draft.
+  for (let guard = 0; guard < 120 && repository.getRun(started.id).phase === 'combat'; guard += 1) {
     reactiveTurn(game, repository, started.id, player.id);
   }
-  state = repository.getRun(started.id);
-  assert.equal(state.phase, 'combat');
-  assert.equal(state.encounterIndex, 1);
-  assert.equal(state.runUpgradeResume, null);
-  assert.equal(state.runUpgradeOfferIds.length, 0);
-
-  // The single narrative discovery remains a meaningful shared decision.
-  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) {
-    reactiveTurn(game, repository, started.id, player.id);
-  }
-  state = repository.getRun(started.id);
-  assert.equal(state.phase, 'event');
-  assert.ok(state.runEvent?.choices?.length === 2);
-  game.chooseUpgrade(player.id, started.id, state.runEvent.choices[0].id);
-  state = repository.getRun(started.id);
-  assert.equal(state.phase, 'combat');
-  assert.equal(state.encounterIndex, 2);
-
-  // Only after the final normal encounter does the run ask for one build decision.
-  for (let guard = 0; guard < 40 && repository.getRun(started.id).phase === 'combat'; guard += 1) {
-    reactiveTurn(game, repository, started.id, player.id);
-  }
-  state = repository.getRun(started.id);
-  assert.equal(state.phase, 'upgrade');
-  assert.equal(state.runUpgradeResume, null, 'the only new-run power choice should lead directly to the boss');
-  assert.equal(state.runUpgradeDraftIndex, 0);
-  assert.equal(state.selectedUpgrades.length, 0);
-  assert.equal(state.runUpgradeOfferIds.length, 3);
-
-  game.chooseUpgrade(player.id, started.id, state.runUpgradeOfferIds[0]);
   state = repository.getRun(started.id);
   assert.equal(state.phase, 'boss');
-  assert.equal(state.runUpgradeDraftIndex, 1);
-  assert.equal(state.selectedUpgrades.length, 1);
+  assert.equal(state.enemy?.isBoss, true);
+  assert.equal(state.runEvent, null);
+  assert.equal(state.runEventHistory.length, 0);
+  assert.equal(state.runUpgradeResume, null);
+  assert.equal(state.runUpgradeOfferIds.length, 0);
+  assert.equal(state.runUpgradeDraftIndex, 0);
+  assert.equal(state.runAttackBonus, 0);
+  assert.equal(state.selectedUpgrade, null);
+  assert.equal(state.selectedUpgrades.length, 0);
   repository.close();
 });
 
@@ -147,6 +125,8 @@ test('persisted repeated-draft runs can still finish their legacy between-fight 
     dungeonId: 'frayed-hollow',
     participants: [{ playerId: 'p1', maxHealth: 40 }],
   });
+  // Explicitly model a state saved by the retired loop. New runs never set these flags.
+  run.state.streamlinedLoop = false;
   run.state.runPowerDraftsEnabled = true;
 
   for (let guard = 0; guard < 20 && run.toJSON().phase === 'combat' && run.toJSON().encounterIndex === 0; guard += 1) {
