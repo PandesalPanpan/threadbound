@@ -9,6 +9,7 @@ export const COMBAT_SKILLS = Object.freeze({
     kind: 'damage',
     damageBonus: 2,
     description: 'Strike harder and expose the foe so an ally can cash in the opening.',
+    streamlinedDescription: 'A quick empowered strike. Use it whenever its cooldown is ready.',
   }),
   'severing-knot': Object.freeze({
     id: 'severing-knot',
@@ -20,6 +21,7 @@ export const COMBAT_SKILLS = Object.freeze({
     comboBonus: 4,
     interrupts: true,
     description: 'A costly finisher that consumes Exposed for bonus damage and can cut off a telegraphed action.',
+    streamlinedDescription: 'A heavy strike that can interrupt an enemy telegraph when timed well.',
   }),
   'mending-chorus': Object.freeze({
     id: 'mending-chorus',
@@ -29,6 +31,7 @@ export const COMBAT_SKILLS = Object.freeze({
     kind: 'party-heal',
     heal: 5,
     description: 'Restore every living Weaver and stabilize the party without choosing one target.',
+    streamlinedDescription: 'Restore every living Weaver. Available again after its cooldown.',
   }),
 });
 
