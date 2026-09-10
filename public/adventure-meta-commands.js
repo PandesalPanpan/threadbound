@@ -92,7 +92,7 @@ if (stream) {
   `;
   document.head.append(style);
 
-  if (input) input.placeholder = 'Message your party…';
+  if (input) input.placeholder = 'Message party or /command…';
   if (hint) hint.textContent = 'Threadbound posts the result of every action here. Tap your next action below, or chat normally.';
 
   function showError(message = '') {

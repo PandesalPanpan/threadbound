@@ -1,7 +1,7 @@
-const commandCard = document.querySelector('[data-testid="stream-command-card"]');
+const stream = document.querySelector('[data-testid="adventure-stream"]');
 const inventory = document.querySelector('#inventory');
 
-if (commandCard || inventory) {
+if (stream || inventory) {
   const style = document.createElement('style');
   style.textContent = `
     .relic-progress-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
@@ -162,6 +162,19 @@ if (commandCard || inventory) {
     rows.forEach((row, index) => {
       const item = data.inventory?.[index];
       if (!item) return;
+      const fingerprint = JSON.stringify({
+        level:item.progression?.level || 0,
+        attunement:item.progression?.attunementCode || null,
+        canUpgrade:Boolean(item.progression?.canUpgrade),
+        nextCost:item.progression?.nextCost || 0,
+        dust:data.character.threadDust || 0,
+        activeRun:Boolean(data.activeRun),
+        equipped:item.id === data.character.equippedItem?.id,
+      });
+      if (row.dataset.relicProgressionFingerprint === fingerprint) {
+        syncEquipLock(row, item, data, { stream });
+        return;
+      }
       clearOwned(row);
       const copy = stream ? row.querySelector('.thread-gear-copy') : row;
       copy?.append(progressionMeta(item));
@@ -169,12 +182,14 @@ if (commandCard || inventory) {
       const actions = temperActions(item, data, host);
       if (actions) host.append(actions);
       syncEquipLock(row, item, data, { stream });
+      row.dataset.relicProgressionFingerprint = fingerprint;
     });
   }
 
   async function refreshRelics() {
     try {
       const data = await dashboard();
+      const commandCard = document.querySelector('[data-testid="stream-command-card"]');
       if (commandCard && !commandCard.hidden) {
         const rows = [...commandCard.querySelectorAll('.thread-gear-row')];
         if (rows.length) enhanceRows(rows, data, { stream: true });
@@ -200,7 +215,7 @@ if (commandCard || inventory) {
   }
 
   const observers = [];
-  for (const target of [commandCard, inventory].filter(Boolean)) {
+  for (const target of [stream, inventory].filter(Boolean)) {
     const observer = new MutationObserver((mutations) => {
       // Ignore the chips/actions this module adds and removes itself. Without this guard,
       // the observer schedules another dashboard fetch after every enhancement pass.

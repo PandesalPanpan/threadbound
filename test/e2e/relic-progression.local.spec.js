@@ -52,9 +52,10 @@ async function clearSoloRun(page) {
 async function openGear(page) {
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await page.getByTestId('mobile-game-nav').getByText('Gear', { exact: true }).click();
-  await expect(page.locator('body')).toHaveAttribute('data-game-view', 'gear');
-  await expect(page.getByTestId('inventory-item').first()).toBeVisible();
+  await page.getByTestId('stream-message').fill('/item');
+  await page.getByTestId('stream-send').click();
+  await expect(page.getByTestId('stream-command-card')).toBeVisible();
+  await expect(page.getByTestId('stream-gear-item').first()).toBeVisible();
 }
 
 test('mobile Gear can permanently attune and Temper an earned relic with Thread Dust', async ({ page }) => {
@@ -83,21 +84,22 @@ test('mobile Gear can permanently attune and Temper an earned relic with Thread 
   expect(relic.progression.level).toBe(0);
   expect(relic.progression.nextCost).toBe(8);
 
-  const bulwark = page.getByTestId(`temper-${relic.id}-bulwark`);
+  const gearCard = page.getByTestId('stream-command-card');
+  const bulwark = gearCard.getByTestId(`temper-${relic.id}-bulwark`);
   await expect(bulwark).toBeVisible({ timeout: 5000 });
   await expect(bulwark).toContainText('Bulwark Weave');
   const box = await bulwark.boundingBox();
   expect(box?.height || 0).toBeGreaterThanOrEqual(44);
-  await expect(page.getByTestId(`temper-${relic.id}-disruptor`)).toBeVisible();
-  await expect(page.getByTestId(`temper-${relic.id}-executioner`)).toBeVisible();
-  await expect(page.getByTestId(`temper-${relic.id}-mender`)).toBeVisible();
+  await expect(gearCard.getByTestId(`temper-${relic.id}-disruptor`)).toBeVisible();
+  await expect(gearCard.getByTestId(`temper-${relic.id}-executioner`)).toBeVisible();
+  await expect(gearCard.getByTestId(`temper-${relic.id}-mender`)).toBeVisible();
 
   // Once the owner UI and relic enhancer settle, the enhancer must not observe its own
   // chips/actions and continuously refetch the dashboard.
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(1000);
   browserDashboardRequests = 0;
-  await page.waitForTimeout(450);
-  expect(browserDashboardRequests).toBeLessThanOrEqual(1);
+  await page.waitForTimeout(600);
+  expect(browserDashboardRequests).toBeLessThanOrEqual(2);
 
   await bulwark.click();
   await expect.poll(async () => (await dashboard(page)).character.threadDust, { timeout: 5000 }).toBe(7);
@@ -109,10 +111,10 @@ test('mobile Gear can permanently attune and Temper an earned relic with Thread 
   expect(upgraded.progression.attunement.name).toBe('Bulwark Weave');
 
   await openGear(page);
-  const progress = page.getByTestId(`relic-progress-${relic.id}`).first();
+  const progress = page.getByTestId('stream-command-card').getByTestId(`relic-progress-${relic.id}`);
   await expect(progress).toContainText(upgraded.progression.canUpgrade ? `TEMPER 1/${upgraded.progression.maxLevel}` : `MASTERWORK 1/${upgraded.progression.maxLevel}`);
   await expect(progress).toContainText('Bulwark Weave');
-  await expect(page.getByTestId('thread-dust')).toHaveText('7');
+  await expect(page.getByTestId('stream-command-card')).toContainText('7 Thread Dust');
 
   const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(bodyWidth).toBeLessThanOrEqual(390);

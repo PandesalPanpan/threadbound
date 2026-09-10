@@ -30,6 +30,19 @@ async function versionedAction(page, context, testId) {
   }, { timeout:7000 }).toBe(true);
 }
 
+async function versionedCommand(page, context, command) {
+  const before = await dashboard(context);
+  const runId = before.activeRun?.id;
+  const version = before.activeRun?.version ?? -1;
+  await page.getByTestId('stream-message').fill(command);
+  await page.getByTestId('stream-send').click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    if (!after.activeRun || after.activeRun.id !== runId) return true;
+    return after.activeRun.version > version;
+  }, { timeout:7000 }).toBe(true);
+}
+
 async function playUntilPhase(page, context, targetPhase, limit = 120) {
   for (let index = 0; index < limit; index += 1) {
     const state = await dashboard(context);
@@ -38,7 +51,11 @@ async function playUntilPhase(page, context, targetPhase, limit = 120) {
     if (run.phase === targetPhase) return run;
     if (!['combat', 'boss'].includes(run.phase)) throw new Error(`Unexpected phase ${run.phase} while waiting for ${targetPhase}.`);
 
-    if (run.enemyIntent) {
+    if (run.enemy.hp <= state.character.attackPower) {
+      await versionedAction(page, context, 'stream-attack');
+    } else if (!run.enemyIntent && run.viewer.mendCharges > 0 && run.viewer.maxHp - run.viewer.hp >= 10) {
+      await versionedCommand(page, context, '/mend');
+    } else if (run.enemyIntent) {
       await versionedAction(page, context, run.enemyIntent.reaction === 'interrupt' ? 'stream-interrupt' : 'stream-guard');
     } else {
       await versionedAction(page, context, 'stream-attack');
@@ -61,7 +78,8 @@ test('bundled Glasswake dungeon is discoverable and completable through the same
   expect(runtimeDungeon.arcTitle).toBe('The Glasswake');
   expect(runtimeDungeon.sourceManifestRevision).toBeTruthy();
 
-  await page.getByTestId('stream-dungeons').click();
+  await page.getByTestId('stream-message').fill('/dungeons');
+  await page.getByTestId('stream-send').click();
   const dungeonCard = page.getByTestId('stream-command-card');
   await expect(dungeonCard).toContainText('Mirrorfen Descent');
   await dungeonCard.getByTestId('stream-enter-mirrorfen-descent').click();

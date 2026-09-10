@@ -35,14 +35,6 @@ async function directAction(context, runId, action) {
   return post(context, `/api/runs/${encodeURIComponent(runId)}/${action}`);
 }
 
-function preferredOfferedPower(state) {
-  const offered = state.runUpgrades || [];
-  expect(offered).toHaveLength(3);
-  return [...offered].sort((left, right) => Number(left.attackBonus || 0) - Number(right.attackBonus || 0)
-    || Number(right.heal || 0) - Number(left.heal || 0)
-    || String(left.id).localeCompare(String(right.id)))[0];
-}
-
 test('Phase II marks a wounded ally and another Weaver can protect them from the thread', async ({ browser }) => {
   test.setTimeout(60000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -62,50 +54,40 @@ test('Phase II marks a wounded ally and another Weaver can protect them from the
     const started = await post(leaderContext, '/api/dungeons/frayed-hollow/start');
     const runId = started.run.id;
 
-    // Clear the normal encounters through public command routes while reacting to every
-    // telegraph. Repeated power drafts and the discovery are real aggregate pauses, so
-    // resolve each using only choices returned by the authoritative dashboard. This
-    // mechanics fixture deliberately takes the lowest-attack offer so draft variance does
-    // not dominate the boss threshold behavior being exercised below.
+    // Clear normal encounters through public command routes while reacting to every
+    // telegraph. The streamlined run moves directly into the boss without draft pauses.
     for (let guard = 0; guard < 100; guard += 1) {
       const state = await dashboard(leaderContext);
       const phase = state.activeRun?.phase;
-      if (phase === 'event') {
-        const choices = state.activeRun.runEvent?.choices || [];
-        const safeChoice = choices.find((choice) => /bind|quiet/i.test(choice.id)) || choices[0];
-        expect(safeChoice?.id).toBeTruthy();
-        await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: safeChoice.id });
-        expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
-        continue;
-      }
-      if (phase === 'upgrade') {
-        if (!state.activeRun.runUpgradeResume) break;
-        const power = preferredOfferedPower(state);
-        await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: power.id });
-        expect((await dashboard(leaderContext)).activeRun?.phase).toBe('combat');
-        continue;
-      }
       if (phase !== 'combat') break;
-      const actorContext = guard % 2 === 0 ? leaderContext : partnerContext;
-      const actorState = await dashboard(actorContext);
+      let actorContext = guard % 2 === 0 ? leaderContext : partnerContext;
+      let actorState = await dashboard(actorContext);
+      if (actorState.activeRun.viewer.hp <= 0) {
+        actorContext = actorContext === leaderContext ? partnerContext : leaderContext;
+        actorState = await dashboard(actorContext);
+      }
+      expect(actorState.activeRun.viewer.hp).toBeGreaterThan(0);
+      const downed = actorState.activeRun.participants.find((participant) => participant.hp <= 0);
+      if (downed && actorState.activeRun.viewer.reviveCharges > 0) {
+        await post(actorContext, `/api/runs/${encodeURIComponent(runId)}/revive`, { targetPlayerId:downed.playerId });
+        continue;
+      }
       const action = actorState.activeRun.enemyIntent
         ? actorState.activeRun.enemyIntent.reaction === 'interrupt' ? 'interrupt' : 'guard'
         : 'attack';
       await directAction(actorContext, runId, action);
     }
 
-    const finalDraft = await dashboard(leaderContext);
-    expect(finalDraft.activeRun?.phase).toBe('upgrade');
-    expect(finalDraft.activeRun.runUpgradeResume).toBeNull();
-    const finalPower = preferredOfferedPower(finalDraft);
-    await post(leaderContext, `/api/runs/${encodeURIComponent(runId)}/upgrade`, { upgradeId: finalPower.id });
-    expect((await dashboard(leaderContext)).activeRun?.phase).toBe('boss');
+    const bossStart = await dashboard(leaderContext);
+    expect(bossStart.activeRun?.phase).toBe('boss');
+    expect(bossStart.activeRun.runEventHistory).toEqual([]);
+    expect(bossStart.activeRun.selectedUpgrades).toEqual([]);
+    expect(bossStart.runUpgrades || []).toEqual([]);
 
     // Make B the clearly vulnerable Weaver, then drive the boss from authoritative state
-    // instead of assuming a fixed number of hits. Draft attack bonuses can move the exact
-    // 50% crossing action. Any Phase-I telegraph is cancelled safely; once the aggregate
+    // instead of assuming a fixed number of hits. Any Phase-I telegraph is cancelled
+    // safely; once the aggregate
     // reports Phase II, its two-action cadence deterministically produces Threadmark first.
-    await directAction(partnerContext, runId, 'guard');
     for (let step = 0; step < 12; step += 1) {
       const boss = (await dashboard(leaderContext)).activeRun;
       if (boss.enemy.battlePhase >= 2) break;

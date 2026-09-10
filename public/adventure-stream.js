@@ -15,8 +15,8 @@ if (streamEl) {
     <div class="stream-suggestions" data-testid="stream-suggestions" aria-label="Suggested actions"></div>
     <form class="adventure-stream-composer" data-testid="stream-composer">
       <label class="sr-only" for="stream-message">Message the shared stream or type a command</label>
-      <input id="stream-message" data-testid="stream-message" maxlength="500" autocomplete="off" placeholder="Message… or type / for actions">
-      <button type="submit" data-testid="stream-send">Send</button>
+      <input id="stream-message" data-testid="stream-message" maxlength="500" autocomplete="off" placeholder="Message party or /command…">
+      <button type="submit" data-testid="stream-send" aria-label="Send message">›</button>
     </form>
     <p class="stream-error" data-testid="stream-error" role="alert" hidden></p>
   `;
@@ -502,14 +502,16 @@ if (streamEl) {
         case '/':
         case '/help':
           openCommandCard('help', 'Thread commands', 'Tap a suggestion or type one directly.');
-          commandCardEl.insertAdjacentHTML('beforeend', '<p><strong>/status</strong> HP + enemy · <strong>/gear</strong> equip/salvage · <strong>/party</strong> co-op · <strong>/codex</strong> search · <strong>/attack</strong> <strong>/guard</strong> <strong>/interrupt</strong> during combat.</p>');
+          commandCardEl.insertAdjacentHTML('beforeend', '<p><strong>/status</strong> HP + enemy · <strong>/item</strong> equip/salvage · <strong>/party</strong> co-op · <strong>/codex</strong> search · <strong>/strike</strong> <strong>/guard</strong> <strong>/interrupt</strong> during combat.</p>');
           break;
         case '/status': renderStatusCard(); break;
         case '/gear':
+        case '/item':
         case '/inventory': renderGearCard(); break;
         case '/party': renderPartyCard(); break;
         case '/codex': await renderCodexCard(args.join(' ')); break;
-        case '/attack': await runCombatAction('attack'); break;
+        case '/attack':
+        case '/strike': await runCombatAction('attack'); break;
         case '/guard': await runCombatAction('guard'); break;
         case '/interrupt': await runCombatAction('interrupt'); break;
         case '/mend': {
@@ -576,7 +578,8 @@ if (streamEl) {
 
   inputEl.addEventListener('input', () => {
     const commandMode = inputEl.value.trimStart().startsWith('/');
-    sendEl.textContent = commandMode ? 'Run' : 'Send';
+    sendEl.textContent = '›';
+    sendEl.setAttribute('aria-label', commandMode ? 'Run command' : 'Send message');
     suggestionsEl.classList.toggle('command-mode', commandMode);
   });
 
@@ -586,7 +589,7 @@ if (streamEl) {
     if (!body || sendEl.disabled) return;
     if (body.startsWith('/')) {
       inputEl.value = '';
-      sendEl.textContent = 'Send';
+      sendEl.textContent = '›';
       await executeCommand(body);
       inputEl.focus();
       return;

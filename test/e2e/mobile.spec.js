@@ -44,8 +44,10 @@ test('mobile play gives the conversation most of the screen and keeps only compa
   const local = page.getByTestId('stream-thread-local');
   await expect(log).toBeVisible();
   await expect(local).toBeVisible({ timeout:7000 });
-  expect(await local.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
-  await expect(page.locator('.stream-hint')).toContainText('The chat is the game');
+  expect(await local.evaluate((node) => node.parentElement?.dataset.testid)).toBe('thread-action-dock');
+  await expect(page.locator('.stream-hint')).toBeHidden();
+  await expect(page.getByTestId('thread-game-header')).toBeVisible();
+  await expect(page.getByTestId('thread-game-location')).toHaveText('Choose a dungeon to begin');
 
   const logBox = await log.boundingBox();
   expect(logBox?.height || 0).toBeGreaterThan(560);
@@ -55,15 +57,14 @@ test('mobile play gives the conversation most of the screen and keeps only compa
   for (const selector of ['#character','#party','#dungeon','#inventory','#achievements','#world','#honey']) {
     await expect(page.locator(selector)).toBeHidden();
   }
-  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message your party…');
+  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or /command…');
 
-  // Utility navigation is intentionally quieter/smaller than combat controls.
-  await expectTouchTarget(local.getByRole('button', { name:'Status' }), 28);
-  await expectTouchTarget(local.getByRole('button', { name:'Gear' }), 28);
+  // Utility navigation is available through slash commands without occupying the dock.
+  await expect(local.getByTestId('stream-meta-actions')).toBeHidden();
   await expectNoHorizontalOverflow(page);
 
   const start = local.getByTestId('stream-start-dungeon');
-  await expectTouchTarget(start, 40);
+  await expectTouchTarget(start, 32);
   await start.click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.phase, { timeout:7000 }).toBe('combat');
 
@@ -75,10 +76,12 @@ test('mobile play gives the conversation most of the screen and keeps only compa
 
   const attack = local.getByTestId('stream-attack');
   const guard = local.getByTestId('stream-guard');
-  await expectTouchTarget(attack, 40);
-  await expect(guard).toBeHidden();
+  await expectTouchTarget(attack, 32);
+  await expectTouchTarget(guard, 32);
+  await expectTouchTarget(local.getByTestId('stream-item'), 32);
   await expect(local.getByTestId('combat-skill-panel')).toBeVisible({ timeout:7000 });
-  await expect(local.getByTestId('stream-decision-snapshot')).toContainText(/Frayed Wisp/i);
+  await expect(page.getByTestId('thread-game-location')).toContainText(/Frayed Hollow · Fight 1/i);
+  await expect(page.getByTestId('thread-game-player-hp')).toHaveText(/\d+ \/ \d+ HP/);
   await expect(page.getByTestId('stream-build-summary')).toBeHidden();
   await expect(page.getByTestId('stream-action-forecast')).toBeHidden();
   await expectNoHorizontalOverflow(page);
@@ -95,7 +98,7 @@ test('mobile play gives the conversation most of the screen and keeps only compa
 
   // Relevant reaction enters the small action budget; irrelevant Guard stays absent.
   const interrupt = local.getByTestId('stream-interrupt');
-  await expectTouchTarget(interrupt, 40);
+  await expectTouchTarget(interrupt, 32);
   await expect(guard).toBeHidden();
   await expectNoHorizontalOverflow(page);
 
@@ -105,7 +108,8 @@ test('mobile play gives the conversation most of the screen and keeps only compa
   await expect(reply).toContainText('Current adventure');
   expect(await reply.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
 
-  await local.getByRole('button', { name:'Gear' }).click();
+  await page.getByTestId('stream-message').fill('/item');
+  await page.getByTestId('stream-send').click();
   await expect(reply).toContainText('Relic pouch');
   expect(await reply.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
   await expectNoHorizontalOverflow(page);

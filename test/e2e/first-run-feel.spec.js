@@ -71,7 +71,8 @@ test('first run is a shared RPG chat: contextual actions, direct boss, reward, t
 
   await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout:7000 });
   await expect(page.getByTestId('stream-start-dungeon')).toContainText('Frayed Hollow');
-  await expect(page.locator('.stream-hint')).toContainText('The chat is the game');
+  await expect(page.locator('.stream-hint')).toBeHidden();
+  await expect(page.getByTestId('thread-game-header')).toBeVisible();
   await reviewShot(page, '01-first-run-streamlined');
 
   await page.getByTestId('stream-start-dungeon').click();
@@ -85,7 +86,7 @@ test('first run is a shared RPG chat: contextual actions, direct boss, reward, t
 
   const local = page.getByTestId('stream-thread-local');
   await expect(local.getByTestId('stream-attack')).toBeVisible();
-  expect(await local.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
+  expect(await local.evaluate((node) => Boolean(node.closest('[data-testid="thread-action-dock"]')))).toBe(true);
 
   const beforeIdle = await dashboard(context);
   await page.waitForTimeout(800);

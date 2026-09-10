@@ -57,12 +57,14 @@ test('chat is the dominant visual surface and private controls contain only curr
   const meta = local.getByTestId('stream-meta-actions');
   await expect(log).toBeVisible();
   await expect(local).toBeVisible({ timeout:7000 });
-  expect(await local.evaluate((node) => node.parentElement?.dataset.testid)).toBe('adventure-stream-log');
-  await expect(page.locator('.stream-hint')).toContainText('The chat is the game');
+  expect(await local.evaluate((node) => node.parentElement?.dataset.testid)).toBe('thread-action-dock');
+  await expect(page.locator('.stream-hint')).toBeHidden();
+  await expect(page.getByTestId('thread-game-header')).toBeVisible();
 
-  // Navigation still exists, but it is a secondary utility strip rather than a competing panel.
+  // Navigation remains command-accessible without occupying the gameplay dock.
+  await expect(meta).toBeHidden();
   for (const name of ['Dungeons','Status','Gear','Party','Codex','World','Honey']) {
-    await expect(meta.getByRole('button', { name })).toBeVisible();
+    await expect(meta.getByRole('button', { name })).toBeHidden();
   }
 
   await local.getByTestId('stream-start-dungeon').click();
@@ -71,9 +73,10 @@ test('chat is the dominant visual surface and private controls contain only curr
   expect(state.activeRun.streamlinedLoop).toBe(true);
 
   const snapshot = local.getByTestId('stream-decision-snapshot');
-  await expect(snapshot).toBeVisible({ timeout:7000 });
+  await expect(snapshot).toBeAttached({ timeout:7000 });
   await expect(local.getByTestId('stream-decision-you-hp')).toHaveText(/\d+ \/ \d+ HP/);
   await expect(local.getByTestId('stream-decision-enemy-hp')).toHaveText(/\d+ \/ \d+ HP/);
+  await expect(page.getByTestId('thread-game-location')).toContainText(/Frayed Hollow · Fight 1/i);
 
   // The always-visible dashboard duplication is gone. Consequence preview belongs to the
   // action hover/focus treatment instead of being repeated in stacked cards.
@@ -82,7 +85,8 @@ test('chat is the dominant visual surface and private controls contain only curr
   await expect(page.getByTestId('stream-build-summary')).toBeHidden();
 
   await expect(primary.getByTestId('stream-attack')).toBeVisible();
-  await expect(primary.getByTestId('stream-guard')).toBeHidden();
+  await expect(primary.getByTestId('stream-guard')).toBeVisible();
+  await expect(primary.getByTestId('stream-item')).toBeVisible();
   await expect(primary.getByTestId('combat-skill-panel')).toBeVisible({ timeout:7000 });
 
   const localBox = await local.boundingBox();
@@ -103,5 +107,5 @@ test('chat is the dominant visual surface and private controls contain only curr
   expect(bossData.activeRun.runAttackBonus).toBe(0);
   await expect(page.getByTestId('stream-build-summary')).toBeHidden();
   await expect(page.getByTestId('run-event-card')).toHaveCount(0);
-  await expect(local.getByTestId('stream-decision-snapshot')).toBeVisible();
+  await expect(local.getByTestId('stream-decision-snapshot')).toBeAttached();
 });

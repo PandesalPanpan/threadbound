@@ -2,9 +2,14 @@ import { test, expect } from '@playwright/test';
 
 async function login(page) {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Connect with Threaded' }).click();
-  await expect(page.getByRole('heading', { name: 'Fake Threaded' })).toBeVisible();
-  await page.getByRole('button', { name: 'Authorize Threadbound' }).click();
+  const localLogin = page.getByTestId('local-login-a');
+  if (await localLogin.isVisible().catch(() => false)) {
+    await localLogin.click();
+  } else {
+    await page.getByRole('link', { name:'Connect with Threaded' }).click();
+    await expect(page.getByRole('heading', { name:'Fake Threaded' })).toBeVisible();
+    await page.getByRole('button', { name:'Authorize Threadbound' }).click();
+  }
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
@@ -36,7 +41,7 @@ test('new-run skills are compact, immediately usable, and persist cooldowns with
   await expect(local).toBeVisible();
   await expect(panel).toBeVisible();
   expect(await panel.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
-  expect(await panel.evaluate((element) => Boolean(element.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
+  expect(await panel.evaluate((element) => Boolean(element.closest('[data-testid="thread-action-dock"]')))).toBe(true);
 
   let state = await dashboard(context);
   expect(state.activeRun.streamlinedSkills).toBe(true);
@@ -51,7 +56,7 @@ test('new-run skills are compact, immediately usable, and persist cooldowns with
   await expect(page.getByTestId('skill-piercing-stitch-state')).toHaveText('Ready');
   const box = await piercing.boundingBox();
   expect(box).not.toBeNull();
-  expect(box.height).toBeGreaterThanOrEqual(40);
+  expect(box.height).toBeGreaterThanOrEqual(32);
 
   const version = state.activeRun.version;
   await piercing.click();

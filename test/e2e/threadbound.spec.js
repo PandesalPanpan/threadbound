@@ -200,12 +200,12 @@ test('Threaded login -> simple dungeon chat -> direct boss -> gear -> Codex -> i
   expect(reloaded.character.attackPower).toBe(upgradedAttack);
   expect(reloaded.inventory.length).toBe(inventoryBefore + 2);
 
-  await page.getByTestId('nav-codex').click();
+  await page.goto('/codex');
   await expect(page).toHaveURL(/\/codex/);
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
   await expectCountAtLeast(page.getByTestId('codex-count-items'), 2);
   await expectCountAtLeast(page.getByTestId('codex-count-history'), 2);
-  await page.getByTestId('nav-game').click();
+  await page.goto('/game');
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 });
@@ -236,9 +236,9 @@ test('two browser sessions share one durable streamlined combat thread with view
     await expect(leader.getByTestId('stream-thread-local')).toBeVisible();
     await expect(partner.getByTestId('stream-thread-local')).toBeVisible();
 
-    const leaderReceiptsBefore = await leader.getByTestId('stream-system-entry').filter({ hasText:/attacked/i }).count();
+    const partnerReceiptsBefore = await partner.getByTestId('stream-system-entry').filter({ hasText:/attacked/i }).count();
     await reactOrAttackFromThread(leader, leaderContext);
-    await expect.poll(async () => partner.getByTestId('stream-system-entry').filter({ hasText:/attacked/i }).count(), { timeout:7000 }).toBeGreaterThanOrEqual(leaderReceiptsBefore + 1);
+    await expect.poll(async () => partner.getByTestId('stream-system-entry').filter({ hasText:/attacked/i }).count(), { timeout:7000 }).toBeGreaterThanOrEqual(partnerReceiptsBefore + 1);
 
     // Partner consumes the shared authoritative reaction; both dashboards converge on the same version.
     await reactOrAttackFromThread(partner, partnerContext);

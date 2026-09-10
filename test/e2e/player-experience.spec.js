@@ -9,15 +9,37 @@ async function loginWithThreaded(page) {
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
-async function clickAndWait(page, testId) {
-  await page.getByTestId(testId).click();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
-}
-
 async function dashboard(context) {
   const response = await context.request.get('/api/dashboard');
   expect(response.ok()).toBe(true);
   return response.json();
+}
+
+async function openThreadReply(page, command) {
+  await page.getByTestId('stream-message').fill(command);
+  await page.getByTestId('stream-send').click();
+  const reply = page.getByTestId('stream-command-card');
+  await expect(reply).toBeVisible({ timeout:7000 });
+  return reply;
+}
+
+async function createPartyThroughThread(page, context) {
+  const reply = await openThreadReply(page, '/party');
+  await reply.getByRole('button', { name:'Create party' }).click();
+  await expect.poll(async () => (await dashboard(context)).party?.joinCode || null, { timeout:7000 }).not.toBeNull();
+  return (await dashboard(context)).party.joinCode;
+}
+
+async function joinPartyThroughThread(page, context, inviteCode) {
+  const reply = await openThreadReply(page, '/party');
+  await reply.getByTestId('stream-party-code').fill(inviteCode);
+  await reply.getByRole('button', { name:'Join', exact:true }).click();
+  await expect.poll(async () => (await dashboard(context)).party?.members?.length || 0, { timeout:7000 }).toBe(2);
+  await page.getByTestId('stream-command-card').getByRole('button', { name:'Ready', exact:true }).click();
+  await expect.poll(async () => {
+    const state = await dashboard(context);
+    return state.party?.members?.find((member) => member.playerId === state.character.id)?.ready || false;
+  }, { timeout:7000 }).toBe(true);
 }
 
 async function clickThreadAction(page, context, testId) {
@@ -173,11 +195,8 @@ test('PX-36/45 Flaky Co-op Partner: one player can disconnect and rejoin the sam
     await loginWithThreaded(leader);
     await loginWithThreaded(partner);
 
-    await clickAndWait(leader, 'create-party');
-    const inviteCode = (await leader.getByTestId('party-code').textContent()).trim();
-    await partner.getByTestId('party-code-input').fill(inviteCode);
-    await clickAndWait(partner, 'join-party');
-    await clickAndWait(partner, 'toggle-ready');
+    const inviteCode = await createPartyThroughThread(leader, leaderContext);
+    await joinPartyThroughThread(partner, partnerContext, inviteCode);
 
     await leader.reload();
     await expect(leader.getByTestId('app-status')).toHaveText('Ready');

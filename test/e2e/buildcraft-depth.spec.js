@@ -66,7 +66,7 @@ test('new runs stay chat-first and reach the boss without temporary buildcraft',
   const local = page.getByTestId('stream-thread-local');
   await expect(local).toBeVisible();
   await expect(local.getByTestId('stream-attack')).toBeVisible();
-  expect(await local.evaluate((node) => Boolean(node.closest('[data-testid="adventure-stream-log"]')))).toBe(true);
+  expect(await local.evaluate((node) => Boolean(node.closest('[data-testid="thread-action-dock"]')))).toBe(true);
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');

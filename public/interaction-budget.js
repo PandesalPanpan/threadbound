@@ -34,7 +34,7 @@ if (stream) {
     const guard = suggestions.querySelector('button[data-command="/guard"]');
     const interrupt = suggestions.querySelector('button[data-command="/interrupt"]');
     if (guard) {
-      const relevant = Boolean(intent && (intent.reaction === 'guard' || intent.id === 'threadmark-lunge'));
+      const relevant = !intent || intent.reaction === 'guard' || intent.id === 'threadmark-lunge';
       setHidden(guard, !relevant);
     }
     if (interrupt) setHidden(interrupt, !(intent && intent.reaction === 'interrupt'));

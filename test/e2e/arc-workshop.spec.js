@@ -12,9 +12,14 @@ async function attackUntilPhaseChanges(page, context, expectedPhase, limit = 40)
     if (before.activeRun?.phase !== expectedPhase) return before;
     const runId = before.activeRun.id;
     const version = before.activeRun.version;
-    const attack = page.getByTestId('stream-attack');
-    await expect(attack).toBeVisible();
-    await attack.click();
+    const testId = before.activeRun.enemy.hp <= before.character.attackPower
+      ? 'stream-attack'
+      : before.activeRun.enemyIntent
+        ? before.activeRun.enemyIntent.reaction === 'interrupt' ? 'stream-interrupt' : 'stream-guard'
+        : 'stream-attack';
+    const action = page.getByTestId(testId);
+    await expect(action).toBeVisible();
+    await action.click();
     await expect.poll(async () => {
       const after = await dashboard(context);
       if (!after.activeRun) return true;
@@ -25,30 +30,13 @@ async function attackUntilPhaseChanges(page, context, expectedPhase, limit = 40)
   throw new Error(`Generated dungeon stayed in ${expectedPhase} after ${limit} explicit attacks.`);
 }
 
-async function choosePowerDraft(page, context) {
-  const before = await dashboard(context);
-  expect(before.activeRun?.phase).toBe('upgrade');
-  expect(before.runUpgrades).toHaveLength(3);
-  const power = before.runUpgrades[0];
-  const expectedPhase = before.activeRun.runUpgradeResume ? 'combat' : 'boss';
-  const version = before.activeRun.version;
-  const powerButton = page.getByTestId('stream-suggestions').getByRole('button', { name: power.name, exact: true });
-  await expect(powerButton).toBeVisible();
-  await powerButton.click();
-  await expect.poll(async () => {
-    const after = await dashboard(context);
-    return after.activeRun?.version > version && after.activeRun?.phase === expectedPhase;
-  }, { timeout: 5000 }).toBe(true);
-  return dashboard(context);
-}
-
 test('external Arc Manifest can be uploaded, validated, published, played, and documented', async ({ page, context }) => {
   test.setTimeout(70000);
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 
-  await page.getByTestId('nav-workshop').click();
+  await page.goto('/arc-workshop');
   await expect(page).toHaveURL(/\/arc-workshop$/);
   await expect(page.getByRole('heading', { name: 'Arc Workshop' })).toBeVisible();
   await expect(page.getByText('No paid AI API required.')).toBeVisible();
@@ -84,7 +72,7 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect(page.getByTestId('workshop-status')).toContainText(`Published The Ashen Thread revision ${revision}`);
   await expect(page.getByTestId('manifest-list')).toContainText('published');
 
-  await page.getByTestId('nav-game').click();
+  await page.goto('/game');
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const cinderDungeon = page.getByTestId('dungeon-option').filter({ hasText: 'Cinder Vault' });
   await expect(cinderDungeon).toContainText('The Ashen Thread');
@@ -94,7 +82,8 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   expect(runtimeDungeon).toBeTruthy();
   expect(String(runtimeDungeon.sourceManifestRevision)).toBe(String(revision));
 
-  await page.getByTestId('stream-dungeons').click();
+  await page.getByTestId('stream-message').fill('/dungeons');
+  await page.getByTestId('stream-send').click();
   const dungeonReply = page.getByTestId('stream-command-card');
   await expect(dungeonReply).toContainText('Cinder Vault');
   await expect(dungeonReply.getByTestId('stream-enter-cinder-vault')).toBeVisible();
@@ -102,29 +91,22 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect.poll(async () => (await dashboard(context)).activeRun?.dungeonId || null, { timeout: 5000 }).toBe('cinder-vault');
   await expect(page.getByTestId('run-state')).toContainText('Ashling');
 
-  // Generated dungeons use the same repeated run-power lifecycle as bundled content.
-  // Cinder Vault has two normal encounters, so the first draft resumes encounter two
-  // and the second (with no resume snapshot) is the pre-boss draft.
+  // Generated dungeons use the same streamlined normal fights -> boss -> rewards loop.
   await attackUntilPhaseChanges(page, context, 'combat');
-  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  const resumed = await choosePowerDraft(page, context);
-  expect(resumed.activeRun.phase).toBe('combat');
-  expect(resumed.activeRun.runUpgradeResume).toBeNull();
-  await expect(page.getByTestId('run-state')).toContainText('Ashling');
-
-  await attackUntilPhaseChanges(page, context, 'combat');
-  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  const bossStart = await choosePowerDraft(page, context);
+  const bossStart = await dashboard(context);
   expect(bossStart.activeRun.phase).toBe('boss');
+  expect(bossStart.activeRun.runEventHistory).toEqual([]);
+  expect(bossStart.activeRun.selectedUpgrades).toEqual([]);
+  expect(bossStart.runUpgrades || []).toEqual([]);
   await expect(page.getByTestId('run-state')).toContainText('The Ember Loomkeeper');
   await attackUntilPhaseChanges(page, context, 'boss');
 
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  const emberNeedle = page.getByTestId('inventory-item').filter({ hasText: 'Ember Needle of the Loom' }).first();
-  await expect(emberNeedle).toContainText('+3 Attack');
-  await expect(page.getByTestId('achievement').filter({ hasText: 'Through the Cinders' })).toBeVisible();
+  const completed = await dashboard(context);
+  expect(completed.inventory.some((item) => item.name === 'Ember Needle of the Loom' && item.attackBonus === 3)).toBe(true);
+  expect(completed.achievements.some((achievement) => achievement.name === 'Through the Cinders')).toBe(true);
 
-  await page.getByTestId('nav-codex').click();
+  await page.goto('/codex');
   await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
 
   await page.getByTestId('codex-search').fill('Cinder Seam');
