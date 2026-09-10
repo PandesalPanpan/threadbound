@@ -343,9 +343,14 @@ if (stream) {
     composer.addEventListener('submit', async (event) => {
       const raw = input.value.trim();
       if (!raw.startsWith('/')) return;
-      const [command] = raw.toLowerCase().split(/\s+/);
+      const [command, ...args] = raw.toLowerCase().split(/\s+/);
       const simple = !dashboard?.activeRun || dashboard?.activeRun?.simpleCombat;
       if (!simple) return;
+
+      // Bare /run keeps the one-tap simplified loop. An explicit /run <dungeon-id>
+      // belongs to the full adventure command handler so generated/workshop dungeons
+      // remain reachable without adding a permanent dungeon picker back to the UI.
+      if (command === '/run' && args.length > 0) return;
 
       if (['/hunt', '/dungeon', '/run', '/attack', '/help'].includes(command)) {
         event.preventDefault();
