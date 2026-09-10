@@ -5,6 +5,7 @@ import { AdventureRun as DungeonRun, DUNGEONS, RUN_UPGRADES } from '../domain/Ad
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
+import { decorateRunUpgradeOffers } from '../domain/RunUpgradeOfferPolicy.js';
 
 export class GameService {
   constructor({ repository, eventBus, arcManifestService = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
@@ -32,6 +33,9 @@ export class GameService {
     const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
     const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
+    const runUpgrades = activeRun && !activeRun.streamlinedLoop && activeRun.phase === 'upgrade'
+      ? decorateRunUpgradeOffers(activeRun, Object.values(RUN_UPGRADES))
+      : [];
 
     return {
       character: {
@@ -49,7 +53,7 @@ export class GameService {
       achievements: this.repository.listAchievements(playerId),
       world: this.repository.getWorldState(),
       dungeons: allDungeons.map(({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId, arcTitle, sourceManifestRevision }) => ({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId: arcId || 'arc-1', arcTitle: arcTitle || 'The First Unraveling', sourceManifestRevision: sourceManifestRevision || null })),
-      runUpgrades: Object.values(RUN_UPGRADES),
+      runUpgrades,
       combatSkills: publicCombatSkills(),
       relicAttunements: publicRelicAttunements(),
     };
@@ -249,8 +253,8 @@ export class GameService {
       } : null,
       actorHp: actor?.hp ?? null,
       actorMaxHp: actor?.maxHp ?? null,
-      actorFocus: actor?.focus ?? null,
-      actorMaxFocus: actor?.maxFocus ?? null,
+      actorFocus: state.streamlinedSkills ? null : actor?.focus ?? null,
+      actorMaxFocus: state.streamlinedSkills ? null : actor?.maxFocus ?? null,
       actorSkillCooldowns: actor?.skillCooldowns ? structuredClone(actor.skillCooldowns) : {},
       targetHp: damagedTarget?.hp ?? null,
       targetMaxHp: damagedTarget?.maxHp ?? null,
@@ -258,7 +262,7 @@ export class GameService {
       enemyName: state.enemy?.name || null,
       enemyHp: state.enemy?.hp ?? null,
       enemyMaxHp: state.enemy?.maxHp ?? null,
-      enemyStatuses: state.enemy?.statuses ? structuredClone(state.enemy.statuses) : {},
+      enemyStatuses: state.streamlinedSkills ? {} : state.enemy?.statuses ? structuredClone(state.enemy.statuses) : {},
       bossBattlePhase: state.enemy?.isBoss ? Number(state.enemy.battlePhase || 1) : null,
       bossPhaseName: state.enemy?.isBoss ? state.enemy.phaseName || null : null,
       bossPhaseChanged: bossPhaseChanged ? {
@@ -271,6 +275,7 @@ export class GameService {
       defeatedBoss: Boolean(defeated?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
       enemyIntent: state.enemyIntent ? structuredClone(state.enemyIntent) : null,
+      streamlinedSkills: Boolean(state.streamlinedSkills),
       phase: state.phase,
       encounterIndex: state.encounterIndex,
     });
