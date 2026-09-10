@@ -3,6 +3,7 @@ import { runEventChoice, selectRunEvent } from './RunEventCatalog.js';
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 import { RUN_UPGRADES, runUpgrade } from './RunPowerCatalog.js';
 import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
+import { finalizeStreamlinedCombatOutcome, prepareStreamlinedCombatState } from './StreamlinedSkillPolicy.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -199,8 +200,14 @@ export class AdventureRun {
     if (this.state.phase === 'event') throw new Error('Choose the run event before taking another combat action.');
     if (this.state.phase === 'upgrade') throw new Error('Choose a run power before taking another combat action.');
     const before = structuredClone(this.state);
-    const combat = new CombatDungeonRun(this.state);
-    const outcome = combat[method](args);
+
+    // Fowler-style compatibility boundary: the mature combat model is left intact for
+    // persisted legacy runs. New aggregates adapt only their transient resolution state,
+    // then normalize the outcome before anything is persisted or projected to the UI.
+    const prepared = prepareStreamlinedCombatState(this.state, method, args);
+    const combat = new CombatDungeonRun(prepared);
+    let outcome = combat[method](args);
+    outcome = finalizeStreamlinedCombatOutcome(outcome);
     this.state = outcome.state;
 
     const attuned = applyRelicCombatAttunement({
@@ -211,6 +218,7 @@ export class AdventureRun {
       attunementCode: args?.attunementCode || null,
     });
     this.state = attuned.state;
+    outcome.events = attuned.events;
     if (attuned.triggered?.effect === 'bonus_healing') {
       outcome.healed = Number(outcome.healed || 0) + Number(attuned.triggered.amount || 0);
     }
