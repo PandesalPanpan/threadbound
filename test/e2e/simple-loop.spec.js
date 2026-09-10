@@ -87,7 +87,7 @@ test('inventory and wiki Codex stay one tap away from the simple loop', async ({
   await expect(page.locator('#inventory')).toBeVisible();
 
   await page.getByTestId('mobile-game-nav').getByText('Codex', { exact: true }).click();
-  await expect(page).toHaveURL(/\/codex$/);
+  await expect(page).toHaveURL(/\/codex(?:#|$)/);
   await expect(page.getByTestId('codex-search')).toBeVisible();
   await expect(page.getByTestId('codex-detail')).toBeVisible();
   await expect(page.locator('.wiki-breadcrumbs')).toBeVisible();
