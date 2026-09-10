@@ -7,6 +7,7 @@ import { ArcManifestService } from '../src/application/ArcManifestService.js';
 import { GLASSWAKE_ARC_MANIFEST } from '../src/content/BundledArcManifests.js';
 import { AdventureRun } from '../src/domain/AdventureRun.js';
 import { nextEnemyIntent } from '../src/domain/CombatIntentPolicy.js';
+import { snapshotRunEventSchedule } from '../src/domain/RunEventCatalog.js';
 
 function setup(rolls = [0]) {
   let playerId = 0;
@@ -89,7 +90,7 @@ test('replayability validation rejects unsafe cadence, broken variants, and unkn
   gameRepository.close();
 });
 
-test('manifest-owned run event is snapshotted into AdventureRun and resumes the selected encounter', () => {
+test('persisted manifest-owned run event still replays and resumes its selected encounter', () => {
   const { gameRepository, service } = setup([0]);
   const dungeon = service.resolveDungeon('mirrorfen-descent');
   const run = AdventureRun.start({
@@ -101,8 +102,11 @@ test('manifest-owned run event is snapshotted into AdventureRun and resumes the 
     dungeonId: dungeon.id,
     dungeonDefinition: dungeon,
   });
-  // This test specifies generated event snapshot/replay only. Draft pacing is covered by
-  // gameplay-feel tests and is disabled here so it cannot obscure the event contract.
+  // Compatibility fixture for a run persisted before the streamlined loop. Generated
+  // event vocabulary remains valid/readable, but production-created runs no longer pause
+  // on it.
+  run.state.streamlinedLoop = false;
+  run.state.runEventSchedule = snapshotRunEventSchedule(dungeon.id, dungeon.runEventSchedule);
   run.state.runPowerDraftsEnabled = false;
 
   run.attack({ playerId: 'weaver-a', attackPower: 50 });
