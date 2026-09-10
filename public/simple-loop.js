@@ -1,6 +1,19 @@
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
 if (stream) {
+  // Module scripts can finish loading in a different order, especially on cached local
+  // reloads. Mount only after adventure-stream.js has created its stable DOM boundary.
+  if (!stream.querySelector('[data-testid="stream-composer"]')) {
+    await new Promise((resolve) => {
+      const observer = new MutationObserver(() => {
+        if (!stream.querySelector('[data-testid="stream-composer"]')) return;
+        observer.disconnect();
+        resolve();
+      });
+      observer.observe(stream, { childList: true, subtree: true });
+    });
+  }
+
   const suggestions = stream.querySelector('[data-testid="stream-suggestions"]');
   const composer = stream.querySelector('[data-testid="stream-composer"]');
   const input = stream.querySelector('[data-testid="stream-message"]');
