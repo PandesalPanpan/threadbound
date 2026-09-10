@@ -68,14 +68,13 @@ function partyRun() {
   });
 }
 
-function withIntent(run, { focus = 0 } = {}) {
+function withIntent(run, { reaction = 'guard' } = {}) {
   const state = run.toJSON();
-  state.participants[0].focus = focus;
   state.enemyIntent = {
     id: 'training-heavy',
     name: 'Training Heavy',
     kind: 'damage',
-    reaction: 'guard',
+    reaction,
     damage: 4,
     dueAt: '2026-09-08T00:00:10.000Z',
     battlePhase: 0,
@@ -170,47 +169,51 @@ test('insufficient Dust and active runs leave relic progression and equipment un
   gameRepository.close();
 });
 
-test('Bulwark turns a successful Guard into two Focus instead of one', () => {
-  const run = withIntent(soloRun(), { focus: 0 });
+test('Bulwark turns a successful streamlined Guard into primed damage without Focus', () => {
+  const run = withIntent(soloRun());
   const outcome = run.guard({ playerId: 'a', attunementCode: 'bulwark', now: '2026-09-08T00:00:01.000Z' });
-  assert.equal(outcome.state.participants[0].focus, 2);
-  assert.ok(outcome.events.some((event) => event.type === 'RelicAttunementTriggered' && event.effect === 'bonus_focus' && event.amount === 1));
+  assert.equal(outcome.state.participants[0].focus, 0);
+  assert.equal(outcome.state.participants[0].reactionDamageBonus, 2);
+  assert.ok(outcome.events.some((event) => event.type === 'RelicAttunementTriggered' && event.effect === 'prime_damage' && event.amount === 2));
+  assert.equal(outcome.events.some((event) => event.type === 'FocusChanged'), false);
+
+  const hpBefore = outcome.state.enemy.hp;
+  const attack = run.attack({ playerId: 'a', attackPower: 6, attunementCode: 'bulwark', now: '2026-09-08T00:00:02.000Z' });
+  assert.equal(hpBefore - attack.state.enemy.hp, 8);
 });
 
-test('Disruptor turns a successful Interrupt into measurable next-hit damage', () => {
-  const run = withIntent(soloRun(), { focus: 0 });
+test('Disruptor turns a successful Interrupt into measurable next-hit damage without Focus', () => {
+  const run = withIntent(soloRun(), { reaction: 'interrupt' });
   const interrupted = run.interrupt({ playerId: 'a', attunementCode: 'disruptor' });
+  assert.equal(interrupted.state.participants[0].focus, 0);
   assert.equal(interrupted.state.participants[0].reactionDamageBonus, 3);
   const hpBefore = interrupted.state.enemy.hp;
   const attack = run.attack({ playerId: 'a', attackPower: 6, attunementCode: 'disruptor', now: '2026-09-08T00:00:02.000Z' });
   assert.equal(hpBefore - attack.state.enemy.hp, 9);
 });
 
-test('Executioner rewards the Exposed → Severing Knot combo with a primed follow-up', () => {
-  const run = soloRun();
-  const state = run.toJSON();
-  state.participants[0].focus = 4;
-  state.enemy.statuses.exposed = 1;
-  const attuned = new AdventureRun(state);
-  const finisher = attuned.useSkill({ playerId: 'a', skillId: 'severing-knot', attackPower: 6, attunementCode: 'executioner' });
-  assert.ok(finisher.events.some((event) => event.type === 'SkillComboTriggered'));
+test('Executioner rewards a Severing Knot interrupt with a primed follow-up without Exposed', () => {
+  const run = withIntent(soloRun(), { reaction: 'interrupt' });
+  const finisher = run.useSkill({ playerId: 'a', skillId: 'severing-knot', attackPower: 6, attunementCode: 'executioner' });
+  assert.equal(finisher.state.participants[0].focus, 0);
+  assert.equal(finisher.state.enemy.statuses.exposed, 0);
+  assert.equal(finisher.events.some((event) => event.type === 'SkillComboTriggered'), false);
+  assert.ok(finisher.events.some((event) => event.type === 'EnemyInterrupted' && event.bySkillId === 'severing-knot'));
   assert.equal(finisher.state.participants[0].reactionDamageBonus, 4);
   const hpBefore = finisher.state.enemy.hp;
-  const attack = attuned.attack({ playerId: 'a', attackPower: 6, attunementCode: 'executioner', now: '2026-09-08T00:00:02.000Z' });
+  const attack = run.attack({ playerId: 'a', attackPower: 6, attunementCode: 'executioner', now: '2026-09-08T00:00:02.000Z' });
   assert.equal(hpBefore - attack.state.enemy.hp, 10);
 });
 
-test('Mender adds two recovery per living Weaver and keeps contribution totals honest', () => {
+test('Mender adds two recovery per living Weaver and keeps contribution totals honest without Focus', () => {
   const run = partyRun();
   const state = run.toJSON();
-  for (const participant of state.participants) {
-    participant.hp = 20;
-    participant.focus = 4;
-  }
+  for (const participant of state.participants) participant.hp = 20;
   const attuned = new AdventureRun(state);
   const outcome = attuned.useSkill({ playerId: 'a', skillId: 'mending-chorus', attackPower: 6, attunementCode: 'mender' });
   assert.equal(outcome.healed, 14);
   assert.deepEqual(outcome.events.filter((event) => event.type === 'PlayerHealed').map((event) => event.amount), [7, 7]);
+  assert.equal(outcome.events.some((event) => event.type === 'FocusChanged'), false);
   assert.equal(outcome.retaliation, 2);
   assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'a').hp, 25);
   assert.equal(outcome.state.participants.find((participant) => participant.playerId === 'b').hp, 27);
