@@ -344,13 +344,20 @@ if (stream) {
       const raw = input.value.trim();
       if (!raw.startsWith('/')) return;
       const [command, ...args] = raw.toLowerCase().split(/\s+/);
-      const simple = !dashboard?.activeRun || dashboard?.activeRun?.simpleCombat;
-      if (!simple) return;
+      const activeRun = dashboard?.activeRun || null;
+      const simpleCombat = Boolean(activeRun?.simpleCombat);
+      const noRun = !activeRun;
+      if (!noRun && !simpleCombat) return;
 
       // Bare /run keeps the one-tap simplified loop. An explicit /run <dungeon-id>
       // belongs to the full adventure command handler so generated/workshop dungeons
       // remain reachable without adding a permanent dungeon picker back to the UI.
       if (command === '/run' && args.length > 0) return;
+
+      // If this presentation model is still on a stale no-run snapshot immediately
+      // after the full command handler started a dungeon, do not steal run-scoped
+      // commands. The authoritative adventure handler has the fresher run context.
+      if (noRun && command === '/attack') return;
 
       if (['/hunt', '/dungeon', '/run', '/attack', '/help'].includes(command)) {
         event.preventDefault();
@@ -370,7 +377,7 @@ if (stream) {
         return;
       }
 
-      if (['/guard', '/interrupt', '/mend', '/revive', '/upgrade', '/skill'].includes(command)) {
+      if (simpleCombat && ['/guard', '/interrupt', '/mend', '/revive', '/upgrade', '/skill'].includes(command)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         input.value = '';
