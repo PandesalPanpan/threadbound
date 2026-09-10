@@ -41,6 +41,14 @@ export const GENERATED_SPRITE_ATLASES = Object.freeze({
     columns: 8,
     rows: 2,
   }),
+  equipment: Object.freeze({
+    id: 'equipment-v1',
+    src: '/assets/generated/threadbound-equipment-v1.svg',
+    width: 1024,
+    height: 128,
+    columns: 8,
+    rows: 1,
+  }),
 });
 
 // Named mappings keep the current authored enemies visually stable. Unknown/generated
@@ -139,6 +147,14 @@ export function enemySpriteFrame(enemy = {}) {
     ? 12 + stableIndex(id, 4)
     : stableIndex(id, 12);
   return atlasFrame(GENERATED_SPRITE_ATLASES.enemies, index);
+}
+
+export function itemSpriteFrame(item = {}) {
+  const seed = item.id || item.itemId || item.name || item.effect?.name || 'threadbound-relic';
+  return atlasFrame(
+    GENERATED_SPRITE_ATLASES.equipment,
+    stableIndex(seed, GENERATED_SPRITE_ATLASES.equipment.columns * GENERATED_SPRITE_ATLASES.equipment.rows),
+  );
 }
 
 export function applySpriteFrame(element, frame) {
