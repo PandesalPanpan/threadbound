@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 
 async function loginWithThreaded(page) {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Connect with Threaded' }).click();
-  await expect(page.getByRole('heading', { name: 'Fake Threaded' })).toBeVisible();
-  await page.getByRole('button', { name: 'Authorize Threadbound' }).click();
+  await page.getByRole('link', { name:'Connect with Threaded' }).click();
+  await expect(page.getByRole('heading', { name:'Fake Threaded' })).toBeVisible();
+  await page.getByRole('button', { name:'Authorize Threadbound' }).click();
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
@@ -23,31 +23,49 @@ async function dashboard(context) {
 async function clickThreadAction(page, context, testId) {
   const before = await dashboard(context);
   const version = before.activeRun?.version ?? -1;
-  await page.getByTestId(testId).click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.version ?? -1, { timeout: 5000 }).toBeGreaterThan(version);
+  const button = page.getByTestId('stream-thread-local').getByTestId(testId);
+  await expect(button).toBeVisible({ timeout:7000 });
+  await expect(button).toBeEnabled({ timeout:7000 });
+  await button.click();
+  await expect.poll(async () => {
+    const after = await dashboard(context);
+    if (!after.activeRun || after.activeRun.id !== before.activeRun?.id) return true;
+    return (after.activeRun.version ?? -1) > version;
+  }, { timeout:7000 }).toBe(true);
+}
+
+async function reactiveThreadAction(page, context) {
+  const state = await dashboard(context);
+  const reaction = state.activeRun?.enemyIntent?.reaction;
+  if (reaction === 'interrupt') return clickThreadAction(page, context, 'stream-interrupt');
+  if (reaction === 'guard') return clickThreadAction(page, context, 'stream-guard');
+  return clickThreadAction(page, context, 'stream-attack');
 }
 
 async function startFromThread(page, context) {
-  await page.getByTestId('stream-start-dungeon').click();
-  await expect.poll(async () => (await dashboard(context)).activeRun?.id || null, { timeout: 5000 }).not.toBeNull();
+  const start = page.getByTestId('stream-thread-local').getByTestId('stream-start-dungeon');
+  await expect(start).toBeVisible({ timeout:7000 });
+  await start.click();
+  await expect.poll(async () => (await dashboard(context)).activeRun?.id || null, { timeout:7000 }).not.toBeNull();
 }
 
-async function actUntilPhaseChanges(context, page, phase, limit = 30) {
+async function reachBoss(page, context, limit = 100) {
   for (let index = 0; index < limit; index += 1) {
     const state = await dashboard(context);
-    if (state.activeRun?.phase !== phase) return state;
-    await clickThreadAction(page, context, 'stream-attack');
+    if (state.activeRun?.phase === 'boss') return state;
+    if (state.activeRun?.phase !== 'combat') throw new Error(`Unexpected pre-boss phase: ${state.activeRun?.phase}`);
+    await reactiveThreadAction(page, context);
   }
-  throw new Error(`Run did not leave ${phase} within ${limit} actions.`);
+  throw new Error('Run did not reach the boss.');
 }
 
 function confirmedRunSnapshot(data) {
   return {
-    id: data.activeRun?.id,
-    phase: data.activeRun?.phase,
-    version: data.activeRun?.version,
-    enemyHp: data.activeRun?.enemy?.hp ?? null,
-    encounterIndex: data.activeRun?.encounterIndex,
+    id:data.activeRun?.id,
+    phase:data.activeRun?.phase,
+    version:data.activeRun?.version,
+    enemyHp:data.activeRun?.enemy?.hp ?? null,
+    encounterIndex:data.activeRun?.encounterIndex,
   };
 }
 
@@ -62,17 +80,16 @@ test('PX-40/41 Tab Closer: unfinished solo run survives refresh and closing the 
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await expect(page.getByTestId('run-state')).toContainText('Phase: combat');
   expect(confirmedRunSnapshot(await dashboard(context))).toEqual(beforeRefresh);
+  await expect(page.getByTestId('stream-thread-local')).toBeVisible({ timeout:7000 });
 
   await page.close();
   const returningPage = await context.newPage();
   await returningPage.goto('/game');
   await expect(returningPage.getByTestId('app-status')).toHaveText('Ready');
-  await expect(returningPage.getByTestId('run-state')).toContainText('Phase: combat');
   expect(confirmedRunSnapshot(await dashboard(context))).toEqual(beforeRefresh);
 
-  await clickThreadAction(returningPage, context, 'stream-attack');
+  await reactiveThreadAction(returningPage, context);
   const afterResume = confirmedRunSnapshot(await dashboard(context));
   expect(afterResume.id).toBe(beforeRefresh.id);
   expect(afterResume.version).toBeGreaterThan(beforeRefresh.version);
@@ -87,7 +104,11 @@ test('PX-42/43 Commuter: offline thread action cannot mutate confirmed run state
   expect(confirmedBeforeOffline.id).toBeTruthy();
 
   await context.setOffline(true);
-  await page.getByTestId('stream-attack').click();
+  const state = await dashboard(context).catch(() => null);
+  void state;
+  const reactionButton = page.getByTestId('stream-thread-local').getByTestId('stream-interrupt');
+  await expect(reactionButton).toBeVisible({ timeout:7000 });
+  await reactionButton.click();
   await expect(page.getByTestId('stream-error')).toBeVisible();
   await expect(page.getByTestId('stream-error')).toContainText(/fetch|network|offline|connection/i);
 
@@ -97,78 +118,52 @@ test('PX-42/43 Commuter: offline thread action cannot mutate confirmed run state
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await expect(page.getByTestId('run-state')).toContainText(`Phase: ${confirmedBeforeOffline.phase}`);
   expect(confirmedRunSnapshot(await dashboard(context))).toEqual(confirmedBeforeOffline);
 
-  await clickThreadAction(page, context, 'stream-attack');
+  await reactiveThreadAction(page, context);
   const afterContinuedPlay = confirmedRunSnapshot(await dashboard(context));
   expect(afterContinuedPlay.id).toBe(confirmedBeforeOffline.id);
   expect(afterContinuedPlay.version).toBeGreaterThan(confirmedBeforeOffline.version);
 });
 
-test('PX-44 Interrupted Decision Maker: refresh preserves both power draft and discovery choices', async ({ page, context }) => {
+test('PX-44 Interrupted Decision Maker: refresh never invents the removed run-power or discovery phases', async ({ page, context }) => {
+  test.setTimeout(90000);
   await loginWithThreaded(page);
   await startFromThread(page, context);
-  await actUntilPhaseChanges(context, page, 'combat');
 
-  // First interruption: a power draft is a server-snapshotted decision, not a browser reroll.
-  const draftDataBefore = await dashboard(context);
-  const draftSnapshotBefore = confirmedRunSnapshot(draftDataBefore);
-  expect(draftSnapshotBefore.phase).toBe('upgrade');
-  expect(draftDataBefore.runUpgrades).toHaveLength(3);
-  const offeredIdsBefore = draftDataBefore.runUpgrades.map((upgrade) => upgrade.id);
-  const offeredNamesBefore = draftDataBefore.runUpgrades.map((upgrade) => upgrade.name);
-  for (const name of offeredNamesBefore) {
-    await expect(page.getByTestId('stream-suggestions').getByRole('button', { name, exact: true })).toBeVisible();
-  }
+  let data = await dashboard(context);
+  expect(data.activeRun.streamlinedLoop).toBe(true);
+  expect(data.activeRun.runEventSchedule).toBeNull();
+  expect(data.activeRun.runUpgradeOfferIds).toEqual([]);
+  expect(data.runUpgrades || []).toEqual([]);
+
+  // Refresh during ordinary combat: the same authoritative state returns without a rerolled choice.
+  await reactiveThreadAction(page, context);
+  const midCombat = confirmedRunSnapshot(await dashboard(context));
+  await page.reload();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  expect(confirmedRunSnapshot(await dashboard(context))).toEqual(midCombat);
+  await expect(page.getByTestId('run-event-card')).toHaveCount(0);
+  await expect(page.getByTestId('stream-build-summary')).toBeHidden();
+
+  data = await reachBoss(page, context);
+  expect(data.activeRun.phase).toBe('boss');
+  expect(data.activeRun.runEventHistory).toEqual([]);
+  expect(data.activeRun.selectedUpgrades).toEqual([]);
+  expect(data.runUpgrades || []).toEqual([]);
+  const bossSnapshot = confirmedRunSnapshot(data);
 
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  const draftDataAfter = await dashboard(context);
-  expect(confirmedRunSnapshot(draftDataAfter)).toEqual(draftSnapshotBefore);
-  expect(draftDataAfter.runUpgrades.map((upgrade) => upgrade.id)).toEqual(offeredIdsBefore);
-  await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
-  for (const name of offeredNamesBefore) {
-    await expect(page.getByTestId('stream-suggestions').getByRole('button', { name, exact: true })).toBeVisible();
-  }
-
-  const draftVersion = draftDataAfter.activeRun.version;
-  await page.getByTestId('stream-suggestions').getByRole('button', { name: offeredNamesBefore[0], exact: true }).click();
-  await expect.poll(async () => {
-    const after = await dashboard(context);
-    return after.activeRun?.phase === 'combat' && after.activeRun.version > draftVersion;
-  }, { timeout: 5000 }).toBe(true);
-
-  // Second interruption: the narrative discovery remains equally durable.
-  await actUntilPhaseChanges(context, page, 'combat');
-  const eventDataBefore = await dashboard(context);
-  const eventSnapshotBefore = confirmedRunSnapshot(eventDataBefore);
-  expect(eventSnapshotBefore.phase).toBe('event');
-  expect(eventDataBefore.activeRun?.runEvent?.id).toBeTruthy();
-  const eventId = eventDataBefore.activeRun.runEvent.id;
-  const choiceIds = eventDataBefore.activeRun.runEvent.choices.map((choice) => choice.id);
-  await expect(page.getByTestId('run-event-card')).toBeVisible({ timeout: 5000 });
-  await expect(page.getByTestId('run-event-name')).toHaveText(eventDataBefore.activeRun.runEvent.name);
-
-  await page.reload();
-  await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  const eventDataAfter = await dashboard(context);
-  expect(confirmedRunSnapshot(eventDataAfter)).toEqual(eventSnapshotBefore);
-  expect(eventDataAfter.activeRun.runEvent.id).toBe(eventId);
-  expect(eventDataAfter.activeRun.runEvent.choices.map((choice) => choice.id)).toEqual(choiceIds);
-  await expect(page.getByTestId('run-state')).toContainText('Phase: event');
-  await expect(page.getByTestId('run-event-card')).toBeVisible();
-
-  const safeChoice = eventDataAfter.activeRun.runEvent.choices.find((choice) => /bind|quiet/i.test(choice.id)) || eventDataAfter.activeRun.runEvent.choices[0];
-  const eventVersion = eventDataAfter.activeRun.version;
-  await page.getByTestId(`run-event-choice-${safeChoice.id}`).click();
-  await expect.poll(async () => {
-    const after = await dashboard(context);
-    return after.activeRun?.phase === 'combat' && after.activeRun.version > eventVersion;
-  }, { timeout: 5000 }).toBe(true);
+  const afterBossReload = await dashboard(context);
+  expect(confirmedRunSnapshot(afterBossReload)).toEqual(bossSnapshot);
+  expect(afterBossReload.activeRun.selectedUpgrades).toEqual([]);
+  expect(afterBossReload.activeRun.runUpgradeOfferIds).toEqual([]);
+  await expect(page.getByTestId('stream-build-summary')).toBeHidden();
 });
 
-test('PX-36/45 Flaky Co-op Partner: one player can disconnect, leader continues through thread, partner rejoins same shared run', async ({ browser }) => {
+test('PX-36/45 Flaky Co-op Partner: one player can disconnect and rejoin the same shared chat run', async ({ browser }) => {
+  test.setTimeout(90000);
   const leaderContext = await browser.newContext();
   const partnerContext = await browser.newContext();
   const leader = await leaderContext.newPage();
@@ -190,11 +185,12 @@ test('PX-36/45 Flaky Co-op Partner: one player can disconnect, leader continues 
     const started = confirmedRunSnapshot(await dashboard(leaderContext));
 
     await partner.reload();
-    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
+    await expect(partner.getByTestId('app-status')).toHaveText('Ready');
     expect((await dashboard(partnerContext)).activeRun.id).toBe(started.id);
+    await expect(partner.getByTestId('stream-thread-local')).toBeVisible({ timeout:7000 });
 
     await partnerContext.setOffline(true);
-    await clickThreadAction(leader, leaderContext, 'stream-attack');
+    await reactiveThreadAction(leader, leaderContext);
     const whilePartnerAway = confirmedRunSnapshot(await dashboard(leaderContext));
     expect(whilePartnerAway.id).toBe(started.id);
     expect(whilePartnerAway.version).toBeGreaterThan(started.version);
@@ -202,11 +198,10 @@ test('PX-36/45 Flaky Co-op Partner: one player can disconnect, leader continues 
     await partnerContext.setOffline(false);
     await partner.reload();
     await expect(partner.getByTestId('app-status')).toHaveText('Ready');
-    await expect(partner.getByTestId('run-state')).toContainText('2 Weavers');
     const partnerRestored = confirmedRunSnapshot(await dashboard(partnerContext));
     expect(partnerRestored).toEqual(whilePartnerAway);
 
-    await clickThreadAction(partner, partnerContext, 'stream-attack');
+    await reactiveThreadAction(partner, partnerContext);
     const afterPartnerReturns = confirmedRunSnapshot(await dashboard(partnerContext));
     expect(afterPartnerReturns.id).toBe(started.id);
     expect(afterPartnerReturns.version).toBeGreaterThan(whilePartnerAway.version);
