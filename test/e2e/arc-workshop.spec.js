@@ -42,6 +42,13 @@ async function choosePowerDraft(page, context) {
   return dashboard(context);
 }
 
+async function sendCommand(page, command) {
+  const input = page.getByTestId('stream-message');
+  await expect(input).toBeVisible();
+  await input.fill(command);
+  await page.getByTestId('stream-send').click();
+}
+
 test('external Arc Manifest can be uploaded, validated, published, played, and documented', async ({ page, context }) => {
   test.setTimeout(70000);
   await page.goto('/');
@@ -94,7 +101,9 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   expect(runtimeDungeon).toBeTruthy();
   expect(String(runtimeDungeon.sourceManifestRevision)).toBe(String(revision));
 
-  await page.getByTestId('stream-dungeons').click();
+  // The Figma-minimal play surface intentionally hides the legacy Dungeons button.
+  // Exercise the same capability through the visible chat-first command surface instead.
+  await sendCommand(page, '/dungeons');
   const dungeonReply = page.getByTestId('stream-command-card');
   await expect(dungeonReply).toContainText('Cinder Vault');
   await expect(dungeonReply.getByTestId('stream-enter-cinder-vault')).toBeVisible();
