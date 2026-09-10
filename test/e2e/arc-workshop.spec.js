@@ -6,15 +6,20 @@ async function dashboard(context) {
   return response.json();
 }
 
+async function sendCommand(page, command) {
+  const input = page.getByTestId('stream-message');
+  await expect(input).toBeVisible();
+  await input.fill(command);
+  await page.getByTestId('stream-send').click();
+}
+
 async function attackUntilPhaseChanges(page, context, expectedPhase, limit = 40) {
   for (let index = 0; index < limit; index += 1) {
     const before = await dashboard(context);
     if (before.activeRun?.phase !== expectedPhase) return before;
     const runId = before.activeRun.id;
     const version = before.activeRun.version;
-    const attack = page.getByTestId('stream-attack');
-    await expect(attack).toBeVisible();
-    await attack.click();
+    await sendCommand(page, '/attack');
     await expect.poll(async () => {
       const after = await dashboard(context);
       if (!after.activeRun) return true;
@@ -32,21 +37,12 @@ async function choosePowerDraft(page, context) {
   const power = before.runUpgrades[0];
   const expectedPhase = before.activeRun.runUpgradeResume ? 'combat' : 'boss';
   const version = before.activeRun.version;
-  const powerButton = page.getByTestId('stream-suggestions').getByRole('button', { name: power.name, exact: true });
-  await expect(powerButton).toBeVisible();
-  await powerButton.click();
+  await sendCommand(page, `/upgrade ${power.id}`);
   await expect.poll(async () => {
     const after = await dashboard(context);
     return after.activeRun?.version > version && after.activeRun?.phase === expectedPhase;
   }, { timeout: 5000 }).toBe(true);
   return dashboard(context);
-}
-
-async function sendCommand(page, command) {
-  const input = page.getByTestId('stream-message');
-  await expect(input).toBeVisible();
-  await input.fill(command);
-  await page.getByTestId('stream-send').click();
 }
 
 test('external Arc Manifest can be uploaded, validated, published, played, and documented', async ({ page, context }) => {
@@ -108,8 +104,8 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect(page.getByTestId('run-state')).toContainText('Ashling');
 
   // Generated dungeons use the same repeated run-power lifecycle as bundled content.
-  // Cinder Vault has two normal encounters, so the first draft resumes encounter two
-  // and the second (with no resume snapshot) is the pre-boss draft.
+  // Keep the acceptance path chat-first: attacks and upgrades are issued through the
+  // same composer instead of depending on legacy persistent control chrome.
   await attackUntilPhaseChanges(page, context, 'combat');
   await expect(page.getByTestId('run-state')).toContainText('Phase: upgrade');
   const resumed = await choosePowerDraft(page, context);
