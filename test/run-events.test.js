@@ -21,8 +21,14 @@ const QUICK_HOLLOW = Object.freeze({
 
 function eventOnlyRun(args) {
   const model = AdventureRun.start(args);
-  // These tests specify the Run Event pattern itself. Power-draft pacing has a separate
-  // acceptance suite, so disable that orthogonal policy to keep the fixture focused.
+  // Compatibility fixture: production-created runs are now streamlined. These tests target
+  // the previously-persisted Run Event pattern, so make the old snapshot explicit instead
+  // of changing the production factory back to the retired behavior.
+  model.state.streamlinedLoop = false;
+  model.state.runEventSchedule = snapshotRunEventSchedule(
+    model.state.dungeonId,
+    model.state.dungeonDefinition?.runEventSchedule || null,
+  );
   model.state.runPowerDraftsEnabled = false;
   return model;
 }
