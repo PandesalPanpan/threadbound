@@ -92,11 +92,12 @@ if (stream && suggestions) {
   function skillAvailability(skill, run) {
     const viewer = run.viewer;
     const cooldown = Number(viewer?.skillCooldowns?.[skill.id] || 0);
-    const focus = Number(viewer?.focus || 0);
     const livingWounded = run.participants.some((participant) => participant.hp > 0 && participant.hp < participant.maxHp);
     if (cooldown > 0) return { disabled: true, reason: `Cooldown ${cooldown}`, cooldown };
-    if (focus < skill.cost) return { disabled: true, reason: `Need ${skill.cost} Focus`, cooldown };
     if (skill.kind === 'party-heal' && !livingWounded) return { disabled: true, reason: 'Party healthy', cooldown };
+    if (run.streamlinedSkills) return { disabled: false, reason: 'Ready', cooldown };
+    const focus = Number(viewer?.focus || 0);
+    if (focus < skill.cost) return { disabled: true, reason: `Need ${skill.cost} Focus`, cooldown };
     return { disabled: false, reason: `${skill.cost} Focus`, cooldown };
   }
 
@@ -144,7 +145,7 @@ if (stream && suggestions) {
       phase.textContent = `⚡ PHASE II · ${(run.enemy.phaseName || 'Unraveling').toUpperCase()}`;
       line.append(phase);
     }
-    if (Number(run.enemy?.statuses?.exposed || 0) > 0) {
+    if (!run.streamlinedSkills && Number(run.enemy?.statuses?.exposed || 0) > 0) {
       const exposed = document.createElement('span');
       exposed.className = 'combat-status-badge';
       exposed.dataset.testid = 'enemy-status-exposed';
@@ -283,7 +284,7 @@ if (stream && suggestions) {
 
   function renderSkillButton(skill, run) {
     const availability = skillAvailability(skill, run);
-    const exposed = Number(run.enemy?.statuses?.exposed || 0) > 0;
+    const exposed = !run.streamlinedSkills && Number(run.enemy?.statuses?.exposed || 0) > 0;
     const combo = skill.id === 'severing-knot' && exposed;
     const interrupt = Boolean(skill.interrupts && run.enemyIntent);
     const button = document.createElement('button');
@@ -297,11 +298,13 @@ if (stream && suggestions) {
     meta.dataset.testid = `skill-${skill.id}-state`;
     meta.textContent = availability.reason;
     const description = document.createElement('small');
-    description.textContent = skill.id === 'piercing-stitch'
-      ? 'Damage + apply Exposed'
-      : skill.id === 'severing-knot'
-        ? 'Finisher + consume Exposed + interrupt'
-        : 'Heal every living Weaver';
+    description.textContent = run.streamlinedSkills
+      ? (skill.streamlinedDescription || skill.description)
+      : skill.id === 'piercing-stitch'
+        ? 'Damage + apply Exposed'
+        : skill.id === 'severing-knot'
+          ? 'Finisher + consume Exposed + interrupt'
+          : 'Heal every living Weaver';
     button.append(title, meta, description);
     button.addEventListener('click', () => useSkill(run.id, skill.id, button));
     return button;
@@ -327,7 +330,7 @@ if (stream && suggestions) {
       }
       panel.hidden = false;
       panel.innerHTML = '';
-      panel.append(renderFocus(run));
+      if (!run.streamlinedSkills) panel.append(renderFocus(run));
       const statuses = renderStatuses(run);
       if (statuses.children.length) panel.append(statuses);
       const grid = document.createElement('div');
