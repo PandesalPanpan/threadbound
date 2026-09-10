@@ -1,5 +1,6 @@
 import { RELIC_ATTUNEMENTS } from './RelicProgressionPolicy.js';
 
+const BULWARK_PRIMED_DAMAGE = 2;
 const DISRUPTOR_PRIMED_DAMAGE = 3;
 const EXECUTIONER_PRIMED_DAMAGE = 4;
 const MENDER_EXTRA_HEAL = 2;
@@ -31,12 +32,17 @@ export function applyRelicCombatAttunement({ state, events, method, args, attune
   if (attunementCode === 'bulwark' && method === 'guard') {
     const succeeded = events.some((event) => event.type === 'CombatReactionSucceeded' && event.playerId === actor.playerId && event.reaction === 'guard');
     if (succeeded) {
-      const before = Number(actor.focus || 0);
-      actor.focus = Math.min(Number(actor.maxFocus || 4), before + 1);
-      const gained = actor.focus - before;
-      if (gained > 0) {
-        events.push({ type: 'FocusChanged', playerId: actor.playerId, runId: state.id, focus: actor.focus, maxFocus: actor.maxFocus });
-        triggered = triggeredEvent({ state, playerId: actor.playerId, attunementCode, effect: 'bonus_focus', amount: gained });
+      if (state.streamlinedSkills) {
+        actor.reactionDamageBonus = Number(actor.reactionDamageBonus || 0) + BULWARK_PRIMED_DAMAGE;
+        triggered = triggeredEvent({ state, playerId: actor.playerId, attunementCode, effect: 'prime_damage', amount: BULWARK_PRIMED_DAMAGE });
+      } else {
+        const before = Number(actor.focus || 0);
+        actor.focus = Math.min(Number(actor.maxFocus || 4), before + 1);
+        const gained = actor.focus - before;
+        if (gained > 0) {
+          events.push({ type: 'FocusChanged', playerId: actor.playerId, runId: state.id, focus: actor.focus, maxFocus: actor.maxFocus });
+          triggered = triggeredEvent({ state, playerId: actor.playerId, attunementCode, effect: 'bonus_focus', amount: gained });
+        }
       }
     }
   }
@@ -50,8 +56,9 @@ export function applyRelicCombatAttunement({ state, events, method, args, attune
   }
 
   if (attunementCode === 'executioner' && method === 'useSkill' && args?.skillId === 'severing-knot') {
-    const combo = events.some((event) => event.type === 'SkillComboTriggered' && event.playerId === actor.playerId && event.combo === 'exposed');
-    if (combo) {
+    const legacyCombo = events.some((event) => event.type === 'SkillComboTriggered' && event.playerId === actor.playerId && event.combo === 'exposed');
+    const streamlinedInterrupt = state.streamlinedSkills && events.some((event) => event.type === 'EnemyInterrupted' && event.playerId === actor.playerId && event.bySkillId === 'severing-knot');
+    if (legacyCombo || streamlinedInterrupt) {
       actor.reactionDamageBonus = Number(actor.reactionDamageBonus || 0) + EXECUTIONER_PRIMED_DAMAGE;
       triggered = triggeredEvent({ state, playerId: actor.playerId, attunementCode, effect: 'prime_damage', amount: EXECUTIONER_PRIMED_DAMAGE, skillId: args.skillId });
     }
@@ -81,6 +88,7 @@ export function applyRelicCombatAttunement({ state, events, method, args, attune
 }
 
 export const RELIC_COMBAT_VALUES = Object.freeze({
+  bulwarkPrimedDamage: BULWARK_PRIMED_DAMAGE,
   disruptorPrimedDamage: DISRUPTOR_PRIMED_DAMAGE,
   executionerPrimedDamage: EXECUTIONER_PRIMED_DAMAGE,
   menderExtraHeal: MENDER_EXTRA_HEAL,
