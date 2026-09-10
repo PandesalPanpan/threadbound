@@ -1,5 +1,5 @@
 import { DUNGEONS, DungeonRun as CombatDungeonRun, RUN_UPGRADES as LEGACY_RUN_UPGRADES } from './DungeonRun.js';
-import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunEventCatalog.js';
+import { runEventChoice, selectRunEvent } from './RunEventCatalog.js';
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 import { RUN_UPGRADES, runUpgrade } from './RunPowerCatalog.js';
 import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
@@ -29,15 +29,21 @@ export class AdventureRun {
     this.state.runUpgradeDraftIndex ??= 0;
     this.state.runUpgradeResume ??= null;
     this.state.selectedUpgrades ??= this.state.selectedUpgrade ? [this.state.selectedUpgrade] : [];
-    // Compatibility rule: repeated between-fight drafts were removed from new runs, but a
-    // persisted run that already opted into them must still hydrate and finish truthfully.
+    // Compatibility boundary: only newly-created runs opt into the streamlined loop.
+    // Persisted runs from the previous design keep their snapshotted event/power phase and
+    // can therefore finish truthfully without destructive state migration.
+    this.state.streamlinedLoop = state.streamlinedLoop === true;
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
   }
 
   static start(args) {
     const combat = CombatDungeonRun.start(args);
     const state = combat.toJSON();
-    state.runEventSchedule = snapshotRunEventSchedule(state.dungeonId, state.dungeonDefinition?.runEventSchedule || null);
+    // New runs intentionally omit temporary roguelite build layers. Content manifests may
+    // still contain run-event data for legacy compatibility/reference, but the core chat
+    // loop no longer pauses combat to ask for random run buffs or discovery choices.
+    state.streamlinedLoop = true;
+    state.runEventSchedule = null;
     state.runEvent = null;
     state.runEventResume = null;
     state.runEventHistory = [];
@@ -46,8 +52,6 @@ export class AdventureRun {
     state.runUpgradeDraftIndex = 0;
     state.runUpgradeResume = null;
     state.selectedUpgrades = [];
-    // New runs keep build depth but expose only the normal pre-boss power milestone from
-    // CombatDungeonRun. Minor between-fight stat drafts no longer block the chat loop.
     state.runPowerDraftsEnabled = false;
     return new AdventureRun(state);
   }
@@ -67,9 +71,10 @@ export class AdventureRun {
   revive(args) { return this.#combat('revive', args); }
   useSkill(args) { return this.#combat('useSkill', args); }
 
-  // The existing /upgrade command remains the transport boundary. New runs use it for the
-  // single pre-boss milestone; runUpgradeResume remains supported for persisted legacy runs.
+  // Kept only as a compatibility command for persisted runs that were already waiting on
+  // a power/event choice before the streamlined loop shipped.
   chooseUpgrade(choiceId) {
+    if (this.state.streamlinedLoop) throw new Error('Streamlined runs do not use temporary run powers.');
     if (this.state.phase === 'event') return this.chooseRunEvent(choiceId);
     if (this.state.phase !== 'upgrade') throw new Error('An upgrade can only be chosen from a waiting run power draft.');
 
@@ -126,6 +131,7 @@ export class AdventureRun {
   }
 
   chooseRunEvent(choiceId) {
+    if (this.state.streamlinedLoop) throw new Error('Streamlined runs do not use random run events.');
     if (this.state.phase !== 'event' || !this.state.runEvent || !this.state.runEventResume) {
       throw new Error('There is no run event choice waiting for the party.');
     }
@@ -207,10 +213,34 @@ export class AdventureRun {
       outcome.healed = Number(outcome.healed || 0) + Number(attuned.triggered.amount || 0);
     }
 
-    this.#pauseForRunEvent(before, outcome.events);
-    this.#pauseForRunPowerDraft(before, outcome.events);
-    if (this.state.phase === 'upgrade') this.#snapshotRunUpgradeOffers();
+    // Fowler boundary: AdventureRun owns lifecycle orchestration while DungeonRun owns the
+    // combat transition itself. For the streamlined loop we reuse DungeonRun's authoritative
+    // boss construction, then remove the legacy Sharpen modifier before exposing the state.
+    this.#continueStreamlinedLoopIntoBoss(outcome.events);
+
+    if (!this.state.streamlinedLoop) {
+      this.#pauseForRunEvent(before, outcome.events);
+      this.#pauseForRunPowerDraft(before, outcome.events);
+      if (this.state.phase === 'upgrade') this.#snapshotRunUpgradeOffers();
+    }
     return { ...outcome, relicTrigger: attuned.triggered, state: this.toJSON() };
+  }
+
+  #continueStreamlinedLoopIntoBoss(events) {
+    if (!this.state.streamlinedLoop || this.state.phase !== 'upgrade') return;
+    const combat = new CombatDungeonRun(this.state);
+    const transition = combat.chooseUpgrade('sharpen');
+    this.state = transition.state;
+    this.state.runAttackBonus -= Number(LEGACY_RUN_UPGRADES.sharpen.attackBonus || 0);
+    this.state.selectedUpgrade = null;
+    this.state.selectedUpgrades = [];
+    this.state.reactionStyle = null;
+    this.state.runUpgradeOfferIds = [];
+    this.state.runUpgradeResume = null;
+    // Do not publish the compatibility carrier's RunUpgradeChosen event. The resolved combat
+    // receipt already observes the authoritative post-action boss state and announces Next: boss.
+    // That keeps durable chat truthful: no fake power was selected.
+    events.push(...transition.events.filter((event) => event.type !== 'RunUpgradeChosen'));
   }
 
   #runUpgradeOffers() {
@@ -225,6 +255,7 @@ export class AdventureRun {
   }
 
   #pauseForRunEvent(before, events) {
+    if (this.state.streamlinedLoop) return;
     const schedule = this.state.runEventSchedule;
     if (!schedule || this.state.runEventHistory.length > 0) return;
     if (before.phase !== 'combat' || this.state.phase !== 'combat') return;
@@ -253,8 +284,6 @@ export class AdventureRun {
   }
 
   #pauseForRunPowerDraft(before, events) {
-    // Legacy compatibility only. New AdventureRun instances start with this disabled so
-    // normal encounter transitions remain frictionless until the single pre-boss milestone.
     if (!this.state.runPowerDraftsEnabled) return;
     if (before.phase !== 'combat' || this.state.phase !== 'combat') return;
     if (!events.some((event) => event.type === 'EnemyDefeated')) return;
