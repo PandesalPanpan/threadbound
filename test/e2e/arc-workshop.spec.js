@@ -141,7 +141,9 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await expect(loomkeeper).toBeVisible();
   await loomkeeper.click();
   await expect(page.getByTestId('codex-detail-title')).toHaveText('The Ember Loomkeeper');
-  await expect(page.getByTestId('codex-mechanics')).toContainText('28');
+  // Codex documents hardened simple-dungeon values, not the manifest's raw base value.
+  await expect(page.getByTestId('codex-mechanics')).toContainText('56');
+  await expect(page.getByTestId('codex-mechanics')).toContainText('6');
 
   await page.getByTestId('codex-search').fill('Ember Needle of the Loom');
   const needleEntry = page.locator('[data-testid="codex-entry"][data-category="items"]').filter({ hasText: 'Ember Needle of the Loom' }).first();
