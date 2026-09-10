@@ -4,4 +4,5 @@ data/*.sqlite
 tmp/
 test-results/
 playwright-report/
+ux-review/
 .DS_Store
