@@ -2,7 +2,7 @@ export const RELIC_ATTUNEMENTS = Object.freeze({
   bulwark: Object.freeze({
     code: 'bulwark',
     name: 'Bulwark Weave',
-    description: 'A successful Guard generates +1 additional Focus.',
+    description: 'A successful Guard primes +2 damage for your next damaging action.',
     playstyle: 'Guard / protector',
   }),
   disruptor: Object.freeze({
@@ -14,8 +14,8 @@ export const RELIC_ATTUNEMENTS = Object.freeze({
   executioner: Object.freeze({
     code: 'executioner',
     name: 'Executioner Weave',
-    description: 'Consuming Exposed with Severing Knot primes +4 damage for your next damaging action.',
-    playstyle: 'Skill combo',
+    description: 'Interrupting with Severing Knot primes +4 damage for your next damaging action.',
+    playstyle: 'Skill / reaction',
   }),
   mender: Object.freeze({
     code: 'mender',
