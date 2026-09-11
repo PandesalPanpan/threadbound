@@ -607,7 +607,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M2-04** Profile rich card: level, XP, Gold, banked Gold, primary stats, equipment, Area, achievements summary.
 - [x] **M2-05** Bank rich card: deposit/withdraw with carried-vs-banked Gold.
 - [x] **M2-06** Historical rich cards collapse to compact immutable snapshots after a newer card supersedes them.
-- [ ] **M2-07** Integrate generated sprites/icons throughout these cards and align mobile hierarchy with approved Figma direction.
+- [x] **M2-07** Integrate generated sprites/icons throughout these cards and align mobile hierarchy with approved Figma direction.
 
 ### Phase 3 — automatic battle engine
 
