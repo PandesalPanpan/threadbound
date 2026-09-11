@@ -11,30 +11,33 @@ function setup() {
   return { repository, player, service, events };
 }
 
-test('shop browse projects the server-owned catalog with current affordability', () => {
+test('shop browse projects the server-owned catalog in Gold with current affordability', () => {
   const { repository, player, service } = setup();
   repository.addThreadDust(player.id, 7);
 
   const shop = service.browse(player.id);
 
   assert.equal(shop.vendor.name, 'Mara');
-  assert.equal(shop.currency.balance, 7);
+  assert.deepEqual(shop.currency, { code: 'gold', label: 'Gold', balance: 7 });
   assert.deepEqual(shop.offers.map(({ sku, cost, quantity, affordable }) => ({ sku, cost, quantity, affordable })), [
     { sku: 'single', cost: 5, quantity: 1, affordable: true },
     { sku: 'satchel', cost: 12, quantity: 3, affordable: false },
   ]);
 });
 
-test('shop purchases use catalog price and grant definitions atomically', () => {
+test('shop purchases use catalog price and preserve legacy balance storage atomically', () => {
   const { repository, player, service, events } = setup();
   repository.addThreadDust(player.id, 12);
 
   const purchase = service.purchase(player.id, 'satchel');
 
-  assert.deepEqual(purchase, { sku: 'satchel', cost: 12, quantity: 3, threadDust: 0, healthPotions: 4 });
+  assert.deepEqual(purchase, { sku: 'satchel', cost: 12, quantity: 3, threadDust: 0, healthPotions: 4, gold: 0 });
   assert.equal(repository.getPlayer(player.id).healthPotions, 4);
+  assert.equal(repository.getPlayer(player.id).threadDust, 0);
   assert.equal(events.at(-1).type, 'HealthPotionPurchased');
   assert.equal(events.at(-1).offerName, 'Potion satchel');
+  assert.equal(events.at(-1).gold, 0);
+  assert.equal(events.at(-1).threadDust, 0, 'legacy event alias remains available during migration');
 });
 
 test('shop rejects unknown SKUs instead of falling back to a default price', () => {
@@ -43,8 +46,13 @@ test('shop rejects unknown SKUs instead of falling back to a default price', () 
   assert.throws(() => service.purchase(player.id, 'not-real'), (error) => error.code === 'shop_offer_not_found');
 });
 
-test('shop purchase still enforces insufficient Thread Dust in the repository transaction', () => {
+test('shop translates legacy insufficient-balance storage errors into Gold copy', () => {
   const { player, service } = setup();
 
-  assert.throws(() => service.purchase(player.id, 'single'), (error) => error.code === 'insufficient_thread_dust');
+  assert.throws(() => service.purchase(player.id, 'single'), (error) => {
+    assert.equal(error.code, 'insufficient_gold');
+    assert.equal(error.legacyCode, 'insufficient_thread_dust');
+    assert.match(error.message, /5 Gold/);
+    return true;
+  });
 });
