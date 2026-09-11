@@ -7,7 +7,7 @@ async function dashboard(page) {
   return response.json();
 }
 
-test('mobile character summary exposes the authoritative five readable stats', async ({ page }) => {
+test('mobile Inventory context exposes the authoritative five readable stats without cluttering Play', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
@@ -25,6 +25,13 @@ test('mobile character summary exposes the authoritative five readable stats', a
   });
   expect(data.character.attackPower).toBe(data.character.stats.attack);
   expect(data.character.maxHealth).toBe(data.character.stats.maxHp);
+
+  // The chat-first Play surface intentionally hides the legacy character panel. Readable
+  // stats belong in the existing secondary Inventory context until the rich Profile card
+  // lands in M2-04; do not reintroduce a tactical/dashboard panel into primary play.
+  await expect(page.getByTestId('character-derived-stats')).toBeHidden();
+  await page.getByTestId('mobile-game-nav').getByText('Inventory', { exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-game-view', 'gear');
 
   const strip = page.getByTestId('character-derived-stats');
   await expect(strip).toBeVisible();
