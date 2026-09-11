@@ -1,5 +1,7 @@
+import { deriveCharacterStats } from './CharacterStatPolicy.js';
+
 export class Character {
-  constructor({ id, threadedUserId, displayName, baseAttack = 6, maxHealth = 40, gold = null, threadDust = 0, equippedItem = null }) {
+  constructor({ id, threadedUserId, displayName, baseAttack = 6, maxHealth = 40, gold = null, threadDust = 0, equippedItem = null, equipment = null }) {
     if (!id || !threadedUserId) throw new Error('Character requires id and threadedUserId.');
     if (!Number.isInteger(baseAttack) || baseAttack <= 0) throw new Error('baseAttack must be a positive integer.');
     if (!Number.isInteger(maxHealth) || maxHealth <= 0) throw new Error('maxHealth must be a positive integer.');
@@ -14,9 +16,14 @@ export class Character {
     // New domain/read-model code should prefer gold until the SQLite column is migrated.
     this.threadDust = this.gold;
     this.equippedItem = equippedItem;
+    this.equipment = equipment || { weapon: equippedItem };
+  }
+
+  get stats() {
+    return deriveCharacterStats({ baseAttack: this.baseAttack, maxHealth: this.maxHealth, equipment: this.equipment });
   }
 
   get attackPower() {
-    return this.baseAttack + (this.equippedItem?.attackBonus ?? 0);
+    return this.stats.attack;
   }
 }
