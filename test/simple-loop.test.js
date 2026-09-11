@@ -37,7 +37,8 @@ test('hunt resolves one enemy in one command using permanent stats', () => {
   assert.equal(weak.victory, true);
   assert.equal(weak.attacksRequired, 3);
   assert.equal(weak.damageTaken, 8);
-  assert.equal(weak.threadDust, 3);
+  assert.equal(weak.gold, 3);
+  assert.equal(weak.threadDust, 3, 'legacy reward alias stays readable during migration');
   assert.equal(strong.attacksRequired, 2);
   assert.equal(strong.damageTaken, 4);
 });
