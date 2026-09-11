@@ -34,14 +34,20 @@ The existing Gear/Inventory surfaces remain the same authoritative inventory pro
 
 ## Shop boundary
 
-Mara's shop remains an in-thread response. Purchase price, quantity, balance checks, and persistence stay server-owned. The browser only renders offers and invokes the purchase use case.
+Mara's shop remains an in-thread response, but its shelf is now a server-projected read model instead of browser-authored economy data.
+
+- `ShopCatalog` owns the allowlisted SKU, name, description, visual asset, price, and quantity grant.
+- `ShopService.browse()` projects the vendor, current Dust balance, offer affordability, and availability.
+- `ShopService.purchase()` resolves the SKU from the same catalog and coordinates the atomic repository transaction.
+- the browser renders `/api/shop` and posts to `/api/shop/purchases/:sku`; it does not contain the authoritative price or quantity grant.
+- the old `/api/shop/health-potion` route remains temporarily as a compatibility adapter during migration.
 
 The current recovery shelf is intentionally small:
 
 - Health potion: 1 for 5 Thread Dust.
 - Potion satchel: 3 for 12 Thread Dust.
 
-The shop can later grow into a server-projected catalog without changing the chat interaction model.
+New consumables/materials or rotating offers should extend the server catalog/service boundary rather than adding browser-side economy conditions.
 
 ## Acceptance gates
 
@@ -55,9 +61,8 @@ The shop can later grow into a server-projected catalog without changing the cha
 - [ ] **META-08:** Simple dungeons expose Attack only; meta actions do not compete with the current combat command.
 - [ ] **META-09:** The 390x844 mobile viewport has no horizontal overflow and all contextual controls retain 44px minimum touch targets.
 - [ ] **META-10:** Unit/contract tests and all Chromium Playwright suites remain green before merge.
+- [ ] **META-11:** Shop offer price/quantity/availability are projected by the server catalog/service; changing browser presentation cannot change the authoritative purchase terms.
 
 ## Verification
 
-`test/e2e/simple-loop.spec.js` is the primary browser gate for the contextual action policy. Recovery/shop behavior remains covered by `test/e2e/simple-loop.local.spec.js` plus Hunt/recovery unit tests.
-
-For the next catalog expansion, introduce a server-projected shop catalog before adding equipment or rotating offers. Do not hardcode new prices or purchase effects into browser presentation code.
+`test/e2e/simple-loop.spec.js` is the primary browser gate for the contextual action policy. Recovery/shop behavior remains covered by `test/e2e/simple-loop.local.spec.js`, Hunt/recovery unit tests, and `test/shop-service.test.js` for catalog projection and purchase rules.
