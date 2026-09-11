@@ -1,8 +1,7 @@
 const commandCard = document.querySelector('[data-testid="stream-command-card"]');
 const inventory = document.querySelector('#inventory');
-const character = document.querySelector('#character');
 
-if (commandCard || inventory || character) {
+if (commandCard || inventory) {
   const style = document.createElement('style');
   style.textContent = `
     .relic-progress-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
@@ -13,7 +12,7 @@ if (commandCard || inventory || character) {
     .relic-temper-note { margin:0; color:var(--muted); font-size:.62rem; line-height:1.35; }
     .relic-temper-error { margin:0; padding:6px 8px; border-radius:8px; background:rgba(255,100,124,.08); color:#ff9cac; font-size:.65rem; }
     .relic-temper-success { margin:0; padding:6px 8px; border-radius:8px; background:rgba(100,230,169,.08); color:#9ff2c4; font-size:.65rem; }
-    .derived-stat-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:10px; }
+    .derived-stat-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin:0 2px 12px; }
     .derived-stat-chip { min-width:0; padding:7px 5px; border:1px solid rgba(179,109,255,.2); border-radius:9px; background:rgba(179,109,255,.06); text-align:center; }
     .derived-stat-chip span { display:block; color:var(--muted); font-size:.55rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
     .derived-stat-chip strong { display:block; margin-top:2px; font-size:.82rem; }
@@ -35,8 +34,8 @@ if (commandCard || inventory || character) {
   }
 
   function renderCharacterStats(data) {
-    if (!character || !data.character?.stats) return;
-    character.querySelector('[data-derived-stats="true"]')?.remove();
+    if (!inventory || !data.character?.stats) return;
+    inventory.querySelector('[data-derived-stats="true"]')?.remove();
     const stats = data.character.stats;
     const values = [
       ['Attack', stats.attack],
@@ -48,6 +47,7 @@ if (commandCard || inventory || character) {
     const strip = document.createElement('div');
     strip.className = 'derived-stat-strip';
     strip.dataset.derivedStats = 'true';
+    strip.dataset.relicProgressionOwned = 'true';
     strip.dataset.testid = 'character-derived-stats';
     strip.setAttribute('aria-label', 'Character stats');
     for (const [label, value] of values) {
@@ -61,7 +61,9 @@ if (commandCard || inventory || character) {
       chip.append(name, amount);
       strip.append(chip);
     }
-    character.append(strip);
+    const heading = inventory.querySelector('.section-heading');
+    if (heading) heading.after(strip);
+    else inventory.prepend(strip);
   }
 
   function itemSlot(item) {
