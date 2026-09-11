@@ -3,6 +3,10 @@ import './inventory-rich-card.js';
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search';
 
 function commandFromCard(card) {
+  // Inventory is a canonical rich-card family. Once the M2-02 adapter has rendered the
+  // card, do not let a later compatibility-observer pass regress its identity to the
+  // legacy `gear` alias because of observer ordering.
+  if (card.dataset.inventoryRichCard === 'true') return 'inventory';
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
   const slashIndex = kicker.lastIndexOf('/');
   if (slashIndex < 0) return card.dataset.richCardKind || 'panel';
