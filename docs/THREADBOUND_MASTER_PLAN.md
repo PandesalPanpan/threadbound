@@ -585,23 +585,23 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 ### Phase 0 — lock the execution contract
 
-- [ ] **M0-01** Make this document the canonical next-work source from `AGENTS.md` and README.
-- [ ] **M0-02** Add/update tests or docs that explicitly reject reintroducing the old tactical default as the product target.
-- [ ] **M0-03** Record current migration-safe legacy terminology/state that must temporarily remain compatible.
+- [x] **M0-01** Make this document the canonical next-work source from `AGENTS.md` and README.
+- [x] **M0-02** Add/update tests or docs that explicitly reject reintroducing the old tactical default as the product target.
+- [x] **M0-03** Record current migration-safe legacy terminology/state that must temporarily remain compatible.
 
 ### Phase 1 — simple language + core character/economy model
 
-- [ ] **M1-01** Introduce canonical Gold projection/model and migrate player-facing Thread Dust to Gold without breaking persisted users.
-- [ ] **M1-02** Replace player-facing Temper/Relic terminology with Upgrade/Inventory/Equipment.
-- [ ] **M1-03** Establish canonical XP + Level progression and expose it in Profile and routine receipts.
-- [ ] **M1-04** Establish familiar equipment slots: Weapon, Helmet, Armor, Boots, Accessory.
-- [ ] **M1-05** Establish readable derived stats: Attack, Defense, Max HP, Speed, Crit Chance.
-- [ ] **M1-06** Establish rarity contract: Common -> Mythic and consistent rich-card styling.
-- [ ] **M1-07** Preserve Honey as external Threaded-owned premium currency; prove local mode cannot mutate it.
+- [x] **M1-01** Introduce canonical Gold projection/model and migrate player-facing Thread Dust to Gold without breaking persisted users.
+- [x] **M1-02** Replace player-facing Temper/Relic terminology with Upgrade/Inventory/Equipment.
+- [x] **M1-03** Establish canonical XP + Level progression and expose it in Profile and routine receipts.
+- [x] **M1-04** Establish familiar equipment slots: Weapon, Helmet, Armor, Boots, Accessory.
+- [x] **M1-05** Establish readable derived stats: Attack, Defense, Max HP, Speed, Crit Chance.
+- [x] **M1-06** Establish rarity contract: Common -> Mythic and consistent rich-card styling.
+- [x] **M1-07** Preserve Honey as external Threaded-owned premium currency; prove local mode cannot mutate it.
 
 ### Phase 2 — chat shell and rich cards
 
-- [ ] **M2-01** Define a reusable rich chat-card/panel presentation primitive for app-like cards inside the stream.
+- [x] **M2-01** Define a reusable rich chat-card/panel presentation primitive for app-like cards inside the stream.
 - [ ] **M2-02** Inventory rich card: all items, equipment slots, stats, rarity, sprites, Equip/Sell/Upgrade actions.
 - [ ] **M2-03** Shop rich card: generated/catalog stock, sprites, prices, Buy/Sell, affordability, normal equipment/potions.
 - [ ] **M2-04** Profile rich card: level, XP, Gold, banked Gold, primary stats, equipment, Area, achievements summary.
@@ -764,7 +764,7 @@ It is complete only when:
 
 ## 15. Immediate next task
 
-Start with **M0-01**, then continue directly into Phase 1.
+Continue with **M2-02 — Inventory rich card**, building on the merged rich chat-card primitive and completed Phase 1 foundations.
 
 The first substantial playable milestone is complete when a player can use the chat-first app to:
 
