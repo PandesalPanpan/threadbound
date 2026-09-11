@@ -18,6 +18,7 @@ import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
 import { RunCommandIdempotencyService } from './application/RunCommandIdempotencyService.js';
+import { VISUAL_ASSETS, VISUAL_ASSET_CATALOG_VERSION } from './content/VisualAssetCatalog.js';
 import { decorateRunUpgradeOffers } from './domain/RunUpgradeOfferPolicy.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
@@ -124,6 +125,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.disable('x-powered-by');
   app.use(express.urlencoded({ extended: false, limit: '4kb' }));
   app.use(express.json({ limit: '512kb' }));
+  app.use('/assets/runtime', express.static('public/assets/runtime', {
+    immutable: true,
+    maxAge: '1y',
+  }));
   app.use(express.static('public'));
   app.use(session({ store: sessionStore, name: 'threadbound.sid', secret: config.sessionSecret, resave: false, saveUninitialized: false, cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 60 * 60 * 1000 } }));
 
@@ -302,6 +307,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     return response.status(validation.valid ? 200 : 422).json({ validation });
   });
   app.get('/api/arc-workshop/manifests', requireWorkshop, (_request, response) => response.json({ manifests: arcManifestService.list() }));
+  app.get('/api/arc-workshop/visual-assets', requireWorkshop, (_request, response) => response.json({
+    version: VISUAL_ASSET_CATALOG_VERSION,
+    assets: VISUAL_ASSETS.map(({ id, kind, label, description, tags }) => ({ id, kind, label, description, tags })),
+  }));
   app.get('/api/arc-workshop/manifests/:id', requireWorkshop, (request, response) => {
     const record = arcManifestService.get(String(request.params.id));
     if (!record) return response.status(404).json({ error: 'arc_manifest_not_found', message: 'Arc Manifest not found.' });

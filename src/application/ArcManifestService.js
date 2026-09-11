@@ -4,6 +4,7 @@ import { ITEM_EFFECTS } from '../domain/ItemGenerator.js';
 import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
+import { compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
 import { ALLOWED_ENEMY_ABILITIES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
 
@@ -39,6 +40,12 @@ export class ArcManifestService {
         },
       },
       balanceBudgets: structuredClone(BALANCE_BUDGETS),
+      visualAssetCatalog: {
+        version: VISUAL_ASSET_CATALOG_VERSION,
+        selectionMode: 'exact-allowlisted-id',
+        shortlist: compactVisualAssetCatalog({ tags: ['void', 'shadow', 'ice', 'fire', 'forest', 'knight', 'relic'], limit: 120 }),
+        fullCatalogEndpoint: '/api/arc-workshop/visual-assets',
+      },
       publishedGeneratedArcs: this.manifestRepository.listPublished().map((entry) => ({
         manifestId: entry.id,
         arcId: entry.arcId,
@@ -54,6 +61,7 @@ export class ArcManifestService {
         'Encounter variants must reference enemies from the same manifest.',
         'Run event schedules may only reference runEvents from the same manifest.',
         'All dungeon encounter, boss, and reward-pool references must resolve within the same manifest.',
+        'Choose an exact visualAssetId from the allowlisted catalog for every new enemy, boss, and item template.',
         'Return JSON only when generating an Arc Manifest for upload.',
       ],
     };
@@ -150,6 +158,7 @@ export class ArcManifestService {
         hp: enemy.baseHp,
         retaliation: enemy.retaliation,
         abilities: [...enemy.abilities],
+        ...(enemy.visualAssetId ? { visualAssetId: enemy.visualAssetId } : {}),
         ...(Number.isInteger(enemy.intentCadence) ? { intentCadence: enemy.intentCadence } : {}),
       });
       for (const dungeon of manifest.dungeons) {
@@ -213,6 +222,7 @@ export class ArcManifestService {
         attackBonus: template.attackBonus,
         effectCode,
         effect,
+        ...(template.visualAssetId ? { visualAssetId: template.visualAssetId } : {}),
         source: dungeonId,
       };
     }

@@ -1,5 +1,7 @@
 # Generated Sprite Atlases
 
+> Superseded for the five `*_sheets.png` sources by `VISUAL_ASSET_ARCHITECTURE.md`. The regular SVG atlases described below remain compatibility assets.
+
 Threadbound keeps generated art as source atlases under `public/assets/generated/` and crops frames in the presentation layer. Gameplay/domain services do not depend on art assets.
 
 ## Source sheets

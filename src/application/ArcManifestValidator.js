@@ -3,6 +3,7 @@ import { ENEMY_ABILITY_CATALOG } from '../domain/CombatIntentPolicy.js';
 import { ITEM_EFFECTS } from '../domain/ItemGenerator.js';
 import { ACHIEVEMENTS } from './AchievementProjector.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
+import { visualAsset } from '../content/VisualAssetCatalog.js';
 
 export const MANIFEST_VERSION = 1;
 export const ALLOWED_ENEMY_ABILITIES = Object.freeze(Object.keys(ENEMY_ABILITY_CATALOG));
@@ -98,6 +99,7 @@ export class ArcManifestValidator {
       this.#range(entry.baseHp, BALANCE_BUDGETS.enemyBaseHp, `${path}.baseHp`, 'enemy_hp_budget', addError);
       this.#range(entry.retaliation, BALANCE_BUDGETS.enemyRetaliation, `${path}.retaliation`, 'enemy_retaliation_budget', addError);
       this.#abilities(entry.abilities, `${path}.abilities`, addError);
+      this.#visualAsset(entry.visualAssetId, 'mob', `${path}.visualAssetId`, addError);
     });
 
     const bossIds = new Set();
@@ -110,6 +112,7 @@ export class ArcManifestValidator {
       this.#range(entry.baseHp, BALANCE_BUDGETS.bossBaseHp, `${path}.baseHp`, 'boss_hp_budget', addError);
       this.#range(entry.retaliation, BALANCE_BUDGETS.bossRetaliation, `${path}.retaliation`, 'boss_retaliation_budget', addError);
       this.#abilities(entry.abilities, `${path}.abilities`, addError);
+      this.#visualAsset(entry.visualAssetId, 'boss', `${path}.visualAssetId`, addError);
     });
 
     const poolIds = new Set();
@@ -128,6 +131,7 @@ export class ArcManifestValidator {
         this.#range(item.attackBonus, BALANCE_BUDGETS.itemAttackBonus, `${itemPath}.attackBonus`, 'item_attack_budget', addError);
         if (!Array.isArray(item.effects)) addError(`${itemPath}.effects`, 'effects_array_required', 'effects must be an array.');
         else for (const [effectIndex, effect] of item.effects.entries()) if (!Object.hasOwn(ITEM_EFFECTS, effect)) addError(`${itemPath}.effects[${effectIndex}]`, 'unsupported_item_effect', `Unsupported item effect "${effect}".`);
+        this.#visualAsset(item.visualAssetId, 'item', `${itemPath}.visualAssetId`, addError);
       });
     });
 
@@ -195,5 +199,9 @@ export class ArcManifestValidator {
     if (value === undefined) return;
     if (!Array.isArray(value)) return addError(path, 'tags_array_required', 'Tags must be an array.');
     if (value.some((tag) => !text(tag))) addError(path, 'invalid_tag', 'Tags must be non-empty strings.');
+  }
+  #visualAsset(value, kind, path, addError) {
+    if (value === undefined) return;
+    if (!text(value) || !visualAsset(value, kind)) addError(path, 'unknown_visual_asset', `visualAssetId must reference an allowlisted ${kind} asset.`);
   }
 }

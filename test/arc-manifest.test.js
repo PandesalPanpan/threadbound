@@ -18,10 +18,10 @@ function validManifest() {
       progression: { metric: 'dungeon_clears', target: 25 },
     },
     lore: [{ id: 'test-cinder-seam', title: 'Test Cinder Seam', summary: 'A test seam.', body: 'A test lore body.', tags: ['test'] }],
-    enemies: [{ id: 'test-ashling', name: 'Test Ashling', baseHp: 8, retaliation: 1, abilities: ['basic_retaliation'] }],
-    bosses: [{ id: 'test-loomkeeper', name: 'Test Loomkeeper', baseHp: 18, retaliation: 2, abilities: ['basic_retaliation'] }],
+    enemies: [{ id: 'test-ashling', name: 'Test Ashling', baseHp: 8, retaliation: 1, abilities: ['basic_retaliation'], visualAssetId: 'mob.fire-elemental.v1' }],
+    bosses: [{ id: 'test-loomkeeper', name: 'Test Loomkeeper', baseHp: 18, retaliation: 2, abilities: ['basic_retaliation'], visualAssetId: 'boss.lava-titan.v1' }],
     dungeons: [{ id: 'test-cinder-vault', name: 'Test Cinder Vault', recommendedPlayers: 2, encounters: ['test-ashling'], bossId: 'test-loomkeeper', rewardPoolId: 'test-cinder-relics' }],
-    itemPools: [{ id: 'test-cinder-relics', items: [{ id: 'test-ember-needle', namePattern: 'Test Ember Needle of {suffix}', rarity: 'rare', attackBonus: 3, effects: ['boss_bane'] }] }],
+    itemPools: [{ id: 'test-cinder-relics', items: [{ id: 'test-ember-needle', namePattern: 'Test Ember Needle of {suffix}', rarity: 'rare', attackBonus: 3, effects: ['boss_bane'], visualAssetId: 'item.fire-dagger.v1' }] }],
     achievements: [{ id: 'test-cinder-cleared', title: 'Test Through the Cinders', description: 'Complete the test vault.', event: 'dungeon_completed', targetId: 'test-cinder-vault', threshold: 1 }],
     historicalConsequences: [{ id: 'test-ashen-begins', trigger: 'arc_started', title: 'Test Ashen Thread begins', body: 'The test arc entered world history.' }],
   };
@@ -76,6 +76,17 @@ test('valid manifests save as draft, publish explicitly, and supersede old revis
   gameRepository.close();
 });
 
+test('validator accepts optional typed visual assets and rejects unknown or cross-kind references', () => {
+  const validator = new ArcManifestValidator();
+  assert.equal(validator.validate(validManifest()).valid, true);
+  const invalid = validManifest();
+  invalid.enemies[0].visualAssetId = 'boss.lava-titan.v1';
+  invalid.bosses[0].visualAssetId = 'boss.does-not-exist.v1';
+  const result = validator.validate(invalid);
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.filter((error) => error.code === 'unknown_visual_asset').length, 2);
+});
+
 test('publishing projects lore/history and exposes runtime dungeon plus manifest reward', () => {
   const { gameRepository, codexRepository, service } = setup();
   const record = service.publish(service.saveDraft(validManifest()).id);
@@ -84,12 +95,15 @@ test('publishing projects lore/history and exposes runtime dungeon plus manifest
   const runtime = service.resolveDungeon('test-cinder-vault');
   assert.equal(runtime.arcId, 'ashen-thread-test');
   assert.equal(runtime.encounters[0].hp, 8);
+  assert.equal(runtime.encounters[0].visualAssetId, 'mob.fire-elemental.v1');
   assert.equal(runtime.boss.hp, 18);
+  assert.equal(runtime.boss.visualAssetId, 'boss.lava-titan.v1');
 
   const reward = service.generateReward('test-cinder-vault');
   assert.equal(reward.definitionId, 'test-ember-needle');
   assert.equal(reward.effectCode, 'boss_bane');
   assert.equal(reward.attackBonus, 3);
+  assert.equal(reward.visualAssetId, 'item.fire-dagger.v1');
   assert.match(reward.name, /Test Ember Needle/);
 
   const arcLore = codexRepository.getContentEntry('generated-arc:ashen-thread-test');
@@ -133,6 +147,8 @@ test('world context exports supported mechanics and current published arc metada
   assert.ok(context.allowedMechanics.itemEffects.some((effect) => effect.code === 'boss_bane'));
   assert.deepEqual(context.allowedMechanics.enemyAbilities, [...ALLOWED_ENEMY_ABILITIES]);
   assert.equal(context.publishedGeneratedArcs[0].arcId, 'ashen-thread-test');
+  assert.equal(context.visualAssetCatalog.selectionMode, 'exact-allowlisted-id');
+  assert.ok(context.visualAssetCatalog.shortlist.every((asset) => !Object.hasOwn(asset, 'src')));
   assert.ok(context.generationRules.some((rule) => /Return JSON only/i.test(rule)));
   gameRepository.close();
 });

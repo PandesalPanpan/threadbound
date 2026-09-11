@@ -37,6 +37,7 @@
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$" },
+    "visualAssetId": { "type": "string", "pattern": "^(mob|boss|item)\\.[a-z0-9][a-z0-9-]*\\.v[1-9][0-9]*$", "maxLength": 120 },
     "nonEmpty": { "type": "string", "minLength": 1, "maxLength": 4000 },
     "tags": { "type": "array", "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 64 } },
     "loreEntry": {
@@ -56,7 +57,8 @@
         "baseHp": { "type": "integer", "minimum": 1, "maximum": 10000 },
         "retaliation": { "type": "integer", "minimum": 0, "maximum": 1000 },
         "abilities": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "type": "string" } },
-        "intentCadence": { "type": "integer", "minimum": 1, "maximum": 6 }
+        "intentCadence": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "visualAssetId": { "$ref": "#/$defs/visualAssetId" }
       }
     },
     "boss": {
@@ -67,7 +69,8 @@
         "baseHp": { "type": "integer", "minimum": 1, "maximum": 100000 },
         "retaliation": { "type": "integer", "minimum": 0, "maximum": 5000 },
         "abilities": { "type": "array", "maxItems": 12, "uniqueItems": true, "items": { "type": "string" } },
-        "intentCadence": { "type": "integer", "minimum": 1, "maximum": 6 }
+        "intentCadence": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "visualAssetId": { "$ref": "#/$defs/visualAssetId" }
       }
     },
     "runEventEffects": {
@@ -127,7 +130,8 @@
         "id": { "$ref": "#/$defs/id" }, "namePattern": { "$ref": "#/$defs/nonEmpty" },
         "rarity": { "enum": ["common", "uncommon", "rare", "epic", "legendary"] },
         "attackBonus": { "type": "integer", "minimum": 0, "maximum": 1000 },
-        "effects": { "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string" } }
+        "effects": { "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string" } },
+        "visualAssetId": { "$ref": "#/$defs/visualAssetId" }
       }
     },
     "itemPool": {

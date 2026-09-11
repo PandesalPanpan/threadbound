@@ -1,3 +1,5 @@
+import { VISUAL_ASSETS, visualAsset } from './visual-asset-catalog.js';
+
 const WEAVER_SPRITES = Object.freeze([
   '/sprites/kenney/weaver-arcane.png',
   '/sprites/kenney/weaver-fighter.png',
@@ -65,6 +67,21 @@ const GENERATED_ENEMY_FRAMES = Object.freeze({
   'ember-loomkeeper': 13,
 });
 
+const CANONICAL_VISUAL_ASSET_IDS = Object.freeze({
+  'frayed-mite': 'mob.small-spider.v1',
+  'hollow-crow': 'mob.lantern-wraith.v1',
+  'thread-wolf': 'mob.gray-wolf.v1',
+  'frayed-wisp': 'mob.void-wisp.v1',
+  'hollow-stalker': 'mob.shadow-beast.v1',
+  'silkbound-guard': 'mob.silver-knight.v1',
+  'first-needle': 'boss.void-knight.v1',
+  'glass-skulker': 'mob.ice-wolf.v1',
+  'stitch-leech': 'mob.giant-mantis.v1',
+  'mirror-warden': 'mob.black-knight.v1',
+  'shard-choir': 'mob.many-eyed-horror.v1',
+  'hollow-mirror': 'boss.void-singularity.v1',
+});
+
 let viewerPlayerId = null;
 let viewerStableIdentity = null;
 
@@ -123,21 +140,50 @@ function atlasFrame(atlas, index) {
   });
 }
 
+function runtimeAssetFrame(asset) {
+  return Object.freeze({
+    type: 'visual-asset',
+    visualAssetId: asset.id,
+    src: asset.src,
+    width: asset.width,
+    height: asset.height,
+  });
+}
+
+function resolvedAsset(entity, kind, fallbackSeed) {
+  const explicit = visualAsset(entity?.visualAssetId, kind);
+  if (explicit) return explicit;
+  const canonicalId = CANONICAL_VISUAL_ASSET_IDS[String(entity?.id || entity?.enemyId || entity?.definitionId || '')];
+  const canonical = visualAsset(canonicalId, kind);
+  if (canonical) return canonical;
+  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind);
+  return candidates[stableIndex(fallbackSeed, candidates.length)] || null;
+}
+
 export function weaverSprite(seed) {
-  return WEAVER_SPRITES[stableIndex(effectiveWeaverSeed(seed), WEAVER_SPRITES.length)];
+  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === 'character');
+  return candidates[stableIndex(effectiveWeaverSeed(seed), candidates.length)]?.src
+    || WEAVER_SPRITES[stableIndex(effectiveWeaverSeed(seed), WEAVER_SPRITES.length)];
 }
 
 export function enemySprite(enemy = {}) {
-  if (enemy.isBoss) return '/sprites/kenney/boss.png';
-  return ENEMY_SPRITES[String(enemy.id || '')] || '/sprites/kenney/frayed-wisp.png';
+  const kind = enemy.isBoss ? 'boss' : 'mob';
+  return resolvedAsset(enemy, kind, enemy.id || enemy.enemyId || enemy.name || 'unknown-enemy')?.src
+    || (enemy.isBoss ? '/sprites/kenney/boss.png' : ENEMY_SPRITES[String(enemy.id || '')] || '/sprites/kenney/frayed-wisp.png');
 }
 
 export function weaverSpriteFrame(seed, { variant = 'male' } = {}) {
+  const prefix = variant === 'female' ? 'character.female-' : 'character.male-';
+  const candidates = VISUAL_ASSETS.filter((asset) => asset.id.startsWith(prefix));
+  const asset = candidates[stableIndex(effectiveWeaverSeed(seed), candidates.length)];
+  if (asset) return runtimeAssetFrame(asset);
   const atlas = variant === 'female' ? GENERATED_SPRITE_ATLASES.femaleWeavers : GENERATED_SPRITE_ATLASES.maleWeavers;
   return atlasFrame(atlas, stableIndex(effectiveWeaverSeed(seed), atlas.columns * atlas.rows));
 }
 
 export function enemySpriteFrame(enemy = {}) {
+  const runtime = resolvedAsset(enemy, enemy.isBoss ? 'boss' : 'mob', enemy.id || enemy.enemyId || enemy.name || 'unknown-enemy');
+  if (runtime) return runtimeAssetFrame(runtime);
   const id = String(enemy.id || enemy.enemyId || enemy.defeatedEnemyId || 'unknown-enemy');
   const mapped = GENERATED_ENEMY_FRAMES[id];
   if (Number.isInteger(mapped)) return atlasFrame(GENERATED_SPRITE_ATLASES.enemies, mapped);
@@ -151,6 +197,8 @@ export function enemySpriteFrame(enemy = {}) {
 
 export function itemSpriteFrame(item = {}) {
   const seed = item.id || item.itemId || item.name || item.effect?.name || 'threadbound-relic';
+  const runtime = resolvedAsset(item, 'item', seed);
+  if (runtime) return runtimeAssetFrame(runtime);
   return atlasFrame(
     GENERATED_SPRITE_ATLASES.equipment,
     stableIndex(seed, GENERATED_SPRITE_ATLASES.equipment.columns * GENERATED_SPRITE_ATLASES.equipment.rows),
@@ -158,7 +206,18 @@ export function itemSpriteFrame(item = {}) {
 }
 
 export function applySpriteFrame(element, frame) {
-  if (!element || frame?.type !== 'atlas-frame') return element;
+  if (!element || !['atlas-frame', 'visual-asset'].includes(frame?.type)) return element;
+  if (frame.type === 'visual-asset') {
+    element.classList.add('thread-atlas-sprite', 'thread-visual-asset');
+    element.dataset.visualAssetId = frame.visualAssetId;
+    element.style.backgroundImage = `url("${frame.src}")`;
+    element.style.backgroundRepeat = 'no-repeat';
+    element.style.backgroundSize = 'contain';
+    element.style.backgroundPosition = 'center';
+    element.style.aspectRatio = String(frame.width / frame.height);
+    element.style.imageRendering = 'pixelated';
+    return element;
+  }
   const x = frame.columns <= 1 ? 50 : (frame.column / (frame.columns - 1)) * 100;
   const y = frame.rows <= 1 ? 50 : (frame.row / (frame.rows - 1)) * 100;
   element.classList.add('thread-atlas-sprite');
