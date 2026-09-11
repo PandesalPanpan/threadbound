@@ -19,7 +19,7 @@ function item(id, rarity = 'rare', attackBonus = 6) {
   };
 }
 
-test('salvaging unequipped gear atomically removes it and grants Thread Dust', () => {
+test('salvaging unequipped equipment atomically removes it and grants Gold with a legacy balance alias', () => {
   const gameRepository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'p1' });
   const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'u1', displayName: 'Weaver' });
   gameRepository.addItem(player.id, item('keep', 'common', 2));
@@ -40,7 +40,13 @@ test('salvaging unequipped gear atomically removes it and grants Thread Dust', (
   assert.equal(gameRepository.getItem('scrap'), null);
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 15);
   assert.deepEqual(events.at(-1), {
-    type: 'ItemSalvaged', playerId: player.id, itemId: 'scrap', itemName: 'Relic scrap', rarity: 'rare', threadDust: 15,
+    type: 'ItemSalvaged',
+    playerId: player.id,
+    itemId: 'scrap',
+    itemName: 'Relic scrap',
+    rarity: 'rare',
+    gold: 15,
+    threadDust: 15,
   });
   gameRepository.close();
 });
