@@ -19,9 +19,19 @@ Hunts award a small amount of Thread Dust and can drop permanent weapons. Hunt d
 
 Hunt damage persists between encounters. Outside a dungeon, one HP regenerates per minute. New characters begin with one health potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. `rest` shows live next-HP and full-recovery countdowns. `shop` opens Mara's illustrated two-item shelf: one potion for 5 Thread Dust or three for 12. This health economy—not an arbitrary action cooldown—paces repeated Hunts without an unexplained dead end.
 
-The composer keeps at most two contextual actions visible. At zero HP those become Recovery and Shop; the expanding command catalog stays behind typed commands and `help` instead of consuming permanent mobile screen space.
+## Contextual chat navigation
 
-Hunts do not create a persistent `DungeonRun`; `HuntService` is a separate application use case over the small `HuntEncounter` domain policy.
+The composer keeps at most two contextual actions visible. The expanding command catalog stays behind typed commands and `help` instead of consuming permanent mobile screen space.
+
+- Fresh/no permanent gear: **Hunt + Dungeon readiness**.
+- Gear exists but Attack is below the recommendation: **Hunt + Inventory**.
+- Gear exists and Attack meets the recommendation: **Dungeon + Inventory**.
+- Zero Hunt HP: **Recovery + Shop**.
+- Active simple dungeon: **Attack** only.
+
+Inventory and Shop buttons submit the same chat commands as typing `inventory` or `shop`; they do not create parallel browser-owned progression systems. See `docs/CHAT_META_LOOP_V2.md` for the acceptance contract.
+
+Hunts do not create a persisted `DungeonRun`; `HuntService` is a separate application use case over the small `HuntEncounter` domain policy.
 
 ## Dungeons
 
@@ -58,7 +68,7 @@ A Hunt result intentionally reads like a compact ledger receipt:
 THREADBOUND
 HUNT CLEARED  Thread Wolf
 −8 HP   32/40 HP   +3 Dust
-Bound Needle · +3 ATK
+You got Bound Needle · +3 ATK
 ```
 
 Dungeon combat uses similarly compact receipts and does not render Focus, tactical intent, run-power, or skill metadata for `simpleCombat` runs.

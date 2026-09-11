@@ -116,6 +116,8 @@ if (stream) {
     body.threadbound-player #stream .simple-loop-action[data-kind="attack"] { color:#ff7080 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="dungeon"] { color:#f0b541 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="heal"] { color:#73dfa7 !important; }
+    body.threadbound-player #stream .simple-loop-action[data-kind="inventory"] { color:#55d6ff !important; }
+    body.threadbound-player #stream .simple-loop-action[data-kind="shop"] { color:#e6b86a !important; }
     body.threadbound-player #stream .simple-loop-action:disabled { opacity:.55 !important; }
     body.threadbound-player #stream .simple-loop-help {
       margin:4px 0 0;
@@ -266,7 +268,7 @@ if (stream) {
     commandCard.innerHTML = '';
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
-    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>heal</strong> — use a potion outside dungeons<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Slash-prefixed versions still work. Gear, Party, World, and Codex live in the bottom navigation.';
+    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>inventory</strong> — inspect, equip, Temper, or salvage permanent gear<br><strong>shop</strong> — buy recovery supplies from Mara<br><strong>recovery</strong> — check healing time or use a potion<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Only the two most relevant actions stay beside the composer; every command remains available by typing it.';
     commandCard.append(help);
     decorateFigmaSurface();
   }
@@ -275,10 +277,18 @@ if (stream) {
     await api('/api/recovery/potion', { method: 'POST' });
   }
 
-  function openShop() {
+  function submitMetaCommand(command) {
     if (!input || !composer) return;
-    input.value = 'shop';
+    input.value = command;
     composer.requestSubmit();
+  }
+
+  function openShop() {
+    submitMetaCommand('shop');
+  }
+
+  function openInventory() {
+    submitMetaCommand('inventory');
   }
 
   function durationLabel(seconds) {
@@ -343,18 +353,29 @@ if (stream) {
     if (!noRun && !simple) return;
 
     if (noRun) {
-      if (dashboard.character.currentHealth > 0) addButton('Hunt', 'hunt', hunt, 'stream-hunt');
-      else {
+      if (dashboard.character.currentHealth <= 0) {
         addButton(`Recovery · ${durationLabel(dashboard.character.healthRecovery?.nextHealthInSeconds)}`, 'heal', async () => renderRecovery(), 'stream-rest');
         addButton('Shop', 'shop', async () => openShop(), 'stream-shop');
+        return;
       }
+
       const { dungeon, readiness } = firstDungeon();
-      if (dungeon && dashboard.character.currentHealth > 0) {
-        const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
-        const current = Number(viewer?.attackPower ?? dashboard.character.attackPower ?? 0);
-        const recommended = Number(readiness?.recommendedAttack ?? 9);
+      const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
+      const current = Number(viewer?.attackPower ?? dashboard.character.attackPower ?? 0);
+      const recommended = Number(readiness?.recommendedAttack ?? 9);
+      const hasInventory = (dashboard.inventory?.length || 0) > 0;
+      const readyForDungeon = Boolean(dungeon && current >= recommended);
+
+      if (readyForDungeon) {
         addButton(`Dungeon · ${current}/${recommended}`, 'dungeon', startDungeon, 'stream-start-dungeon');
+        if (hasInventory) addButton('Inventory', 'inventory', async () => openInventory(), 'stream-inventory');
+        else addButton('Hunt', 'hunt', hunt, 'stream-hunt');
+        return;
       }
+
+      addButton('Hunt', 'hunt', hunt, 'stream-hunt');
+      if (hasInventory) addButton('Inventory', 'inventory', async () => openInventory(), 'stream-inventory');
+      else if (dungeon) addButton(`Dungeon · ${current}/${recommended}`, 'dungeon', startDungeon, 'stream-start-dungeon');
       return;
     }
 

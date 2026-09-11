@@ -85,11 +85,10 @@ test('party members share the same hard attack-only dungeon and live stream', as
     await leader.reload();
     await partner.reload();
 
-    // The legacy tactical start button can remain in the DOM for migration compatibility.
-    // The player-facing contract is the simple-loop action rendered by SimpleDungeonService.
-    const startDungeon = leader.locator('.simple-loop-action[data-testid="stream-start-dungeon"]');
-    await expect(startDungeon).toBeVisible({ timeout: 5000 });
-    await startDungeon.click();
+    // Contextual buttons may prioritize Inventory once persistent gear exists. The
+    // typed dungeon command is the stable parity contract and must remain available.
+    await leader.getByTestId('stream-message').fill('dungeon');
+    await leader.getByTestId('stream-send').click();
 
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.id || null, { timeout: 5000 }).not.toBeNull();
     const leaderState = await dashboard(leaderContext);

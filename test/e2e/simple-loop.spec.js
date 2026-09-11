@@ -154,9 +154,19 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await expectVisibleAtlasFrame(huntSprite);
   const afterHunt = await dashboard(context);
   expect(afterHunt.character.threadDust).toBeGreaterThan(0);
+  await expect(page.locator('.simple-loop-action')).toHaveCount(2);
+  if (afterHunt.inventory.length > 0) {
+    const inventory = page.getByTestId('stream-inventory');
+    await expect(inventory).toBeVisible();
+    await inventory.click();
+    await expect(page.getByTestId('stream-command-card')).toContainText('Relic pouch');
+  } else {
+    await expect(page.getByTestId('stream-start-dungeon')).toBeVisible();
+  }
   await screenshot(page, 'simple-loop-hunt');
 
-  await dungeon.click();
+  await page.getByTestId('stream-message').fill('dungeon');
+  await page.getByTestId('stream-send').click();
   await expect.poll(async () => (await dashboard(context)).activeRun?.simpleCombat || false, { timeout: 5000 }).toBe(true);
   const run = await dashboard(context);
   expect(run.activeRun.enemy.maxHp).toBe(24);
