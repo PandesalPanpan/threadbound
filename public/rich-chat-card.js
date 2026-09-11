@@ -1,3 +1,5 @@
+import './inventory-rich-card.js';
+
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search';
 
 function commandFromCard(card) {
