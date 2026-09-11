@@ -113,16 +113,4 @@ export class HuntService {
     this.eventBus.publish({ type: 'HealthPotionUsed', playerId, ...recovery });
     return recovery;
   }
-
-  buyHealthPotion(playerId, sku = 'single') {
-    if (this.repository.getActiveRun(playerId)) {
-      const error = new Error('The shop is unavailable during a dungeon.');
-      error.code = 'shop_during_dungeon';
-      throw error;
-    }
-    const offer = sku === 'satchel' ? { sku, cost: 12, quantity: 3 } : { sku: 'single', cost: 5, quantity: 1 };
-    const purchase = { sku: offer.sku, ...this.repository.buyHealthPotion(playerId, offer) };
-    this.eventBus.publish({ type: 'HealthPotionPurchased', playerId, ...purchase });
-    return purchase;
-  }
 }
