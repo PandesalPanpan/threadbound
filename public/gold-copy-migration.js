@@ -11,19 +11,25 @@ function migrateText(value) {
   return LEGACY_CURRENCY_PATTERNS.reduce((copy, [pattern, replacement]) => copy.replace(pattern, replacement), String(value || ''));
 }
 
-export function migrateLegacyCurrencyCopy(root = document.body) {
+export function migrateLegacyCurrencyCopy(root) {
   if (!root || !globalThis.NodeFilter) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {
-    const next = migrateText(node.nodeValue);
-    if (next !== node.nodeValue) node.nodeValue = next;
+    // Never rewrite user-authored chat. This adapter only migrates game/system copy.
+    if (!node.parentElement?.closest('.stream-entry-chat')) {
+      const next = migrateText(node.nodeValue);
+      if (next !== node.nodeValue) node.nodeValue = next;
+    }
     node = walker.nextNode();
   }
 }
 
 if (globalThis.document) {
-  const refresh = () => migrateLegacyCurrencyCopy(document.querySelector('#stream') || document.body);
+  const refresh = () => {
+    migrateLegacyCurrencyCopy(document.querySelector('#stream'));
+    migrateLegacyCurrencyCopy(document.querySelector('#inventory'));
+  };
   const observer = new MutationObserver(refresh);
   const start = () => {
     refresh();
