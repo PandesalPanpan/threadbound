@@ -46,6 +46,7 @@ function installStyles(documentRef) {
 }
 
 function inventoryCommand(card) {
+  if (card?.dataset.inventoryRichCard === 'true' || card?.dataset.richCardKind === 'inventory') return true;
   const kicker = card?.querySelector('.thread-reply-header > div > span')?.textContent || '';
   return /\/(gear|inventory)\b/i.test(kicker);
 }
@@ -235,6 +236,11 @@ function itemRow(documentRef, data, item, rerender) {
 async function renderInventoryCard(card, { documentRef = document } = {}) {
   if (!card || card.hidden || !inventoryCommand(card)) return;
   if (card.dataset.inventoryRichRendering === 'true') return;
+  // Claim the canonical identity before awaiting dashboard I/O. The simple chat shell may
+  // rewrite the visible kicker to THREADBOUND while this fetch is in flight; presentation
+  // text must not erase the semantic card family or cancel the render.
+  card.dataset.inventoryRichCard = 'true';
+  card.dataset.richCardKind = 'inventory';
   card.dataset.inventoryRichRendering = 'true';
   try {
     const data = await api('/api/dashboard');
@@ -288,7 +294,6 @@ async function renderInventoryCard(card, { documentRef = document } = {}) {
     } else {
       const rerender = async () => {
         card.querySelector('.inventory-rich-layout')?.remove();
-        delete card.dataset.inventoryRichCard;
         await renderInventoryCard(card, { documentRef });
       };
       for (const item of data.inventory) list.append(itemRow(documentRef, data, item, rerender));
@@ -319,7 +324,11 @@ export function installInventoryRichCard({ documentRef = document } = {}) {
     scheduled = false;
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card || card.hidden || !inventoryCommand(card)) return;
-    if (card.querySelector('.inventory-rich-layout')) return;
+    if (card.querySelector('.inventory-rich-layout')) {
+      card.dataset.inventoryRichCard = 'true';
+      card.dataset.richCardKind = 'inventory';
+      return;
+    }
     renderInventoryCard(card, { documentRef });
   };
   const schedule = () => {
@@ -328,7 +337,7 @@ export function installInventoryRichCard({ documentRef = document } = {}) {
     queueMicrotask(decorate);
   };
   const observer = new MutationObserver(schedule);
-  observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-rich-card-kind'] });
   schedule();
   return () => observer.disconnect();
 }
