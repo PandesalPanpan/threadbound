@@ -11,7 +11,7 @@ export class SQLiteInventoryRepository {
       const player = this.db.prepare('SELECT equipped_item_id FROM players WHERE id = ?').get(playerId);
       if (!player) throw new Error('Player not found.');
       if (player.equipped_item_id === itemId) {
-        const error = new Error('Equipped gear cannot be salvaged. Equip another item first.');
+        const error = new Error('Equipped item cannot be salvaged. Equip another item first.');
         error.code = 'equipped_item_cannot_be_salvaged';
         throw error;
       }
@@ -25,6 +25,7 @@ export class SQLiteInventoryRepository {
         name: item.name,
         rarity: item.rarity,
         attackBonus: item.attack_bonus,
+        gold: threadDust,
         threadDust,
       };
     } catch (error) {
@@ -36,12 +37,12 @@ export class SQLiteInventoryRepository {
   upgradeItem({ playerId, itemId, expectedLevel, cost, attackIncrease, attunementCode }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      // This check belongs inside the same write transaction as Dust spending and item
+      // This check belongs inside the same write transaction as Gold spending and item
       // mutation. The Service Layer keeps its earlier check for fast feedback, but only
       // this lock closes the race with a dungeon start committing at the same time.
       const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
       if (activeRun) {
-        const error = new Error('Finish the active dungeon before Tempering a relic.');
+        const error = new Error('Finish the active dungeon before upgrading equipment.');
         error.code = 'relic_upgrade_during_run';
         throw error;
       }
@@ -54,32 +55,33 @@ export class SQLiteInventoryRepository {
       const effect = JSON.parse(item.effect_json || '{}');
       const storedLevel = Number(effect.upgradeLevel || 0);
       if (storedLevel !== expectedLevel) {
-        const error = new Error('Relic progression changed before this Temper could be applied. Refresh and retry.');
+        const error = new Error('Equipment progression changed before this Upgrade could be applied. Refresh and retry.');
         error.code = 'stale_relic_upgrade';
         throw error;
       }
       if (Number(player.thread_dust || 0) < cost) {
-        const error = new Error(`You need ${cost} Thread Dust to Temper this relic.`);
+        const error = new Error(`You need ${cost} Gold to Upgrade this item.`);
         error.code = 'insufficient_thread_dust';
         throw error;
       }
 
       effect.upgradeLevel = expectedLevel + 1;
-      effect.attunementCode ||= attunementCode;
+      if (attunementCode) effect.attunementCode ||= attunementCode;
       const updated = this.db.prepare('UPDATE items SET attack_bonus = attack_bonus + ?, effect_json = ? WHERE id = ? AND player_id = ?').run(
         attackIncrease,
         JSON.stringify(effect),
         itemId,
         playerId,
       );
-      if (updated.changes !== 1) throw new Error('Relic changed before it could be Tempered.');
+      if (updated.changes !== 1) throw new Error('Item changed before it could be Upgraded.');
       this.db.prepare('UPDATE players SET thread_dust = thread_dust - ? WHERE id = ?').run(cost, playerId);
       this.db.exec('COMMIT');
       return {
         id: item.id,
         playerId: item.player_id,
         level: effect.upgradeLevel,
-        attunementCode: effect.attunementCode,
+        attunementCode: effect.attunementCode || null,
+        goldSpent: cost,
         threadDustSpent: cost,
         attackIncrease,
       };
