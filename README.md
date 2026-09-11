@@ -2,9 +2,15 @@
 
 Threadbound is a persistent cooperative **chat-first RPG**. In normal mode it authenticates through Threaded and treats Threaded as the authoritative owner of Honey. For development, it can also run standalone with guarded local authentication.
 
+## Canonical product direction
+
+Threadbound is now migrating toward an **EPIC-RPG-clear standalone two-player adventure RPG**: simple commands and readable receipts on the surface, with richer server-authoritative progression underneath. The Adventure Stream remains the primary application shell.
+
+The canonical ordered product/execution checklist is **`docs/THREADBOUND_MASTER_PLAN.md`**. New gameplay work must follow that plan before expanding Arc content. In particular, the project is deliberately moving toward plain player-facing terms such as **Gold, Inventory, Equipment, Upgrade, Heal, Bank, Area, Town, Quest, Adventure, Duel, Profile, and Leaderboard**. Existing Thread Dust / Temper / Relic terminology below describes the currently shipped legacy-compatible implementation and is being migrated incrementally rather than rewritten unsafely in one step.
+
 ## Current player loop
 
-The default player experience is intentionally smaller than the legacy tactical prototype:
+The currently shipped player experience is intentionally smaller than the legacy tactical prototype:
 
 ```text
 Hunt -> earn Thread Dust / find permanent gear
@@ -14,6 +20,8 @@ Hunt -> earn Thread Dust / find permanent gear
      -> Attack until clear or defeated
      -> reward -> Inventory -> repeat
 ```
+
+This is the migration baseline, not the final target loop. See `docs/THREADBOUND_MASTER_PLAN.md` for the replacement foundation and ordered milestones.
 
 The Adventure Stream is the primary play surface. Players can type commands directly or use at most two contextual actions near the composer.
 
@@ -25,7 +33,7 @@ Current contextual behavior:
 - zero Hunt HP: **Recovery + Shop**;
 - active simple dungeon: **Attack** only.
 
-Typed commands remain available even when they are not one of the two surfaced actions. See `docs/SIMPLE_GAMEPLAY_LOOP.md` and `docs/CHAT_META_LOOP_V2.md`.
+Typed commands remain available even when they are not one of the two surfaced actions. See `docs/SIMPLE_GAMEPLAY_LOOP.md` and `docs/CHAT_META_LOOP_V2.md` for the current migration baseline.
 
 ## Hunts, recovery, and Mara's shop
 
@@ -88,7 +96,7 @@ Generated lore/content follows a constrained draft -> validate/review -> publish
 
 Arc Manifests are portable, untrusted content contracts for new narrative, encounters, rewards, achievements, and allowlisted visual references. The Arc Workshop can validate and publish manifests in local development without requiring a paid AI API.
 
-See `docs/ARC_MANIFEST_WORKFLOW.md` and the manifest schema for the current authoring contract.
+See `docs/ARC_MANIFEST_WORKFLOW.md` and the manifest schema for the current authoring contract. The master plan intentionally postpones new Arc expansion until the simpler Gold/Level/Equipment/Inventory/Shop/Bank/automatic-combat foundation is coherent end-to-end.
 
 ## Architecture
 
@@ -113,7 +121,7 @@ Node 22's built-in SQLite adapter stores players (including persistent Hunt heal
 
 Authenticated HTTP sessions use the SQLite-backed `SQLiteSessionStore`, so a signed `threadbound.sid` can resolve after application/database restart and multiple Node processes sharing the same authoritative SQLite file can read the same session state.
 
-Explicit long-lived run expiry/abandon semantics remain a production gate; see `docs/PLAYER_EXPERIENCE_ACCEPTANCE.md`.
+Explicit long-lived run expiry/abandon semantics remain a production gate; see `docs/PLAYER_EXPERIENCE_ACCEPTANCE.md` and Phase 12 of the master plan.
 
 ## Running locally without Threaded
 
@@ -135,7 +143,7 @@ npm install
 npm start
 ```
 
-Open `http://127.0.0.1:3001`. The home screen offers Local Weaver A-D. To test co-op manually, sign in as one Weaver in a normal browser and another in a private/incognito window.
+Open `http://127.0.0.1:3001`. The home screen currently offers Local Weaver A-D; this legacy player-facing naming is part of the planned terminology migration. To test co-op manually, sign in as one local profile in a normal browser and another in a private/incognito window.
 
 Local auth has two hard boundaries:
 
@@ -156,12 +164,23 @@ npm run test:e2e
 
 GitHub Actions gates pushes and pull requests on syntax checks, Node/unit-contract tests, and the active Chromium Playwright suites.
 
-The browser acceptance coverage includes the chat-first Hunt loop, compact receipts, recovery/shop UI, contextual Inventory navigation, simple solo/co-op dungeons, realtime continuity, Codex behavior, Arc Workshop behavior, and representative mobile screenshots.
+The browser acceptance coverage includes the current chat-first Hunt loop, compact receipts, recovery/shop UI, contextual Inventory navigation, simple solo/co-op dungeons, realtime continuity, Codex behavior, Arc Workshop behavior, and representative mobile screenshots.
 
 `docs/PLAYER_EXPERIENCE_ACCEPTANCE.md` remains the broader pre-merge experience/reliability checklist. HUMAN items still require real-player evidence; automation does not prove that a loop is fun.
 
 ## Next increments
 
-The current foundation now has the simplified gameplay loop, contextual meta navigation, durable recovery economy, server-owned shop catalog, semantic visual assets, realtime co-op continuity, living Codex, and Arc Manifest pipeline.
+Do **not** use this section to improvise the roadmap. Follow the ordered checklist in `docs/THREADBOUND_MASTER_PLAN.md`.
 
-The next high-value work should expand **breadth and progression without re-inflating combat UI**: more validated Arc content and visual coverage, additional server-catalog shop/material uses, stronger inventory comparison/Tempering clarity, balance/playtest passes, and the remaining production run-expiry/abandon policy.
+The immediate target is the migration-safe foundation:
+
+```text
+profile -> hunt -> level / earn Gold
+        -> inventory / equip / upgrade
+        -> shop / buy / sell
+        -> bank
+        -> heal
+        -> hunt again
+```
+
+with generated sprites, polished chat receipts/cards, server-authoritative progression, simple terminology, and green automated/mobile gates. Areas, Adventure, Towns, Quests, simulated adventurers, Duels, gambling, and new Arc content follow in their ordered phases.
