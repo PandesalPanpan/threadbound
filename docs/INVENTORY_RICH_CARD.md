@@ -1,8 +1,8 @@
 # Inventory rich card
 
-Status: **M2-02 implementation complete pending green merge/main verification.**
+Status: **M2-02 complete.** Merged through PR #49 at `43d7cf7c02e8d94d91d463e32127f4560e36c1af`; post-merge `main` CI #1111 passed both unit/contract and complete Chromium E2E gates.
 
-The Adventure Stream remains Threadbound's application shell. `inventory` / `gear` now resolve to one app-like Inventory card inside the stream rather than a separate product screen.
+The Adventure Stream remains Threadbound's application shell. `inventory` / `gear` resolve to one app-like Inventory card inside the stream rather than a separate product screen.
 
 ## Presentation contract
 
@@ -16,13 +16,15 @@ The Inventory card consumes the existing server-authoritative `/api/dashboard` p
 - Equip, Upgrade, and Sell presentation actions;
 - current Gold and health-potion context.
 
-The browser does not calculate authoritative gameplay outcomes. Equip and Upgrade use the existing server commands. The M2-02 Sell control is a migration-safe presentation over the existing authoritative salvage transaction; the dedicated canonical Sell transaction remains M7-03 and must not be pulled forward merely to satisfy this card milestone.
+The browser does not calculate authoritative gameplay outcomes. Equip and Upgrade use existing server commands. The M2-02 Sell control is a migration-safe presentation over the existing authoritative salvage transaction; the dedicated canonical Sell transaction remains M7-03 and must not be pulled forward merely to satisfy this card milestone.
 
 ## Compatibility
 
-`gear` remains a command alias for `inventory`. The card normalizes the visible command/title to Inventory while preserving old endpoint/storage names where required for migration safety.
+`gear` remains a typed command alias for `inventory`. The canonical rich-card identity is `inventory`; compatibility observers must not regress it to the legacy `gear` identity. Old endpoint/storage names remain only where migration safety requires them.
 
 The legacy dashboard Inventory section remains a secondary compatibility surface. M2-02 does not turn it into the primary application shell and does not restore tactical combat controls.
+
+Honey-purchased Training Cache items remain durable purchase grants and are not used as disposable Sell/salvage fixtures. Browser acceptance earns ordinary Upgrade Gold through authoritative Hunts while keeping the purchase grant intact.
 
 ## Browser acceptance
 
@@ -37,6 +39,8 @@ The legacy dashboard Inventory section remains a secondary compatibility surface
 - maintains 44px action targets and avoids horizontal overflow;
 - writes `ux-review/inventory-rich-card-mobile.png` for visual inspection.
 
+The green PR gate ran `npm run check`, `npm test`, and the complete active Chromium E2E suite. The representative 390px Inventory screenshot was inspected before merge and retained the chat-first hierarchy without reintroducing the tactical dashboard.
+
 ## Handoff
 
-After PR CI is green, inspect the mobile screenshot, merge, verify `main` CI, then mark M2-02 complete in `docs/THREADBOUND_MASTER_PLAN.md`. The next ordered milestone is M2-03, the Shop rich card.
+M2-02 is complete. Continue **M2-03 — Shop rich card**. Build it on the reusable rich-card primitive and the existing server-owned `ShopService`/catalog; keep prices, affordability, purchases, and future equipment stock authoritative on the server, and do not pull the later Arc/Town stock-generation milestone forward.
