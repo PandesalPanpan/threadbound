@@ -1,9 +1,11 @@
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search';
 
 function commandFromCard(card) {
-  const kicker = card.querySelector('.thread-reply-header span')?.textContent || '';
-  const match = kicker.match(/\/([a-z0-9-]+)/i);
-  return match?.[1]?.toLowerCase() || 'panel';
+  const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
+  const slashIndex = kicker.lastIndexOf('/');
+  if (slashIndex < 0) return card.dataset.richCardKind || 'panel';
+  const candidate = kicker.slice(slashIndex + 1).trim().split(/\s+/)[0]?.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  return candidate || card.dataset.richCardKind || 'panel';
 }
 
 function titleFromCard(card) {
@@ -103,13 +105,20 @@ export function installRichChatCardCompatibility({ documentRef = document } = {}
   if (!stream) return () => {};
   installStyles(documentRef);
 
+  let scheduled = false;
   const decorateCurrent = () => {
+    scheduled = false;
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (card && !card.hidden && card.childElementCount > 0) decorateRichChatCard(card);
   };
-  const observer = new MutationObserver(decorateCurrent);
+  const scheduleDecoration = () => {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(decorateCurrent);
+  };
+  const observer = new MutationObserver(scheduleDecoration);
   observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
-  decorateCurrent();
+  scheduleDecoration();
   return () => observer.disconnect();
 }
 
