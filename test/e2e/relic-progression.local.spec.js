@@ -78,10 +78,12 @@ test('mobile Inventory can Upgrade earned equipment with Gold without tactical a
 
   await openInventory(page);
   const before = await dashboard(page);
+  expect(Object.keys(before.character.equipment)).toEqual(['weapon', 'helmet', 'armor', 'boots', 'accessory']);
   const equipment = before.inventory[0];
   const originalAttack = equipment.attackBonus;
   expect(equipment.progression.level).toBe(0);
   expect(equipment.progression.nextCost).toBe(8);
+  await expect(page.getByTestId(`equipment-slot-${equipment.id}`).first()).toHaveText('Weapon');
 
   const upgrade = page.getByTestId(`upgrade-${equipment.id}`);
   await expect(upgrade).toBeVisible({ timeout: 5000 });
@@ -123,11 +125,15 @@ test('mobile Inventory can Upgrade earned equipment with Gold without tactical a
   // A run fixes the equipment loadout. Even re-equipping the same owned item through the
   // compatibility route is rejected until that run ends, so another item cannot swap in.
   await post(page, `/api/items/${equipment.id}/equip`);
+  const equippedDashboard = await dashboard(page);
+  expect(equippedDashboard.character.equipment.weapon.id).toBe(equipment.id);
+  expect(equippedDashboard.character.equippedItem.id).toBe(equipment.id);
   await post(page, '/api/dungeons/frayed-hollow/start');
   const blockedEquip = await page.request.post(`/api/items/${equipment.id}/equip`);
   expect(blockedEquip.status()).toBe(409);
   expect((await blockedEquip.json()).error).toBe('item_equip_during_run');
   const locked = await dashboard(page);
   expect(locked.activeRun).not.toBeNull();
+  expect(locked.character.equipment.weapon.id).toBe(equipment.id);
   expect(locked.character.equippedItem.id).toBe(equipment.id);
 });
