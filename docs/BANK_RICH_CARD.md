@@ -1,6 +1,6 @@
 # Bank rich card
 
-Status: **M2-05 implementation candidate; mark complete only after merge and green post-merge `main` CI.**
+Status: **M2-05 complete.** PR #53 is merged and post-merge `main` CI run #1191 passed the syntax/unit-contract and complete active Chromium gates.
 
 ## Player contract
 
@@ -44,6 +44,8 @@ M2-05 intentionally does **not** implement death penalties. M4-06 will consume b
 - no horizontal overflow and 44px action sizing;
 - `ux-review/bank-rich-card-mobile.png` for visual review.
 
+The generated 390px screenshot was inspected before merge. The Bank balance hierarchy, amount control, and Deposit/Withdraw actions remain readable inside the Adventure Stream without horizontal overflow or a separate dashboard surface.
+
 ## Handoff
 
-After this milestone is merged and post-merge `main` CI is green, mark **M2-05** complete in `docs/THREADBOUND_MASTER_PLAN.md`. The next ordered task is **M2-06 — collapse superseded historical rich cards to compact immutable snapshots**. Do not move into automatic combat or new Arc content first.
+M2-05 is complete. The next ordered task is **M2-06 — collapse superseded historical rich cards to compact immutable snapshots**. Preserve the newest-card-only interactivity rule and do not move into automatic combat or new Arc content first.
