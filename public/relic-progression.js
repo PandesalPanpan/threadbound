@@ -1,7 +1,8 @@
 const commandCard = document.querySelector('[data-testid="stream-command-card"]');
 const inventory = document.querySelector('#inventory');
+const character = document.querySelector('#character');
 
-if (commandCard || inventory) {
+if (commandCard || inventory || character) {
   const style = document.createElement('style');
   style.textContent = `
     .relic-progress-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
@@ -12,6 +13,11 @@ if (commandCard || inventory) {
     .relic-temper-note { margin:0; color:var(--muted); font-size:.62rem; line-height:1.35; }
     .relic-temper-error { margin:0; padding:6px 8px; border-radius:8px; background:rgba(255,100,124,.08); color:#ff9cac; font-size:.65rem; }
     .relic-temper-success { margin:0; padding:6px 8px; border-radius:8px; background:rgba(100,230,169,.08); color:#9ff2c4; font-size:.65rem; }
+    .derived-stat-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:10px; }
+    .derived-stat-chip { min-width:0; padding:7px 5px; border:1px solid rgba(179,109,255,.2); border-radius:9px; background:rgba(179,109,255,.06); text-align:center; }
+    .derived-stat-chip span { display:block; color:var(--muted); font-size:.55rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .derived-stat-chip strong { display:block; margin-top:2px; font-size:.82rem; }
+    @media (max-width:520px) { .derived-stat-strip { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   `;
   document.head.append(style);
 
@@ -26,6 +32,36 @@ if (commandCard || inventory) {
 
   function clearOwned(container) {
     container.querySelectorAll('[data-relic-progression-owned="true"]').forEach((node) => node.remove());
+  }
+
+  function renderCharacterStats(data) {
+    if (!character || !data.character?.stats) return;
+    character.querySelector('[data-derived-stats="true"]')?.remove();
+    const stats = data.character.stats;
+    const values = [
+      ['Attack', stats.attack],
+      ['Defense', stats.defense],
+      ['Max HP', stats.maxHp],
+      ['Speed', stats.speed],
+      ['Crit', `${stats.critChancePercent}%`],
+    ];
+    const strip = document.createElement('div');
+    strip.className = 'derived-stat-strip';
+    strip.dataset.derivedStats = 'true';
+    strip.dataset.testid = 'character-derived-stats';
+    strip.setAttribute('aria-label', 'Character stats');
+    for (const [label, value] of values) {
+      const chip = document.createElement('div');
+      chip.className = 'derived-stat-chip';
+      chip.dataset.testid = `character-stat-${label.toLowerCase().replace(/\s+/g, '-')}`;
+      const name = document.createElement('span');
+      name.textContent = label;
+      const amount = document.createElement('strong');
+      amount.textContent = String(value);
+      chip.append(name, amount);
+      strip.append(chip);
+    }
+    character.append(strip);
   }
 
   function itemSlot(item) {
@@ -195,6 +231,7 @@ if (commandCard || inventory) {
   async function refreshEquipment() {
     try {
       const data = await dashboard();
+      renderCharacterStats(data);
       if (commandCard && !commandCard.hidden) {
         const rows = [...commandCard.querySelectorAll('.thread-gear-row')];
         if (rows.length) enhanceRows(rows, data, { stream: true });
