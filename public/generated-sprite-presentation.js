@@ -230,7 +230,7 @@ if (stream) {
         const item = itemForName(metadata.itemName) || { id: metadata.itemId, name: metadata.itemName };
         loot.append(createSpriteElement(itemSpriteFrame(item), { className: 'thread-generated-item-sprite', label: metadata.itemName }));
         const lootCopy = document.createElement('span');
-        lootCopy.textContent = `${metadata.itemName} · +${metadata.itemAttackBonus || 0} ATK`;
+        lootCopy.textContent = `You got ${metadata.itemName} · +${metadata.itemAttackBonus || 0} ATK`;
         loot.append(lootCopy);
         copy.append(loot);
       }

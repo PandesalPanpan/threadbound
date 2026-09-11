@@ -1,4 +1,4 @@
-import { createSpriteElement, enemySprite, itemSpriteFrame, weaverSprite } from './sprite-catalog.js';
+import { createSpriteElement, enemySprite, itemSpriteFrame, weaverSprite, weaverSpriteFrame } from './sprite-catalog.js';
 
 const streamEl = document.querySelector('#stream');
 
@@ -40,6 +40,8 @@ if (streamEl) {
   let contextRefreshTimer = null;
   let activeLocalCommand = null;
   let keepLogPinnedUntil = 0;
+  let recoveryFetchedAt = Date.now();
+  let recoveryCountdownTimer = null;
 
   const BARE_COMMANDS = new Set(['help', 'status', 'gear', 'inventory', 'party', 'codex', 'attack', 'guard', 'interrupt', 'mend', 'revive', 'run', 'upgrade', 'heal', 'potion', 'rest', 'recovery', 'shop', 'buy potion']);
 
@@ -155,16 +157,40 @@ if (streamEl) {
   }
 
   function clearCommandCard() {
+    clearInterval(recoveryCountdownTimer);
     activeLocalCommand = null;
     commandCardEl.hidden = true;
     commandCardEl.innerHTML = '';
   }
 
   function durationLabel(seconds) {
-    const value = Math.max(0, Number(seconds || 0));
-    if (value < 60) return `${Math.ceil(value)}s`;
-    const minutes = Math.ceil(value / 60);
-    return `${minutes}m`;
+    const value = Math.max(0, Math.ceil(Number(seconds || 0)));
+    if (value < 60) return `${value}s`;
+    return `${Math.floor(value / 60)}m ${value % 60}s`;
+  }
+
+  function remainingRecoverySeconds(field) {
+    const elapsed = Math.floor((Date.now() - recoveryFetchedAt) / 1000);
+    return Math.max(0, Number(dashboard.character.healthRecovery?.[field] || 0) - elapsed);
+  }
+
+  function updateRecoveryCountdown() {
+    const next = commandCardEl.querySelector('[data-recovery-next]');
+    const full = commandCardEl.querySelector('[data-recovery-full]');
+    if (!next || !full) return;
+    const nextSeconds = remainingRecoverySeconds('nextHealthInSeconds');
+    next.textContent = durationLabel(nextSeconds);
+    full.textContent = durationLabel(remainingRecoverySeconds('fullHealthInSeconds'));
+    if (nextSeconds === 0) {
+      clearInterval(recoveryCountdownTimer);
+      refreshContext().then(renderRecoveryCard).catch(() => {});
+    }
+  }
+
+  function startRecoveryCountdown() {
+    clearInterval(recoveryCountdownTimer);
+    updateRecoveryCountdown();
+    recoveryCountdownTimer = setInterval(updateRecoveryCountdown, 1000);
   }
 
   function renderRecoveryCard() {
@@ -173,7 +199,7 @@ if (streamEl) {
     const full = character.currentHealth >= character.maxHealth;
     const card = openCommandCard('rest', 'Recovery', `${character.currentHealth}/${character.maxHealth} HP · ${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'}`);
     const summary = document.createElement('p');
-    summary.textContent = full ? 'You are fully healed.' : `Next HP in ${durationLabel(timing.nextHealthInSeconds)} · fully healed in ${durationLabel(timing.fullHealthInSeconds)}.`;
+    summary.innerHTML = full ? 'You are fully healed.' : 'Next HP in <strong data-recovery-next></strong> · fully healed in <strong data-recovery-full></strong>.';
     card.append(summary);
     const actions = document.createElement('div');
     actions.className = 'thread-card-actions';
@@ -188,6 +214,42 @@ if (streamEl) {
       renderRecoveryCard();
     }, { testId: 'stream-buy-health-potion', disabled: character.threadDust < 5 });
     card.append(actions);
+    if (!full) startRecoveryCountdown();
+  }
+
+  function shopOffer({ name, description, visualAssetId, price, quantity, sku }) {
+    const offer = document.createElement('article');
+    offer.className = 'thread-shop-offer';
+    offer.append(createSpriteElement(itemSpriteFrame({ visualAssetId, id: sku, name }), { className: 'thread-generated-item-sprite', label: name }));
+    const copy = document.createElement('div');
+    copy.innerHTML = `<strong>${name}</strong><small>${description}</small>`;
+    const buy = addActionButton(offer, `Buy · ${price} Dust`, async () => {
+      await api('/api/shop/health-potion', { method: 'POST', body: JSON.stringify({ sku }) });
+      await refreshContext();
+      renderShopCard();
+    }, { testId: `stream-shop-${sku}`, disabled: dashboard.character.threadDust < price });
+    buy.classList.add('thread-shop-buy');
+    offer.append(copy, buy);
+    offer.dataset.quantity = String(quantity);
+    return offer;
+  }
+
+  function renderShopCard() {
+    clearInterval(recoveryCountdownTimer);
+    const card = openCommandCard('shop', 'Mara’s field shop', `${dashboard.character.threadDust} Thread Dust`);
+    const vendor = document.createElement('div');
+    vendor.className = 'thread-shop-vendor';
+    vendor.append(createSpriteElement(weaverSpriteFrame('threadbound-shopkeeper', { variant: 'female' }), { className: 'thread-shopkeeper', label: 'Mara, field merchant' }));
+    const greeting = document.createElement('p');
+    greeting.innerHTML = '<strong>Mara</strong><br><span>“Patch the weave before it breaks.”</span>';
+    vendor.append(greeting);
+    const shelf = document.createElement('div');
+    shelf.className = 'thread-shop-shelf';
+    shelf.append(
+      shopOffer({ name: 'Health potion', description: '1 potion · restores 12 Hunt HP', visualAssetId: 'item.health-potion.v1', price: 5, quantity: 1, sku: 'single' }),
+      shopOffer({ name: 'Potion satchel', description: '3 potions · save 3 Dust', visualAssetId: 'item.greater-health-potion.v1', price: 12, quantity: 3, sku: 'satchel' }),
+    );
+    card.append(vendor, shelf);
   }
 
   function revealCommandCard() {
@@ -557,6 +619,7 @@ if (streamEl) {
 
   async function refreshContext({ rerenderCommand = false } = {}) {
     dashboard = await api('/api/dashboard');
+    recoveryFetchedAt = Date.now();
     renderSuggestions();
     renderCombatDock();
     if (rerenderCommand && activeLocalCommand === 'gear') renderGearCard();
@@ -593,7 +656,7 @@ if (streamEl) {
           break;
         case '/rest':
         case '/recovery': renderRecoveryCard(); break;
-        case '/shop': renderRecoveryCard(); break;
+        case '/shop': renderShopCard(); break;
         case '/buy':
           if (args.join(' ').toLowerCase() !== 'potion') throw new Error('Try “buy potion”.');
           await api('/api/shop/health-potion', { method: 'POST' });

@@ -20,12 +20,13 @@ async function expectVisibleAtlasFrame(sprite) {
       'enemies-v1': { columns: 8, rows: 2 },
     };
     const atlasId = element.dataset.spriteAtlas;
+    const visualAssetId = element.dataset.visualAssetId;
     const layout = atlasLayouts[atlasId];
     const frameIndex = Number(element.dataset.spriteFrame);
     const style = getComputedStyle(element);
     const imageMatch = style.backgroundImage.match(/^url\(["']?(.*?)["']?\)$/);
     const rect = element.getBoundingClientRect();
-    if (!layout || !Number.isInteger(frameIndex) || !imageMatch) {
+    if (!imageMatch || (!visualAssetId && (!layout || !Number.isInteger(frameIndex)))) {
       return { visible: false, uniqueColors: 0, channelRange: 0, width: rect.width, height: rect.height };
     }
 
@@ -35,28 +36,32 @@ async function expectVisibleAtlasFrame(sprite) {
     const image = await new Promise((resolve, reject) => {
       const candidate = new Image();
       candidate.onload = () => resolve(candidate);
-      candidate.onerror = () => reject(new Error(`Could not decode sprite atlas ${atlasId}`));
+      candidate.onerror = () => reject(new Error(`Could not decode sprite asset ${visualAssetId || atlasId}`));
       candidate.src = objectUrl;
     });
-    const frameWidth = image.naturalWidth / layout.columns;
-    const frameHeight = image.naturalHeight / layout.rows;
-    const column = frameIndex % layout.columns;
-    const row = Math.floor(frameIndex / layout.columns);
     const canvas = document.createElement('canvas');
     canvas.width = 48;
     canvas.height = 48;
     const context = canvas.getContext('2d', { willReadFrequently: true });
-    context.drawImage(
-      image,
-      column * frameWidth,
-      row * frameHeight,
-      frameWidth,
-      frameHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
+    if (visualAssetId) {
+      context.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0, canvas.width, canvas.height);
+    } else {
+      const frameWidth = image.naturalWidth / layout.columns;
+      const frameHeight = image.naturalHeight / layout.rows;
+      const column = frameIndex % layout.columns;
+      const row = Math.floor(frameIndex / layout.columns);
+      context.drawImage(
+        image,
+        column * frameWidth,
+        row * frameHeight,
+        frameWidth,
+        frameHeight,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+    }
     URL.revokeObjectURL(objectUrl);
 
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -140,12 +145,12 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await hunt.click();
   const huntReceipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
   await expect(huntReceipt).toBeVisible({ timeout: 5000 });
-  await expect(huntReceipt).toContainText('Thread Dust');
-  await expect(huntReceipt).toContainText(/remaining HP is \d+\/40/);
+  await expect(huntReceipt.locator('.stream-hunt-chip.reward')).toContainText('Dust');
+  await expect(huntReceipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
   await expect(huntReceipt.locator('.stream-app-badge')).toHaveText('APP');
   const huntSprite = huntReceipt.getByTestId('stream-hunt-sprite');
   await expect(huntSprite).toBeVisible({ timeout: 5000 });
-  await expect(huntSprite).toHaveAttribute('data-sprite-atlas', 'enemies-v1');
+  await expect(huntSprite).toHaveAttribute('data-visual-asset-id', /^mob\./);
   await expectVisibleAtlasFrame(huntSprite);
   const afterHunt = await dashboard(context);
   expect(afterHunt.character.threadDust).toBeGreaterThan(0);
@@ -164,7 +169,7 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await expect(attack).toBeVisible({ timeout: 5000 });
   await expect(page.locator('.simple-loop-action')).toHaveCount(1);
   await expect(page.getByTestId('stream-hunt')).toHaveCount(0);
-  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or /attack…');
+  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or type attack…');
 
   const hpBefore = run.activeRun.enemy.hp;
   await attack.click();
@@ -177,10 +182,10 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   const generatedWeaver = page.getByTestId('stream-generated-weaver-sprite').last();
   const generatedEnemy = page.getByTestId('stream-generated-enemy-sprite').last();
   await expect(generatedWeaver).toBeVisible({ timeout: 5000 });
-  await expect(generatedWeaver).toHaveAttribute('data-sprite-atlas', 'male-weavers-v1');
+  await expect(generatedWeaver).toHaveAttribute('data-visual-asset-id', /^character\./);
   await expectVisibleAtlasFrame(generatedWeaver);
   await expect(generatedEnemy).toBeVisible();
-  await expect(generatedEnemy).toHaveAttribute('data-sprite-atlas', 'enemies-v1');
+  await expect(generatedEnemy).toHaveAttribute('data-visual-asset-id', /^(mob|boss)\./);
   await expectVisibleAtlasFrame(generatedEnemy);
 
   await page.getByTestId('stream-message').fill('/guard');

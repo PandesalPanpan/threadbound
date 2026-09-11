@@ -97,6 +97,16 @@
 .thread-equipped-badge { max-width:140px; color:var(--green); font-size:.68rem; text-align:right; }
 
 .thread-card-actions, .thread-party-join { display:flex; gap:7px; flex-wrap:wrap; margin-top:9px; }
+.thread-shop-vendor { display:grid; grid-template-columns:52px minmax(0,1fr); gap:10px; align-items:center; padding:8px 0 11px; }
+.thread-shop-vendor .thread-shopkeeper { width:52px; min-width:52px; }
+.thread-shop-vendor p { margin:0; }
+.thread-shop-vendor span { color:var(--muted); font-size:.73rem; }
+.thread-shop-shelf { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.thread-shop-offer { display:grid; grid-template-columns:42px minmax(0,1fr); gap:8px; align-items:center; padding:9px; border:1px solid var(--line-soft); border-radius:11px; background:rgba(5,10,20,.58); }
+.thread-shop-offer .thread-generated-sprite { width:42px; min-width:42px; }
+.thread-shop-offer strong, .thread-shop-offer small { display:block; }
+.thread-shop-offer small { margin-top:2px; color:var(--muted); font-size:.68rem; line-height:1.3; }
+.thread-shop-offer .thread-shop-buy { grid-column:1 / -1; width:100%; margin:0; }
 .thread-party-join input { min-height:44px; flex:1 1 140px; }
 .thread-party-member { padding:7px 9px; border-bottom:1px solid var(--line-soft); color:var(--muted); font-size:.8rem; }
 .thread-codex-search { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; }
@@ -132,6 +142,7 @@
   .stream-entry-system { margin-block:4px; }
   .stream-command-card { padding:9px; }
   .thread-status-grid { grid-template-columns:1fr; }
+  .thread-shop-shelf { grid-template-columns:1fr; }
   .thread-gear-row { grid-template-columns:40px minmax(0,1fr); }
   .thread-gear-actions { grid-column:1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .thread-gear-actions button { min-height:44px; }
