@@ -18,7 +18,7 @@ async function clearSoloRun(page) {
     const state = await dashboard(page);
     const run = state.activeRun;
     if (!run) return state;
-    if (run.phase === 'failed') throw new Error('Solo progression setup wiped before earning a relic.');
+    if (run.phase === 'failed') throw new Error('Solo progression setup wiped before earning equipment.');
     if (run.phase === 'event') {
       const choice = run.runEvent?.choices?.find((candidate) => /quiet|bind|safe|mend/i.test(`${candidate.id} ${candidate.name}`)) || run.runEvent?.choices?.[0];
       if (!choice) throw new Error('Run event exposed no choice.');
@@ -33,7 +33,7 @@ async function clearSoloRun(page) {
       continue;
     }
     if (!['combat', 'boss'].includes(run.phase)) throw new Error(`Unexpected run phase: ${run.phase}`);
-    if ((run.viewer?.hp ?? 0) <= 0) throw new Error('Solo Weaver is down.');
+    if ((run.viewer?.hp ?? 0) <= 0) throw new Error('Solo player is down.');
 
     if (run.enemyIntent) {
       if (run.enemyIntent.reaction === 'interrupt') await post(page, `/api/runs/${run.id}/interrupt`);
@@ -49,15 +49,15 @@ async function clearSoloRun(page) {
   throw new Error('Solo run did not finish within the action guard.');
 }
 
-async function openGear(page) {
+async function openInventory(page) {
   await page.reload();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
-  await page.getByTestId('mobile-game-nav').getByText('Gear', { exact: true }).click();
+  await page.getByTestId('mobile-game-nav').getByText('Inventory', { exact: true }).click();
   await expect(page.locator('body')).toHaveAttribute('data-game-view', 'gear');
   await expect(page.getByTestId('inventory-item').first()).toBeVisible();
 }
 
-test('mobile Gear can permanently attune and Temper an earned relic with Thread Dust', async ({ page }) => {
+test('mobile Inventory can Upgrade earned equipment with Gold without tactical attunement choices', async ({ page }) => {
   test.setTimeout(120000);
   let browserDashboardRequests = 0;
   page.on('request', (request) => {
@@ -73,58 +73,61 @@ test('mobile Gear can permanently attune and Temper an earned relic with Thread 
 
   const completed = await clearSoloRun(page);
   expect(completed.activeRun).toBeNull();
-  expect(completed.character.threadDust).toBe(15);
+  expect(completed.character.gold).toBe(15);
   expect(completed.inventory).toHaveLength(1);
 
-  await openGear(page);
+  await openInventory(page);
   const before = await dashboard(page);
-  const relic = before.inventory[0];
-  const originalAttack = relic.attackBonus;
-  expect(relic.progression.level).toBe(0);
-  expect(relic.progression.nextCost).toBe(8);
+  const equipment = before.inventory[0];
+  const originalAttack = equipment.attackBonus;
+  expect(equipment.progression.level).toBe(0);
+  expect(equipment.progression.nextCost).toBe(8);
 
-  const bulwark = page.getByTestId(`temper-${relic.id}-bulwark`);
-  await expect(bulwark).toBeVisible({ timeout: 5000 });
-  await expect(bulwark).toContainText('Bulwark Weave');
-  const box = await bulwark.boundingBox();
+  const upgrade = page.getByTestId(`upgrade-${equipment.id}`);
+  await expect(upgrade).toBeVisible({ timeout: 5000 });
+  await expect(upgrade).toContainText('Upgrade 1/');
+  await expect(upgrade).toContainText('+1 Attack');
+  await expect(upgrade).toContainText('8 Gold');
+  const box = await upgrade.boundingBox();
   expect(box?.height || 0).toBeGreaterThanOrEqual(44);
-  await expect(page.getByTestId(`temper-${relic.id}-disruptor`)).toBeVisible();
-  await expect(page.getByTestId(`temper-${relic.id}-executioner`)).toBeVisible();
-  await expect(page.getByTestId(`temper-${relic.id}-mender`)).toBeVisible();
+  await expect(page.locator('[data-testid^="temper-"]')).toHaveCount(0);
+  await expect(page.getByText(/Bulwark Weave|Disruptor Weave|Executioner Weave|Mender Weave/)).toHaveCount(0);
 
-  // Once the owner UI and relic enhancer settle, the enhancer must not observe its own
-  // chips/actions and continuously refetch the dashboard.
+  // Once the owner UI and equipment enhancer settle, the enhancer must not observe its
+  // own chips/actions and continuously refetch the dashboard.
   await page.waitForTimeout(250);
   browserDashboardRequests = 0;
   await page.waitForTimeout(450);
   expect(browserDashboardRequests).toBeLessThanOrEqual(1);
 
-  await bulwark.click();
-  await expect.poll(async () => (await dashboard(page)).character.threadDust, { timeout: 5000 }).toBe(7);
+  await upgrade.click();
+  await expect.poll(async () => (await dashboard(page)).character.gold, { timeout: 5000 }).toBe(7);
   const after = await dashboard(page);
-  const upgraded = after.inventory.find((item) => item.id === relic.id);
+  const upgraded = after.inventory.find((item) => item.id === equipment.id);
   expect(upgraded.attackBonus).toBe(originalAttack + 1);
   expect(upgraded.effect.upgradeLevel).toBe(1);
-  expect(upgraded.effect.attunementCode).toBe('bulwark');
-  expect(upgraded.progression.attunement.name).toBe('Bulwark Weave');
+  expect(upgraded.effect.attunementCode ?? null).toBeNull();
+  expect(upgraded.progression.attunement).toBeNull();
 
-  await openGear(page);
-  const progress = page.getByTestId(`relic-progress-${relic.id}`).first();
-  await expect(progress).toContainText(upgraded.progression.canUpgrade ? `TEMPER 1/${upgraded.progression.maxLevel}` : `MASTERWORK 1/${upgraded.progression.maxLevel}`);
-  await expect(progress).toContainText('Bulwark Weave');
+  await openInventory(page);
+  const progress = page.getByTestId(`equipment-progress-${equipment.id}`).first();
+  await expect(progress).toContainText(upgraded.progression.canUpgrade ? `UPGRADE 1/${upgraded.progression.maxLevel}` : `MAX 1/${upgraded.progression.maxLevel}`);
+  await expect(progress).not.toContainText(/Bulwark|Disruptor|Executioner|Mender/);
   await expect(page.getByTestId('thread-dust')).toHaveText('7');
+  await expect(page.locator('body')).not.toContainText('Relic pouch');
+  await expect(page.locator('body')).not.toContainText(/\bTemper\b/);
 
   const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(bodyWidth).toBeLessThanOrEqual(390);
 
-  // A run fixes the build loadout. Even re-equipping the same owned relic through the
-  // public route is rejected until that run ends, so another relic cannot be swapped in.
-  await post(page, `/api/items/${relic.id}/equip`);
+  // A run fixes the equipment loadout. Even re-equipping the same owned item through the
+  // compatibility route is rejected until that run ends, so another item cannot swap in.
+  await post(page, `/api/items/${equipment.id}/equip`);
   await post(page, '/api/dungeons/frayed-hollow/start');
-  const blockedEquip = await page.request.post(`/api/items/${relic.id}/equip`);
+  const blockedEquip = await page.request.post(`/api/items/${equipment.id}/equip`);
   expect(blockedEquip.status()).toBe(409);
   expect((await blockedEquip.json()).error).toBe('item_equip_during_run');
   const locked = await dashboard(page);
   expect(locked.activeRun).not.toBeNull();
-  expect(locked.character.equippedItem.id).toBe(relic.id);
+  expect(locked.character.equippedItem.id).toBe(equipment.id);
 });

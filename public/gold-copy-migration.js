@@ -1,3 +1,5 @@
+import './equipment-copy-migration.js';
+
 // Presentation-only strangler adapter for M1-01.
 // Persisted/API compatibility may still say Thread Dust while the player-facing product
 // uses Gold. Remove this adapter after all producing projections have migrated.

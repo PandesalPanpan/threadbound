@@ -83,29 +83,34 @@ function withIntent(run, { focus = 0 } = {}) {
   return new AdventureRun(state);
 }
 
-test('relic progression is rarity-capped and first Temper locks a build attunement', () => {
-  const relic = item('policy', { rarity: 'uncommon' });
-  assert.deepEqual(relicProgression(relic), {
+test('equipment progression is rarity-capped and new Upgrade is neutral by default', () => {
+  const equipment = item('policy', { rarity: 'uncommon' });
+  assert.deepEqual(relicProgression(equipment), {
     level: 0,
     maxLevel: 2,
     nextCost: 8,
     canUpgrade: true,
-    needsAttunement: true,
+    needsAttunement: false,
     attunementCode: null,
     attunement: null,
   });
-  assert.throws(() => planRelicUpgrade(relic), (error) => error.code === 'invalid_relic_attunement');
-  const first = planRelicUpgrade(relic, 'bulwark');
+
+  const first = planRelicUpgrade(equipment);
   assert.equal(first.cost, 8);
   assert.equal(first.nextLevel, 1);
-  assert.equal(first.attunementCode, 'bulwark');
+  assert.equal(first.attunementCode, null);
+  assert.equal(first.attunement, null);
 
-  const tempered = item('policy', { rarity: 'uncommon', upgradeLevel: 1, attunementCode: 'bulwark' });
-  assert.equal(planRelicUpgrade(tempered).cost, 14);
-  assert.throws(() => planRelicUpgrade(tempered, 'mender'), (error) => error.code === 'relic_attunement_locked');
+  // Old API callers and persisted items can still carry the tactical attunements until
+  // their compatibility path is eventually removed.
+  const legacyFirst = planRelicUpgrade(equipment, 'bulwark');
+  assert.equal(legacyFirst.attunementCode, 'bulwark');
+  const legacyUpgraded = item('policy', { rarity: 'uncommon', upgradeLevel: 1, attunementCode: 'bulwark' });
+  assert.equal(planRelicUpgrade(legacyUpgraded).cost, 14);
+  assert.throws(() => planRelicUpgrade(legacyUpgraded, 'mender'), (error) => error.code === 'relic_attunement_locked');
 });
 
-test('Tempering atomically spends Dust, raises Attack, persists attunement, and rejects stale replay', () => {
+test('Upgrading atomically spends Gold, raises Attack, keeps new items neutral, and rejects stale replay', () => {
   const gameRepository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'p1' });
   const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'u1', displayName: 'Weaver' });
   gameRepository.addThreadDust(player.id, 30);
@@ -116,16 +121,17 @@ test('Tempering atomically spends Dust, raises Attack, persists attunement, and 
   eventBus.subscribe((event) => events.push(event));
   const service = new InventoryService({ inventoryRepository, gameRepository, eventBus });
 
-  const result = service.upgrade(player.id, 'temper', 'disruptor');
+  const result = service.upgrade(player.id, 'temper');
   assert.equal(result.upgraded.attackBonus, 5);
   assert.equal(result.upgraded.effect.upgradeLevel, 1);
-  assert.equal(result.upgraded.effect.attunementCode, 'disruptor');
+  assert.equal(result.upgraded.effect.attunementCode, null);
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 22);
   assert.equal(events.at(-1).type, 'ItemUpgraded');
-  assert.equal(events.at(-1).attunementName, 'Disruptor Weave');
+  assert.equal(events.at(-1).goldSpent, 8);
+  assert.equal(events.at(-1).attunementName, null);
 
   assert.throws(
-    () => inventoryRepository.upgradeItem({ playerId: player.id, itemId: 'temper', expectedLevel: 0, cost: 8, attackIncrease: 1, attunementCode: 'disruptor' }),
+    () => inventoryRepository.upgradeItem({ playerId: player.id, itemId: 'temper', expectedLevel: 0, cost: 8, attackIncrease: 1, attunementCode: null }),
     (error) => error.code === 'stale_relic_upgrade',
   );
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 22);
@@ -133,7 +139,7 @@ test('Tempering atomically spends Dust, raises Attack, persists attunement, and 
   gameRepository.close();
 });
 
-test('insufficient Dust and active runs leave relic progression and equipment unchanged', () => {
+test('insufficient Gold and active runs leave equipment progression unchanged', () => {
   const gameRepository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'p1' });
   const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'u1', displayName: 'Weaver' });
   gameRepository.addItem(player.id, item('locked', { rarity: 'rare', attackBonus: 4 }));
@@ -142,7 +148,11 @@ test('insufficient Dust and active runs leave relic progression and equipment un
   const service = new InventoryService({ inventoryRepository, gameRepository, eventBus });
   const gameService = new GameService({ repository: gameRepository, eventBus });
 
-  assert.throws(() => service.upgrade(player.id, 'locked', 'bulwark'), (error) => error.code === 'insufficient_thread_dust');
+  assert.throws(() => service.upgrade(player.id, 'locked'), (error) => {
+    assert.equal(error.code, 'insufficient_thread_dust');
+    assert.match(error.message, /Gold/);
+    return true;
+  });
   assert.equal(gameRepository.getItem('locked').attackBonus, 4);
   assert.equal(gameRepository.getItem('locked').effect.upgradeLevel, 0);
 
@@ -156,9 +166,9 @@ test('insufficient Dust and active runs leave relic progression and equipment un
     dungeonId: 'frayed-hollow',
   });
   gameRepository.createRun(run.toJSON());
-  assert.throws(() => service.upgrade(player.id, 'locked', 'bulwark'), (error) => error.code === 'relic_upgrade_during_run');
+  assert.throws(() => service.upgrade(player.id, 'locked'), (error) => error.code === 'relic_upgrade_during_run');
   assert.throws(
-    () => inventoryRepository.upgradeItem({ playerId: player.id, itemId: 'locked', expectedLevel: 0, cost: 8, attackIncrease: 1, attunementCode: 'bulwark' }),
+    () => inventoryRepository.upgradeItem({ playerId: player.id, itemId: 'locked', expectedLevel: 0, cost: 8, attackIncrease: 1, attunementCode: null }),
     (error) => error.code === 'relic_upgrade_during_run',
   );
   assert.throws(() => gameService.equipItem(player.id, 'locked'), (error) => error.code === 'item_equip_during_run');
@@ -170,14 +180,14 @@ test('insufficient Dust and active runs leave relic progression and equipment un
   gameRepository.close();
 });
 
-test('Bulwark turns a successful Guard into two Focus instead of one', () => {
+test('legacy Bulwark still turns a successful Guard into two Focus instead of one', () => {
   const run = withIntent(soloRun(), { focus: 0 });
   const outcome = run.guard({ playerId: 'a', attunementCode: 'bulwark', now: '2026-09-08T00:00:01.000Z' });
   assert.equal(outcome.state.participants[0].focus, 2);
   assert.ok(outcome.events.some((event) => event.type === 'RelicAttunementTriggered' && event.effect === 'bonus_focus' && event.amount === 1));
 });
 
-test('Disruptor turns a successful Interrupt into measurable next-hit damage', () => {
+test('legacy Disruptor still produces measurable next-hit damage', () => {
   const run = withIntent(soloRun(), { focus: 0 });
   const interrupted = run.interrupt({ playerId: 'a', attunementCode: 'disruptor' });
   assert.equal(interrupted.state.participants[0].reactionDamageBonus, 3);
@@ -186,7 +196,7 @@ test('Disruptor turns a successful Interrupt into measurable next-hit damage', (
   assert.equal(hpBefore - attack.state.enemy.hp, 9);
 });
 
-test('Executioner rewards the Exposed → Severing Knot combo with a primed follow-up', () => {
+test('legacy Executioner combo remains readable for persisted tactical runs', () => {
   const run = soloRun();
   const state = run.toJSON();
   state.participants[0].focus = 4;
@@ -200,7 +210,7 @@ test('Executioner rewards the Exposed → Severing Knot combo with a primed foll
   assert.equal(hpBefore - attack.state.enemy.hp, 10);
 });
 
-test('Mender adds two recovery per living Weaver and keeps contribution totals honest', () => {
+test('legacy Mender recovery remains readable for persisted tactical runs', () => {
   const run = partyRun();
   const state = run.toJSON();
   for (const participant of state.participants) {

@@ -21,13 +21,13 @@ export class InventoryService {
     const base = SALVAGE_BY_RARITY[String(item.rarity || '').toLowerCase()] ?? SALVAGE_BY_RARITY.common;
     const threadDust = base + Math.max(0, Math.floor(Number(item.attackBonus || 0) / 2));
     const salvaged = this.inventoryRepository.salvageItem({ playerId, itemId, threadDust });
-    this.eventBus.publish({ type: 'ItemSalvaged', playerId, itemId, itemName: item.name, rarity: item.rarity, threadDust });
-    return { salvaged, dashboard: null };
+    this.eventBus.publish({ type: 'ItemSalvaged', playerId, itemId, itemName: item.name, rarity: item.rarity, gold: threadDust, threadDust });
+    return { salvaged, gold: threadDust, threadDust, dashboard: null };
   }
 
   upgrade(playerId, itemId, attunementCode = null) {
     if (this.gameRepository.getActiveRun(playerId)) {
-      const error = new Error('Finish the active dungeon before Tempering a relic.');
+      const error = new Error('Finish the active dungeon before upgrading equipment.');
       error.code = 'relic_upgrade_during_run';
       throw error;
     }
@@ -51,11 +51,19 @@ export class InventoryService {
       level: plan.nextLevel,
       maxLevel: plan.maxLevel,
       attackIncrease: plan.attackIncrease,
+      goldSpent: plan.cost,
+      // Migration aliases for persisted/event consumers that still use old names.
       threadDustSpent: plan.cost,
       attunementCode: plan.attunementCode,
-      attunementName: plan.attunement.name,
+      attunementName: plan.attunement?.name || null,
     });
-    return { upgraded, temper: result, dashboard: null };
+    return {
+      upgraded,
+      upgrade: result,
+      // Legacy API alias while older browser/tests migrate.
+      temper: result,
+      dashboard: null,
+    };
   }
 }
 
