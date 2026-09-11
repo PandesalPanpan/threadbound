@@ -21,9 +21,14 @@ async function dashboard(context) {
 }
 
 async function earnGold(context, minimum) {
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    const state = await dashboard(context);
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    let state = await dashboard(context);
     if (state.character.gold >= minimum) return state;
+    if (state.character.currentHealth <= 12 && state.character.healthPotions > 0) {
+      const heal = await context.request.post('/api/recovery/potion');
+      expect(heal.ok()).toBe(true);
+      state = await dashboard(context);
+    }
     const hunt = await context.request.post('/api/hunt');
     expect(hunt.ok()).toBe(true);
   }
@@ -45,18 +50,20 @@ test('Shop rich card presents equipment and potions with sprites, affordability,
   await login(page);
 
   let card = await openShop(page);
+  const starting = await dashboard(context);
   await expect(card).toContainText('Mara');
   await expect(card).not.toContainText(/\bDust\b/);
   await expect(card.getByTestId('shop-offer')).toHaveCount(3);
-  await expect(card.getByTestId('stream-shop-bronze-sword')).toContainText('18 Gold');
+  await expect(card.getByTestId('stream-shop-bronze-sword')).toContainText('8 Gold');
   await expect(card.getByTestId('stream-shop-single')).toContainText('5 Gold');
   await expect(card.getByTestId('stream-shop-satchel')).toContainText('12 Gold');
-  await expect(card.getByTestId('stream-shop-bronze-sword')).toBeDisabled();
+  if (starting.character.gold < 8) await expect(card.getByTestId('stream-shop-bronze-sword')).toBeDisabled();
+  else await expect(card.getByTestId('stream-shop-bronze-sword')).toBeEnabled();
   await expect(card.getByRole('img', { name: 'Bronze Sword' })).toBeVisible();
   await expect(card.getByRole('img', { name: 'Health Potion' })).toBeVisible();
   await expect(card.getByTestId('stream-shop-sell-equipment')).toBeVisible();
 
-  await earnGold(context, 18);
+  await earnGold(context, 8);
   card = await openShop(page);
   const before = await dashboard(context);
   await expect(card.getByTestId('stream-shop-bronze-sword')).toBeEnabled();
@@ -65,11 +72,11 @@ test('Shop rich card presents equipment and potions with sprites, affordability,
 
   await expect.poll(async () => (await dashboard(context)).inventory.length).toBe(before.inventory.length + 1);
   const after = await dashboard(context);
-  const purchased = after.inventory.find((item) => item.source === 'shop:bronze-sword');
+  const purchased = after.inventory.find((item) => item.source === 'shop:bronze-sword' && !before.inventory.some((existing) => existing.id === item.id));
   expect(purchased).toBeTruthy();
   expect(purchased.name).toBe('Bronze Sword');
   expect(purchased.slot).toBe('weapon');
-  expect(after.character.gold).toBe(before.character.gold - 18);
+  expect(after.character.gold).toBe(before.character.gold - 8);
   await expect.poll(async () => page.getByTestId('stream-system-entry').count()).toBeGreaterThan(streamEntries);
 
   card = await openShop(page);
@@ -78,10 +85,10 @@ test('Shop rich card presents equipment and potions with sprites, affordability,
   await expect(card.getByTestId('inventory-rich-card')).toBeVisible();
   await expect(card.locator(`[data-item-id="${purchased.id}"]`)).toContainText('Bronze Sword');
 
-  await openShop(page);
-  const width = await page.getByTestId('stream-command-card').evaluate((element) => element.scrollWidth);
+  card = await openShop(page);
+  const width = await card.evaluate((element) => element.scrollWidth);
   expect(width).toBeLessThanOrEqual(390);
-  const actions = page.getByTestId('stream-command-card').locator('button[data-rich-card-action="true"]');
+  const actions = card.locator('button[data-rich-card-action="true"]');
   for (let index = 0; index < await actions.count(); index += 1) {
     const box = await actions.nth(index).boundingBox();
     expect(box?.height || 0).toBeGreaterThanOrEqual(44);
