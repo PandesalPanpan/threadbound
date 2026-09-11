@@ -105,10 +105,16 @@ function installStyles(documentRef) {
     .rich-chat-card > .rich-chat-card-header { margin-bottom:0; }
     .rich-chat-card-actions { min-width:0; }
     .rich-chat-card-action { min-height:44px; }
-    .rich-chat-card-dismiss { min-width:44px; min-height:44px; flex:0 0 44px; }
+    .threadbound-player #stream .rich-chat-card .rich-chat-card-dismiss {
+      width:44px !important;
+      min-width:44px !important;
+      height:44px !important;
+      min-height:44px !important;
+      flex:0 0 44px;
+    }
     @media (max-width:720px) {
       .rich-chat-card { gap:9px; }
-      .rich-chat-card-action, .rich-chat-card-dismiss { min-height:44px; }
+      .rich-chat-card-action { min-height:44px; }
     }
   `;
   documentRef.head.append(style);
