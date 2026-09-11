@@ -1,3 +1,5 @@
+// Legacy attunements remain readable for already-persisted tactical items. New default
+// equipment upgrades no longer require players to choose these obsolete combat paths.
 export const RELIC_ATTUNEMENTS = Object.freeze({
   bulwark: Object.freeze({
     code: 'bulwark',
@@ -63,33 +65,39 @@ export function relicProgression(item) {
     maxLevel,
     nextCost,
     canUpgrade: level < maxLevel,
-    needsAttunement: level === 0,
+    // Compatibility metadata may still carry an old tactical attunement, but new
+    // equipment no longer requires one before its first Upgrade.
+    needsAttunement: false,
     attunementCode: attunement?.code || null,
     attunement: attunement ? { ...attunement } : null,
   };
 }
 
 export function planRelicUpgrade(item, requestedAttunementCode = null) {
-  if (!item?.id) throw new Error('Relic is required for upgrading.');
+  if (!item?.id) throw new Error('Equipment item is required for upgrading.');
   const progression = relicProgression(item);
   if (!progression.canUpgrade) {
-    const error = new Error('This relic is already at its maximum Temper level.');
+    const error = new Error('This item is already at its maximum Upgrade level.');
     error.code = 'relic_max_level';
     throw error;
   }
 
   let attunementCode = progression.attunementCode;
-  if (progression.needsAttunement) {
-    attunementCode = String(requestedAttunementCode || '').toLowerCase();
-    if (!RELIC_ATTUNEMENTS[attunementCode]) {
-      const error = new Error('Choose a valid relic attunement before the first Temper.');
+  const requested = requestedAttunementCode ? String(requestedAttunementCode).toLowerCase() : null;
+  if (attunementCode && requested && requested !== attunementCode) {
+    const error = new Error('Upgraded legacy equipment cannot change its attunement.');
+    error.code = 'relic_attunement_locked';
+    throw error;
+  }
+  if (!attunementCode && requested) {
+    if (!RELIC_ATTUNEMENTS[requested]) {
+      const error = new Error('Choose a valid legacy equipment attunement.');
       error.code = 'invalid_relic_attunement';
       throw error;
     }
-  } else if (requestedAttunementCode && String(requestedAttunementCode).toLowerCase() !== attunementCode) {
-    const error = new Error('A Tempered relic cannot change attunement.');
-    error.code = 'relic_attunement_locked';
-    throw error;
+    // Old clients may still explicitly send an attunement. Preserve that contract for
+    // migration safety, while the new default UI sends no attunement at all.
+    attunementCode = requested;
   }
 
   return {
@@ -99,6 +107,6 @@ export function planRelicUpgrade(item, requestedAttunementCode = null) {
     cost: progression.nextCost,
     attackIncrease: 1,
     attunementCode,
-    attunement: { ...RELIC_ATTUNEMENTS[attunementCode] },
+    attunement: attunementCode ? { ...RELIC_ATTUNEMENTS[attunementCode] } : null,
   };
 }
