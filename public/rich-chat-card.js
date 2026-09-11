@@ -20,7 +20,9 @@ function titleFromCard(card) {
 
 export function decorateRichChatCard(card, { command = null } = {}) {
   if (!card) return null;
-  const kind = command || commandFromCard(card);
+  // A canonical card family owns its identity once its adapter has rendered. Explicit
+  // compatibility commands (notably legacy `gear`) must not overwrite that identity.
+  const kind = card.dataset.inventoryRichCard === 'true' ? 'inventory' : (command || commandFromCard(card));
   const title = titleFromCard(card);
   card.classList.add('rich-chat-card');
   card.dataset.richCardKind = kind;
