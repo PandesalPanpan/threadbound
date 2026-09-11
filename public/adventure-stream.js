@@ -8,14 +8,14 @@ if (streamEl) {
       <div><span>LIVE THREAD</span><h2>Adventure Stream</h2></div>
       <small data-testid="stream-connection">Connecting…</small>
     </div>
-    <p class="stream-hint">Message your party or use the suggested actions. Type <strong>/</strong> to play entirely through the thread.</p>
+    <p class="stream-hint">Message your party or use the suggested actions. Type <strong>help</strong> or <strong>/help</strong> to play entirely through the thread.</p>
     <section class="stream-combat-dock" data-testid="stream-combat-dock" aria-label="Live combat controls" hidden></section>
     <div class="adventure-stream-log" data-testid="adventure-stream-log" role="log" aria-live="polite" aria-relevant="additions"></div>
     <section class="stream-command-card" data-testid="stream-command-card" aria-live="polite" hidden></section>
     <div class="stream-suggestions" data-testid="stream-suggestions" aria-label="Suggested actions"></div>
     <form class="adventure-stream-composer" data-testid="stream-composer">
       <label class="sr-only" for="stream-message">Message the shared stream or type a command</label>
-      <input id="stream-message" data-testid="stream-message" maxlength="500" autocomplete="off" placeholder="Message… or type / for actions">
+      <input id="stream-message" data-testid="stream-message" maxlength="500" autocomplete="off" placeholder="Message… or type help for actions">
       <button type="submit" data-testid="stream-send">Send</button>
     </form>
     <p class="stream-error" data-testid="stream-error" role="alert" hidden></p>
@@ -39,6 +39,28 @@ if (streamEl) {
   let dashboard = null;
   let contextRefreshTimer = null;
   let activeLocalCommand = null;
+  let keepLogPinnedUntil = 0;
+
+  const BARE_COMMANDS = new Set(['help', 'status', 'gear', 'inventory', 'party', 'codex', 'attack', 'guard', 'interrupt', 'mend', 'revive', 'run', 'upgrade']);
+
+  function normalizedCommand(value) {
+    const trimmed = String(value || '').trim();
+    if (trimmed.startsWith('/')) return trimmed;
+    return BARE_COMMANDS.has(trimmed.toLowerCase()) ? `/${trimmed}` : null;
+  }
+
+  function setLogToBottom() {
+    const previousBehavior = logEl.style.scrollBehavior;
+    logEl.style.scrollBehavior = 'auto';
+    logEl.scrollTop = logEl.scrollHeight;
+    logEl.style.scrollBehavior = previousBehavior;
+  }
+
+  function pinLogToBottom() {
+    keepLogPinnedUntil = performance.now() + 1500;
+    setLogToBottom();
+    requestAnimationFrame(() => requestAnimationFrame(setLogToBottom));
+  }
 
   function showError(message = '') {
     errorEl.textContent = message;
@@ -107,7 +129,7 @@ if (streamEl) {
     }
     row.append(avatar, content);
     logEl.append(row);
-    if (!initial || logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 180) logEl.scrollTop = logEl.scrollHeight;
+    if (!initial || logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 180) pinLogToBottom();
   }
 
   async function api(path, options = {}) {
@@ -587,7 +609,7 @@ if (streamEl) {
   }
 
   inputEl.addEventListener('input', () => {
-    const commandMode = inputEl.value.trimStart().startsWith('/');
+    const commandMode = Boolean(normalizedCommand(inputEl.value));
     sendEl.textContent = commandMode ? 'Run' : 'Send';
     suggestionsEl.classList.toggle('command-mode', commandMode);
   });
@@ -596,10 +618,11 @@ if (streamEl) {
     event.preventDefault();
     const body = inputEl.value.trim();
     if (!body || sendEl.disabled) return;
-    if (body.startsWith('/')) {
+    const command = normalizedCommand(body);
+    if (command) {
       inputEl.value = '';
       sendEl.textContent = 'Send';
-      await executeCommand(body);
+      await executeCommand(command);
       inputEl.focus();
       return;
     }
@@ -618,6 +641,15 @@ if (streamEl) {
       inputEl.focus();
     }
   });
+
+  // Sprite images can increase a newly appended combat receipt after it was first
+  // anchored. Keep the user's explicit command result pinned through that load.
+  logEl.addEventListener('load', () => {
+    if (performance.now() <= keepLogPinnedUntil) pinLogToBottom();
+  }, true);
+  new MutationObserver(() => {
+    if (performance.now() <= keepLogPinnedUntil) pinLogToBottom();
+  }).observe(logEl, { childList: true, subtree: true });
 
   function connectSseFallback() {
     return new Promise((resolve) => {

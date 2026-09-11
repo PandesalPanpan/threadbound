@@ -16,22 +16,26 @@ async function dashboard(context) {
   return response.json();
 }
 
-test('slash-command replies scroll fully into view as their content grows', async ({ browser }) => {
+test('command results scroll fully into view as their content grows', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 500 } });
   const page = await context.newPage();
 
   try {
     await login(page, 'a');
-    await page.getByTestId('stream-message').fill('/help');
+    await page.getByTestId('stream-message').fill('help');
     await page.getByTestId('stream-send').click();
 
     const reply = page.getByTestId('stream-command-card');
     await expect(reply).toBeVisible();
-    await expect(reply).toContainText('/dungeon');
-    await expect.poll(async () => reply.evaluate((element) => {
-      const bounds = element.getBoundingClientRect();
-      return Math.ceil(bounds.bottom) <= window.innerHeight;
-    })).toBe(true);
+    await expect(reply).toContainText('dungeon');
+    await page.getByTestId('stream-message').fill('hunt');
+    await page.getByTestId('stream-send').click();
+    const receipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
+    await expect(receipt).toBeVisible();
+    await expect(receipt.locator('.thread-visual-asset')).toBeVisible();
+    await expect.poll(async () => page.getByTestId('adventure-stream-log').evaluate((element) => (
+      Math.ceil(element.scrollHeight - element.scrollTop - element.clientHeight)
+    ))).toBeLessThanOrEqual(1);
   } finally {
     await context.close();
   }

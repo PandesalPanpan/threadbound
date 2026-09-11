@@ -26,7 +26,7 @@ test('mobile play stays chat-first and Gear stays a clean secondary surface', as
   await expect(page.locator('#character')).toBeHidden();
   await expect(page.locator('#dungeon')).toBeHidden();
   await expect(page.getByText(/PRIVATE THREAD REPLY/i)).toHaveCount(0);
-  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or /hunt…');
+  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or type hunt…');
 
   // Gear remains one tap away rather than competing with the chat. Inventory art
   // is presentation-only and must come from the generated equipment atlas rather

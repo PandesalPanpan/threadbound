@@ -139,6 +139,13 @@ if (stream) {
   let dashboard = null;
   let syncing = false;
   let resyncRequested = false;
+  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'help', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
+
+  function normalizedCommand(value) {
+    const trimmed = String(value || '').trim();
+    if (trimmed.startsWith('/')) return trimmed;
+    return BARE_COMMANDS.has(trimmed.toLowerCase()) ? `/${trimmed}` : null;
+  }
   let scheduled = null;
   let acting = false;
   let lastSignature = '';
@@ -257,7 +264,7 @@ if (stream) {
     commandCard.innerHTML = '';
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
-    help.innerHTML = '<strong>Simple loop</strong><br>/hunt — quick solo battle for Dust and gear<br>/dungeon — enter the harder stat-check dungeon<br>/attack — attack the current dungeon enemy<br>Gear, Party, World, and Codex live in the bottom navigation.';
+    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Slash-prefixed versions still work. Gear, Party, World, and Codex live in the bottom navigation.';
     commandCard.append(help);
     decorateFigmaSurface();
   }
@@ -285,19 +292,19 @@ if (stream) {
     if (!noRun && !simple) return;
 
     if (noRun) {
-      addButton('/hunt', 'hunt', hunt, 'stream-hunt');
+      addButton('Hunt', 'hunt', hunt, 'stream-hunt');
       const { dungeon, readiness } = firstDungeon();
       if (dungeon) {
         const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
         const current = Number(viewer?.attackPower ?? dashboard.character.attackPower ?? 0);
         const recommended = Number(readiness?.recommendedAttack ?? 9);
-        addButton(`/dungeon · ${current}/${recommended}`, 'dungeon', startDungeon, 'stream-start-dungeon');
+        addButton(`Dungeon · ${current}/${recommended}`, 'dungeon', startDungeon, 'stream-start-dungeon');
       }
       return;
     }
 
     if (['combat', 'boss'].includes(dashboard.activeRun.phase) && dashboard.activeRun.viewer?.hp > 0) {
-      addButton('/attack', 'attack', attack, 'stream-attack');
+      addButton('Attack', 'attack', attack, 'stream-attack');
     }
   }
 
@@ -329,7 +336,7 @@ if (stream) {
         lastSignature = signature;
         renderControls();
       }
-      if (input) input.placeholder = dashboard.activeRun?.simpleCombat ? 'Message party or /attack…' : 'Message party or /hunt…';
+      if (input) input.placeholder = dashboard.activeRun?.simpleCombat ? 'Message party or type attack…' : 'Message party or type hunt…';
       document.body.classList.toggle('simple-gameplay-loop', isSimpleSurface());
       restorePresentationAfterExternalRender();
     } finally {
@@ -348,8 +355,8 @@ if (stream) {
 
   if (composer && input) {
     composer.addEventListener('submit', async (event) => {
-      const raw = input.value.trim();
-      if (!raw.startsWith('/')) return;
+      const raw = normalizedCommand(input.value);
+      if (!raw) return;
       const [command, ...args] = raw.toLowerCase().split(/\s+/);
       const activeRun = dashboard?.activeRun || null;
       const simpleCombat = Boolean(activeRun?.simpleCombat);

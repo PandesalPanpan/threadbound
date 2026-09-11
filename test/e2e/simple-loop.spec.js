@@ -126,7 +126,7 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await expect(page.getByTestId('stream-guard')).toHaveCount(0);
   await expect(page.getByTestId('stream-interrupt')).toHaveCount(0);
   await expect(page.getByTestId('combat-skill-panel')).toHaveCount(0);
-  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or /hunt…');
+  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or type hunt…');
   await expect(page.locator('#character')).toBeHidden();
   await expect(page.locator('#dungeon')).toBeHidden();
   await expect(page.locator('.stream-heading')).toBeHidden();
