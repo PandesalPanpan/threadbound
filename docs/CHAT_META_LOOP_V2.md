@@ -51,18 +51,20 @@ New consumables/materials or rotating offers should extend the server catalog/se
 
 ## Acceptance gates
 
-- [ ] **META-01:** The contextual action bar never renders more than two actions outside combat.
-- [ ] **META-02:** A fresh Weaver still sees Hunt and Dungeon readiness without needing to open another screen.
-- [ ] **META-03:** When inventory contains permanent gear and Attack is below the dungeon recommendation, Inventory replaces Dungeon in the contextual pair while typed `dungeon` remains available.
-- [ ] **META-04:** When Attack reaches the dungeon recommendation and inventory exists, Dungeon and Inventory are the contextual pair.
-- [ ] **META-05:** Zero Hunt HP renders Recovery and Shop, with no dead-end Hunt action.
-- [ ] **META-06:** Inventory from the contextual action opens the same Relic pouch used by the `inventory` / `gear` command path.
-- [ ] **META-07:** Shop remains an illustrated in-thread merchant response and purchases update authoritative Dust/potion state.
-- [ ] **META-08:** Simple dungeons expose Attack only; meta actions do not compete with the current combat command.
-- [ ] **META-09:** The 390x844 mobile viewport has no horizontal overflow and all contextual controls retain 44px minimum touch targets.
-- [ ] **META-10:** Unit/contract tests and all Chromium Playwright suites remain green before merge.
-- [ ] **META-11:** Shop offer price/quantity/availability are projected by the server catalog/service; changing browser presentation cannot change the authoritative purchase terms.
+- [x] **META-01:** The contextual action bar never renders more than two actions outside combat.
+- [x] **META-02:** A fresh Weaver still sees Hunt and Dungeon readiness without needing to open another screen.
+- [x] **META-03:** When inventory contains permanent gear and Attack is below the dungeon recommendation, Inventory replaces Dungeon in the contextual pair while typed `dungeon` remains available.
+- [x] **META-04:** When Attack reaches the dungeon recommendation and inventory exists, Dungeon and Inventory are the contextual pair.
+- [x] **META-05:** Zero Hunt HP renders Recovery and Shop, with no dead-end Hunt action.
+- [x] **META-06:** Inventory from the contextual action opens the same Relic pouch used by the `inventory` / `gear` command path.
+- [x] **META-07:** Shop remains an illustrated in-thread merchant response and purchases update authoritative Dust/potion state.
+- [x] **META-08:** Simple dungeons expose Attack only; meta actions do not compete with the current combat command.
+- [x] **META-09:** The 390x844 mobile viewport has no horizontal overflow and all contextual controls retain 44px minimum touch targets.
+- [x] **META-10:** Unit/contract tests and Chromium Playwright suites are green on the merged implementation.
+- [x] **META-11:** Shop offer price/quantity/availability are projected by the server catalog/service; changing browser presentation cannot change the authoritative purchase terms.
 
 ## Verification
 
-`test/e2e/simple-loop.spec.js` is the primary browser gate for the contextual action policy. Recovery/shop behavior remains covered by `test/e2e/simple-loop.local.spec.js`, Hunt/recovery unit tests, and `test/shop-service.test.js` for catalog projection and purchase rules.
+The implementation landed through the contextual meta-loop and server-projected shop changes on `main`. `test/e2e/simple-loop.spec.js` is the primary browser gate for the contextual action policy. Recovery/shop behavior remains covered by `test/e2e/simple-loop.local.spec.js`, Hunt/recovery unit tests, and `test/shop-service.test.js` for catalog projection and purchase rules.
+
+Keep these boxes checked only while CI remains green and the implementation continues to satisfy the same contract. Any future change that intentionally alters one of these behaviors should update this document and its automated gate in the same pull request.
