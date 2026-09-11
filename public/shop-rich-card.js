@@ -38,7 +38,7 @@ function explicitCommand(card) {
   const copy = [...(card?.querySelectorAll('.thread-reply-header span') || [])]
     .map((node) => node.textContent || '')
     .join(' ');
-  const match = copy.match(/\/(shop|inventory|gear)\b/i);
+  const match = copy.match(/\/([a-z0-9-]+)\b/i);
   return match?.[1]?.toLowerCase() || null;
 }
 
@@ -64,7 +64,8 @@ function isShopCard(card) {
 
 function enhanceShopCard(card, { documentRef = document } = {}) {
   if (!card || card.hidden) return;
-  if (card.querySelector('.inventory-rich-layout') || explicitCommand(card) === 'inventory' || explicitCommand(card) === 'gear') {
+  const command = explicitCommand(card);
+  if (card.querySelector('.inventory-rich-layout') || (command && command !== 'shop')) {
     releaseShopIdentity(card);
     return;
   }

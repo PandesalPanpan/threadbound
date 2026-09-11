@@ -3,8 +3,10 @@ import './inventory-rich-card.js';
 import './profile-rich-card.js';
 import './bank-rich-card.js';
 import './bank-profile-sync.js';
+import './rich-card-visual-polish.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer';
+const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank']);
 
 function commandFromCard(card) {
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
@@ -13,6 +15,7 @@ function commandFromCard(card) {
     const candidate = kicker.slice(slashIndex + 1).trim().split(/\s+/)[0]?.toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (candidate) return candidate;
   }
+  if (CANONICAL_RICH_CARD_KINDS.has(card.dataset.richCardKind)) return card.dataset.richCardKind;
   if (card.dataset.shopRichCard === 'true') return 'shop';
   if (card.dataset.inventoryRichCard === 'true') return 'inventory';
   if (card.dataset.profileRichCard === 'true') return 'profile';
