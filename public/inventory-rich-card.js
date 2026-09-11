@@ -236,9 +236,6 @@ function itemRow(documentRef, data, item, rerender) {
 async function renderInventoryCard(card, { documentRef = document } = {}) {
   if (!card || card.hidden || !inventoryCommand(card)) return;
   if (card.dataset.inventoryRichRendering === 'true') return;
-  // Claim the canonical identity before awaiting dashboard I/O. The simple chat shell may
-  // rewrite the visible kicker to THREADBOUND while this fetch is in flight; presentation
-  // text must not erase the semantic card family or cancel the render.
   card.dataset.inventoryRichCard = 'true';
   card.dataset.richCardKind = 'inventory';
   card.dataset.inventoryRichRendering = 'true';
@@ -326,7 +323,7 @@ export function installInventoryRichCard({ documentRef = document } = {}) {
     if (!card || card.hidden || !inventoryCommand(card)) return;
     if (card.querySelector('.inventory-rich-layout')) {
       card.dataset.inventoryRichCard = 'true';
-      card.dataset.richCardKind = 'inventory';
+      if (card.dataset.richCardKind !== 'inventory') card.dataset.richCardKind = 'inventory';
       return;
     }
     renderInventoryCard(card, { documentRef });
@@ -337,7 +334,7 @@ export function installInventoryRichCard({ documentRef = document } = {}) {
     queueMicrotask(decorate);
   };
   const observer = new MutationObserver(schedule);
-  observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-rich-card-kind'] });
+  observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
   schedule();
   return () => observer.disconnect();
 }
