@@ -119,7 +119,7 @@ async function screenshot(page, name) {
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeon chat', async ({ page, context }) => {
+test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only dungeon chat', async ({ page, context }) => {
   preserveSpriteAtlases();
   await login(page);
 
@@ -153,13 +153,13 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await expect(huntSprite).toHaveAttribute('data-visual-asset-id', /^mob\./);
   await expectVisibleAtlasFrame(huntSprite);
   const afterHunt = await dashboard(context);
-  expect(afterHunt.character.threadDust).toBeGreaterThan(0);
+  expect(afterHunt.character.gold).toBeGreaterThan(0);
   await expect(page.locator('.simple-loop-action')).toHaveCount(2);
   if (afterHunt.inventory.length > 0) {
     const inventory = page.getByTestId('stream-inventory');
     await expect(inventory).toBeVisible();
     await inventory.click();
-    await expect(page.getByTestId('stream-command-card')).toContainText('Relic pouch');
+    await expect(page.getByTestId('stream-command-card')).toContainText('Inventory');
   } else {
     await expect(page.getByTestId('stream-start-dungeon')).toBeVisible();
   }
@@ -204,12 +204,12 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await screenshot(page, 'simple-loop-dungeon');
 });
 
-test('Gear and wiki Codex stay one tap away without adding extra play-surface controls', async ({ page }) => {
+test('Inventory and wiki Codex stay one tap away without adding extra play-surface controls', async ({ page }) => {
   await login(page);
 
   const bottomNav = page.getByTestId('mobile-game-nav');
   await expect(bottomNav).toBeVisible();
-  await bottomNav.getByText('Gear', { exact: true }).click();
+  await bottomNav.getByText('Inventory', { exact: true }).click();
   await expect(page.locator('body')).toHaveAttribute('data-game-view', 'gear');
   await expect(page.locator('#inventory')).toBeVisible();
 
