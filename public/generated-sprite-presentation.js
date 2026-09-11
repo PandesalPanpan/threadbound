@@ -218,10 +218,11 @@ if (stream) {
         element.textContent = text;
         return element;
       };
+      const gold = Number(metadata.gold ?? metadata.threadDust ?? 0);
       ledger.append(
         chip(`−${metadata.damageTaken || 0} HP`, 'loss'),
         chip(`${metadata.remainingHp}/${metadata.maxHp} HP`, 'health'),
-        chip(metadata.victory ? `+${metadata.threadDust || 0} Dust` : 'No reward', 'reward'),
+        chip(metadata.victory ? `+${gold} Gold` : 'No reward', 'reward'),
       );
       copy.append(kicker, title, ledger);
       if (metadata.itemName) {
