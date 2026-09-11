@@ -1,12 +1,11 @@
 import './inventory-rich-card.js';
+import './shop-rich-card.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search';
 
 function commandFromCard(card) {
-  // Inventory is a canonical rich-card family. Once the M2-02 adapter has rendered the
-  // card, do not let a later compatibility-observer pass regress its identity to the
-  // legacy `gear` alias because of observer ordering.
   if (card.dataset.inventoryRichCard === 'true') return 'inventory';
+  if (card.dataset.shopRichCard === 'true') return 'shop';
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
   const slashIndex = kicker.lastIndexOf('/');
   if (slashIndex < 0) return card.dataset.richCardKind || 'panel';
@@ -20,9 +19,12 @@ function titleFromCard(card) {
 
 export function decorateRichChatCard(card, { command = null } = {}) {
   if (!card) return null;
-  // A canonical card family owns its identity once its adapter has rendered. Explicit
-  // compatibility commands (notably legacy `gear`) must not overwrite that identity.
-  const kind = card.dataset.inventoryRichCard === 'true' ? 'inventory' : (command || commandFromCard(card));
+  const canonicalKind = card.dataset.inventoryRichCard === 'true'
+    ? 'inventory'
+    : card.dataset.shopRichCard === 'true'
+      ? 'shop'
+      : null;
+  const kind = canonicalKind || command || commandFromCard(card);
   const title = titleFromCard(card);
   card.classList.add('rich-chat-card');
   card.dataset.richCardKind = kind;
