@@ -6,6 +6,15 @@ import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 
+function healthRecovery(row, now = Date.now()) {
+  if (row.currentHealth >= row.maxHealth) return { nextHealthInSeconds: 0, fullHealthInSeconds: 0 };
+  const value = String(row.healthUpdatedAt || '');
+  const timestamp = new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`).getTime();
+  const elapsedSeconds = Number.isFinite(timestamp) ? Math.max(0, Math.floor((now - timestamp) / 1000)) : 0;
+  const nextHealthInSeconds = Math.max(1, 60 - (elapsedSeconds % 60));
+  return { nextHealthInSeconds, fullHealthInSeconds: nextHealthInSeconds + Math.max(0, row.maxHealth - row.currentHealth - 1) * 60 };
+}
+
 export class GameService {
   constructor({ repository, eventBus, arcManifestService = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
     this.repository = repository;
@@ -42,6 +51,7 @@ export class GameService {
         maxHealth: character.maxHealth,
         currentHealth: row.currentHealth,
         healthPotions: row.healthPotions,
+        healthRecovery: healthRecovery(row),
         threadDust: character.threadDust,
         equippedItem: decorateItem(equippedItem),
       },

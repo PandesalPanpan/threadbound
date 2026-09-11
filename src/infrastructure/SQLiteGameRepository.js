@@ -15,6 +15,7 @@ function decodeItem(row) {
     attackBonus: row.attack_bonus,
     effectCode: row.effect_code,
     effect: JSON.parse(row.effect_json),
+    visualAssetId: row.visual_asset_id || null,
     source: row.source,
     createdAt: row.created_at,
   };
@@ -110,6 +111,25 @@ export class SQLiteGameRepository {
       this.db.prepare('UPDATE players SET current_health = ?, health_potions = health_potions - 1, health_updated_at = ? WHERE id = ?').run(currentHealth, updatedAt, playerId);
       this.db.exec('COMMIT');
       return { healed, currentHealth, maxHealth: row.max_health, healthPotions: row.health_potions - 1 };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
+  }
+
+  buyHealthPotion(playerId, { cost = 5 } = {}) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.db.prepare('SELECT thread_dust, health_potions FROM players WHERE id = ?').get(playerId);
+      if (!row) throw new Error('Player not found.');
+      if (row.thread_dust < cost) {
+        const error = new Error(`You need ${cost} Thread Dust to buy a health potion.`);
+        error.code = 'insufficient_thread_dust';
+        throw error;
+      }
+      this.db.prepare('UPDATE players SET thread_dust = thread_dust - ?, health_potions = health_potions + 1 WHERE id = ?').run(cost, playerId);
+      this.db.exec('COMMIT');
+      return { cost, threadDust: row.thread_dust - cost, healthPotions: row.health_potions + 1 };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -282,8 +302,8 @@ export class SQLiteGameRepository {
 
   #insertItem(playerId, item, ignoreExisting) {
     const verb = ignoreExisting ? 'INSERT OR IGNORE' : 'INSERT';
-    this.db.prepare(`${verb} INTO items (id, player_id, definition_id, name, slot, rarity, attack_bonus, effect_code, effect_json, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-      item.id, playerId, item.definitionId, item.name, item.slot, item.rarity, item.attackBonus, item.effectCode, JSON.stringify(item.effect), item.source,
+    this.db.prepare(`${verb} INTO items (id, player_id, definition_id, name, slot, rarity, attack_bonus, effect_code, effect_json, visual_asset_id, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      item.id, playerId, item.definitionId, item.name, item.slot, item.rarity, item.attackBonus, item.effectCode, JSON.stringify(item.effect), item.visualAssetId || null, item.source,
     );
   }
 
@@ -340,6 +360,7 @@ export class SQLiteGameRepository {
         attack_bonus INTEGER NOT NULL,
         effect_code TEXT NOT NULL,
         effect_json TEXT NOT NULL,
+        visual_asset_id TEXT NULL,
         source TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
@@ -405,5 +426,7 @@ export class SQLiteGameRepository {
     if (!playerColumns.some((column) => column.name === 'current_health')) this.db.exec('ALTER TABLE players ADD COLUMN current_health INTEGER NOT NULL DEFAULT 40');
     if (!playerColumns.some((column) => column.name === 'health_potions')) this.db.exec('ALTER TABLE players ADD COLUMN health_potions INTEGER NOT NULL DEFAULT 1');
     if (!playerColumns.some((column) => column.name === 'health_updated_at')) this.db.exec("ALTER TABLE players ADD COLUMN health_updated_at TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'");
+    const itemColumns = this.db.prepare('PRAGMA table_info(items)').all();
+    if (!itemColumns.some((column) => column.name === 'visual_asset_id')) this.db.exec('ALTER TABLE items ADD COLUMN visual_asset_id TEXT NULL');
   }
 }

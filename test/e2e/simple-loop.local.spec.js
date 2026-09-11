@@ -45,6 +45,12 @@ test('command results scroll fully into view as their content grows', async ({ b
     await heal.click();
     await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible();
     await expect(heal).toHaveCount(0);
+
+    await page.getByTestId('stream-message').fill('hunt');
+    await page.getByTestId('stream-send').click();
+    await page.getByTestId('stream-message').fill('rest');
+    await page.getByTestId('stream-send').click();
+    await expect(page.getByTestId('stream-command-card')).toContainText(/Next HP in \d+[sm]/);
   } finally {
     await context.close();
   }

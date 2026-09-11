@@ -10,9 +10,10 @@ Hunts remain instant, lightweight commands, but damage becomes durable attrition
 2. Recover one HP per minute outside active runs, calculated lazily from the last health change.
 3. Give new players one potion; a potion restores 12 HP and cannot be wasted at full health.
 4. Hunts remain cooldown-free. They persist remaining HP and may award a potion alongside Dust/gear.
-5. Recovery is an application use case coordinated by `HuntService`; SQLite owns the atomic potion decrement/health update.
-6. The activity stream remains a projection. One Hunt or potion command creates one durable result message.
-7. Presentation turns Hunt metadata into a compact ledger: foe/outcome, health delta/current health, currency, then optional loot.
+5. A recovery shop sells one health potion for 5 Thread Dust, ensuring 0 HP + 0 potions is never an opaque dead end; `rest` reports the next-HP and full-recovery times.
+6. Recovery is an application use case coordinated by `HuntService`; SQLite owns atomic potion purchase/decrement and health updates.
+7. The activity stream remains a projection. One Hunt, potion, or shop command creates one durable result message.
+8. Presentation turns Hunt metadata into a compact ledger: foe/outcome, health delta/current health, currency, then optional loot.
 
 ## Fowler-style boundaries
 

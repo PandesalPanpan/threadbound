@@ -113,4 +113,15 @@ export class HuntService {
     this.eventBus.publish({ type: 'HealthPotionUsed', playerId, ...recovery });
     return recovery;
   }
+
+  buyHealthPotion(playerId) {
+    if (this.repository.getActiveRun(playerId)) {
+      const error = new Error('The shop is unavailable during a dungeon.');
+      error.code = 'shop_during_dungeon';
+      throw error;
+    }
+    const purchase = this.repository.buyHealthPotion(playerId);
+    this.eventBus.publish({ type: 'HealthPotionPurchased', playerId, ...purchase });
+    return purchase;
+  }
 }

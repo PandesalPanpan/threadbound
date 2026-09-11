@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HuntService } from '../src/application/HuntService.js';
+import { ItemGenerator } from '../src/domain/ItemGenerator.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
 function setup(rngValues = []) {
@@ -46,4 +47,24 @@ test('out-of-combat health regenerates lazily at one HP per minute', () => {
   repository.setPlayerHealth(player.id, 20, fiveMinutesAgo);
 
   assert.equal(repository.getPlayer(player.id).currentHealth, 25);
+});
+
+test('the recovery shop exchanges Dust for potions atomically', () => {
+  const { repository, player, service } = setup();
+  repository.addThreadDust(player.id, 5);
+
+  const purchase = service.buyHealthPotion(player.id);
+
+  assert.deepEqual(purchase, { cost: 5, threadDust: 0, healthPotions: 2 });
+  assert.equal(repository.getPlayer(player.id).healthPotions, 2);
+  assert.throws(() => service.buyHealthPotion(player.id), (error) => error.code === 'insufficient_thread_dust');
+});
+
+test('generated weapon identity keeps a semantic visual asset through persistence', () => {
+  const { repository, player } = setup();
+  const item = new ItemGenerator({ rng: () => 0, idFactory: () => 'gear-1' }).generateReward({ source: 'hunt' });
+  repository.addItem(player.id, item);
+
+  assert.equal(item.name.includes('Needle'), true);
+  assert.equal(repository.getItem(item.id).visualAssetId, 'item.steel-dagger.v1');
 });

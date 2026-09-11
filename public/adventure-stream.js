@@ -41,7 +41,7 @@ if (streamEl) {
   let activeLocalCommand = null;
   let keepLogPinnedUntil = 0;
 
-  const BARE_COMMANDS = new Set(['help', 'status', 'gear', 'inventory', 'party', 'codex', 'attack', 'guard', 'interrupt', 'mend', 'revive', 'run', 'upgrade', 'heal', 'potion']);
+  const BARE_COMMANDS = new Set(['help', 'status', 'gear', 'inventory', 'party', 'codex', 'attack', 'guard', 'interrupt', 'mend', 'revive', 'run', 'upgrade', 'heal', 'potion', 'rest', 'recovery', 'shop', 'buy potion']);
 
   function normalizedCommand(value) {
     const trimmed = String(value || '').trim();
@@ -158,6 +158,36 @@ if (streamEl) {
     activeLocalCommand = null;
     commandCardEl.hidden = true;
     commandCardEl.innerHTML = '';
+  }
+
+  function durationLabel(seconds) {
+    const value = Math.max(0, Number(seconds || 0));
+    if (value < 60) return `${Math.ceil(value)}s`;
+    const minutes = Math.ceil(value / 60);
+    return `${minutes}m`;
+  }
+
+  function renderRecoveryCard() {
+    const character = dashboard.character;
+    const timing = character.healthRecovery || {};
+    const full = character.currentHealth >= character.maxHealth;
+    const card = openCommandCard('rest', 'Recovery', `${character.currentHealth}/${character.maxHealth} HP · ${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'}`);
+    const summary = document.createElement('p');
+    summary.textContent = full ? 'You are fully healed.' : `Next HP in ${durationLabel(timing.nextHealthInSeconds)} · fully healed in ${durationLabel(timing.fullHealthInSeconds)}.`;
+    card.append(summary);
+    const actions = document.createElement('div');
+    actions.className = 'thread-card-actions';
+    addActionButton(actions, 'Use potion · +12 HP', async () => {
+      await api('/api/recovery/potion', { method: 'POST' });
+      await refreshContext();
+      renderRecoveryCard();
+    }, { testId: 'stream-recovery-use-potion', className: 'primary-action', disabled: full || character.healthPotions <= 0 });
+    addActionButton(actions, 'Buy potion · 5 Dust', async () => {
+      await api('/api/shop/health-potion', { method: 'POST' });
+      await refreshContext();
+      renderRecoveryCard();
+    }, { testId: 'stream-buy-health-potion', disabled: character.threadDust < 5 });
+    card.append(actions);
   }
 
   function revealCommandCard() {
@@ -560,6 +590,15 @@ if (streamEl) {
         case '/potion':
           await api('/api/recovery/potion', { method: 'POST' });
           await refreshContext({ rerenderCommand: activeLocalCommand === 'gear' || activeLocalCommand === 'status' });
+          break;
+        case '/rest':
+        case '/recovery': renderRecoveryCard(); break;
+        case '/shop': renderRecoveryCard(); break;
+        case '/buy':
+          if (args.join(' ').toLowerCase() !== 'potion') throw new Error('Try “buy potion”.');
+          await api('/api/shop/health-potion', { method: 'POST' });
+          await refreshContext();
+          renderRecoveryCard();
           break;
         case '/attack': await runCombatAction('attack'); break;
         case '/guard': await runCombatAction('guard'); break;

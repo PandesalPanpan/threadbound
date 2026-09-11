@@ -140,7 +140,7 @@ if (stream) {
   let dashboard = null;
   let syncing = false;
   let resyncRequested = false;
-  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'help', 'heal', 'potion', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
+  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'help', 'heal', 'potion', 'rest', 'recovery', 'shop', 'buy potion', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
 
   function normalizedCommand(value) {
     const trimmed = String(value || '').trim();
@@ -274,6 +274,27 @@ if (stream) {
     await api('/api/recovery/potion', { method: 'POST' });
   }
 
+  async function buyPotion() {
+    await api('/api/shop/health-potion', { method: 'POST' });
+  }
+
+  function durationLabel(seconds) {
+    const value = Math.max(0, Number(seconds || 0));
+    return value < 60 ? `${Math.ceil(value)}s` : `${Math.ceil(value / 60)}m`;
+  }
+
+  function renderRecovery() {
+    if (!commandCard || !dashboard) return;
+    const character = dashboard.character;
+    commandCard.hidden = false;
+    commandCard.innerHTML = '';
+    const recovery = document.createElement('div');
+    recovery.className = 'simple-loop-help';
+    recovery.innerHTML = `<strong>Recovery · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : `Next HP in ${durationLabel(character.healthRecovery?.nextHealthInSeconds)} · full in ${durationLabel(character.healthRecovery?.fullHealthInSeconds)}.`}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} · potions cost 5 Dust in the shop.`;
+    commandCard.append(recovery);
+    decorateFigmaSurface();
+  }
+
   function revealCommandCard() {
     if (!commandCard || commandCard.hidden) return;
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -297,8 +318,10 @@ if (stream) {
     if (!noRun && !simple) return;
 
     if (noRun) {
-      addButton('Hunt', 'hunt', hunt, 'stream-hunt');
+      if (dashboard.character.currentHealth > 0) addButton('Hunt', 'hunt', hunt, 'stream-hunt');
       if (dashboard.character.currentHealth < dashboard.character.maxHealth && dashboard.character.healthPotions > 0) addButton(`Heal · ${dashboard.character.healthPotions}`, 'heal', heal, 'stream-heal');
+      if (dashboard.character.currentHealth < dashboard.character.maxHealth) addButton(`Rest · ${durationLabel(dashboard.character.healthRecovery?.nextHealthInSeconds)}`, 'heal', async () => renderRecovery(), 'stream-rest');
+      if (dashboard.character.threadDust >= 5) addButton('Buy potion · 5 Dust', 'heal', buyPotion, 'stream-buy-potion');
       const { dungeon, readiness } = firstDungeon();
       if (dungeon) {
         const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
@@ -379,7 +402,7 @@ if (stream) {
       // commands. The authoritative adventure handler has the fresher run context.
       if (noRun && command === '/attack') return;
 
-      if (['/hunt', '/dungeon', '/run', '/attack', '/help', '/heal', '/potion'].includes(command)) {
+      if (['/hunt', '/dungeon', '/run', '/attack', '/help', '/heal', '/potion', '/rest', '/recovery', '/shop', '/buy'].includes(command)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (acting) return;
@@ -391,6 +414,8 @@ if (stream) {
           else if (command === '/dungeon' || command === '/run') await startDungeon();
           else if (command === '/attack') await attack();
           else if (command === '/heal' || command === '/potion') await heal();
+          else if (command === '/buy' && args.join(' ') === 'potion') await buyPotion();
+          else if (command === '/rest' || command === '/recovery' || command === '/shop') renderRecovery();
           else renderHelp();
           await sync({ force: true });
         } catch (error) {

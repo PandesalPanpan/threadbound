@@ -156,6 +156,16 @@ function resolvedAsset(entity, kind, fallbackSeed) {
   const canonicalId = CANONICAL_VISUAL_ASSET_IDS[String(entity?.id || entity?.enemyId || entity?.definitionId || '')];
   const canonical = visualAsset(canonicalId, kind);
   if (canonical) return canonical;
+  if (kind === 'item') {
+    const name = String(entity?.name || '').toLowerCase();
+    const inferredId = name.includes('threadblade') || name.includes('sword') ? 'item.steel-sword.v1'
+      : name.includes('needle') || name.includes('dagger') ? 'item.steel-dagger.v1'
+        : name.includes('spindle') || name.includes('staff') ? 'item.arcane-staff.v1'
+          : name.includes('shears') ? 'item.iron-dagger.v1'
+            : name.includes('potion') ? 'item.health-potion.v1' : null;
+    const inferred = visualAsset(inferredId, kind);
+    if (inferred) return inferred;
+  }
   const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind);
   return candidates[stableIndex(fallbackSeed, candidates.length)] || null;
 }

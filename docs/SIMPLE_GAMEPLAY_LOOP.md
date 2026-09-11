@@ -17,7 +17,7 @@ The goal is to keep the command vocabulary closer to a lightweight chat RPG. Dep
 
 Hunts award a small amount of Thread Dust and can drop permanent weapons. Hunt drops are capped at Rare so dungeon rewards and other progression sources can remain aspirational.
 
-Hunt damage persists between encounters. Outside a dungeon, one HP regenerates per minute. New characters begin with one health potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. This health economy—not an arbitrary action cooldown—paces repeated Hunts.
+Hunt damage persists between encounters. Outside a dungeon, one HP regenerates per minute. New characters begin with one health potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. `rest` reports the next-HP and full-recovery times; `shop` offers a potion for 5 Thread Dust. This health economy—not an arbitrary action cooldown—paces repeated Hunts without an unexplained dead end.
 
 Hunts do not create a persistent `DungeonRun`; `HuntService` is a separate application use case over the small `HuntEncounter` domain policy.
 
