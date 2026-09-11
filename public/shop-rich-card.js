@@ -1,4 +1,11 @@
 function openInventoryFromShop() {
+  const card = document.querySelector('[data-testid="stream-command-card"]');
+  if (card) {
+    delete card.dataset.shopRichCard;
+    card.dataset.inventoryRichCard = 'true';
+    card.dataset.richCardKind = 'inventory';
+    card.setAttribute('aria-label', 'Inventory panel');
+  }
   const input = document.querySelector('[data-testid="stream-message"]');
   const form = document.querySelector('[data-testid="stream-composer"]');
   if (!input || !form) return;
