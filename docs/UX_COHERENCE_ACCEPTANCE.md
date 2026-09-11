@@ -1,32 +1,48 @@
 # UX Coherence Acceptance
 
-This milestone makes the Adventure Stream truthful and understandable at the moment a player must decide. It intentionally does not move combat rules into the browser.
+> Historical note: this document originally described the tactical combat surface with Focus, Guard, Interrupt, run upgrades, run discoveries, and persistent combat forecasts. Those mechanics remain relevant only to legacy/persisted tactical runs and migration regression coverage. They are **not** the current default player experience.
 
-## Fowler-oriented boundaries
+The current player-facing source of truth is:
 
-- **Domain Model / Aggregate:** `AdventureRun` and `DungeonRun` remain authoritative for run phase, HP, Focus, enemy state, legal commands, lethal ordering, critical hits, and run transitions.
-- **Application Service / Read Model:** `/api/dashboard?previews=1` remains the authoritative projection for current player/run state and action previews. The browser does not reimplement combat formulas.
-- **Presentation Model:** `public/ux-coherence.js` groups controls by mode, mirrors meta navigation away from the primary decision row, renders the current decision snapshot, and reuses the authoritative preview for persistent yellow forecast UI and current transition receipts.
-- **Append-only activity stream:** durable stream events are not rewritten. Transition receipt additions are client-side presentation derived from the current authoritative read model.
+- `docs/SIMPLE_GAMEPLAY_LOOP.md` for the default Hunt -> progression -> simple Dungeon loop.
+- `docs/CHAT_META_LOOP_V2.md` for contextual Inventory, Recovery, Shop, and Dungeon navigation.
+- `docs/PLAYER_EXPERIENCE_ACCEPTANCE.md` for cross-cutting reliability, mobile, accessibility, reconnect, co-op, and production gates.
 
-## Acceptance gates
+## Current coherence contract
 
-- [ ] **UXC-01 COMPLETE DECISION STATE:** During combat/boss, the primary surface shows the viewer's current HP and Focus, enemy HP, party vitals when applicable, and current intent when applicable.
-- [ ] **UXC-02 POST-CHOICE STATE:** After a run upgrade or run discovery advances into the next encounter, the newest transition receipt shows the viewer's current HP and Focus before another action is taken.
-- [ ] **UXC-03 PERSISTENT FORECAST:** Combat/boss has a stable, non-hover-only Attack preview showing projected damage and enemy HP before → after from `/api/dashboard?previews=1`.
-- [ ] **UXC-04 FORECAST SEMANTICS:** Yellow is used for projected/future damage only; confirmed damage remains red. Forecast containers use a dark surface, bright yellow outline/text, and tabular numeric emphasis.
-- [ ] **UXC-05 MODE SEPARATION:** Combat actions, Run Upgrade, and Run Discovery are presented as distinct primary modes. Combat actions are paused/absent during run decisions.
-- [ ] **UXC-06 META SEPARATION:** Dungeons, Status, Gear, Party, Codex, World, and Honey are visually placed in a separate Navigation container rather than competing with Attack/Guard or run-choice cards.
-- [ ] **UXC-07 NO RULE DUPLICATION:** No browser code contains an attack, crit, retaliation, HP, or Focus formula. It only renders server projections.
-- [ ] **UXC-08 MOBILE READABILITY:** The decision snapshot collapses to one column and upgrade choices remain readable on a 390×844 viewport without horizontal overflow.
-- [ ] **UXC-09 REGRESSION:** Existing Threaded, local realtime/co-op, boss encounter, skills, run-event, reconnect, Codex, Arc Workshop, relic, and gameplay-feel browser suites remain green.
+Threadbound is chat-first. The Adventure Stream is the primary play surface, and the browser presents server-owned state rather than reimplementing progression or economy rules.
 
-## Human review gate
+### Architecture boundaries
 
-Automation can prove structure and state truthfulness, but a human play pass should still verify that the page answers these questions without hunting through history:
+- **Domain model / aggregate:** `AdventureRun`, `DungeonRun`, Hunt policies, and inventory/economy domain code remain authoritative for combat, run transitions, ownership, and progression.
+- **Application services / read models:** dashboard, inventory, Hunt, Shop, and run services project server-owned state to the browser.
+- **Presentation model:** the browser chooses how to render and navigate authoritative projections. It may submit commands, but it does not invent prices, loot, damage, affordability, legal actions, or inventory mutations.
+- **Adventure Stream:** system receipts, player chat, private command cards, and contextual actions share the same primary surface. Durable server state remains the source of truth.
 
-1. How much HP and Focus do I have right now?
-2. How healthy is the enemy?
-3. What happens if I Attack now?
-4. Am I in combat, choosing a run path/power, or navigating meta screens?
-5. Which controls actually advance the run?
+## Active acceptance gates
+
+- [x] **UXC-01 CHAT-FIRST HIERARCHY:** The Adventure Stream dominates the primary play surface rather than a permanent tactical dashboard.
+- [x] **UXC-02 CONTEXTUAL ACTION LIMIT:** Outside a simple dungeon, the composer exposes at most two useful contextual actions; the full command catalog stays behind typed commands/help.
+- [x] **UXC-03 SIMPLE COMBAT:** New simple dungeons expose Attack as the only combat action and do not surface Focus, Guard, Interrupt, combat skills, temporary run powers, or random run-event buffs.
+- [x] **UXC-04 INVENTORY COHERENCE:** Contextual Inventory navigation opens the same authoritative Relic pouch / gear projection used by typed `inventory` and `gear` commands.
+- [x] **UXC-05 SHOP COHERENCE:** Mara's shop renders from the server-projected catalog and submits purchases to server-owned SKU rules; the browser does not own price or quantity logic.
+- [x] **UXC-06 RECOVERY COHERENCE:** Zero Hunt HP produces an understandable recovery path rather than a dead end, with Recovery and Shop surfaced contextually.
+- [x] **UXC-07 NO RULE DUPLICATION:** Browser code does not calculate authoritative combat, loot, equipment, affordability, or shop grant rules.
+- [x] **UXC-08 MOBILE READABILITY:** The supported 390x844 mobile viewport remains free of horizontal overflow and contextual controls retain touch-friendly sizing.
+- [x] **UXC-09 REGRESSION:** Unit/contract and Chromium browser suites are green on the current merged chat-first implementation.
+
+## Legacy tactical regression boundary
+
+Legacy tactical systems still exist because persisted old runs must hydrate safely during the strangler-style migration. Tactical tests should continue to protect migration compatibility, reconnect correctness, exactly-once rewards, and old aggregate behavior where necessary.
+
+Do not use those legacy tests or this historical design as justification to add Focus, Guard, Interrupt, skill bars, run buffs, or tactical decision panels back into the default simple loop without an explicit product decision.
+
+## Human review questions
+
+Automation can prove structure and state truthfulness, but a human play pass should still answer these quickly on mobile:
+
+1. What is the most useful thing I can do next?
+2. Can I understand what just happened from the newest receipt without rereading the whole stream?
+3. If I found gear, can I reach and manage it immediately?
+4. If I am wounded or out of HP, is Recovery/Shop obvious?
+5. If I am strong enough for a dungeon, is that progression path obvious without adding tactical clutter?
