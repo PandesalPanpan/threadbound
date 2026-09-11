@@ -26,23 +26,23 @@ test('rich cards use project-owned semantic art with a compact mobile hierarchy'
   await login(page);
 
   const profile = await openCommand(page, 'profile', 'profile');
-  await expect(profile.getByRole('img', { name: 'profile icon' })).toBeVisible();
-  await expect(profile.getByRole('img', { name: 'Gold' })).toBeVisible();
-  await expect(profile.getByRole('img', { name: 'Attack' })).toBeVisible();
+  await expect(profile.getByRole('img', { name: 'profile icon', exact: true })).toBeVisible();
+  await expect(profile.getByRole('img', { name: 'Gold', exact: true })).toBeVisible();
+  await expect(profile.getByRole('img', { name: 'Attack', exact: true })).toBeVisible();
 
   const inventory = await openCommand(page, 'inventory', 'inventory');
-  await expect(inventory.getByRole('img', { name: 'inventory icon' })).toBeVisible();
-  await expect(inventory.getByRole('img', { name: 'Defense' })).toBeVisible();
-  await expect(inventory.getByRole('img', { name: 'Health potions' })).toBeVisible();
+  await expect(inventory.getByRole('img', { name: 'inventory icon', exact: true })).toBeVisible();
+  await expect(inventory.getByRole('img', { name: 'Defense', exact: true })).toBeVisible();
+  await expect(inventory.getByRole('img', { name: 'Health potions', exact: true })).toBeVisible();
 
   const shop = await openCommand(page, 'shop', 'shop');
-  await expect(shop.getByRole('img', { name: 'shop icon' })).toBeVisible();
+  await expect(shop.getByRole('img', { name: 'shop icon', exact: true })).toBeVisible();
   await expect(shop.locator('.thread-shop-offer .thread-generated-item-sprite').first()).toBeVisible();
 
   const bank = await openCommand(page, 'bank', 'bank');
-  await expect(bank.getByRole('img', { name: 'bank icon' })).toBeVisible();
-  await expect(bank.getByRole('img', { name: 'Carried Gold' })).toBeVisible();
-  await expect(bank.getByRole('img', { name: 'Banked Gold' })).toBeVisible();
+  await expect(bank.getByRole('img', { name: 'bank icon', exact: true })).toBeVisible();
+  await expect(bank.getByRole('img', { name: 'Carried Gold', exact: true })).toBeVisible();
+  await expect(bank.getByRole('img', { name: 'Banked Gold', exact: true })).toBeVisible();
 
   const metrics = await bank.evaluate((element) => {
     const rect = element.getBoundingClientRect();
