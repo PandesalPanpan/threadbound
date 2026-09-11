@@ -80,6 +80,8 @@ if (stream) {
     #stream .stream-hunt-chip.loss { color:#ff7c89; }
     #stream .stream-hunt-chip.reward { color:#f0c35b; }
     #stream .stream-hunt-chip.health { color:#83dfae; }
+    #stream .stream-hunt-chip.progress { color:#7fd7ff; }
+    #stream .stream-hunt-chip.level { color:#d9b8ff; border:1px solid rgba(179,109,255,.25); background:rgba(179,109,255,.08); }
     #stream .stream-hunt-loot { display:grid; grid-template-columns:28px minmax(0,1fr); gap:6px; align-items:center; margin-top:5px; color:#c8cad2; font-size:.62rem; }
     #stream .stream-hunt-loot .thread-generated-sprite { width:28px; min-width:28px; }
     @media (max-width:520px) {
@@ -220,11 +222,14 @@ if (stream) {
         return element;
       };
       const gold = Number(metadata.gold ?? metadata.threadDust ?? 0);
+      const xp = Number(metadata.experienceGained ?? metadata.xp ?? 0);
       ledger.append(
         chip(`−${metadata.damageTaken || 0} HP`, 'loss'),
         chip(`${metadata.remainingHp}/${metadata.maxHp} HP`, 'health'),
         chip(metadata.victory ? `+${gold} Gold` : 'No reward', 'reward'),
       );
+      if (metadata.victory && xp > 0) ledger.append(chip(`+${xp} XP`, 'progress'));
+      if (metadata.leveledUp) ledger.append(chip(`LEVEL ${metadata.level}!`, 'level'));
       copy.append(kicker, title, ledger);
       if (metadata.itemName) {
         const loot = document.createElement('div');
