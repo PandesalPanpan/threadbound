@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Character } from '../src/domain/Character.js';
+import { GameService } from '../src/application/GameService.js';
 import { HuntService } from '../src/application/HuntService.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
@@ -12,6 +13,19 @@ test('Character exposes persisted legacy threadDust as canonical Gold', () => {
   const canonical = new Character({ id: 'p2', threadedUserId: 'u2', displayName: 'Adventurer', gold: 41, threadDust: 5 });
   assert.equal(canonical.gold, 41);
   assert.equal(canonical.threadDust, 41, 'legacy alias follows canonical Gold when both are supplied');
+});
+
+test('dashboard exposes canonical Gold while preserving the legacy threadDust alias', () => {
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-dashboard' });
+  const player = repository.getOrCreatePlayer({ threadedUserId: 'u-dashboard', displayName: 'Adventurer' });
+  repository.addThreadDust(player.id, 19);
+  const service = new GameService({ repository, eventBus: { publish() {}, publishAll() {} } });
+
+  const dashboard = service.dashboard(player.id);
+
+  assert.equal(dashboard.character.gold, 19);
+  assert.equal(dashboard.character.threadDust, 19);
+  repository.close();
 });
 
 test('Hunt persists into the legacy column but returns and publishes Gold', () => {
