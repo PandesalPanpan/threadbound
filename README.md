@@ -1,68 +1,119 @@
 # Threadbound
 
-Threadbound is a separate persistent cooperative RPG. In normal mode it authenticates through Threaded and treats Threaded as the authoritative owner of Honey. For development, it can also run completely standalone with a guarded local-auth mode.
+Threadbound is a persistent cooperative **chat-first RPG**. In normal mode it authenticates through Threaded and treats Threaded as the authoritative owner of Honey. For development, it can also run standalone with guarded local authentication.
 
-## Current vertical slice
+## Current player loop
 
-The playable foundation now proves solo/co-op progression **and a living in-game encyclopedia**:
+The default player experience is intentionally smaller than the legacy tactical prototype:
 
-1. Authenticate through Threaded OAuth2 + PKCE **or** use standalone local-development identities.
-2. Create/recover a persistent Threadbound character.
-3. Optionally create a party and share a six-character invite code.
-4. Other players join, ready up, and are snapshotted into the run when the leader starts.
-5. Enter **Frayed Hollow** solo or with up to four participants.
-6. Enemy health and retaliation scale by player count; health scaling is intentionally sub-linear so cooperation is efficient without making solo impossible.
-7. Players choose between Strike, Guard, Mend, and Revive.
-8. The party leader chooses the shared temporary run upgrade.
-9. Defeat **The First Needle**.
-10. Every snapshotted participant receives their own generated weapon and Thread Dust, while the shared world arc advances once.
-11. Generated discoveries and important world events automatically enter the **Threadbound Codex**.
-12. Equip persistent rewards and enter future runs stronger.
-13. In Threaded-auth mode, Honey purchases remain retry-safe and authoritative in Threaded.
+```text
+Hunt -> earn Thread Dust / find permanent gear
+     -> Inventory: equip, Temper, or salvage
+     -> Shop / Recovery when wounded
+     -> Dungeon when strong enough
+     -> Attack until clear or defeated
+     -> reward -> Inventory -> repeat
+```
+
+The Adventure Stream is the primary play surface. Players can type commands directly or use at most two contextual actions near the composer.
+
+Current contextual behavior:
+
+- fresh/no permanent gear: **Hunt + Dungeon readiness**;
+- gear exists but Attack is below the recommendation: **Hunt + Inventory**;
+- Attack meets the recommendation and gear exists: **Dungeon + Inventory**;
+- zero Hunt HP: **Recovery + Shop**;
+- active simple dungeon: **Attack** only.
+
+Typed commands remain available even when they are not one of the two surfaced actions. See `docs/SIMPLE_GAMEPLAY_LOOP.md` and `docs/CHAT_META_LOOP_V2.md`.
+
+## Hunts, recovery, and Mara's shop
+
+`hunt` resolves one short solo encounter. Hunt damage persists instead of resetting after every command. Outside active dungeons, Hunt HP regenerates lazily at one HP per minute.
+
+Health potions restore up to 12 Hunt HP. New characters begin with one potion, Hunts may find more, and Mara's in-thread field shop provides a recovery sink for Thread Dust.
+
+Shop offers are server-owned:
+
+- `ShopCatalog` defines the allowlisted offers and prices;
+- `ShopService` projects the current catalog/affordability and coordinates purchases;
+- SQLite performs the atomic Thread Dust / potion transaction;
+- the browser renders `/api/shop` and does not own economy prices or purchase effects.
+
+The current shelf is intentionally small: one health potion or a discounted three-potion satchel. That catalog can expand later without embedding economy rules into the chat presentation.
+
+## Inventory and permanent progression
+
+`inventory` and `gear` open the same authoritative Relic pouch rather than separate inventory implementations. Permanent equipment can be equipped, Tempered, or salvaged for Thread Dust subject to server-side rules.
+
+Generated item identity and mechanics are constrained data. Runtime visuals use stable semantic `visualAssetId` references so artwork can change without changing canonical gameplay identity.
+
+## Simple dungeons
+
+New player-facing dungeons use the simplified combat path. Frayed Hollow is currently a readable progression check: the baseline Weaver begins at 6 Attack while the canonical dungeon recommends 9+.
+
+Simple dungeon rules intentionally remove the tactical dashboard:
+
+- Attack is the only combat command;
+- no Focus;
+- no Guard or Interrupt;
+- no combat skills;
+- no temporary run powers;
+- no random run-event buff choices;
+- party/run state remains server-authoritative and durable across reload/reconnect.
+
+The old tactical `DungeonRun` behavior and legacy route remain temporarily available for old persisted runs and focused regression/migration coverage. This is a strangler-style transition; legacy mechanics are not the default player-facing loop.
+
+## Cooperative play and realtime stream
+
+Players can create a party, share a join code, ready up, and start a shared dungeon. Starting a run snapshots its participants so later party membership changes cannot rewrite run ownership.
+
+The shared Adventure Stream carries both player chat and Threadbound system receipts. WebSocket is the preferred realtime transport with SSE fallback. Realtime transport never decides game outcomes: HTTP application commands invoke authoritative services/domain rules, committed outcomes are persisted, then state/stream changes are broadcast.
 
 ## Living Threadbound Codex
 
-Authenticated players can open `/codex` from the Game/Codex navigation. It is a responsive, searchable encyclopedia with category filters, counts, list/detail browsing, deep-link hashes, mechanics panels, achievement lock state, and history-to-item cross-links.
+Authenticated players can open `/codex` from navigation or search it through the thread. It is a responsive, searchable encyclopedia built from authoritative game/content state rather than manually duplicated wiki facts.
 
-Current categories:
+Current categories include:
 
-- **Items** — every persisted generated or purchased item instance is documented automatically from the item record. No separate wiki row is required.
-- **Enemies** — projected directly from the live `DUNGEONS` domain definitions so HP/retaliation documentation cannot drift from gameplay code.
-- **Bosses** — also projected from the live dungeon definition; The First Needle is the first entry.
-- **Lore** — canonical narrative entries plus approved generated lore.
-- **Achievements** — projected from the achievement catalog and decorated with the current player's locked/unlocked state.
-- **History** — retry-safe records projected from meaningful domain events such as dungeon clears and generated-relic discoveries.
+- **Items** — persisted generated or purchased item instances;
+- **Enemies / Bosses** — projected from authoritative dungeon/content definitions;
+- **Lore** — canonical narrative plus approved generated content;
+- **Achievements** — catalog entries decorated with player unlock state;
+- **History** — retry-safe records projected from meaningful domain events.
 
-### Generated lore publication flow
+Generated lore/content follows a constrained draft -> validate/review -> publish flow. Generated content is data, not executable game code.
 
-AI/generated lore is treated as **content**, not executable game code:
+## Arc Manifest workflow
 
-```text
-Story generator
-    ↓
-Draft content entry
-    ↓ validation / moderation / consistency checks
-Published content entry (versioned)
-    ↓
-Codex automatically displays it
-```
+Arc Manifests are portable, untrusted content contracts for new narrative, encounters, rewards, achievements, and allowlisted visual references. The Arc Workshop can validate and publish manifests in local development without requiring a paid AI API.
 
-`SQLiteCodexRepository.saveDraftContentEntry()` stores generated drafts. Drafts are intentionally invisible to players. `publishContentEntry()` changes the player-facing published projection. The Codex does not require new UI work for every new generated story entry.
+See `docs/ARC_MANIFEST_WORKFLOW.md` and the manifest schema for the current authoring contract.
 
-This keeps future story generation compatible with the same principle used for generated items: generation produces constrained/versioned data while authoritative rules remain server-owned and testable.
+## Architecture
 
-### Fowler-style read model
+Threadbound remains a **modular monolith**. Fowler-style patterns are used where they solve concrete boundaries without premature microservices or full event sourcing.
 
-The Codex deliberately behaves like a query/read model rather than another source of truth:
+- **Service Layer** — `GameService`, `HuntService`, `SimpleDungeonService`, `ShopService`, `InventoryService`, `PartyService`, `CodexService`, `ArcManifestService`, `HoneyPurchaseService`.
+- **Domain Model / policies** — characters, parties, runs, Hunt resolution, simple-dungeon rules, relic progression, and constrained content vocabularies own gameplay rules.
+- **Repositories** — SQLite repositories isolate persistence and transaction boundaries.
+- **Gateway** — `ThreadedGateway` is the external Threaded boundary.
+- **Domain events / projections** — committed game facts drive achievements, world history, activity-stream receipts, and realtime notifications.
+- **Idempotency / optimistic concurrency** — external Honey grants and mutating run commands are retry-safe; stale run versions fail instead of silently overwriting another action.
 
-- `CodexService` is a query-oriented Service Layer.
-- `SQLiteCodexRepository` owns Codex-specific persisted projections (`codex_content_entries`, `world_history`).
-- combat facts still come from `DungeonRun`/`DUNGEONS`.
-- achievement facts still come from `ACHIEVEMENTS` plus player unlock records.
-- item facts still come from the persistent item instances.
-- `WorldHistoryProjector` consumes domain events and creates idempotent historical records.
+The activity stream, Codex, shop catalog response, and dashboard are read/projection surfaces. They do not become alternate sources of gameplay truth.
 
-This is CQRS-like separation where it is useful, without introducing a separate service, database, message broker, or full Event Sourcing.
+### Honey ownership boundary
+
+Threadbound does **not** maintain a second writable Honey wallet. In Threaded mode, Honey spending goes through `ThreadedGateway`; Threaded remains the source of truth. Local mode disables Honey purchasing.
+
+## Persistence and sessions
+
+Node 22's built-in SQLite adapter stores players (including persistent Hunt health and potions), parties/readiness, items/equipment, dungeon participant snapshots, run state/version, achievements, world progress, idempotent purchase grants, Arc/Codex content, world history, and activity-stream state.
+
+Authenticated HTTP sessions use the SQLite-backed `SQLiteSessionStore`, so a signed `threadbound.sid` can resolve after application/database restart and multiple Node processes sharing the same authoritative SQLite file can read the same session state.
+
+Explicit long-lived run expiry/abandon semantics remain a production gate; see `docs/PLAYER_EXPERIENCE_ACCEPTANCE.md`.
 
 ## Running locally without Threaded
 
@@ -84,65 +135,14 @@ npm install
 npm start
 ```
 
-Open `http://127.0.0.1:3001`. The home screen offers Local Weaver A–D. To test co-op manually, sign in as one Weaver in your normal browser and another Weaver in a private/incognito window. The Codex is available at `/codex` after login.
+Open `http://127.0.0.1:3001`. The home screen offers Local Weaver A-D. To test co-op manually, sign in as one Weaver in a normal browser and another in a private/incognito window.
 
 Local auth has two hard boundaries:
 
-- `NODE_ENV=production` rejects `THREADBOUND_AUTH_MODE=local` at startup.
-- Honey purchasing is disabled in local mode because Threaded remains the only authoritative Honey wallet.
+- `NODE_ENV=production` rejects `THREADBOUND_AUTH_MODE=local` at startup;
+- Honey purchasing is unavailable because Threaded owns the authoritative Honey wallet.
 
-For the real integration path, use `THREADBOUND_AUTH_MODE=threaded` (the default) and configure `THREADED_BASE_URL`, `THREADED_CLIENT_ID`, and `THREADED_REDIRECT_URI`.
-
-## Cooperative combat
-
-Each run snapshots participant state and tracks HP, threat, damage contribution, healing, revives, and prevented damage independently.
-
-- **Strike** — deals equipment-scaled damage and generates threat equal to effective damage.
-- **Guard** — adds strong threat and halves the next enemy retaliation that lands on that player.
-- **Mend** — heals a living ally for up to 8 HP, once per encounter per acting player.
-- **Revive** — restores a downed ally to 30% HP, once per run per acting player. Self-revive is not allowed.
-
-Enemy retaliation targets the living participant with the highest current threat. Threat decays after retaliation. A downed player cannot act until revived, but surviving party members can continue. The run fails only when everyone is down.
-
-Frayed Hollow supports 1–4 players and recommends 2:
-
-| Players | Enemy HP | Retaliation |
-| ---: | ---: | ---: |
-| 1 | ×1.00 | ×1.00 |
-| 2 | ×1.65 | ×1.15 |
-| 3 | ×2.25 | ×1.30 |
-| 4 | ×2.80 | ×1.45 |
-
-## Architecture
-
-Threadbound remains a **modular monolith**. Fowler-style enterprise application patterns are used where they solve real backend problems without premature microservices or full event sourcing.
-
-- **Service Layer** — `GameService`, `PartyService`, `HoneyPurchaseService`, `CodexService`.
-- **Domain Model** — `Character`, `Party`, `DungeonRun` own rules/state transitions rather than HTTP controllers.
-- **Repositories** — `SQLiteGameRepository` isolates game persistence/transactions; `SQLiteCodexRepository` isolates Codex read projections.
-- **Gateway** — `ThreadedGateway` is the explicit external-system boundary.
-- **Domain Events** — combat/progression facts drive achievement and world-history projection without making the application fully event-sourced.
-- **Idempotency** — Honey spends, Threadbound grants, and historical projections are retry-safe.
-- **Transactional shared rewards** — participant items, Thread Dust, world progress, run reward state, and party reset commit together.
-- **Optimistic concurrency** — each dungeon row has a version. Stale writes fail instead of silently overwriting another participant's action.
-
-### Party and run ownership
-
-Party membership is mutable only while forming. Starting a dungeon snapshots member IDs into `dungeon_run_participants`. The run owns that snapshot rather than reading mutable party membership during combat.
-
-### Honey ownership boundary
-
-Threadbound does **not** maintain a second writable Honey balance. In Threaded mode, every spend goes through `ThreadedGateway`; Threaded remains the source of truth. In local mode the Honey UI is explicitly disabled.
-
-### Generated-content rule
-
-Generated items are assembled from a controlled effect vocabulary. Generators cannot invent arbitrary executable behavior or unbounded stats. Current effects include `none`, `opening_strike`, and `boss_bane`. Generated story/lore enters the versioned draft→published content path instead of modifying runtime code.
-
-## Persistence
-
-Node 22's built-in SQLite adapter stores players (including persistent Hunt health and potions), parties/readiness, items/equipment, dungeon participant snapshots, run state/version, achievements, shared world progress, idempotent purchase grants, published/draft Codex content, and projected world history.
-
-The HTTP session store is still in-memory. Replace it with a durable/shared session strategy before multi-instance production deployment.
+For the real integration path, use `THREADBOUND_AUTH_MODE=threaded` and configure `THREADED_BASE_URL`, `THREADED_CLIENT_ID`, and `THREADED_REDIRECT_URI`.
 
 ## Tests
 
@@ -154,23 +154,14 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-`npm run test:e2e` runs **both** browser modes:
+GitHub Actions gates pushes and pull requests on syntax checks, Node/unit-contract tests, and the active Chromium Playwright suites.
 
-1. **Threaded E2E** — deterministic fake Threaded OAuth/API server, solo flow, two-browser party flow, loot/equipment, achievements/world progress, Honey retry safety, and Codex browsing of generated/purchased items.
-2. **Standalone local E2E** — starts Threadbound with `THREADBOUND_AUTH_MODE=local` and no Threaded server/config; verifies co-op combat plus the living Codex UI: category counts, boss mechanics, lore search, achievement unlock state, automatic generated-item pages, world-history records, related-item navigation, and return to gameplay.
+The browser acceptance coverage includes the chat-first Hunt loop, compact receipts, recovery/shop UI, contextual Inventory navigation, simple solo/co-op dungeons, realtime continuity, Codex behavior, Arc Workshop behavior, and representative mobile screenshots.
 
-The Node suite additionally verifies that:
-
-- enemy/boss Codex mechanics come from the live dungeon model;
-- generated item instances appear without hand-written documentation;
-- generated lore drafts are hidden until published;
-- publishing a generated lore revision immediately makes it searchable;
-- world-history projections are idempotent under repeated events;
-- player-specific achievement unlock status is reflected correctly;
-- existing combat, auth, Honey, transaction, and optimistic-concurrency rules remain green.
-
-GitHub Actions gates pushes and pull requests on syntax checks, Node tests, and both Chromium Playwright suites.
+`docs/PLAYER_EXPERIENCE_ACCEPTANCE.md` remains the broader pre-merge experience/reliability checklist. HUMAN items still require real-player evidence; automation does not prove that a loop is fun.
 
 ## Next increments
 
-With the Codex in place, the next high-value slice is a **Content Manifest / World Arc pipeline**: world milestones create a constrained Arc proposal containing new lore, enemies, bosses, item-effect combinations, achievements, and dungeon metadata; validation/publishing then makes those entries visible in the Codex and available to gameplay. After that, equipment set bonuses and teammate-status synergies can deepen the combat loop while the Codex automatically documents every approved addition.
+The current foundation now has the simplified gameplay loop, contextual meta navigation, durable recovery economy, server-owned shop catalog, semantic visual assets, realtime co-op continuity, living Codex, and Arc Manifest pipeline.
+
+The next high-value work should expand **breadth and progression without re-inflating combat UI**: more validated Arc content and visual coverage, additional server-catalog shop/material uses, stronger inventory comparison/Tempering clarity, balance/playtest passes, and the remaining production run-expiry/abandon policy.
