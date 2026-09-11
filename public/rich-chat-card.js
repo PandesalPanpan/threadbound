@@ -2,6 +2,7 @@ import './shop-rich-card.js';
 import './inventory-rich-card.js';
 import './profile-rich-card.js';
 import './bank-rich-card.js';
+import './bank-profile-sync.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer';
 
