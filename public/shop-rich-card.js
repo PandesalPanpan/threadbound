@@ -35,9 +35,22 @@ function installStyles(documentRef = document) {
 }
 
 function explicitCommand(card) {
-  const kicker = card?.querySelector('.thread-reply-header span')?.textContent || '';
-  const match = kicker.match(/\/(shop|inventory|gear)\b/i);
+  const copy = [...(card?.querySelectorAll('.thread-reply-header span') || [])]
+    .map((node) => node.textContent || '')
+    .join(' ');
+  const match = copy.match(/\/(shop|inventory|gear)\b/i);
   return match?.[1]?.toLowerCase() || null;
+}
+
+function releaseShopIdentity(card) {
+  if (!card) return;
+  delete card.dataset.shopRichCard;
+  card.querySelectorAll('[data-shop-rich-card-owned="true"]').forEach((node) => node.remove());
+  if (card.querySelector('.inventory-rich-layout') || card.dataset.inventoryRichCard === 'true') {
+    card.dataset.inventoryRichCard = 'true';
+    card.dataset.richCardKind = 'inventory';
+    card.setAttribute('aria-label', 'Inventory panel');
+  }
 }
 
 function isShopCard(card) {
@@ -50,6 +63,11 @@ function isShopCard(card) {
 }
 
 function enhanceShopCard(card, { documentRef = document } = {}) {
+  if (!card || card.hidden) return;
+  if (card.querySelector('.inventory-rich-layout') || explicitCommand(card) === 'inventory' || explicitCommand(card) === 'gear') {
+    releaseShopIdentity(card);
+    return;
+  }
   if (!isShopCard(card)) return;
 
   delete card.dataset.inventoryRichCard;
