@@ -13,6 +13,7 @@ import { ActivityStreamService } from './application/ActivityStreamService.js';
 import { CombatPreviewService } from './application/CombatPreviewService.js';
 import { GameService } from './application/GameService.js';
 import { HuntService } from './application/HuntService.js';
+import { ShopService } from './application/ShopService.js';
 import { SimpleDungeonService } from './application/SimpleDungeonService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
@@ -114,6 +115,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
   const huntService = new HuntService({ repository, eventBus });
+  const shopService = new ShopService({ repository, eventBus });
   const simpleDungeonService = new SimpleDungeonService({ repository, eventBus, arcManifestService });
   const combatPreview = new CombatPreviewService({ repository });
   const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
@@ -351,10 +353,20 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const recovery = huntService.useHealthPotion(playerId);
     return response.json({ recovery, dashboard: gameService.dashboard(playerId) });
   });
+  app.get('/api/shop', requireConnection, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json(shopService.browse(request.session.threaded.playerId));
+  });
+  app.post('/api/shop/purchases/:sku', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const purchase = shopService.purchase(playerId, request.params.sku);
+    return response.json({ purchase, shop: shopService.browse(playerId), dashboard: gameService.dashboard(playerId) });
+  });
+  // Compatibility route for older clients during the chat-first migration.
   app.post('/api/shop/health-potion', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
-    const purchase = huntService.buyHealthPotion(playerId, String(request.body?.sku || 'single'));
-    return response.json({ purchase, dashboard: gameService.dashboard(playerId) });
+    const purchase = shopService.purchase(playerId, String(request.body?.sku || 'single'));
+    return response.json({ purchase, shop: shopService.browse(playerId), dashboard: gameService.dashboard(playerId) });
   });
   app.post('/api/dungeons/:dungeonId/start-simple', requireConnection, (request, response) => response.status(201).json({ run: simpleDungeonService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
 
@@ -421,6 +433,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'no_health_potions',
       'potion_during_dungeon',
       'shop_during_dungeon',
+      'shop_offer_not_found',
+      'unsupported_shop_offer',
       'simple_combat_attack_only',
     ]);
     const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic|simple combat|hunting/i.test(knownMessage) ? 409 : 500;
