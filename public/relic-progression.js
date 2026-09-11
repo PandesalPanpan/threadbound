@@ -9,14 +9,9 @@ if (commandCard || inventory) {
     .relic-progress-chip.master { border-color:rgba(255,209,102,.32); background:rgba(255,209,102,.09); color:#ffe097; }
     .relic-temper-actions { display:grid; gap:6px; width:100%; margin-top:7px; }
     .relic-temper-actions button { min-height:44px; margin:0 !important; }
-    .relic-attunement-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
-    .relic-attunement-button { display:grid; gap:2px; align-content:center; text-align:left; padding:7px 9px !important; border-color:rgba(179,109,255,.28) !important; background:rgba(179,109,255,.07) !important; }
-    .relic-attunement-button strong { font-size:.69rem; }
-    .relic-attunement-button small { color:var(--muted); font-size:.57rem; line-height:1.25; }
     .relic-temper-note { margin:0; color:var(--muted); font-size:.62rem; line-height:1.35; }
     .relic-temper-error { margin:0; padding:6px 8px; border-radius:8px; background:rgba(255,100,124,.08); color:#ff9cac; font-size:.65rem; }
     .relic-temper-success { margin:0; padding:6px 8px; border-radius:8px; background:rgba(100,230,169,.08); color:#9ff2c4; font-size:.65rem; }
-    @media (max-width:520px) { .relic-attunement-grid { grid-template-columns:1fr; } }
   `;
   document.head.append(style);
 
@@ -25,7 +20,7 @@ if (commandCard || inventory) {
 
   async function dashboard() {
     const response = await fetch('/api/dashboard', { headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error('Could not read relic progression.');
+    if (!response.ok) throw new Error('Could not read equipment progression.');
     return response.json();
   }
 
@@ -37,23 +32,25 @@ if (commandCard || inventory) {
     const wrap = document.createElement('div');
     wrap.className = 'relic-progress-meta';
     wrap.dataset.relicProgressionOwned = 'true';
-    wrap.dataset.testid = `relic-progress-${item.id}`;
-    const temper = document.createElement('span');
-    temper.className = `relic-progress-chip${item.progression?.canUpgrade ? '' : ' master'}`;
-    temper.textContent = item.progression?.canUpgrade
-      ? `TEMPER ${item.progression.level}/${item.progression.maxLevel}`
-      : `MASTERWORK ${item.progression?.level || 0}/${item.progression?.maxLevel || 0}`;
-    wrap.append(temper);
+    wrap.dataset.testid = `equipment-progress-${item.id}`;
+    const upgrade = document.createElement('span');
+    upgrade.className = `relic-progress-chip${item.progression?.canUpgrade ? '' : ' master'}`;
+    upgrade.textContent = item.progression?.canUpgrade
+      ? `UPGRADE ${item.progression.level}/${item.progression.maxLevel}`
+      : `MAX ${item.progression?.level || 0}/${item.progression?.maxLevel || 0}`;
+    wrap.append(upgrade);
+    // Old persisted tactical items may still carry an attunement. Keep it readable for
+    // compatibility, but new default equipment never asks the player to choose one.
     if (item.progression?.attunement) {
-      const attuned = document.createElement('span');
-      attuned.className = 'relic-progress-chip';
-      attuned.textContent = `◇ ${item.progression.attunement.name}`;
-      wrap.append(attuned);
+      const legacy = document.createElement('span');
+      legacy.className = 'relic-progress-chip';
+      legacy.textContent = `Legacy effect · ${item.progression.attunement.name}`;
+      wrap.append(legacy);
     }
     return wrap;
   }
 
-  async function temper(item, attunementCode, host, button) {
+  async function upgradeItem(item, host, button) {
     if (acting) return;
     acting = true;
     button.disabled = true;
@@ -64,14 +61,14 @@ if (commandCard || inventory) {
       const response = await fetch(`/api/items/${encodeURIComponent(item.id)}/upgrade`, {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attunementCode }),
+        body: JSON.stringify({}),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message || `Temper failed (${response.status})`);
+      if (!response.ok) throw new Error(payload.message || `Upgrade failed (${response.status})`);
       const success = document.createElement('p');
       success.className = 'relic-temper-success';
       success.dataset.relicProgressionOwned = 'true';
-      success.textContent = `${payload.upgraded.name} reached Temper ${payload.upgraded.effect?.upgradeLevel || 1}.`;
+      success.textContent = `${payload.upgraded.name} reached Upgrade ${payload.upgraded.effect?.upgradeLevel || 1}.`;
       host.append(success);
       scheduleRefresh(40);
     } catch (error) {
@@ -86,54 +83,31 @@ if (commandCard || inventory) {
     }
   }
 
-  function temperActions(item, data, host) {
+  function upgradeActions(item, data, host) {
     const progression = item.progression;
     if (!progression?.canUpgrade) return null;
     const wrap = document.createElement('div');
     wrap.className = 'relic-temper-actions';
     wrap.dataset.relicProgressionOwned = 'true';
-    const canAfford = Number(data.character.threadDust || 0) >= Number(progression.nextCost || 0);
+    const gold = Number(data.character.gold ?? data.character.threadDust ?? 0);
+    const canAfford = gold >= Number(progression.nextCost || 0);
     if (data.activeRun) {
       const note = document.createElement('p');
       note.className = 'relic-temper-note';
-      note.textContent = 'Finish the active dungeon before Tempering or changing gear.';
+      note.textContent = 'Finish the active dungeon before upgrading or changing equipment.';
       wrap.append(note);
       return wrap;
     }
 
-    if (progression.needsAttunement) {
-      const note = document.createElement('p');
-      note.className = 'relic-temper-note';
-      note.textContent = `First Temper costs ${progression.nextCost} Dust and permanently chooses this relic’s build path.`;
-      wrap.append(note);
-      const grid = document.createElement('div');
-      grid.className = 'relic-attunement-grid';
-      for (const attunement of data.relicAttunements || []) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'relic-attunement-button';
-        button.dataset.testid = `temper-${item.id}-${attunement.code}`;
-        button.disabled = !canAfford || acting;
-        const title = document.createElement('strong');
-        title.textContent = `${attunement.name} · ${progression.nextCost} Dust`;
-        const copy = document.createElement('small');
-        copy.textContent = `${attunement.playstyle} — ${attunement.description}`;
-        button.append(title, copy);
-        button.addEventListener('click', () => temper(item, attunement.code, host, button));
-        grid.append(button);
-      }
-      wrap.append(grid);
-    } else {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.testid = `temper-${item.id}`;
-      button.disabled = !canAfford || acting;
-      button.textContent = canAfford
-        ? `Temper ${progression.level + 1}/${progression.maxLevel} · +1 Attack · ${progression.nextCost} Dust`
-        : `Need ${progression.nextCost} Dust to Temper`;
-      button.addEventListener('click', () => temper(item, progression.attunementCode, host, button));
-      wrap.append(button);
-    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.testid = `upgrade-${item.id}`;
+    button.disabled = !canAfford || acting;
+    button.textContent = canAfford
+      ? `Upgrade ${progression.level + 1}/${progression.maxLevel} · +1 Attack · ${progression.nextCost} Gold`
+      : `Need ${progression.nextCost} Gold to Upgrade`;
+    button.addEventListener('click', () => upgradeItem(item, host, button));
+    wrap.append(button);
     return wrap;
   }
 
@@ -148,7 +122,7 @@ if (commandCard || inventory) {
       equip.dataset.relicEquipOriginalDisabled = String(equip.disabled);
       equip.dataset.relicEquipOriginalTitle = equip.title || '';
       equip.disabled = true;
-      equip.title = 'Finish the active dungeon before changing equipped relics.';
+      equip.title = 'Finish the active dungeon before changing equipped items.';
     } else if (!data.activeRun && equip.dataset.relicEquipLocked === 'true') {
       equip.disabled = equip.dataset.relicEquipOriginalDisabled === 'true';
       equip.title = equip.dataset.relicEquipOriginalTitle || '';
@@ -166,13 +140,13 @@ if (commandCard || inventory) {
       const copy = stream ? row.querySelector('.thread-gear-copy') : row;
       copy?.append(progressionMeta(item));
       const host = stream ? row.querySelector('.thread-gear-actions') || row : row;
-      const actions = temperActions(item, data, host);
+      const actions = upgradeActions(item, data, host);
       if (actions) host.append(actions);
       syncEquipLock(row, item, data, { stream });
     });
   }
 
-  async function refreshRelics() {
+  async function refreshEquipment() {
     try {
       const data = await dashboard();
       if (commandCard && !commandCard.hidden) {
@@ -191,7 +165,7 @@ if (commandCard || inventory) {
 
   function scheduleRefresh(delay = 70) {
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(refreshRelics, delay);
+    refreshTimer = setTimeout(refreshEquipment, delay);
   }
 
   function mutationIsOwned(mutation) {
