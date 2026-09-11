@@ -115,8 +115,9 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
   expect(width).toBeLessThanOrEqual(390);
   const actions = card.locator('.inventory-rich-actions button');
   for (let index = 0; index < await actions.count(); index += 1) {
-    const box = await actions.nth(index).boundingBox();
-    expect(box?.height || 0).toBeGreaterThanOrEqual(44);
+    const action = actions.nth(index);
+    await expect(action).toBeVisible();
+    await expect.poll(async () => (await action.boundingBox())?.height || 0).toBeGreaterThanOrEqual(44);
   }
 
   mkdirSync(REVIEW_DIR, { recursive: true });
