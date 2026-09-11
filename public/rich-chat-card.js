@@ -1,5 +1,6 @@
 import './shop-rich-card.js';
 import './inventory-rich-card.js';
+import './profile-rich-card.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search';
 
@@ -12,6 +13,7 @@ function commandFromCard(card) {
   }
   if (card.dataset.shopRichCard === 'true') return 'shop';
   if (card.dataset.inventoryRichCard === 'true') return 'inventory';
+  if (card.dataset.profileRichCard === 'true') return 'profile';
   return card.dataset.richCardKind || 'panel';
 }
 
