@@ -195,7 +195,6 @@ if (streamEl) {
 
   function renderRecoveryCard() {
     const character = dashboard.character;
-    const timing = character.healthRecovery || {};
     const full = character.currentHealth >= character.maxHealth;
     const card = openCommandCard('rest', 'Recovery', `${character.currentHealth}/${character.maxHealth} HP · ${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'}`);
     const summary = document.createElement('p');
@@ -208,55 +207,63 @@ if (streamEl) {
       await refreshContext();
       renderRecoveryCard();
     }, { testId: 'stream-recovery-use-potion', className: 'primary-action', disabled: full || character.healthPotions <= 0 });
-    addActionButton(actions, 'Buy potion · 5 Dust', async () => {
-      await api('/api/shop/health-potion', { method: 'POST' });
-      await refreshContext();
-      renderRecoveryCard();
-    }, { testId: 'stream-buy-health-potion', disabled: character.threadDust < 5 });
+    addActionButton(actions, 'Open shop', async () => {
+      await renderShopCard();
+    }, { testId: 'stream-open-shop' });
     card.append(actions);
     if (!full) startRecoveryCountdown();
   }
 
-  function shopOffer({ name, description, visualAssetId, price, quantity, sku }) {
+  function shopOffer(offerData, currencyLabel) {
+    const { name, description, visualAssetId, cost, quantity, sku, affordable, available } = offerData;
     const offer = document.createElement('article');
     offer.className = 'thread-shop-offer';
     offer.append(createSpriteElement(itemSpriteFrame({ visualAssetId, id: sku, name }), { className: 'thread-generated-item-sprite', label: name }));
     const copy = document.createElement('div');
-    copy.innerHTML = `<strong>${name}</strong><small>${description}</small>`;
-    const buy = addActionButton(offer, `Buy · ${price} Dust`, async () => {
-      await api('/api/shop/health-potion', { method: 'POST', body: JSON.stringify({ sku }) });
+    const title = document.createElement('strong');
+    title.textContent = name;
+    const details = document.createElement('small');
+    details.textContent = description;
+    copy.append(title, details);
+    const buy = addActionButton(offer, `Buy · ${cost} ${currencyLabel}`, async () => {
+      await api(`/api/shop/purchases/${encodeURIComponent(sku)}`, { method: 'POST' });
       await refreshContext();
-      renderShopCard();
-    }, { testId: `stream-shop-${sku}`, disabled: dashboard.character.threadDust < price });
+      await renderShopCard();
+    }, { testId: `stream-shop-${sku}`, disabled: !available || !affordable });
     buy.classList.add('thread-shop-buy');
     offer.append(copy, buy);
     offer.dataset.quantity = String(quantity);
     return offer;
   }
 
-  function renderShopCard() {
+  async function renderShopCard() {
     clearInterval(recoveryCountdownTimer);
-    const card = openCommandCard('shop', 'Mara’s field shop', `${dashboard.character.threadDust} Thread Dust`);
+    const shop = await api('/api/shop');
+    const card = openCommandCard('shop', `${shop.vendor.name}’s field shop`, `${shop.currency.balance} ${shop.currency.label}`);
     const vendor = document.createElement('div');
     vendor.className = 'thread-shop-vendor';
-    vendor.append(createSpriteElement(weaverSpriteFrame('threadbound-shopkeeper', { variant: 'female' }), { className: 'thread-shopkeeper', label: 'Mara, field merchant' }));
+    vendor.append(createSpriteElement(weaverSpriteFrame(shop.vendor.id, { variant: shop.vendor.characterVariant }), { className: 'thread-shopkeeper', label: `${shop.vendor.name}, field merchant` }));
     const greeting = document.createElement('p');
-    greeting.innerHTML = '<strong>Mara</strong><br><span>“Patch the weave before it breaks.”</span>';
+    const vendorName = document.createElement('strong');
+    vendorName.textContent = shop.vendor.name;
+    const tagline = document.createElement('span');
+    tagline.textContent = `“${shop.vendor.tagline}”`;
+    greeting.append(vendorName, document.createElement('br'), tagline);
     vendor.append(greeting);
     const shelf = document.createElement('div');
     shelf.className = 'thread-shop-shelf';
-    shelf.append(
-      shopOffer({ name: 'Health potion', description: '1 potion · restores 12 Hunt HP', visualAssetId: 'item.health-potion.v1', price: 5, quantity: 1, sku: 'single' }),
-      shopOffer({ name: 'Potion satchel', description: '3 potions · save 3 Dust', visualAssetId: 'item.greater-health-potion.v1', price: 12, quantity: 3, sku: 'satchel' }),
-    );
+    for (const offer of shop.offers) shelf.append(shopOffer(offer, 'Dust'));
     card.append(vendor, shelf);
+    if (!shop.available && shop.unavailableReason) {
+      const unavailable = document.createElement('p');
+      unavailable.className = 'muted';
+      unavailable.textContent = shop.unavailableReason;
+      card.append(unavailable);
+    }
   }
 
   function revealCommandCard() {
     if (commandCardEl.hidden) return;
-    // Wait for the reply and any responsive layout changes to settle. Command replies
-    // live below the fixed-height log, so changing their height does not otherwise
-    // move the page far enough to reveal the complete result.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       commandCardEl.scrollIntoView({ block: 'end', inline: 'nearest' });
     }));
@@ -625,6 +632,7 @@ if (streamEl) {
     if (rerenderCommand && activeLocalCommand === 'gear') renderGearCard();
     else if (rerenderCommand && activeLocalCommand === 'status') renderStatusCard();
     else if (rerenderCommand && activeLocalCommand === 'party') renderPartyCard();
+    else if (rerenderCommand && activeLocalCommand === 'shop') await renderShopCard();
   }
 
   function scheduleContextRefresh() {
@@ -656,12 +664,12 @@ if (streamEl) {
           break;
         case '/rest':
         case '/recovery': renderRecoveryCard(); break;
-        case '/shop': renderShopCard(); break;
+        case '/shop': await renderShopCard(); break;
         case '/buy':
           if (args.join(' ').toLowerCase() !== 'potion') throw new Error('Try “buy potion”.');
-          await api('/api/shop/health-potion', { method: 'POST' });
+          await api('/api/shop/purchases/single', { method: 'POST' });
           await refreshContext();
-          renderRecoveryCard();
+          await renderShopCard();
           break;
         case '/attack': await runCombatAction('attack'); break;
         case '/guard': await runCombatAction('guard'); break;
@@ -764,8 +772,6 @@ if (streamEl) {
     }
   });
 
-  // Sprite images can increase a newly appended combat receipt after it was first
-  // anchored. Keep the user's explicit command result pinned through that load.
   logEl.addEventListener('load', () => {
     if (performance.now() <= keepLogPinnedUntil) pinLogToBottom();
   }, true);
