@@ -1,13 +1,17 @@
+import { randomUUID } from 'node:crypto';
 import { SHOP_OFFERS, SHOP_VENDOR, shopOffer } from '../content/ShopCatalog.js';
+import { SQLiteShopRepository } from '../infrastructure/SQLiteShopRepository.js';
 
 function goldBalance(player) {
   return Math.max(0, Math.floor(Number(player?.gold ?? player?.threadDust ?? 0)) || 0);
 }
 
 export class ShopService {
-  constructor({ repository, eventBus }) {
+  constructor({ repository, eventBus, shopRepository = null, idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
+    this.shopRepository = shopRepository || new SQLiteShopRepository({ database: repository.db });
+    this.idFactory = idFactory;
   }
 
   browse(playerId) {
@@ -24,7 +28,7 @@ export class ShopService {
       },
       available,
       unavailableReason: available ? null : 'Finish the active dungeon before visiting the shop.',
-      offers: SHOP_OFFERS.map((offer) => ({
+      offers: SHOP_OFFERS.map(({ itemTemplate, ...offer }) => ({
         ...offer,
         affordable: gold >= offer.cost,
         available,
@@ -44,6 +48,8 @@ export class ShopService {
       error.code = 'shop_offer_not_found';
       throw error;
     }
+
+    if (offer.kind === 'equipment') return this.#purchaseEquipment(playerId, offer);
     if (offer.kind !== 'health_potion') {
       const error = new Error('That shop offer cannot be purchased yet.');
       error.code = 'unsupported_shop_offer';
@@ -67,6 +73,7 @@ export class ShopService {
 
     const gold = Number(result.gold ?? result.threadDust ?? 0);
     const purchase = {
+      kind: offer.kind,
       sku: offer.sku,
       ...result,
       gold,
@@ -79,6 +86,35 @@ export class ShopService {
       offerName: offer.name,
       ...purchase,
     });
+    return purchase;
+  }
+
+  #purchaseEquipment(playerId, offer) {
+    const item = {
+      ...offer.itemTemplate,
+      id: this.idFactory(),
+      source: `shop:${offer.sku}`,
+      effect: { ...offer.itemTemplate.effect },
+    };
+    const purchase = {
+      kind: offer.kind,
+      sku: offer.sku,
+      ...this.shopRepository.purchaseEquipment({ playerId, cost: offer.cost, item }),
+    };
+    this.eventBus.publish({
+      type: 'ShopEquipmentPurchased',
+      playerId,
+      offerName: offer.name,
+      itemId: item.id,
+      itemName: item.name,
+      slot: item.slot,
+      rarity: item.rarity,
+      cost: offer.cost,
+      gold: purchase.gold,
+    });
+    // Existing ItemGenerated projection supplies the single visible acquisition receipt
+    // until the stream projector is migrated to a dedicated ShopEquipmentPurchased copy.
+    this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: item.source });
     return purchase;
   }
 }
