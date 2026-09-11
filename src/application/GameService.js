@@ -41,7 +41,8 @@ export class GameService {
     if (!row) throw new Error('Player not found.');
     const loadout = this.equipmentRepository.getLoadout(playerId);
     const equippedItem = loadout.weapon;
-    const character = new Character({ ...row, equippedItem });
+    const character = new Character({ ...row, equippedItem, equipment: loadout });
+    const stats = character.stats;
     const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
     const party = this.repository.getPartyForPlayer(playerId);
     const activeRun = this.repository.getActiveRun(playerId);
@@ -55,8 +56,16 @@ export class GameService {
         id: character.id,
         displayName: character.displayName,
         baseAttack: character.baseAttack,
-        attackPower: character.attackPower,
-        maxHealth: character.maxHealth,
+        stats,
+        attack: stats.attack,
+        defense: stats.defense,
+        maxHp: stats.maxHp,
+        speed: stats.speed,
+        critChance: stats.critChance,
+        critChancePercent: stats.critChancePercent,
+        // Compatibility aliases while older Hunt/dungeon/presentation callers migrate.
+        attackPower: stats.attack,
+        maxHealth: stats.maxHp,
         currentHealth: row.currentHealth,
         healthPotions: row.healthPotions,
         healthRecovery: healthRecovery(row),
@@ -224,8 +233,9 @@ export class GameService {
     const run = new DungeonRun(runState);
     if (!run.hasParticipant(playerId)) throw new Error('Run not found.');
     const player = this.repository.getPlayer(playerId);
-    const equipped = this.equipmentRepository.getLoadout(playerId).weapon;
-    return { run, player, equipped, character: new Character({ ...player, equippedItem: equipped }) };
+    const equipment = this.equipmentRepository.getLoadout(playerId);
+    const equipped = equipment.weapon;
+    return { run, player, equipped, character: new Character({ ...player, equippedItem: equipped, equipment }) };
   }
 
   #publishResolvedAction(playerId, action, outcome) {
