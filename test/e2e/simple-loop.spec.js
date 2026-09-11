@@ -140,8 +140,8 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await hunt.click();
   const huntReceipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
   await expect(huntReceipt).toBeVisible({ timeout: 5000 });
-  await expect(huntReceipt).toContainText('Thread Dust');
-  await expect(huntReceipt).toContainText(/remaining HP is \d+\/40/);
+  await expect(huntReceipt.locator('.stream-hunt-chip.reward')).toContainText('Dust');
+  await expect(huntReceipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
   await expect(huntReceipt.locator('.stream-app-badge')).toHaveText('APP');
   const huntSprite = huntReceipt.getByTestId('stream-hunt-sprite');
   await expect(huntSprite).toBeVisible({ timeout: 5000 });
