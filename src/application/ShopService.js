@@ -1,16 +1,24 @@
 import { randomUUID } from 'node:crypto';
 import { SHOP_OFFERS, SHOP_VENDOR, shopOffer } from '../content/ShopCatalog.js';
 import { SQLiteShopRepository } from '../infrastructure/SQLiteShopRepository.js';
+import { BankService } from './BankService.js';
 
 function goldBalance(player) {
   return Math.max(0, Math.floor(Number(player?.gold ?? player?.threadDust ?? 0)) || 0);
 }
 
+function bankTransportCommand(sku) {
+  const match = /^bank-(deposit|withdraw)-(\d+)$/.exec(String(sku || '').toLowerCase());
+  if (!match) return null;
+  return { action: match[1], amount: Number(match[2]) };
+}
+
 export class ShopService {
-  constructor({ repository, eventBus, shopRepository = null, idFactory = randomUUID }) {
+  constructor({ repository, eventBus, shopRepository = null, bankService = null, idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.shopRepository = shopRepository || new SQLiteShopRepository({ database: repository.db });
+    this.bankService = bankService || new BankService({ repository, eventBus });
     this.idFactory = idFactory;
   }
 
@@ -26,6 +34,9 @@ export class ShopService {
         label: 'Gold',
         balance: gold,
       },
+      // Temporary transport adapter for M2-05. Bank rules live in BankService/SQLiteBankRepository;
+      // a dedicated HTTP route can replace this without migrating authoritative state.
+      bank: this.bankService.browse(playerId),
       available,
       unavailableReason: available ? null : 'Finish the active dungeon before visiting the shop.',
       offers: SHOP_OFFERS.map(({ itemTemplate, ...offer }) => ({
@@ -37,6 +48,13 @@ export class ShopService {
   }
 
   purchase(playerId, sku) {
+    const bankCommand = bankTransportCommand(sku);
+    if (bankCommand) {
+      return bankCommand.action === 'deposit'
+        ? this.bankService.deposit(playerId, bankCommand.amount)
+        : this.bankService.withdraw(playerId, bankCommand.amount);
+    }
+
     if (this.repository.getActiveRun(playerId)) {
       const error = new Error('The shop is unavailable during a dungeon.');
       error.code = 'shop_during_dungeon';
@@ -118,3 +136,5 @@ export class ShopService {
     return purchase;
   }
 }
+
+export { bankTransportCommand };
