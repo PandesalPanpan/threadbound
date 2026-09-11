@@ -27,16 +27,25 @@ function installStyles(documentRef = document) {
   documentRef.head.append(style);
 }
 
+function explicitCommand(card) {
+  const kicker = card?.querySelector('.thread-reply-header span')?.textContent || '';
+  const match = kicker.match(/\/(shop|inventory|gear)\b/i);
+  return match?.[1]?.toLowerCase() || null;
+}
+
 function isShopCard(card) {
   if (!card || card.hidden) return false;
-  if (card.dataset.shopRichCard === 'true' || card.dataset.richCardKind === 'shop') return true;
-  const kicker = card.querySelector('.thread-reply-header span')?.textContent || '';
-  return /\/shop\b/i.test(kicker);
+  const command = explicitCommand(card);
+  if (command) return command === 'shop';
+  if (card.querySelector('.inventory-rich-layout')) return false;
+  if (card.querySelector('.thread-shop-shelf, .thread-shop-vendor')) return true;
+  return card.dataset.richCardKind === 'shop' && card.dataset.inventoryRichCard !== 'true';
 }
 
 function enhanceShopCard(card, { documentRef = document } = {}) {
   if (!isShopCard(card)) return;
 
+  delete card.dataset.inventoryRichCard;
   card.dataset.shopRichCard = 'true';
   card.dataset.richCardKind = 'shop';
   card.setAttribute('aria-label', 'Shop panel');
