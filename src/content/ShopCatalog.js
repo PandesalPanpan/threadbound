@@ -12,7 +12,7 @@ export const SHOP_OFFERS = Object.freeze([
     name: 'Bronze Sword',
     description: 'Common Weapon · +1 Attack',
     visualAssetId: 'item.steel-sword.v1',
-    cost: 18,
+    cost: 8,
     quantity: 1,
     itemTemplate: Object.freeze({
       definitionId: 'shop-bronze-sword',
