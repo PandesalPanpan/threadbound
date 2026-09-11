@@ -52,6 +52,8 @@ export class GameService {
         currentHealth: row.currentHealth,
         healthPotions: row.healthPotions,
         healthRecovery: healthRecovery(row),
+        gold: character.gold,
+        // Compatibility alias until the persisted thread_dust column and older callers migrate.
         threadDust: character.threadDust,
         equippedItem: decorateItem(equippedItem),
       },
@@ -197,7 +199,7 @@ export class GameService {
     const item = this.repository.getItem(itemId);
     if (!item || item.playerId !== playerId) throw new Error('Item not found.');
     if (this.repository.getActiveRun(playerId)) {
-      const error = new Error('Finish the active dungeon before changing equipped relics.');
+      const error = new Error('Finish the active dungeon before changing equipped equipment.');
       error.code = 'item_equip_during_run';
       throw error;
     }
