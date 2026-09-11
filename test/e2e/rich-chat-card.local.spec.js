@@ -34,7 +34,7 @@ test('mobile stream command panels share one reusable rich-card contract', async
   expect(firstActionBox?.height || 0).toBeGreaterThanOrEqual(44);
 
   const inventory = await runCommand(page, 'inventory');
-  await expect(inventory).toHaveAttribute('data-rich-card-kind', 'gear');
+  await expect(inventory).toHaveAttribute('data-rich-card-kind', 'inventory');
   await expect(inventory.locator('.rich-chat-card-header')).toHaveCount(1);
 
   const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
