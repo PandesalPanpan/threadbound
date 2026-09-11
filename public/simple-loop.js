@@ -115,6 +115,7 @@ if (stream) {
     body.threadbound-player #stream .simple-loop-action[data-kind="hunt"] { color:#a98eff !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="attack"] { color:#ff7080 !important; }
     body.threadbound-player #stream .simple-loop-action[data-kind="dungeon"] { color:#f0b541 !important; }
+    body.threadbound-player #stream .simple-loop-action[data-kind="heal"] { color:#73dfa7 !important; }
     body.threadbound-player #stream .simple-loop-action:disabled { opacity:.55 !important; }
     body.threadbound-player #stream .simple-loop-help {
       margin:4px 0 0;
@@ -139,7 +140,7 @@ if (stream) {
   let dashboard = null;
   let syncing = false;
   let resyncRequested = false;
-  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'help', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
+  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'help', 'heal', 'potion', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
 
   function normalizedCommand(value) {
     const trimmed = String(value || '').trim();
@@ -264,9 +265,13 @@ if (stream) {
     commandCard.innerHTML = '';
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
-    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Slash-prefixed versions still work. Gear, Party, World, and Codex live in the bottom navigation.';
+    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>heal</strong> — use a potion outside dungeons<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Slash-prefixed versions still work. Gear, Party, World, and Codex live in the bottom navigation.';
     commandCard.append(help);
     decorateFigmaSurface();
+  }
+
+  async function heal() {
+    await api('/api/recovery/potion', { method: 'POST' });
   }
 
   function revealCommandCard() {
@@ -293,6 +298,7 @@ if (stream) {
 
     if (noRun) {
       addButton('Hunt', 'hunt', hunt, 'stream-hunt');
+      if (dashboard.character.currentHealth < dashboard.character.maxHealth && dashboard.character.healthPotions > 0) addButton(`Heal · ${dashboard.character.healthPotions}`, 'heal', heal, 'stream-heal');
       const { dungeon, readiness } = firstDungeon();
       if (dungeon) {
         const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
@@ -373,19 +379,24 @@ if (stream) {
       // commands. The authoritative adventure handler has the fresher run context.
       if (noRun && command === '/attack') return;
 
-      if (['/hunt', '/dungeon', '/run', '/attack', '/help'].includes(command)) {
+      if (['/hunt', '/dungeon', '/run', '/attack', '/help', '/heal', '/potion'].includes(command)) {
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (acting) return;
+        acting = true;
         input.value = '';
         showError('');
         try {
           if (command === '/hunt') await hunt();
           else if (command === '/dungeon' || command === '/run') await startDungeon();
           else if (command === '/attack') await attack();
+          else if (command === '/heal' || command === '/potion') await heal();
           else renderHelp();
           await sync({ force: true });
         } catch (error) {
           showError(error.message);
+        } finally {
+          acting = false;
         }
         input.focus();
         revealCommandCard();

@@ -20,21 +20,23 @@ export function pickHuntEnemy(roll = 0) {
  * progression loop: permanent character stats decide how many exchanges are
  * needed, while the player does not manage a temporary combat subsystem.
  */
-export function resolveHunt({ attackPower, maxHealth, enemyRoll = 0 }) {
+export function resolveHunt({ attackPower, maxHealth, currentHealth = maxHealth, enemyRoll = 0 }) {
   if (!Number.isInteger(attackPower) || attackPower <= 0) throw new Error('Hunt requires positive Attack.');
   if (!Number.isInteger(maxHealth) || maxHealth <= 0) throw new Error('Hunt requires positive Health.');
+  if (!Number.isInteger(currentHealth) || currentHealth <= 0 || currentHealth > maxHealth) throw new Error('Hunt requires current Health between 1 and maximum Health.');
 
   const enemy = pickHuntEnemy(enemyRoll);
   const attacksRequired = Math.max(1, Math.ceil(enemy.hp / attackPower));
   const enemyHits = Math.max(0, attacksRequired - 1);
   const damageTaken = enemyHits * enemy.retaliation;
-  const remainingHp = Math.max(0, maxHealth - damageTaken);
+  const remainingHp = Math.max(0, currentHealth - damageTaken);
   const victory = remainingHp > 0;
 
   return {
     enemy: { ...enemy },
     attackPower,
     maxHealth,
+    startingHp: currentHealth,
     attacksRequired,
     damageTaken,
     remainingHp,

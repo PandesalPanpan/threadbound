@@ -32,10 +32,19 @@ test('command results scroll fully into view as their content grows', async ({ b
     await page.getByTestId('stream-send').click();
     const receipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
     await expect(receipt).toBeVisible();
-    await expect(receipt.locator('.thread-visual-asset')).toBeVisible();
+    await expect(receipt.getByTestId('stream-hunt-sprite')).toBeVisible();
+    await expect(receipt.locator('.stream-hunt-chip.loss')).toContainText('HP');
+    await expect(receipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
+    await expect(receipt.locator('.stream-hunt-chip.reward')).toContainText('Dust');
     await expect.poll(async () => page.getByTestId('adventure-stream-log').evaluate((element) => (
       Math.ceil(element.scrollHeight - element.scrollTop - element.clientHeight)
     ))).toBeLessThanOrEqual(1);
+
+    const heal = page.getByTestId('stream-heal');
+    await expect(heal).toBeVisible();
+    await heal.click();
+    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible();
+    await expect(heal).toHaveCount(0);
   } finally {
     await context.close();
   }

@@ -74,6 +74,13 @@ if (stream) {
       font-size:.64rem;
       line-height:1.35;
     }
+    #stream .stream-hunt-ledger { display:flex; flex-wrap:wrap; gap:5px; margin-top:3px; }
+    #stream .stream-hunt-chip { padding:2px 6px; border-radius:5px; background:#171922; color:#d6d7dc; font-size:.61rem; font-weight:800; font-variant-numeric:tabular-nums; }
+    #stream .stream-hunt-chip.loss { color:#ff7c89; }
+    #stream .stream-hunt-chip.reward { color:#f0c35b; }
+    #stream .stream-hunt-chip.health { color:#83dfae; }
+    #stream .stream-hunt-loot { display:grid; grid-template-columns:28px minmax(0,1fr); gap:6px; align-items:center; margin-top:5px; color:#c8cad2; font-size:.62rem; }
+    #stream .stream-hunt-loot .thread-generated-sprite { width:28px; min-width:28px; }
     @media (max-width:520px) {
       #stream .stream-health-unit .thread-generated-sprite { width:28px; min-width:28px; }
       #stream .stream-hunt-visual { grid-template-columns:40px minmax(0,1fr); gap:8px; padding:7px; }
@@ -184,6 +191,8 @@ if (stream) {
       const metadata = entry.metadata || {};
       const content = row.querySelector('.stream-entry-content');
       if (!content) continue;
+      const sourceCopy = content.querySelector(':scope > p');
+      if (sourceCopy) sourceCopy.classList.add('sr-only');
 
       const visual = document.createElement('div');
       visual.className = 'stream-hunt-visual';
@@ -201,12 +210,39 @@ if (stream) {
       kicker.textContent = metadata.victory ? 'HUNT CLEARED' : 'HUNT FAILED';
       const title = document.createElement('strong');
       title.textContent = enemyName;
-      const stats = document.createElement('small');
-      const hp = Number.isFinite(Number(metadata.enemyHp)) ? `${metadata.enemyHp} enemy HP` : 'Hunt encounter';
-      const rewards = metadata.victory ? `+${metadata.threadDust || 0} Thread Dust` : 'No rewards';
-      const loot = metadata.itemName ? ` · ${metadata.itemName}` : '';
-      stats.textContent = `${hp} · ${rewards}${loot}`;
-      copy.append(kicker, title, stats);
+      const ledger = document.createElement('div');
+      ledger.className = 'stream-hunt-ledger';
+      const chip = (text, kind) => {
+        const element = document.createElement('span');
+        element.className = `stream-hunt-chip ${kind}`;
+        element.textContent = text;
+        return element;
+      };
+      ledger.append(
+        chip(`−${metadata.damageTaken || 0} HP`, 'loss'),
+        chip(`${metadata.remainingHp}/${metadata.maxHp} HP`, 'health'),
+        chip(metadata.victory ? `+${metadata.threadDust || 0} Dust` : 'No reward', 'reward'),
+      );
+      copy.append(kicker, title, ledger);
+      if (metadata.itemName) {
+        const loot = document.createElement('div');
+        loot.className = 'stream-hunt-loot';
+        const item = itemForName(metadata.itemName) || { id: metadata.itemId, name: metadata.itemName };
+        loot.append(createSpriteElement(itemSpriteFrame(item), { className: 'thread-generated-item-sprite', label: metadata.itemName }));
+        const lootCopy = document.createElement('span');
+        lootCopy.textContent = `${metadata.itemName} · +${metadata.itemAttackBonus || 0} ATK`;
+        loot.append(lootCopy);
+        copy.append(loot);
+      }
+      if (metadata.healthPotionsFound) {
+        const potion = document.createElement('div');
+        potion.className = 'stream-hunt-loot';
+        potion.append(createSpriteElement(itemSpriteFrame({ visualAssetId: 'item.health-potion.v1', id: 'health-potion', name: 'Health Potion' }), { className: 'thread-generated-item-sprite', label: 'Health Potion' }));
+        const potionCopy = document.createElement('span');
+        potionCopy.textContent = '+1 health potion';
+        potion.append(potionCopy);
+        copy.append(potion);
+      }
       visual.append(copy);
       content.append(visual);
       row.dataset.generatedHuntVisual = 'true';

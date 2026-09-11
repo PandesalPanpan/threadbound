@@ -42,6 +42,13 @@ test('hunt resolves one enemy in one command using permanent stats', () => {
   assert.equal(strong.damageTaken, 4);
 });
 
+test('hunt resolution spends current health rather than silently resetting attrition', () => {
+  const result = resolveHunt({ attackPower: 6, maxHealth: 40, currentHealth: 20, enemyRoll: 0.99 });
+  assert.equal(result.startingHp, 20);
+  assert.equal(result.damageTaken, 8);
+  assert.equal(result.remainingHp, 12);
+});
+
 test('simple dungeon policy makes Frayed Hollow a real Attack stat check', () => {
   const original = DUNGEONS['frayed-hollow'];
   const hardened = prepareSimpleDungeon(original);

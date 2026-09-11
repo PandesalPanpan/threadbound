@@ -13,9 +13,11 @@ The goal is to keep the command vocabulary closer to a lightweight chat RPG. Dep
 
 ## Hunt
 
-`/hunt` resolves one random solo encounter in one command. It uses the player's permanent Attack and maximum Health. Stronger Attack needs fewer exchanges and therefore takes less damage.
+`hunt` (or `/hunt`) resolves one random solo encounter in one command. It uses the player's permanent Attack and persistent out-of-combat Health. Stronger Attack needs fewer exchanges and therefore takes less damage.
 
 Hunts award a small amount of Thread Dust and can drop permanent weapons. Hunt drops are capped at Rare so dungeon rewards and other progression sources can remain aspirational.
+
+Hunt damage persists between encounters. Outside a dungeon, one HP regenerates per minute. New characters begin with one health potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. This health economy—not an arbitrary action cooldown—paces repeated Hunts.
 
 Hunts do not create a persistent `DungeonRun`; `HuntService` is a separate application use case over the small `HuntEncounter` domain policy.
 
@@ -48,14 +50,13 @@ This follows a strangler-style migration rather than deleting the old aggregate 
 
 Hunt and simple-dungeon results are projected into the same Adventure Stream as player chat. The stream remains a projection, not the source of truth.
 
-A Hunt result intentionally reads like a compact bot receipt:
+A Hunt result intentionally reads like a compact ledger receipt:
 
 ```text
 THREADBOUND
-Peter found and killed Thread Wolf.
-Earned 3 Thread Dust.
-Lost 8 HP · remaining HP is 32/40.
-Got Bound Needle (+3 Attack).
+HUNT CLEARED  Thread Wolf
+−8 HP   32/40 HP   +3 Dust
+Bound Needle · +3 ATK
 ```
 
 Dungeon combat uses similarly compact receipts and does not render Focus, tactical intent, run-power, or skill metadata for `simpleCombat` runs.

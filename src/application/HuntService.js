@@ -40,20 +40,32 @@ export class HuntService {
     if (!player) throw new Error('Player not found.');
     const equipped = player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null;
     const character = new Character({ ...player, equippedItem: equipped });
+    if (player.currentHealth <= 0) {
+      const error = new Error('You are too wounded to Hunt. Use a health potion or wait for out-of-combat recovery.');
+      error.code = 'too_wounded_to_hunt';
+      throw error;
+    }
     const result = resolveHunt({
       attackPower: character.attackPower,
       maxHealth: character.maxHealth,
+      currentHealth: player.currentHealth,
       enemyRoll: this.rng(),
     });
 
     let item = null;
+    let healthPotionsFound = 0;
     if (result.victory) {
       this.repository.addThreadDust(playerId, result.threadDust);
       if (this.rng() < result.dropChance) {
         item = capHuntDrop(this.itemGenerator.generateReward({ source: 'hunt' }));
         this.repository.addItem(playerId, item);
       }
+      if (this.rng() < 0.2) {
+        healthPotionsFound = 1;
+        this.repository.addHealthPotions(playerId, 1);
+      }
     }
+    this.repository.setPlayerHealth(playerId, result.remainingHp);
 
     this.eventBus.publish({
       type: 'HuntResolved',
@@ -72,6 +84,7 @@ export class HuntService {
       itemName: item?.name || null,
       itemRarity: item?.rarity || null,
       itemAttackBonus: item?.attackBonus || 0,
+      healthPotionsFound,
     });
     if (item) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: 'hunt', silentStream: true });
 
@@ -81,8 +94,23 @@ export class HuntService {
       character: {
         attackPower: character.attackPower,
         maxHealth: character.maxHealth,
+        currentHealth: result.remainingHp,
+        healthPotions: this.repository.getPlayer(playerId)?.healthPotions ?? player.healthPotions,
         threadDust: this.repository.getPlayer(playerId)?.threadDust ?? player.threadDust,
       },
     };
+  }
+
+  useHealthPotion(playerId) {
+    if (this.repository.getActiveRun(playerId)) {
+      const error = new Error('Health potions can only be used outside a dungeon.');
+      error.code = 'potion_during_dungeon';
+      throw error;
+    }
+    const recoveredPlayer = this.repository.getPlayer(playerId);
+    this.repository.setPlayerHealth(playerId, recoveredPlayer.currentHealth);
+    const recovery = this.repository.useHealthPotion(playerId);
+    this.eventBus.publish({ type: 'HealthPotionUsed', playerId, ...recovery });
+    return recovery;
   }
 }

@@ -78,6 +78,44 @@ export class SQLiteGameRepository {
     this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(amount, playerId);
   }
 
+  setPlayerHealth(playerId, currentHealth, updatedAt = new Date().toISOString()) {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    const health = Math.max(0, Math.min(player.maxHealth, Math.floor(Number(currentHealth))));
+    this.db.prepare('UPDATE players SET current_health = ?, health_updated_at = ? WHERE id = ?').run(health, updatedAt, playerId);
+    return { ...this.getPlayer(playerId), currentHealth: health, healthUpdatedAt: updatedAt };
+  }
+
+  addHealthPotions(playerId, amount = 1) {
+    this.db.prepare('UPDATE players SET health_potions = health_potions + ? WHERE id = ?').run(Math.max(0, Math.floor(Number(amount))), playerId);
+  }
+
+  useHealthPotion(playerId, { heal = 12, updatedAt = new Date().toISOString() } = {}) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.db.prepare('SELECT current_health, max_health, health_potions FROM players WHERE id = ?').get(playerId);
+      if (!row) throw new Error('Player not found.');
+      if (row.current_health >= row.max_health) {
+        const error = new Error('You are already at full health.');
+        error.code = 'health_already_full';
+        throw error;
+      }
+      if (row.health_potions <= 0) {
+        const error = new Error('You have no health potions. Hunt to find another.');
+        error.code = 'no_health_potions';
+        throw error;
+      }
+      const currentHealth = Math.min(row.max_health, row.current_health + heal);
+      const healed = currentHealth - row.current_health;
+      this.db.prepare('UPDATE players SET current_health = ?, health_potions = health_potions - 1, health_updated_at = ? WHERE id = ?').run(currentHealth, updatedAt, playerId);
+      this.db.exec('COMMIT');
+      return { healed, currentHealth, maxHealth: row.max_health, healthPotions: row.health_potions - 1 };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
+  }
+
   createParty(party) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
@@ -255,7 +293,11 @@ export class SQLiteGameRepository {
   }
 
   #decodePlayer(row) {
-    return { id: row.id, threadedUserId: row.threaded_user_id, displayName: row.display_name, baseAttack: row.base_attack, maxHealth: row.max_health, threadDust: row.thread_dust, equippedItemId: row.equipped_item_id };
+    const healthTimestamp = String(row.health_updated_at || '');
+    const updatedAt = healthTimestamp ? new Date(healthTimestamp.includes('T') ? healthTimestamp : `${healthTimestamp.replace(' ', 'T')}Z`).getTime() : Date.now();
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - updatedAt) / 60000));
+    const storedHealth = Number.isInteger(row.current_health) ? row.current_health : row.max_health;
+    return { id: row.id, threadedUserId: row.threaded_user_id, displayName: row.display_name, baseAttack: row.base_attack, maxHealth: row.max_health, currentHealth: Math.min(row.max_health, storedHealth + elapsedMinutes), healthPotions: row.health_potions ?? 1, healthUpdatedAt: row.health_updated_at, threadDust: row.thread_dust, equippedItemId: row.equipped_item_id };
   }
 
   #decodeParty(row) {
@@ -282,6 +324,9 @@ export class SQLiteGameRepository {
         display_name TEXT NOT NULL,
         base_attack INTEGER NOT NULL,
         max_health INTEGER NOT NULL,
+        current_health INTEGER NOT NULL DEFAULT 40,
+        health_potions INTEGER NOT NULL DEFAULT 1,
+        health_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         thread_dust INTEGER NOT NULL DEFAULT 0,
         equipped_item_id TEXT NULL
       );
@@ -356,5 +401,9 @@ export class SQLiteGameRepository {
     if (!runColumns.some((column) => column.name === 'version')) {
       this.db.exec('ALTER TABLE dungeon_runs ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
     }
+    const playerColumns = this.db.prepare('PRAGMA table_info(players)').all();
+    if (!playerColumns.some((column) => column.name === 'current_health')) this.db.exec('ALTER TABLE players ADD COLUMN current_health INTEGER NOT NULL DEFAULT 40');
+    if (!playerColumns.some((column) => column.name === 'health_potions')) this.db.exec('ALTER TABLE players ADD COLUMN health_potions INTEGER NOT NULL DEFAULT 1');
+    if (!playerColumns.some((column) => column.name === 'health_updated_at')) this.db.exec("ALTER TABLE players ADD COLUMN health_updated_at TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'");
   }
 }

@@ -346,6 +346,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const hunt = huntService.hunt(playerId);
     return response.json({ hunt, dashboard: gameService.dashboard(playerId) });
   });
+  app.post('/api/recovery/potion', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const recovery = huntService.useHealthPotion(playerId);
+    return response.json({ recovery, dashboard: gameService.dashboard(playerId) });
+  });
   app.post('/api/dungeons/:dungeonId/start-simple', requireConnection, (request, response) => response.status(201).json({ run: simpleDungeonService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
 
   // Legacy tactical start remains during migration so old persisted journeys and focused
@@ -406,6 +411,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'invalid_relic_attunement',
       'relic_attunement_locked',
       'hunt_during_dungeon',
+      'too_wounded_to_hunt',
+      'health_already_full',
+      'no_health_potions',
+      'potion_during_dungeon',
       'simple_combat_attack_only',
     ]);
     const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic|simple combat|hunting/i.test(knownMessage) ? 409 : 500;

@@ -147,11 +147,14 @@ export class ActivityStreamService {
         const result = event.victory
           ? `${actorName} found and killed ${event.enemyName || enemyName}.`
           : `${actorName} found ${event.enemyName || enemyName} but was defeated.`;
-        const rewards = event.victory ? `\nEarned ${event.threadDust} Thread Dust.` : '\nEarned no rewards.';
-        const hp = `\nLost ${event.damageTaken} HP · remaining HP is ${event.remainingHp}/${event.maxHp}.`;
-        const loot = event.itemName ? `\nGot ${event.itemName} (+${event.itemAttackBonus} Attack).` : '';
-        return { actorName: 'THREADBOUND', body: `${result}${rewards}${hp}${loot}` };
+        const rewards = event.victory ? ` +${event.threadDust} Dust.` : ' No rewards.';
+        const hp = ` −${event.damageTaken} HP · ${event.remainingHp}/${event.maxHp} HP.`;
+        const loot = event.itemName ? ` Loot: ${event.itemName} (+${event.itemAttackBonus} ATK).` : '';
+        const potion = event.healthPotionsFound ? ' Found a health potion.' : '';
+        return { actorName: 'THREADBOUND', body: `${result}${rewards}${hp}${loot}${potion}` };
       }
+      case 'HealthPotionUsed':
+        return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
       case 'DungeonStarted': {
         const foe = event.enemyName || enemyName || 'an enemy';
         const enemyState = event.enemyHp === null || event.enemyHp === undefined ? '' : ` 👾 ${foe} ${event.enemyHp}/${event.enemyMaxHp} HP.`;

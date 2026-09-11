@@ -140,7 +140,7 @@ Generated items are assembled from a controlled effect vocabulary. Generators ca
 
 ## Persistence
 
-Node 22's built-in SQLite adapter stores players, parties/readiness, items/equipment, dungeon participant snapshots, run state/version, achievements, shared world progress, idempotent purchase grants, published/draft Codex content, and projected world history.
+Node 22's built-in SQLite adapter stores players (including persistent Hunt health and potions), parties/readiness, items/equipment, dungeon participant snapshots, run state/version, achievements, shared world progress, idempotent purchase grants, published/draft Codex content, and projected world history.
 
 The HTTP session store is still in-memory. Replace it with a durable/shared session strategy before multi-instance production deployment.
 

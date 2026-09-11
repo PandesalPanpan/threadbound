@@ -40,6 +40,8 @@ export class GameService {
         baseAttack: character.baseAttack,
         attackPower: character.attackPower,
         maxHealth: character.maxHealth,
+        currentHealth: row.currentHealth,
+        healthPotions: row.healthPotions,
         threadDust: character.threadDust,
         equippedItem: decorateItem(equippedItem),
       },

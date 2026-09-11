@@ -1,4 +1,4 @@
-import { enemySprite, weaverSprite } from './sprite-catalog.js';
+import { createSpriteElement, enemySprite, itemSpriteFrame, weaverSprite } from './sprite-catalog.js';
 
 const streamEl = document.querySelector('#stream');
 
@@ -41,7 +41,7 @@ if (streamEl) {
   let activeLocalCommand = null;
   let keepLogPinnedUntil = 0;
 
-  const BARE_COMMANDS = new Set(['help', 'status', 'gear', 'inventory', 'party', 'codex', 'attack', 'guard', 'interrupt', 'mend', 'revive', 'run', 'upgrade']);
+  const BARE_COMMANDS = new Set(['help', 'status', 'gear', 'inventory', 'party', 'codex', 'attack', 'guard', 'interrupt', 'mend', 'revive', 'run', 'upgrade', 'heal', 'potion']);
 
   function normalizedCommand(value) {
     const trimmed = String(value || '').trim();
@@ -274,6 +274,21 @@ if (streamEl) {
   function renderGearCard() {
     if (!dashboard) return;
     const card = openCommandCard('gear', 'Relic pouch', `${dashboard.inventory.length} item${dashboard.inventory.length === 1 ? '' : 's'} · ${dashboard.character.threadDust} Thread Dust`);
+    const recovery = document.createElement('article');
+    recovery.className = 'thread-gear-row thread-potion-row';
+    recovery.dataset.testid = 'stream-health-potions';
+    recovery.append(createSpriteElement(itemSpriteFrame({ visualAssetId: 'item.health-potion.v1', id: 'health-potion', name: 'Health Potion' }), { className: 'thread-generated-item-sprite', label: 'Health Potion' }));
+    const recoveryCopy = document.createElement('div');
+    recoveryCopy.className = 'thread-gear-copy';
+    recoveryCopy.innerHTML = `<div><strong>Health potion</strong><span>${dashboard.character.healthPotions} LEFT</span></div><small>Restore up to 12 Hunt HP · currently ${dashboard.character.currentHealth}/${dashboard.character.maxHealth}</small>`;
+    const recoveryActions = document.createElement('div');
+    recoveryActions.className = 'thread-gear-actions';
+    addActionButton(recoveryActions, 'Use', async () => {
+      await api('/api/recovery/potion', { method: 'POST' });
+      await refreshContext({ rerenderCommand: true });
+    }, { testId: 'stream-use-health-potion', className: 'primary-action', disabled: dashboard.character.healthPotions <= 0 || dashboard.character.currentHealth >= dashboard.character.maxHealth });
+    recovery.append(recoveryCopy, recoveryActions);
+    card.append(recovery);
     if (!dashboard.inventory.length) {
       const empty = document.createElement('p');
       empty.className = 'muted';
@@ -541,6 +556,11 @@ if (streamEl) {
         case '/inventory': renderGearCard(); break;
         case '/party': renderPartyCard(); break;
         case '/codex': await renderCodexCard(args.join(' ')); break;
+        case '/heal':
+        case '/potion':
+          await api('/api/recovery/potion', { method: 'POST' });
+          await refreshContext({ rerenderCommand: activeLocalCommand === 'gear' || activeLocalCommand === 'status' });
+          break;
         case '/attack': await runCombatAction('attack'); break;
         case '/guard': await runCombatAction('guard'); break;
         case '/interrupt': await runCombatAction('interrupt'); break;
