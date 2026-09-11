@@ -28,11 +28,34 @@ if (commandCard || inventory) {
     container.querySelectorAll('[data-relic-progression-owned="true"]').forEach((node) => node.remove());
   }
 
+  function itemSlot(item) {
+    return String(item?.slot || 'weapon').trim().toLowerCase();
+  }
+
+  function slotLabel(item) {
+    const slot = itemSlot(item);
+    return slot ? slot[0].toUpperCase() + slot.slice(1) : 'Equipment';
+  }
+
+  function equippedForItem(data, item) {
+    const slot = itemSlot(item);
+    return data.character.equipment?.[slot] || (slot === 'weapon' ? data.character.equippedItem : null);
+  }
+
+  function isEquipped(data, item) {
+    return equippedForItem(data, item)?.id === item.id;
+  }
+
   function progressionMeta(item) {
     const wrap = document.createElement('div');
     wrap.className = 'relic-progress-meta';
     wrap.dataset.relicProgressionOwned = 'true';
     wrap.dataset.testid = `equipment-progress-${item.id}`;
+    const slot = document.createElement('span');
+    slot.className = 'relic-progress-chip';
+    slot.textContent = slotLabel(item);
+    slot.dataset.testid = `equipment-slot-${item.id}`;
+    wrap.append(slot);
     const upgrade = document.createElement('span');
     upgrade.className = `relic-progress-chip${item.progression?.canUpgrade ? '' : ' master'}`;
     upgrade.textContent = item.progression?.canUpgrade
@@ -111,8 +134,30 @@ if (commandCard || inventory) {
     return wrap;
   }
 
+  function syncEquipState(row, item, data, { stream = false } = {}) {
+    const testId = `${stream ? 'stream-equip' : 'equip'}-${item.id}`;
+    const equip = [...row.querySelectorAll('button')].find((button) => button.dataset.testid === testId);
+    if (!equip) return;
+    const equipped = isEquipped(data, item);
+    if (equipped) {
+      equip.dataset.relicCanonicalEquipped = 'true';
+      equip.dataset.relicEquipOriginalText = equip.dataset.relicEquipOriginalText || equip.textContent || 'Equip';
+      equip.disabled = true;
+      equip.textContent = `Equipped · ${slotLabel(item)}`;
+      equip.title = `${slotLabel(item)} slot currently uses this item.`;
+      return;
+    }
+    if (equip.dataset.relicCanonicalEquipped === 'true') {
+      equip.textContent = equip.dataset.relicEquipOriginalText || 'Equip';
+      equip.disabled = false;
+      equip.title = '';
+      delete equip.dataset.relicCanonicalEquipped;
+      delete equip.dataset.relicEquipOriginalText;
+    }
+  }
+
   function syncEquipLock(row, item, data, { stream = false } = {}) {
-    if (item.id === data.character.equippedItem?.id) return;
+    if (isEquipped(data, item)) return;
     const testId = `${stream ? 'stream-equip' : 'equip'}-${item.id}`;
     const equip = [...row.querySelectorAll('button')].find((button) => button.dataset.testid === testId);
     if (!equip) return;
@@ -142,6 +187,7 @@ if (commandCard || inventory) {
       const host = stream ? row.querySelector('.thread-gear-actions') || row : row;
       const actions = upgradeActions(item, data, host);
       if (actions) host.append(actions);
+      syncEquipState(row, item, data, { stream });
       syncEquipLock(row, item, data, { stream });
     });
   }
