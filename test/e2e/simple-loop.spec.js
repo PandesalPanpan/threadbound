@@ -139,6 +139,10 @@ test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only d
 
   const initial = await dashboard(context);
   expect(initial.character.attackPower).toBe(6);
+  expect(initial.character.experience).toBe(0);
+  expect(initial.character.xp).toBe(0);
+  expect(initial.character.level).toBe(1);
+  expect(initial.character.levelProgression.experienceToNextLevel).toBe(50);
   expect(initial.simpleLoop.dungeonReadiness[0].recommendedAttack).toBe(9);
   await expect(dungeon).toContainText('6/9');
 
@@ -146,6 +150,7 @@ test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only d
   const huntReceipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
   await expect(huntReceipt).toBeVisible({ timeout: 5000 });
   await expect(huntReceipt.locator('.stream-hunt-chip.reward')).toContainText('Gold');
+  await expect(huntReceipt.locator('.stream-hunt-chip.progress')).toContainText(/\+\d+ XP/);
   await expect(huntReceipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
   await expect(huntReceipt.locator('.stream-app-badge')).toHaveText('APP');
   const huntSprite = huntReceipt.getByTestId('stream-hunt-sprite');
@@ -154,6 +159,10 @@ test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only d
   await expectVisibleAtlasFrame(huntSprite);
   const afterHunt = await dashboard(context);
   expect(afterHunt.character.gold).toBeGreaterThan(0);
+  expect(afterHunt.character.experience).toBeGreaterThan(0);
+  expect(afterHunt.character.xp).toBe(afterHunt.character.experience);
+  expect(afterHunt.character.level).toBeGreaterThanOrEqual(1);
+  expect(afterHunt.character.levelProgression.experience).toBe(afterHunt.character.experience);
   await expect(page.locator('.simple-loop-action')).toHaveCount(2);
   if (afterHunt.inventory.length > 0) {
     const inventory = page.getByTestId('stream-inventory');
