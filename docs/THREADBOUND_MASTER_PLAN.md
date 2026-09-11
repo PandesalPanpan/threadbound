@@ -602,7 +602,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 ### Phase 2 — chat shell and rich cards
 
 - [x] **M2-01** Define a reusable rich chat-card/panel presentation primitive for app-like cards inside the stream.
-- [ ] **M2-02** Inventory rich card: all items, equipment slots, stats, rarity, sprites, Equip/Sell/Upgrade actions.
+- [x] **M2-02** Inventory rich card: all items, equipment slots, stats, rarity, sprites, Equip/Sell/Upgrade actions.
 - [ ] **M2-03** Shop rich card: generated/catalog stock, sprites, prices, Buy/Sell, affordability, normal equipment/potions.
 - [ ] **M2-04** Profile rich card: level, XP, Gold, banked Gold, primary stats, equipment, Area, achievements summary.
 - [ ] **M2-05** Bank rich card: deposit/withdraw with carried-vs-banked Gold.
@@ -764,7 +764,7 @@ It is complete only when:
 
 ## 15. Immediate next task
 
-Continue with **M2-02 — Inventory rich card**, building on the merged rich chat-card primitive and completed Phase 1 foundations.
+Continue with **M2-03 — Shop rich card**, building on the merged rich chat-card primitive, completed Inventory card, and existing server-owned Shop service/catalog.
 
 The first substantial playable milestone is complete when a player can use the chat-first app to:
 
