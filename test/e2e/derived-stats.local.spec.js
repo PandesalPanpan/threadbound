@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 
 async function dashboard(page) {
@@ -35,4 +36,7 @@ test('mobile character summary exposes the authoritative five readable stats', a
 
   const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(bodyWidth).toBeLessThanOrEqual(390);
+
+  await mkdir('ux-review', { recursive: true });
+  await page.screenshot({ path: 'ux-review/derived-stats-mobile.png', fullPage: true });
 });
