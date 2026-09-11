@@ -3,8 +3,10 @@ import { Character } from '../domain/Character.js';
 import { publicCombatSkills } from '../domain/CombatSkillCatalog.js';
 import { AdventureRun as DungeonRun, DUNGEONS, RUN_UPGRADES } from '../domain/AdventureRun.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
+import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
+import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 function healthRecovery(row, now = Date.now()) {
   if (row.currentHealth >= row.maxHealth) return { nextHealthInSeconds: 0, fullHealthInSeconds: 0 };
@@ -16,10 +18,11 @@ function healthRecovery(row, now = Date.now()) {
 }
 
 export class GameService {
-  constructor({ repository, eventBus, arcManifestService = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
+  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.arcManifestService = arcManifestService;
+    this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.idFactory = idFactory;
   }
@@ -36,6 +39,7 @@ export class GameService {
     if (!row) throw new Error('Player not found.');
     const equippedItem = row.equippedItemId ? this.repository.getItem(row.equippedItemId) : null;
     const character = new Character({ ...row, equippedItem });
+    const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
     const party = this.repository.getPartyForPlayer(playerId);
     const activeRun = this.repository.getActiveRun(playerId);
     const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
@@ -53,6 +57,10 @@ export class GameService {
         healthPotions: row.healthPotions,
         healthRecovery: healthRecovery(row),
         gold: character.gold,
+        experience: progression.experience,
+        xp: progression.experience,
+        level: progression.level,
+        levelProgression: progression,
         // Compatibility alias until the persisted thread_dust column and older callers migrate.
         threadDust: character.threadDust,
         equippedItem: decorateItem(equippedItem),
