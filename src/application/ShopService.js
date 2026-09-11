@@ -50,11 +50,21 @@ export class ShopService {
       throw error;
     }
 
-    // The repository still persists Gold in the legacy thread_dust column.
-    const result = this.repository.buyHealthPotion(playerId, {
-      cost: offer.cost,
-      quantity: offer.quantity,
-    });
+    let result;
+    try {
+      // The repository still persists Gold in the legacy thread_dust column.
+      result = this.repository.buyHealthPotion(playerId, {
+        cost: offer.cost,
+        quantity: offer.quantity,
+      });
+    } catch (error) {
+      if (error?.code !== 'insufficient_thread_dust') throw error;
+      const translated = new Error(`You need ${offer.cost} Gold to buy ${offer.name.toLowerCase()}.`);
+      translated.code = 'insufficient_gold';
+      translated.legacyCode = error.code;
+      throw translated;
+    }
+
     const gold = Number(result.gold ?? result.threadDust ?? 0);
     const purchase = {
       sku: offer.sku,
