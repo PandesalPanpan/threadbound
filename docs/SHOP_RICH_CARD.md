@@ -1,6 +1,6 @@
 # Shop rich card
 
-Status: **M2-03 implementation complete on this branch; mark the master checklist only after merge and green `main` CI.**
+Status: **M2-03 complete.** PR #50 is merged and post-merge `main` CI #1144 is green.
 
 ## Product contract
 
@@ -24,8 +24,10 @@ The foundation shelf deliberately stays small: a Common Bronze Sword plus the ex
 
 `test/shop-service.test.js` covers Gold affordability, equipment and potion stock projection, atomic equipment persistence/debit, rollback on insufficient Gold, and purchase events.
 
-`test/e2e/shop-rich-card.spec.js` is part of the active Playwright suite and exercises the 390px chat-first card: sprites, prices, affordability, equipment purchase persistence, visible stream activity, Sell-to-Inventory handoff, horizontal fit, and 44px actions. It writes `ux-review/shop-rich-card-mobile.png` for visual review.
+`test/e2e/shop-rich-card.spec.js` is part of the active Playwright suite and exercises the 390px chat-first card: sprites, prices, affordability, equipment purchase persistence, visible stream activity, Sell-to-Inventory handoff, horizontal fit, and 44px actions. `ux-review/shop-rich-card-mobile.png` was visually reviewed at 390px and keeps the Adventure Stream/composer primary while presenting readable generated sprites, Gold prices, and touch-sized actions.
+
+Required gates are green on the merged milestone: `npm run check`, `npm test`, the complete Chromium E2E suite, and post-merge `main` CI #1144 at `576c9c5ab59d3dcb4e389289db8bbecac5485604`.
 
 ## Handoff
 
-After M2-03 is merged, visually reviewed, and green on `main`, mark **M2-03** complete in `docs/THREADBOUND_MASTER_PLAN.md`. The next earliest dependency-satisfied milestone is **M2-04 — Profile rich card**.
+**M2-03 is complete.** The next earliest dependency-satisfied milestone is **M2-04 — Profile rich card**: level, XP, Gold, banked Gold projection, primary stats, equipment, Area, and achievements summary inside the Adventure Stream. Banked Gold and Area values should remain honest unavailable/default projections until their later authoritative milestones rather than inventing state early.
