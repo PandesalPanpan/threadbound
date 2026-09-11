@@ -12,7 +12,8 @@ if (stream) {
       const response = await fetch('/api/shop', { headers: { Accept: 'application/json' } });
       const payload = await response.json();
       if (!response.ok) return;
-      target.textContent = String(payload.bank?.bankedGold ?? 0);
+      const next = String(payload.bank?.bankedGold ?? 0);
+      if (target.textContent !== next) target.textContent = next;
     } catch {
       // Profile remains usable from its dashboard projection if the supplemental Bank
       // projection is temporarily unavailable.
