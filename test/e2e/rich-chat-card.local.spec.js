@@ -33,9 +33,19 @@ test('mobile stream command panels share one reusable rich-card contract', async
   const firstActionBox = await actions.first().boundingBox();
   expect(firstActionBox?.height || 0).toBeGreaterThanOrEqual(44);
 
+  const historical = page.getByTestId('rich-card-history-snapshot');
+  await expect(historical).toHaveCount(1);
+  await expect(historical.first()).toHaveAttribute('data-rich-card-kind', 'status');
+  await expect(historical.first()).toContainText('Current adventure viewed');
+  await expect(historical.first().locator('button, input, select, textarea, [data-rich-card-action="true"]')).toHaveCount(0);
+
   const inventory = await runCommand(page, 'inventory');
   await expect(inventory).toHaveAttribute('data-rich-card-kind', 'inventory');
   await expect(inventory.locator('.rich-chat-card-header')).toHaveCount(1);
+  await expect(historical).toHaveCount(2);
+  await expect(historical.nth(1)).toHaveAttribute('data-rich-card-kind', 'shop');
+  await expect(historical.nth(1)).toContainText(/viewed/i);
+  await expect(historical.nth(1).locator('button, input, select, textarea, [data-rich-card-action="true"]')).toHaveCount(0);
 
   const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(bodyWidth).toBeLessThanOrEqual(390);
@@ -45,4 +55,5 @@ test('mobile stream command panels share one reusable rich-card contract', async
 
   await inventory.locator('[data-rich-card-dismiss="true"]').click();
   await expect(inventory).toBeHidden();
+  await expect(historical).toHaveCount(2);
 });
