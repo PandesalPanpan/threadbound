@@ -1,6 +1,6 @@
 # Profile rich card
 
-Status: **M2-04 implementation candidate; mark complete only after merge and green main CI.**
+Status: **M2-04 complete — merged in PR #52 at `e3a4e9bb`; post-merge main CI #1170 is green.**
 
 The Profile command is an app-like card inside the Adventure Stream. It is a Presentation Model over the authoritative `/api/dashboard` read model and does not create a second source of character truth.
 
@@ -29,8 +29,10 @@ The Bank and Area systems are intentionally later checklist milestones. Until th
 
 ## Verification
 
-`test/e2e/profile-rich-card.spec.js` runs at 390px mobile width and verifies the authoritative Profile projection, five equipment slots, generated adventurer sprite, mobile width, dismissal target, and canonical player-facing terminology. It also saves `ux-review/profile-rich-card-mobile.png` for visual review.
+`test/e2e/profile-rich-card.spec.js` runs at 390px mobile width and verifies the authoritative Profile projection, five equipment slots, generated adventurer sprite, mobile width, 44px dismissal target, canonical player-facing terminology, and that the Profile hero remains below the sticky navigation. It saves `ux-review/profile-rich-card-mobile.png` for visual review.
+
+The milestone passed `npm run check`, `npm test`, and the complete active Chromium Playwright suite before merge. The representative 390px artifact was inspected, and post-merge main CI #1170 passed both unit/contract and browser-E2E jobs.
 
 ## Handoff
 
-After this milestone is objectively merged and green, the next earliest checklist task is **M2-05 — Bank rich card**, which must establish authoritative persisted deposit/withdraw behavior rather than extending the Profile placeholder in browser code.
+The next earliest checklist task is **M2-05 — Bank rich card**. That milestone must establish authoritative persisted carried-vs-banked Gold plus deposit/withdraw transactions and receipts rather than extending the Profile placeholder in browser code.
