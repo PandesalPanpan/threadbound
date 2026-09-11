@@ -19,7 +19,7 @@ export const SHOP_OFFERS = Object.freeze([
     sku: 'satchel',
     kind: 'health_potion',
     name: 'Potion satchel',
-    description: '3 potions · save 3 Dust',
+    description: '3 potions · save 3 Gold',
     visualAssetId: 'item.greater-health-potion.v1',
     cost: 12,
     quantity: 3,

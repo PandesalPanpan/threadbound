@@ -22,6 +22,7 @@ test('command results scroll fully into view as their content grows', async ({ b
 
   try {
     await login(page, 'a');
+    await expect(page.getByTestId('thread-dust').locator('..')).toContainText('Gold');
     await page.getByTestId('stream-message').fill('help');
     await page.getByTestId('stream-send').click();
 
@@ -35,7 +36,8 @@ test('command results scroll fully into view as their content grows', async ({ b
     await expect(receipt.getByTestId('stream-hunt-sprite')).toBeVisible();
     await expect(receipt.locator('.stream-hunt-chip.loss')).toContainText('HP');
     await expect(receipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
-    await expect(receipt.locator('.stream-hunt-chip.reward')).toContainText('Dust');
+    await expect(receipt.locator('.stream-hunt-chip.reward')).toContainText('Gold');
+    await expect(receipt).not.toContainText(/\bDust\b/);
     await expect(page.locator('.simple-loop-action')).toHaveCount(2);
     await expect.poll(async () => page.getByTestId('adventure-stream-log').evaluate((element) => (
       Math.ceil(element.scrollHeight - element.scrollTop - element.clientHeight)
@@ -57,8 +59,14 @@ test('command results scroll fully into view as their content grows', async ({ b
     await page.getByTestId('stream-message').fill('shop');
     await page.getByTestId('stream-send').click();
     await expect(page.getByRole('img', { name: 'Mara, field merchant' })).toBeVisible();
-    await expect(page.getByTestId('stream-shop-single')).toContainText('Buy · 5 Dust');
-    await expect(page.getByTestId('stream-shop-satchel')).toContainText('Buy · 12 Dust');
+    await expect(page.getByTestId('stream-shop-single')).toContainText('Buy · 5 Gold');
+    await expect(page.getByTestId('stream-shop-satchel')).toContainText('Buy · 12 Gold');
+    await expect(page.getByTestId('stream-command-card').last()).not.toContainText(/\bDust\b/);
+
+    // Migration adapters must not rewrite player-authored chat history.
+    await page.getByTestId('stream-message').fill('Thread Dust is the old name');
+    await page.getByTestId('stream-send').click();
+    await expect(page.getByTestId('stream-chat-entry').last()).toContainText('Thread Dust is the old name');
   } finally {
     await context.close();
   }

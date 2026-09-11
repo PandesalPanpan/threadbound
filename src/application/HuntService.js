@@ -55,7 +55,8 @@ export class HuntService {
     let item = null;
     let healthPotionsFound = 0;
     if (result.victory) {
-      this.repository.addThreadDust(playerId, result.threadDust);
+      // SQLite still stores this balance in the legacy thread_dust column during migration.
+      this.repository.addThreadDust(playerId, result.gold);
       if (this.rng() < result.dropChance) {
         item = capHuntDrop(this.itemGenerator.generateReward({ source: 'hunt' }));
         this.repository.addItem(playerId, item);
@@ -79,7 +80,9 @@ export class HuntService {
       remainingHp: result.remainingHp,
       maxHp: result.maxHealth,
       victory: result.victory,
-      threadDust: result.threadDust,
+      gold: result.gold,
+      // Preserve the old event field until legacy consumers are migrated.
+      threadDust: result.gold,
       itemId: item?.id || null,
       itemName: item?.name || null,
       itemRarity: item?.rarity || null,
@@ -88,6 +91,8 @@ export class HuntService {
     });
     if (item) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: 'hunt', silentStream: true });
 
+    const refreshed = this.repository.getPlayer(playerId) || player;
+    const gold = Number(refreshed.gold ?? refreshed.threadDust ?? character.gold ?? 0);
     return {
       ...result,
       item: item ? this.repository.getItem(item.id) : null,
@@ -95,8 +100,10 @@ export class HuntService {
         attackPower: character.attackPower,
         maxHealth: character.maxHealth,
         currentHealth: result.remainingHp,
-        healthPotions: this.repository.getPlayer(playerId)?.healthPotions ?? player.healthPotions,
-        threadDust: this.repository.getPlayer(playerId)?.threadDust ?? player.threadDust,
+        healthPotions: refreshed.healthPotions ?? player.healthPotions,
+        gold,
+        // Backward-compatible API alias while clients migrate to gold.
+        threadDust: gold,
       },
     };
   }
