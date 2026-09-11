@@ -28,6 +28,18 @@ async function buyTrainingCache(context, key) {
   return response.json();
 }
 
+async function earnUpgradeGold(context, minimum = 8) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const current = await dashboard(context);
+    if (current.character.gold >= minimum) return current;
+    const response = await context.request.post('/api/hunt');
+    expect(response.ok()).toBe(true);
+  }
+  const current = await dashboard(context);
+  expect(current.character.gold).toBeGreaterThanOrEqual(minimum);
+  return current;
+}
+
 async function openInventory(page) {
   const input = page.getByTestId('stream-message');
   await input.fill('inventory');
@@ -41,19 +53,12 @@ async function openInventory(page) {
 test('Inventory rich card exposes canonical slots, stats, sprites and actions inside chat', async ({ page, context }) => {
   await login(page);
 
-  // Deterministically seed one item plus enough Gold for its first Upgrade using only
-  // authoritative server transactions. The UI itself never authors prices or rewards.
-  const first = await buyTrainingCache(context, 'inventory-card-seed-a');
-  const second = await buyTrainingCache(context, 'inventory-card-seed-b');
-  const keeper = await buyTrainingCache(context, 'inventory-card-seed-c');
-  for (const grant of [first, second]) {
-    const response = await context.request.post(`/api/items/${encodeURIComponent(grant.item.id)}/salvage`);
-    expect(response.ok()).toBe(true);
-  }
-
-  const before = await dashboard(context);
-  expect(before.inventory).toHaveLength(1);
-  expect(before.inventory[0].id).toBe(keeper.item.id);
+  // Seed one durable equipment item through the authoritative Honey boundary, then earn
+  // Upgrade Gold through normal authoritative Hunts. Honey purchase grants are intentionally
+  // not salvaged: their durable grant record must remain referentially intact.
+  const keeper = await buyTrainingCache(context, 'inventory-card-seed');
+  const before = await earnUpgradeGold(context, 8);
+  expect(before.inventory.some((item) => item.id === keeper.item.id)).toBe(true);
   expect(before.character.gold).toBeGreaterThanOrEqual(8);
 
   const card = await openInventory(page);
@@ -69,7 +74,9 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
     await expect(card.getByTestId(`inventory-rich-stat-${stat}`)).toBeVisible();
   }
 
-  const item = card.getByTestId('inventory-rich-item');
+  const items = card.getByTestId('inventory-rich-item');
+  await expect(items).toHaveCount(before.inventory.length);
+  const item = card.locator(`[data-testid="inventory-rich-item"][data-item-id="${keeper.item.id}"]`);
   await expect(item).toHaveCount(1);
   await expect(item).toContainText('Weapon · COMMON');
   await expect(item).toContainText('+1 Attack');
@@ -85,7 +92,7 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
 
   await sell.click();
   await expect(sell).toHaveText('Confirm Sell');
-  expect((await dashboard(context)).inventory).toHaveLength(1);
+  expect((await dashboard(context)).inventory.some((candidate) => candidate.id === keeper.item.id)).toBe(true);
 
   const entriesBeforeEquip = await page.getByTestId('stream-system-entry').count();
   await equip.click();
@@ -97,7 +104,10 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
   const goldBeforeUpgrade = (await dashboard(context)).character.gold;
   const entriesBeforeUpgrade = await page.getByTestId('stream-system-entry').count();
   await card.getByTestId(`inventory-rich-upgrade-${keeper.item.id}`).click();
-  await expect.poll(async () => (await dashboard(context)).inventory[0].effect?.upgradeLevel || 0).toBe(1);
+  await expect.poll(async () => {
+    const state = await dashboard(context);
+    return state.inventory.find((candidate) => candidate.id === keeper.item.id)?.effect?.upgradeLevel || 0;
+  }).toBe(1);
   expect((await dashboard(context)).character.gold).toBeLessThan(goldBeforeUpgrade);
   await expect.poll(async () => page.getByTestId('stream-system-entry').count()).toBeGreaterThan(entriesBeforeUpgrade);
 
