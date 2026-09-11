@@ -113,17 +113,18 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
 
   const width = await card.evaluate((element) => element.scrollWidth);
   expect(width).toBeLessThanOrEqual(390);
-  // Realtime refreshes can leave superseded action rows in the DOM briefly while the
-  // newest Inventory card is being reconciled. Touch-target acceptance applies to the
-  // actions a player can actually see and tap, not detached/hidden historical buttons.
-  const actions = card.locator('.inventory-rich-actions button:visible');
-  expect(await actions.count()).toBeGreaterThan(0);
-  for (let index = 0; index < await actions.count(); index += 1) {
-    const action = actions.nth(index);
-    await expect(action).toBeVisible();
-    const box = await action.boundingBox();
-    expect(box?.height || 0).toBeGreaterThanOrEqual(44);
-  }
+  // Realtime reconciliation can replace action rows between individual locator calls.
+  // Sample all currently visible controls in one DOM evaluation so the acceptance check
+  // cannot confuse a superseded button with a player-visible touch target.
+  const actionHeights = await card.evaluate((element) => [...element.querySelectorAll('.inventory-rich-actions button')]
+    .filter((button) => {
+      const style = getComputedStyle(button);
+      const rect = button.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    })
+    .map((button) => button.getBoundingClientRect().height));
+  expect(actionHeights.length).toBeGreaterThan(0);
+  for (const height of actionHeights) expect(height).toBeGreaterThanOrEqual(44);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/inventory-rich-card-mobile.png`, fullPage: true });
