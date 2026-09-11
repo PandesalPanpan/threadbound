@@ -6,6 +6,7 @@ if (stream) {
   const styles = document.createElement('style');
   styles.dataset.profileRichCardStyles = 'true';
   styles.textContent = `
+    .stream-command-card[data-profile-rich-card="true"] { scroll-margin-top:76px; }
     .thread-profile-hero { display:flex; align-items:center; gap:12px; min-width:0; }
     .thread-profile-avatar { width:64px; height:64px; flex:0 0 64px; }
     .thread-profile-hero-copy { display:grid; gap:2px; min-width:0; }
@@ -186,7 +187,7 @@ if (stream) {
     achievementsCopy.textContent = names.length ? names.join(' · ') : 'No achievements unlocked yet.';
     achievements.append(achievementsTitle, achievementsCopy);
     card.append(achievements);
-    card.scrollIntoView({ block: 'end', inline: 'nearest' });
+    card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }
 
   async function openProfile() {
