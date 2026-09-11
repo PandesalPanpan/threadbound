@@ -169,7 +169,7 @@ test('new player loop is a Figma-minimal Hunt -> gear -> hard attack-only dungeo
   await expect(attack).toBeVisible({ timeout: 5000 });
   await expect(page.locator('.simple-loop-action')).toHaveCount(1);
   await expect(page.getByTestId('stream-hunt')).toHaveCount(0);
-  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or /attack…');
+  await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or type attack…');
 
   const hpBefore = run.activeRun.enemy.hp;
   await attack.click();
