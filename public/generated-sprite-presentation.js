@@ -1,3 +1,4 @@
+import './gold-copy-migration.js';
 import { createSpriteElement, enemySpriteFrame, itemSpriteFrame, weaverSpriteFrame } from './sprite-catalog.js';
 
 const stream = document.querySelector('#stream');
