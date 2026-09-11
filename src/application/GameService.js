@@ -6,6 +6,7 @@ import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
+import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 function healthRecovery(row, now = Date.now()) {
@@ -18,11 +19,12 @@ function healthRecovery(row, now = Date.now()) {
 }
 
 export class GameService {
-  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
+  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, equipmentRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.arcManifestService = arcManifestService;
     this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
+    this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.idFactory = idFactory;
   }
@@ -37,7 +39,8 @@ export class GameService {
   dashboard(playerId) {
     const row = this.repository.getPlayer(playerId);
     if (!row) throw new Error('Player not found.');
-    const equippedItem = row.equippedItemId ? this.repository.getItem(row.equippedItemId) : null;
+    const loadout = this.equipmentRepository.getLoadout(playerId);
+    const equippedItem = loadout.weapon;
     const character = new Character({ ...row, equippedItem });
     const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
     const party = this.repository.getPartyForPlayer(playerId);
@@ -45,6 +48,7 @@ export class GameService {
     const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
     const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
+    const equipment = Object.fromEntries(Object.entries(loadout).map(([slot, item]) => [slot, decorateItem(item)]));
 
     return {
       character: {
@@ -63,7 +67,10 @@ export class GameService {
         levelProgression: progression,
         // Compatibility alias until the persisted thread_dust column and older callers migrate.
         threadDust: character.threadDust,
-        equippedItem: decorateItem(equippedItem),
+        // Canonical five-slot loadout. `equippedItem` remains a temporary Weapon alias for
+        // legacy combat/presentation callers while the strangler migration continues.
+        equipment,
+        equippedItem: equipment.weapon,
       },
       party: party ? this.#decorateParty(party, playerId) : null,
       inventory: this.repository.listItems(playerId).map(decorateItem),
@@ -206,13 +213,8 @@ export class GameService {
   equipItem(playerId, itemId) {
     const item = this.repository.getItem(itemId);
     if (!item || item.playerId !== playerId) throw new Error('Item not found.');
-    if (this.repository.getActiveRun(playerId)) {
-      const error = new Error('Finish the active dungeon before changing equipped equipment.');
-      error.code = 'item_equip_during_run';
-      throw error;
-    }
-    this.repository.equipItem(playerId, itemId);
-    this.eventBus.publish({ type: 'ItemEquipped', playerId, itemId });
+    const equipped = this.equipmentRepository.equip(playerId, itemId);
+    this.eventBus.publish({ type: 'ItemEquipped', playerId, itemId, slot: equipped.slot });
     return this.dashboard(playerId);
   }
 
@@ -222,7 +224,7 @@ export class GameService {
     const run = new DungeonRun(runState);
     if (!run.hasParticipant(playerId)) throw new Error('Run not found.');
     const player = this.repository.getPlayer(playerId);
-    const equipped = player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null;
+    const equipped = this.equipmentRepository.getLoadout(playerId).weapon;
     return { run, player, equipped, character: new Character({ ...player, equippedItem: equipped }) };
   }
 
