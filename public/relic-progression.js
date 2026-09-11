@@ -1,3 +1,5 @@
+import './rich-chat-card.js';
+
 const commandCard = document.querySelector('[data-testid="stream-command-card"]');
 const inventory = document.querySelector('#inventory');
 
@@ -100,8 +102,6 @@ if (commandCard || inventory) {
       ? `UPGRADE ${item.progression.level}/${item.progression.maxLevel}`
       : `MAX ${item.progression?.level || 0}/${item.progression?.maxLevel || 0}`;
     wrap.append(upgrade);
-    // Old persisted tactical items may still carry an attunement. Keep it readable for
-    // compatibility, but new default equipment never asks the player to choose one.
     if (item.progression?.attunement) {
       const legacy = document.createElement('span');
       legacy.className = 'relic-progress-chip';
@@ -243,8 +243,6 @@ if (commandCard || inventory) {
         if (rows.length) enhanceRows(rows, data);
       }
     } catch {
-      // The owner surfaces connection failures. This enhancer disappears rather than
-      // rendering progression from stale client state.
     }
   }
 
@@ -261,8 +259,6 @@ if (commandCard || inventory) {
   const observers = [];
   for (const target of [commandCard, inventory].filter(Boolean)) {
     const observer = new MutationObserver((mutations) => {
-      // Ignore the chips/actions this module adds and removes itself. Without this guard,
-      // the observer schedules another dashboard fetch after every enhancement pass.
       if (mutations.length > 0 && mutations.every(mutationIsOwned)) return;
       scheduleRefresh();
     });
