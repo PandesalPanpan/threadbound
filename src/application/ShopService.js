@@ -112,6 +112,9 @@ export class ShopService {
       cost: offer.cost,
       gold: purchase.gold,
     });
+    // Existing ItemGenerated projection supplies the single visible acquisition receipt
+    // until the stream projector is migrated to a dedicated ShopEquipmentPurchased copy.
+    this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: item.source });
     return purchase;
   }
 }
