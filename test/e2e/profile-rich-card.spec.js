@@ -54,14 +54,26 @@ test('Profile rich card summarizes progression, resources, stats, loadout, Area 
 
   await expect(card.getByRole('img', { name: state.character.displayName })).toBeVisible();
   await expect(card).not.toContainText(/Thread Dust|Relic Pouch|Temper/);
-  const metrics = await card.evaluate((element) => {
-    const dismiss = element.querySelector('[data-rich-card-dismiss="true"]');
-    const rect = dismiss?.getBoundingClientRect();
-    return { width: element.scrollWidth, dismissHeight: rect?.height || 0, dismissWidth: rect?.width || 0 };
+  const metrics = await page.evaluate(() => {
+    const cardElement = document.querySelector('[data-testid="stream-command-card"]');
+    const dismiss = cardElement?.querySelector('[data-rich-card-dismiss="true"]');
+    const hero = cardElement?.querySelector('.thread-profile-hero');
+    const nav = document.querySelector('.threadbound-topnav');
+    const dismissRect = dismiss?.getBoundingClientRect();
+    const heroRect = hero?.getBoundingClientRect();
+    const navRect = nav?.getBoundingClientRect();
+    return {
+      width: cardElement?.scrollWidth || 0,
+      dismissHeight: dismissRect?.height || 0,
+      dismissWidth: dismissRect?.width || 0,
+      heroTop: heroRect?.top || 0,
+      navBottom: navRect?.bottom || 0,
+    };
   });
   expect(metrics.width).toBeLessThanOrEqual(390);
   expect(metrics.dismissHeight).toBeGreaterThanOrEqual(44);
   expect(metrics.dismissWidth).toBeGreaterThanOrEqual(44);
+  expect(metrics.heroTop).toBeGreaterThanOrEqual(metrics.navBottom);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/profile-rich-card-mobile.png`, fullPage: true });
