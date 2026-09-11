@@ -1,6 +1,8 @@
 import { Character } from '../domain/Character.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveHunt } from '../domain/HuntEncounter.js';
+import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
+import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 const RARITY_TIERS = Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 });
 
@@ -22,9 +24,10 @@ function capHuntDrop(item) {
  * not create a persisted DungeonRun: one command resolves one small encounter.
  */
 export class HuntService {
-  constructor({ repository, eventBus, itemGenerator = new ItemGenerator(), rng = Math.random }) {
+  constructor({ repository, eventBus, progressionRepository = null, itemGenerator = new ItemGenerator(), rng = Math.random }) {
     this.repository = repository;
     this.eventBus = eventBus;
+    this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.rng = rng;
   }
@@ -51,12 +54,14 @@ export class HuntService {
       currentHealth: player.currentHealth,
       enemyRoll: this.rng(),
     });
+    const progressionBefore = progressionForExperience(this.progressionRepository.get(playerId).experience);
 
     let item = null;
     let healthPotionsFound = 0;
     if (result.victory) {
       // SQLite still stores this balance in the legacy thread_dust column during migration.
       this.repository.addThreadDust(playerId, result.gold);
+      this.progressionRepository.addExperience(playerId, result.experience);
       if (this.rng() < result.dropChance) {
         item = capHuntDrop(this.itemGenerator.generateReward({ source: 'hunt' }));
         this.repository.addItem(playerId, item);
@@ -68,6 +73,8 @@ export class HuntService {
     }
     this.repository.setPlayerHealth(playerId, result.remainingHp);
 
+    const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
+    const levelsGained = progression.level - progressionBefore.level;
     this.eventBus.publish({
       type: 'HuntResolved',
       playerId,
@@ -81,6 +88,15 @@ export class HuntService {
       maxHp: result.maxHealth,
       victory: result.victory,
       gold: result.gold,
+      experienceGained: result.experience,
+      xp: result.experience,
+      experience: progression.experience,
+      level: progression.level,
+      leveledUp: levelsGained > 0,
+      levelsGained,
+      experienceIntoLevel: progression.experienceIntoLevel,
+      experienceNeededForLevel: progression.experienceNeededForLevel,
+      experienceToNextLevel: progression.experienceToNextLevel,
       // Preserve the old event field until legacy consumers are migrated.
       threadDust: result.gold,
       itemId: item?.id || null,
@@ -95,6 +111,9 @@ export class HuntService {
     const gold = Number(refreshed.gold ?? refreshed.threadDust ?? character.gold ?? 0);
     return {
       ...result,
+      progression,
+      levelsGained,
+      leveledUp: levelsGained > 0,
       item: item ? this.repository.getItem(item.id) : null,
       character: {
         attackPower: character.attackPower,
@@ -102,6 +121,10 @@ export class HuntService {
         currentHealth: result.remainingHp,
         healthPotions: refreshed.healthPotions ?? player.healthPotions,
         gold,
+        experience: progression.experience,
+        xp: progression.experience,
+        level: progression.level,
+        levelProgression: progression,
         // Backward-compatible API alias while clients migrate to gold.
         threadDust: gold,
       },

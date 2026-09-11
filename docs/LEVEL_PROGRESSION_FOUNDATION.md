@@ -1,8 +1,8 @@
 # Level progression foundation
 
-Status: **M1-03 in progress; do not check it complete yet.**
+Status: **M1-03 implementation complete on this branch; merge only after the full CI matrix is green.**
 
-This increment establishes the canonical domain math for cumulative XP and Level without changing persisted player state yet.
+Threadbound now has one canonical cumulative XP model, a derived Level projection, migration-safe persistence, an authoritative Hunt XP source, and player-facing Hunt progression feedback.
 
 ## Canonical rule
 
@@ -12,14 +12,56 @@ This increment establishes the canonical domain math for cumulative XP and Level
 - `src/domain/LevelProgressionPolicy.js` is the single source for level thresholds and progress projection.
 - Level is derived from cumulative XP rather than stored independently, avoiding two authoritative values that can drift apart.
 
-## Why this is only a foundation slice
+## Persistence
 
-M1-03 still requires migration-safe persistence of cumulative XP, authoritative XP awards from Hunt, Profile/dashboard projection, concise Hunt receipt output (`+XP` and level-up), and browser acceptance coverage. Those pieces must use this policy rather than duplicating formulas in services, repositories, or presentation code.
+`SQLitePlayerProgressionRepository` owns the additive `player_progression` table:
+
+- one row per player;
+- cumulative non-negative `experience` only;
+- no independently persisted Level column;
+- existing players with no progression row safely read as 0 XP / Level 1;
+- XP increments use one SQLite UPSERT mutation.
+
+This leaves the existing `players` table and older persisted users untouched while the new model proves itself.
+
+## Authoritative Hunt rewards
+
+Hunt is the first XP-producing activity for the new model. XP is part of the server-owned Hunt enemy definition and is granted only when the authoritative Hunt result is a victory:
+
+- Frayed Mite: 10 XP;
+- Hollow Crow: 15 XP;
+- Thread Wolf: 20 XP.
+
+`HuntService` persists the XP before projecting the final Level. A failed Hunt grants neither Gold nor XP. `HuntResolved` publishes both the per-Hunt XP gain and the resulting cumulative Level/XP progress so the stream does not need to reproduce progression math.
+
+## Read models and presentation
+
+`GameService.dashboard()` exposes on `character`:
+
+- `experience` — canonical cumulative XP;
+- `xp` — player-facing alias for the same cumulative value;
+- `level` — derived from the domain policy;
+- `levelProgression` — current-level start, next threshold, progress within the level, and XP remaining.
+
+The Hunt receipt shows `+XP` next to Gold and HP. When the Hunt crosses a threshold, the same receipt adds a `LEVEL N!` chip. The browser only renders committed event metadata; it does not calculate Level.
+
+A full app-like Profile rich card remains **M2-04**. M1-03 provides the authoritative dashboard/profile read model that card will consume instead of implementing the Phase 2 UI early.
+
+## Verification contract
+
+Automated coverage proves:
+
+- an existing player without a progression row migrates to 0 XP safely;
+- successful Hunts persist XP and can cross a Level threshold;
+- failed Hunts do not grant XP;
+- `HuntResolved` carries the authoritative XP/Level result;
+- the dashboard projects the same persisted cumulative XP and derived Level;
+- the mobile Playwright Hunt journey visibly renders XP while retaining the simple two-action chat surface.
 
 ## Compatibility
 
-This slice does not alter existing SQLite columns, Gold migration aliases, equipment compatibility, Honey ownership, or legacy persisted dungeon behavior. It does not introduce a new currency or tactical default.
+M1-03 does not change Gold storage aliases, equipment compatibility, Honey ownership, dungeon persistence, or legacy tactical-run support. It introduces no new headline currency and does not store Level independently.
 
 ## Handoff
 
-Next work remains **M1-03**. Add an additive persisted XP field/table for existing players, wire Hunt rewards through the Service Layer, expose the derived Level/XP projection through the current player Profile/dashboard model, update the Adventure Stream Hunt receipt, and add migration + Playwright coverage. Only then mark M1-03 complete.
+After M1-03 is merged and post-merge `main` is green, the next canonical master-plan milestone is **M1-04: familiar equipment slots — Weapon, Helmet, Armor, Boots, Accessory**.

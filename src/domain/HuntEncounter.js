@@ -1,7 +1,7 @@
 export const HUNT_ENEMIES = Object.freeze([
-  Object.freeze({ id: 'frayed-mite', name: 'Frayed Mite', hp: 8, retaliation: 2, gold: 1, dropChance: 0.24 }),
-  Object.freeze({ id: 'hollow-crow', name: 'Hollow Crow', hp: 12, retaliation: 3, gold: 2, dropChance: 0.30 }),
-  Object.freeze({ id: 'thread-wolf', name: 'Thread Wolf', hp: 18, retaliation: 4, gold: 3, dropChance: 0.36 }),
+  Object.freeze({ id: 'frayed-mite', name: 'Frayed Mite', hp: 8, retaliation: 2, gold: 1, experience: 10, dropChance: 0.24 }),
+  Object.freeze({ id: 'hollow-crow', name: 'Hollow Crow', hp: 12, retaliation: 3, gold: 2, experience: 15, dropChance: 0.30 }),
+  Object.freeze({ id: 'thread-wolf', name: 'Thread Wolf', hp: 18, retaliation: 4, gold: 3, experience: 20, dropChance: 0.36 }),
 ]);
 
 function clampRoll(value) {
@@ -32,6 +32,7 @@ export function resolveHunt({ attackPower, maxHealth, currentHealth = maxHealth,
   const remainingHp = Math.max(0, currentHealth - damageTaken);
   const victory = remainingHp > 0;
   const gold = victory ? enemy.gold : 0;
+  const experience = victory ? enemy.experience : 0;
 
   return {
     enemy: { ...enemy },
@@ -43,6 +44,9 @@ export function resolveHunt({ attackPower, maxHealth, currentHealth = maxHealth,
     remainingHp,
     victory,
     gold,
+    experience,
+    // Player-facing copy uses XP; cumulative persistence remains named experience.
+    xp: experience,
     // Compatibility alias for callers/tests that still consume the old reward field.
     threadDust: gold,
     dropChance: victory ? enemy.dropChance : 0,
