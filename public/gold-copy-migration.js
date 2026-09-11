@@ -5,19 +5,23 @@
 const LEGACY_CURRENCY_PATTERNS = [
   [/\bThread Dust\b/g, 'Gold'],
   [/([+−-]?\d+(?:\.\d+)?)\s+Dust\b/g, '$1 Gold'],
+  [/\bDust\b/g, 'Gold'],
 ];
 
 function migrateText(value) {
   return LEGACY_CURRENCY_PATTERNS.reduce((copy, [pattern, replacement]) => copy.replace(pattern, replacement), String(value || ''));
 }
 
-export function migrateLegacyCurrencyCopy(root) {
+export function migrateLegacyCurrencyCopy(root = document.body) {
   if (!root || !globalThis.NodeFilter) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {
-    // Never rewrite user-authored chat. This adapter only migrates game/system copy.
-    if (!node.parentElement?.closest('.stream-entry-chat')) {
+    const parent = node.parentElement;
+    const protectedCopy = parent?.closest('.stream-entry-chat, script, style, textarea');
+    // Never rewrite user-authored chat or executable/style source. This adapter only
+    // migrates Threadbound-owned presentation copy while legacy producers remain.
+    if (!protectedCopy) {
       const next = migrateText(node.nodeValue);
       if (next !== node.nodeValue) node.nodeValue = next;
     }
@@ -26,10 +30,7 @@ export function migrateLegacyCurrencyCopy(root) {
 }
 
 if (globalThis.document) {
-  const refresh = () => {
-    migrateLegacyCurrencyCopy(document.querySelector('#stream'));
-    migrateLegacyCurrencyCopy(document.querySelector('#inventory'));
-  };
+  const refresh = () => migrateLegacyCurrencyCopy(document.body);
   const observer = new MutationObserver(refresh);
   const start = () => {
     refresh();
