@@ -113,17 +113,17 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
 
   const width = await card.evaluate((element) => element.scrollWidth);
   expect(width).toBeLessThanOrEqual(390);
-  // Realtime reconciliation can replace action rows between individual locator calls.
-  // Sample all currently visible controls in one DOM evaluation so the acceptance check
-  // cannot confuse a superseded button with a player-visible touch target.
-  const actionHeights = await card.evaluate((element) => [...element.querySelectorAll('.inventory-rich-actions button')]
+  // Realtime reconciliation briefly replaces action rows after authoritative mutations.
+  // Wait until the newest visible row is stable, then sample all touch targets atomically.
+  const visibleActionHeights = async () => card.evaluate((element) => [...element.querySelectorAll('.inventory-rich-actions button')]
     .filter((button) => {
       const style = getComputedStyle(button);
       const rect = button.getBoundingClientRect();
       return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
     })
     .map((button) => button.getBoundingClientRect().height));
-  expect(actionHeights.length).toBeGreaterThan(0);
+  await expect.poll(async () => (await visibleActionHeights()).length, { timeout: 5000 }).toBeGreaterThan(0);
+  const actionHeights = await visibleActionHeights();
   for (const height of actionHeights) expect(height).toBeGreaterThanOrEqual(44);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
