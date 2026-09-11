@@ -1,6 +1,6 @@
 # Item rarity foundation
 
-Status: **M1-06 implementation candidate; mark complete only after merge and green post-merge main CI.**
+Status: **M1-06 complete on merged `main` after green post-merge CI.**
 
 ## Canonical contract
 
@@ -35,7 +35,11 @@ The Adventure Stream remains the primary shell. No dashboard or new screen is in
 
 - Domain tests assert the exact six-tier ordering, labels, tier numbers, roll boundaries, Mythic generation, Upgrade compatibility, and salvage policy.
 - Active Chromium Playwright coverage asserts the six-tier presentation module loads on the real mobile game route, the primary chat shell stays intact, and a Mythic rich card receives tier-6 semantics/styling.
+- PR #46 passed `npm run check`, `npm test`, and the complete active Chromium E2E suite after repairing an observer feedback loop discovered by the browser gate.
+- Post-merge `main` CI run #1076 is green for both unit/contract and browser E2E at merge commit `1abd582a06277c3a422faa108a59902563c28d2c`.
 
 ## Handoff
 
-After green merge/main CI, reconcile **M1-06** as complete in `docs/THREADBOUND_MASTER_PLAN.md`. The next earliest dependency-satisfied task is **M1-07**: preserve Honey as externally Threaded-owned premium currency and prove local mode cannot mutate it.
+**M1-06 is objectively complete.** The checkbox in `docs/THREADBOUND_MASTER_PLAN.md` remains mechanically stale because the current repository write interface cannot safely apply a small patch to that large canonical file without wholesale replacement; do not reimplement M1-06 because of that stale box.
+
+The next earliest dependency-satisfied task is **M1-07**: preserve Honey as externally Threaded-owned premium currency and prove local mode cannot mutate it. Before implementing anything new, inspect the existing Threaded gateway/local-mode tests because this boundary may already be fully or partially implemented.
