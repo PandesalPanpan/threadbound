@@ -1,5 +1,3 @@
-const commandCard = document.querySelector('[data-testid="stream-command-card"]');
-
 function openInventoryFromShop() {
   const input = document.querySelector('[data-testid="stream-message"]');
   const form = document.querySelector('[data-testid="stream-composer"]');
@@ -9,9 +7,9 @@ function openInventoryFromShop() {
   form.requestSubmit();
 }
 
-function installStyles() {
-  if (document.querySelector('[data-shop-rich-card-styles]')) return;
-  const style = document.createElement('style');
+function installStyles(documentRef = document) {
+  if (documentRef.querySelector('[data-shop-rich-card-styles]')) return;
+  const style = documentRef.createElement('style');
   style.dataset.shopRichCardStyles = 'true';
   style.textContent = `
     [data-shop-rich-card="true"] .thread-shop-shelf { display:grid; gap:9px; }
@@ -26,20 +24,26 @@ function installStyles() {
       [data-shop-rich-card="true"] .thread-shop-offer .thread-shop-buy { grid-column:auto; width:auto; min-width:128px; }
     }
   `;
-  document.head.append(style);
+  documentRef.head.append(style);
 }
 
-function enhanceShopCard() {
-  if (!commandCard || commandCard.hidden) return;
-  const kicker = commandCard.querySelector('.thread-reply-header span')?.textContent || '';
-  if (!/\/shop\b/i.test(kicker) && commandCard.dataset.richCardKind !== 'shop') return;
+function isShopCard(card) {
+  if (!card || card.hidden) return false;
+  if (card.dataset.shopRichCard === 'true' || card.dataset.richCardKind === 'shop') return true;
+  const kicker = card.querySelector('.thread-reply-header span')?.textContent || '';
+  return /\/shop\b/i.test(kicker);
+}
 
-  commandCard.dataset.shopRichCard = 'true';
-  commandCard.dataset.richCardKind = 'shop';
-  const headerTitle = commandCard.querySelector('.thread-reply-header strong');
+function enhanceShopCard(card, { documentRef = document } = {}) {
+  if (!isShopCard(card)) return;
+
+  card.dataset.shopRichCard = 'true';
+  card.dataset.richCardKind = 'shop';
+  card.setAttribute('aria-label', 'Shop panel');
+  const headerTitle = card.querySelector('.thread-reply-header strong');
   if (headerTitle?.textContent.includes('field shop')) headerTitle.textContent = headerTitle.textContent.replace('field shop', 'Shop');
 
-  for (const offer of commandCard.querySelectorAll('.thread-shop-offer')) {
+  for (const offer of card.querySelectorAll('.thread-shop-offer')) {
     offer.dataset.testid = 'shop-offer';
     const buy = offer.querySelector('.thread-shop-buy');
     if (!buy) continue;
@@ -48,35 +52,39 @@ function enhanceShopCard() {
     if (/\bDust\b/.test(buy.textContent)) buy.textContent = buy.textContent.replace(/\bDust\b/g, 'Gold');
   }
 
-  if (!commandCard.querySelector('[data-testid="stream-shop-sell-equipment"]')) {
-    const footer = document.createElement('div');
+  if (!card.querySelector('[data-testid="stream-shop-sell-equipment"]')) {
+    const footer = documentRef.createElement('div');
     footer.className = 'shop-rich-card-footer rich-chat-card-actions';
     footer.dataset.shopRichCardOwned = 'true';
-    const sell = document.createElement('button');
+    const sell = documentRef.createElement('button');
     sell.type = 'button';
     sell.dataset.testid = 'stream-shop-sell-equipment';
     sell.dataset.richCardAction = 'true';
     sell.className = 'rich-chat-card-action';
     sell.textContent = 'Sell equipment';
     sell.addEventListener('click', openInventoryFromShop);
-    const note = document.createElement('p');
+    const note = documentRef.createElement('p');
     note.className = 'shop-rich-card-note';
     note.textContent = 'Selling uses your Inventory so equipped-state and protected-item rules stay authoritative.';
     footer.append(sell, note);
-    commandCard.append(footer);
+    card.append(footer);
   }
 }
 
-if (commandCard) {
-  installStyles();
+export function installShopRichCard({ documentRef = document } = {}) {
+  const stream = documentRef.querySelector('#stream');
+  if (!stream) return () => {};
+  installStyles(documentRef);
   let scheduled = false;
+  const decorate = () => {
+    scheduled = false;
+    const card = stream.querySelector('[data-testid="stream-command-card"]');
+    enhanceShopCard(card, { documentRef });
+  };
   const schedule = () => {
     if (scheduled) return;
     scheduled = true;
-    queueMicrotask(() => {
-      scheduled = false;
-      enhanceShopCard();
-    });
+    queueMicrotask(decorate);
   };
   const observer = new MutationObserver((mutations) => {
     const ownedOnly = mutations.length > 0 && mutations.every((mutation) => {
@@ -85,7 +93,12 @@ if (commandCard) {
     });
     if (!ownedOnly) schedule();
   });
-  observer.observe(commandCard, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
   schedule();
-  window.addEventListener('beforeunload', () => observer.disconnect(), { once: true });
+  return () => observer.disconnect();
+}
+
+if (typeof document !== 'undefined') {
+  const uninstall = installShopRichCard();
+  window.addEventListener('beforeunload', uninstall, { once: true });
 }
