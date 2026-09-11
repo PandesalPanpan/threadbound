@@ -33,6 +33,7 @@ const RARITY_MAX_LEVEL = Object.freeze({
   rare: 3,
   epic: 3,
   legendary: 3,
+  mythic: 3,
 });
 
 const UPGRADE_COSTS = Object.freeze([8, 14, 22]);

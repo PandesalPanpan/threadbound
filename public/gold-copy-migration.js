@@ -1,4 +1,5 @@
 import './equipment-copy-migration.js';
+import './rarity-presentation.js';
 
 // Presentation-only strangler adapter for M1-01.
 // Persisted/API compatibility may still say Thread Dust while the player-facing product
