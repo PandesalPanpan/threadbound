@@ -6,6 +6,7 @@ const SALVAGE_BY_RARITY = Object.freeze({
   rare: 12,
   epic: 20,
   legendary: 32,
+  mythic: 50,
 });
 
 export class InventoryService {
