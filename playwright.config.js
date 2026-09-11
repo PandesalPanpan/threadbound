@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './test/e2e',
   // The player-facing contract is intentionally small now. Tactical-era journeys remain
   // in the repository as migration coverage but no longer define the default product UI.
-  testMatch: ['**/simple-loop.spec.js', '**/rarity-contract.spec.js', '**/inventory-rich-card.spec.js', '**/shop-rich-card.spec.js'],
+  testMatch: ['**/simple-loop.spec.js', '**/rarity-contract.spec.js', '**/inventory-rich-card.spec.js', '**/shop-rich-card.spec.js', '**/profile-rich-card.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,

@@ -1,5 +1,6 @@
 import './shop-rich-card.js';
 import './inventory-rich-card.js';
+import './profile-rich-card.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search';
 
@@ -12,6 +13,7 @@ function commandFromCard(card) {
   }
   if (card.dataset.shopRichCard === 'true') return 'shop';
   if (card.dataset.inventoryRichCard === 'true') return 'inventory';
+  if (card.dataset.profileRichCard === 'true') return 'profile';
   return card.dataset.richCardKind || 'panel';
 }
 
@@ -103,7 +105,13 @@ function installStyles(documentRef) {
     .rich-chat-card > .rich-chat-card-header { margin-bottom:0; }
     .rich-chat-card-actions { min-width:0; }
     .rich-chat-card-action { min-height:44px; }
-    .rich-chat-card-dismiss { flex:0 0 auto; }
+    .threadbound-player #stream .rich-chat-card .rich-chat-card-dismiss {
+      width:44px !important;
+      min-width:44px !important;
+      height:44px !important;
+      min-height:44px !important;
+      flex:0 0 44px;
+    }
     @media (max-width:720px) {
       .rich-chat-card { gap:9px; }
       .rich-chat-card-action { min-height:44px; }
