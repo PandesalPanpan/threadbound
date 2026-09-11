@@ -21,9 +21,10 @@ export function decorateRarityPresentation(root = document) {
     element.dataset.rarityTier = String(meta.tier);
     for (const badge of element.querySelectorAll('.rarity-badge')) {
       const current = String(badge.textContent || '');
-      badge.textContent = current.match(/(?:Tier|T)\s*\d+/i)
+      const next = current.match(/(?:Tier|T)\s*\d+/i)
         ? current.replace(/(?:Tier|T)\s*\d+/i, (match) => match.toLowerCase().startsWith('tier') ? `Tier ${meta.tier}` : `T${meta.tier}`)
         : `${meta.label} · T${meta.tier}`;
+      if (next !== current) badge.textContent = next;
     }
   }
 }
