@@ -16,6 +16,27 @@ async function dashboard(context) {
   return response.json();
 }
 
+test('slash-command replies scroll fully into view as their content grows', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 500 } });
+  const page = await context.newPage();
+
+  try {
+    await login(page, 'a');
+    await page.getByTestId('stream-message').fill('/help');
+    await page.getByTestId('stream-send').click();
+
+    const reply = page.getByTestId('stream-command-card');
+    await expect(reply).toBeVisible();
+    await expect(reply).toContainText('/dungeon');
+    await expect.poll(async () => reply.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return Math.ceil(bounds.bottom) <= window.innerHeight;
+    })).toBe(true);
+  } finally {
+    await context.close();
+  }
+});
+
 test('party members share the same hard attack-only dungeon and live stream', async ({ browser }) => {
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const partnerContext = await browser.newContext({ viewport: { width: 390, height: 844 } });

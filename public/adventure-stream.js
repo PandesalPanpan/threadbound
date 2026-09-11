@@ -138,6 +138,16 @@ if (streamEl) {
     commandCardEl.innerHTML = '';
   }
 
+  function revealCommandCard() {
+    if (commandCardEl.hidden) return;
+    // Wait for the reply and any responsive layout changes to settle. Command replies
+    // live below the fixed-height log, so changing their height does not otherwise
+    // move the page far enough to reveal the complete result.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      commandCardEl.scrollIntoView({ block: 'end', inline: 'nearest' });
+    }));
+  }
+
   function openCommandCard(command, title, subtitle = '') {
     activeLocalCommand = command;
     commandCardEl.hidden = false;
@@ -543,6 +553,8 @@ if (streamEl) {
       }
     } catch (error) {
       showError(error.message);
+    } finally {
+      revealCommandCard();
     }
   }
 

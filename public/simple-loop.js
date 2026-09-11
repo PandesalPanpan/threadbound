@@ -262,6 +262,13 @@ if (stream) {
     decorateFigmaSurface();
   }
 
+  function revealCommandCard() {
+    if (!commandCard || commandCard.hidden) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      commandCard.scrollIntoView({ block: 'end', inline: 'nearest' });
+    }));
+  }
+
   function isSimpleSurface() {
     return Boolean(dashboard && (!dashboard.activeRun || dashboard.activeRun.simpleCombat));
   }
@@ -374,6 +381,7 @@ if (stream) {
           showError(error.message);
         }
         input.focus();
+        revealCommandCard();
         return;
       }
 
