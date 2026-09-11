@@ -42,11 +42,11 @@ function huntEnemyEntries() {
     category: 'enemies',
     title: enemy.name,
     summary: 'A creature that can appear during /hunt.',
-    body: `${enemy.name} is a Hunt enemy. A Hunt resolves the entire battle in one command using your permanent Attack and Health. It has ${enemy.hp} HP, deals ${enemy.retaliation} damage per exchange, and awards ${enemy.threadDust} Thread Dust when defeated.`,
+    body: `${enemy.name} is a Hunt enemy. A Hunt resolves the entire battle in one command using your permanent Attack and Health. It has ${enemy.hp} HP, deals ${enemy.retaliation} damage per exchange, and awards ${enemy.gold} Gold when defeated.`,
     mechanics: {
       hp: enemy.hp,
       retaliation: enemy.retaliation,
-      threadDust: enemy.threadDust,
+      gold: enemy.gold,
       dropChance: `${Math.round(enemy.dropChance * 100)}%`,
     },
     source: 'hunt-catalog',
