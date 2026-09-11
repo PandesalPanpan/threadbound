@@ -208,7 +208,6 @@ export function installRichChatCardCompatibility({ documentRef = document } = {}
   if (!stream) return () => {};
   installStyles(documentRef);
 
-  const log = stream.querySelector('[data-testid="adventure-stream-log"]');
   let activeSnapshot = null;
   let scheduled = false;
   const decorateCurrent = () => {
@@ -218,6 +217,7 @@ export function installRichChatCardCompatibility({ documentRef = document } = {}
     decorateRichChatCard(card);
     const nextSnapshot = snapshotModel(card);
     if (!nextSnapshot) return;
+    const log = stream.querySelector('[data-testid="adventure-stream-log"]');
     if (activeSnapshot && activeSnapshot.signature !== nextSnapshot.signature && log) {
       const historical = createHistoricalRichCardSnapshot(activeSnapshot, { documentRef });
       if (historical) {
