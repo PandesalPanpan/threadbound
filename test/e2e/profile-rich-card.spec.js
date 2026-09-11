@@ -54,12 +54,14 @@ test('Profile rich card summarizes progression, resources, stats, loadout, Area 
 
   await expect(card.getByRole('img', { name: state.character.displayName })).toBeVisible();
   await expect(card).not.toContainText(/Thread Dust|Relic Pouch|Temper/);
-  const width = await card.evaluate((element) => element.scrollWidth);
-  expect(width).toBeLessThanOrEqual(390);
-
-  const dismiss = card.getByRole('button', { name: 'Dismiss Profile panel' });
-  const box = await dismiss.boundingBox();
-  expect(box?.height || 0).toBeGreaterThanOrEqual(44);
+  const metrics = await card.evaluate((element) => {
+    const dismiss = element.querySelector('[data-rich-card-dismiss="true"]');
+    const rect = dismiss?.getBoundingClientRect();
+    return { width: element.scrollWidth, dismissHeight: rect?.height || 0, dismissWidth: rect?.width || 0 };
+  });
+  expect(metrics.width).toBeLessThanOrEqual(390);
+  expect(metrics.dismissHeight).toBeGreaterThanOrEqual(44);
+  expect(metrics.dismissWidth).toBeGreaterThanOrEqual(44);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/profile-rich-card-mobile.png`, fullPage: true });
