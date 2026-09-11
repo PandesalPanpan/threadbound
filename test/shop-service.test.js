@@ -68,8 +68,10 @@ test('shop equipment purchase atomically spends Gold and persists a normal owned
   assert.equal(items[0].rarity, 'common');
   assert.equal(items[0].visualAssetId, 'item.steel-sword.v1');
   assert.equal(repository.getPlayer(player.id).threadDust, 2);
-  assert.equal(events.at(-1).type, 'ShopEquipmentPurchased');
-  assert.equal(events.at(-1).itemId, 'shop-item-1');
+  assert.equal(events.at(-2).type, 'ShopEquipmentPurchased');
+  assert.equal(events.at(-2).itemId, 'shop-item-1');
+  assert.equal(events.at(-1).type, 'ItemGenerated');
+  assert.equal(events.at(-1).source, 'shop:bronze-sword');
 });
 
 test('failed equipment purchase does not create an item or spend Gold', () => {
