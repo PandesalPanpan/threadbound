@@ -25,7 +25,7 @@ test('shop browse projects server-owned equipment and potion stock in Gold with 
   assert.equal(shop.vendor.name, 'Mara');
   assert.deepEqual(shop.currency, { code: 'gold', label: 'Gold', balance: 7 });
   assert.deepEqual(shop.offers.map(({ sku, kind, cost, affordable }) => ({ sku, kind, cost, affordable })), [
-    { sku: 'bronze-sword', kind: 'equipment', cost: 18, affordable: false },
+    { sku: 'bronze-sword', kind: 'equipment', cost: 8, affordable: false },
     { sku: 'single', kind: 'health_potion', cost: 5, affordable: true },
     { sku: 'satchel', kind: 'health_potion', cost: 12, affordable: false },
   ]);
@@ -53,13 +53,13 @@ test('shop potion purchases use catalog price and preserve legacy balance storag
 
 test('shop equipment purchase atomically spends Gold and persists a normal owned item', () => {
   const { repository, player, service, events } = setup();
-  repository.addThreadDust(player.id, 20);
+  repository.addThreadDust(player.id, 10);
 
   const purchase = service.purchase(player.id, 'bronze-sword');
   const items = repository.listItems(player.id);
 
   assert.equal(purchase.kind, 'equipment');
-  assert.equal(purchase.cost, 18);
+  assert.equal(purchase.cost, 8);
   assert.equal(purchase.gold, 2);
   assert.equal(purchase.item.id, 'shop-item-1');
   assert.equal(items.length, 1);
@@ -76,10 +76,10 @@ test('shop equipment purchase atomically spends Gold and persists a normal owned
 
 test('failed equipment purchase does not create an item or spend Gold', () => {
   const { repository, player, service } = setup();
-  repository.addThreadDust(player.id, 17);
+  repository.addThreadDust(player.id, 7);
 
   assert.throws(() => service.purchase(player.id, 'bronze-sword'), (error) => error.code === 'insufficient_gold');
-  assert.equal(repository.getPlayer(player.id).threadDust, 17);
+  assert.equal(repository.getPlayer(player.id).threadDust, 7);
   assert.deepEqual(repository.listItems(player.id), []);
 });
 
