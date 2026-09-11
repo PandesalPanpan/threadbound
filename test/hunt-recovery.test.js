@@ -55,9 +55,18 @@ test('the recovery shop exchanges Dust for potions atomically', () => {
 
   const purchase = service.buyHealthPotion(player.id);
 
-  assert.deepEqual(purchase, { cost: 5, threadDust: 0, healthPotions: 2 });
+  assert.deepEqual(purchase, { sku: 'single', cost: 5, quantity: 1, threadDust: 0, healthPotions: 2 });
   assert.equal(repository.getPlayer(player.id).healthPotions, 2);
   assert.throws(() => service.buyHealthPotion(player.id), (error) => error.code === 'insufficient_thread_dust');
+});
+
+test('the shop satchel grants three potions at its discounted price', () => {
+  const { repository, player, service } = setup();
+  repository.addThreadDust(player.id, 12);
+
+  const purchase = service.buyHealthPotion(player.id, 'satchel');
+
+  assert.deepEqual(purchase, { sku: 'satchel', cost: 12, quantity: 3, threadDust: 0, healthPotions: 4 });
 });
 
 test('generated weapon identity keeps a semantic visual asset through persistence', () => {

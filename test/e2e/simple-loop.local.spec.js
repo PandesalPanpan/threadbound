@@ -36,21 +36,29 @@ test('command results scroll fully into view as their content grows', async ({ b
     await expect(receipt.locator('.stream-hunt-chip.loss')).toContainText('HP');
     await expect(receipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
     await expect(receipt.locator('.stream-hunt-chip.reward')).toContainText('Dust');
+    await expect(page.locator('.simple-loop-action')).toHaveCount(2);
     await expect.poll(async () => page.getByTestId('adventure-stream-log').evaluate((element) => (
       Math.ceil(element.scrollHeight - element.scrollTop - element.clientHeight)
     ))).toBeLessThanOrEqual(1);
 
-    const heal = page.getByTestId('stream-heal');
-    await expect(heal).toBeVisible();
-    await heal.click();
+    await page.getByTestId('stream-message').fill('heal');
+    await page.getByTestId('stream-send').click();
     await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible();
-    await expect(heal).toHaveCount(0);
+    await expect(page.getByTestId('stream-heal')).toHaveCount(0);
 
     await page.getByTestId('stream-message').fill('hunt');
     await page.getByTestId('stream-send').click();
     await page.getByTestId('stream-message').fill('rest');
     await page.getByTestId('stream-send').click();
     await expect(page.getByTestId('stream-command-card')).toContainText(/Next HP in \d+[sm]/);
+    const firstCountdown = await page.locator('[data-simple-recovery-next]').textContent();
+    await expect.poll(() => page.locator('[data-simple-recovery-next]').textContent(), { timeout: 3000 }).not.toBe(firstCountdown);
+
+    await page.getByTestId('stream-message').fill('shop');
+    await page.getByTestId('stream-send').click();
+    await expect(page.getByRole('img', { name: 'Mara, field merchant' })).toBeVisible();
+    await expect(page.getByTestId('stream-shop-single')).toContainText('Buy · 5 Dust');
+    await expect(page.getByTestId('stream-shop-satchel')).toContainText('Buy · 12 Dust');
   } finally {
     await context.close();
   }

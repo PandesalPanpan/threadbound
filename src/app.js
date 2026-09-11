@@ -353,7 +353,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
   app.post('/api/shop/health-potion', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
-    const purchase = huntService.buyHealthPotion(playerId);
+    const purchase = huntService.buyHealthPotion(playerId, String(request.body?.sku || 'single'));
     return response.json({ purchase, dashboard: gameService.dashboard(playerId) });
   });
   app.post('/api/dungeons/:dungeonId/start-simple', requireConnection, (request, response) => response.status(201).json({ run: simpleDungeonService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));

@@ -117,7 +117,7 @@ export class SQLiteGameRepository {
     }
   }
 
-  buyHealthPotion(playerId, { cost = 5 } = {}) {
+  buyHealthPotion(playerId, { cost = 5, quantity = 1 } = {}) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const row = this.db.prepare('SELECT thread_dust, health_potions FROM players WHERE id = ?').get(playerId);
@@ -127,9 +127,9 @@ export class SQLiteGameRepository {
         error.code = 'insufficient_thread_dust';
         throw error;
       }
-      this.db.prepare('UPDATE players SET thread_dust = thread_dust - ?, health_potions = health_potions + 1 WHERE id = ?').run(cost, playerId);
+      this.db.prepare('UPDATE players SET thread_dust = thread_dust - ?, health_potions = health_potions + ? WHERE id = ?').run(cost, quantity, playerId);
       this.db.exec('COMMIT');
-      return { cost, threadDust: row.thread_dust - cost, healthPotions: row.health_potions + 1 };
+      return { cost, quantity, threadDust: row.thread_dust - cost, healthPotions: row.health_potions + quantity };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;

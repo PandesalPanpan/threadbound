@@ -156,7 +156,7 @@ export class ActivityStreamService {
       case 'HealthPotionUsed':
         return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
       case 'HealthPotionPurchased':
-        return { actorName: 'THREADBOUND', body: `${actorName} bought a health potion for ${event.cost} Dust · ${event.healthPotions} potions left.` };
+        return { actorName: 'THREADBOUND', body: `${actorName} bought ${event.quantity} health potion${event.quantity === 1 ? '' : 's'} for ${event.cost} Dust · ${event.healthPotions} left.` };
       case 'DungeonStarted': {
         const foe = event.enemyName || enemyName || 'an enemy';
         const enemyState = event.enemyHp === null || event.enemyHp === undefined ? '' : ` 👾 ${foe} ${event.enemyHp}/${event.enemyMaxHp} HP.`;

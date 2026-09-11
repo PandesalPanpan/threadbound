@@ -150,6 +150,7 @@ if (stream) {
   let scheduled = null;
   let acting = false;
   let lastSignature = '';
+  let recoveryFetchedAt = Date.now();
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -200,7 +201,7 @@ if (stream) {
     if (commandCard) {
       const kicker = commandCard.querySelector('.thread-reply-header span');
       if (kicker) {
-        kicker.textContent = 'THREADBOUND';
+        if (kicker.textContent !== 'THREADBOUND') kicker.textContent = 'THREADBOUND';
         kicker.classList.add('threadbound-app-kicker');
       }
       const close = commandCard.querySelector('.thread-reply-close');
@@ -274,13 +275,21 @@ if (stream) {
     await api('/api/recovery/potion', { method: 'POST' });
   }
 
-  async function buyPotion() {
-    await api('/api/shop/health-potion', { method: 'POST' });
+  function openShop() {
+    if (!input || !composer) return;
+    input.value = 'shop';
+    composer.requestSubmit();
   }
 
   function durationLabel(seconds) {
-    const value = Math.max(0, Number(seconds || 0));
-    return value < 60 ? `${Math.ceil(value)}s` : `${Math.ceil(value / 60)}m`;
+    const value = Math.max(0, Math.ceil(Number(seconds || 0)));
+    if (value < 60) return `${value}s`;
+    return `${Math.floor(value / 60)}m ${value % 60}s`;
+  }
+
+  function remainingRecoverySeconds(field) {
+    const elapsed = Math.floor((Date.now() - recoveryFetchedAt) / 1000);
+    return Math.max(0, Number(dashboard?.character?.healthRecovery?.[field] || 0) - elapsed);
   }
 
   function renderRecovery() {
@@ -290,9 +299,25 @@ if (stream) {
     commandCard.innerHTML = '';
     const recovery = document.createElement('div');
     recovery.className = 'simple-loop-help';
-    recovery.innerHTML = `<strong>Recovery · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : `Next HP in ${durationLabel(character.healthRecovery?.nextHealthInSeconds)} · full in ${durationLabel(character.healthRecovery?.fullHealthInSeconds)}.`}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} · potions cost 5 Dust in the shop.`;
+    recovery.innerHTML = `<strong>Recovery · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : 'Next HP in <span data-simple-recovery-next></span> · full in <span data-simple-recovery-full></span>.'}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} · type <strong>shop</strong> for supplies.`;
     commandCard.append(recovery);
+    updateRecoveryClock();
     decorateFigmaSurface();
+  }
+
+  function updateRecoveryClock() {
+    if (!dashboard) return;
+    const nextSeconds = remainingRecoverySeconds('nextHealthInSeconds');
+    const fullSeconds = remainingRecoverySeconds('fullHealthInSeconds');
+    const next = commandCard?.querySelector('[data-simple-recovery-next]');
+    const full = commandCard?.querySelector('[data-simple-recovery-full]');
+    if (next) next.textContent = durationLabel(nextSeconds);
+    if (full) full.textContent = durationLabel(fullSeconds);
+    const rest = actionBar.querySelector('[data-testid="stream-rest"]');
+    if (rest) rest.textContent = `Recovery · ${durationLabel(nextSeconds)}`;
+    if (nextSeconds === 0 && dashboard.character.currentHealth < dashboard.character.maxHealth && !syncing) sync({ force: true }).then(() => {
+      if (commandCard?.querySelector('[data-simple-recovery-next]')) renderRecovery();
+    }).catch(() => {});
   }
 
   function revealCommandCard() {
@@ -319,11 +344,12 @@ if (stream) {
 
     if (noRun) {
       if (dashboard.character.currentHealth > 0) addButton('Hunt', 'hunt', hunt, 'stream-hunt');
-      if (dashboard.character.currentHealth < dashboard.character.maxHealth && dashboard.character.healthPotions > 0) addButton(`Heal · ${dashboard.character.healthPotions}`, 'heal', heal, 'stream-heal');
-      if (dashboard.character.currentHealth < dashboard.character.maxHealth) addButton(`Rest · ${durationLabel(dashboard.character.healthRecovery?.nextHealthInSeconds)}`, 'heal', async () => renderRecovery(), 'stream-rest');
-      if (dashboard.character.threadDust >= 5) addButton('Buy potion · 5 Dust', 'heal', buyPotion, 'stream-buy-potion');
+      else {
+        addButton(`Recovery · ${durationLabel(dashboard.character.healthRecovery?.nextHealthInSeconds)}`, 'heal', async () => renderRecovery(), 'stream-rest');
+        addButton('Shop', 'shop', async () => openShop(), 'stream-shop');
+      }
       const { dungeon, readiness } = firstDungeon();
-      if (dungeon) {
+      if (dungeon && dashboard.character.currentHealth > 0) {
         const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
         const current = Number(viewer?.attackPower ?? dashboard.character.attackPower ?? 0);
         const recommended = Number(readiness?.recommendedAttack ?? 9);
@@ -351,6 +377,7 @@ if (stream) {
     syncing = true;
     try {
       dashboard = await api('/api/dashboard');
+      recoveryFetchedAt = Date.now();
       const signature = JSON.stringify([
         dashboard.activeRun?.id || null,
         dashboard.activeRun?.version ?? null,
@@ -402,7 +429,7 @@ if (stream) {
       // commands. The authoritative adventure handler has the fresher run context.
       if (noRun && command === '/attack') return;
 
-      if (['/hunt', '/dungeon', '/run', '/attack', '/help', '/heal', '/potion', '/rest', '/recovery', '/shop', '/buy'].includes(command)) {
+      if (['/hunt', '/dungeon', '/run', '/attack', '/help', '/heal', '/potion', '/rest', '/recovery'].includes(command)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (acting) return;
@@ -414,8 +441,7 @@ if (stream) {
           else if (command === '/dungeon' || command === '/run') await startDungeon();
           else if (command === '/attack') await attack();
           else if (command === '/heal' || command === '/potion') await heal();
-          else if (command === '/buy' && args.join(' ') === 'potion') await buyPotion();
-          else if (command === '/rest' || command === '/recovery' || command === '/shop') renderRecovery();
+          else if (command === '/rest' || command === '/recovery') renderRecovery();
           else renderHelp();
           await sync({ force: true });
         } catch (error) {
@@ -437,6 +463,8 @@ if (stream) {
       }
     }, { capture: true });
   }
+
+  setInterval(updateRecoveryClock, 1000);
 
   // Legacy suggestions may redraw for old persisted runs. Keep their test hooks normalized,
   // but never mount the Figma controls inside a container another renderer owns.
