@@ -32,7 +32,7 @@ test('Hunt uses the server-owned short cooldown and reports exact next-ready sta
     const stream = await streamResponse.json();
     const huntEntries = (stream.entries || []).filter((entry) => entry.eventType === 'HuntResolved');
     expect(huntEntries).toHaveLength(1);
-    expect(huntEntries[0].text).toContain(`Next Hunt — ${first.hunt.cooldown.nextReadyAt}`);
+    expect(huntEntries[0].body).toContain(`Next Hunt — ${first.hunt.cooldown.nextReadyAt}`);
   } finally {
     await context.close();
   }
