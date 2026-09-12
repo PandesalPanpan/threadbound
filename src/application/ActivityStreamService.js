@@ -249,6 +249,12 @@ export class ActivityStreamService {
         const names = (event.participantIds || []).map((id) => this.#playerName(id));
         return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} cleared ${dungeonName}.` };
       }
+      case 'AreaTraveled':
+        return {
+          actorPlayerId: event.playerId,
+          actorName: 'THREADBOUND',
+          body: `${actorName} traveled from ${event.fromArea?.name || 'an Area'} to ${event.toArea?.name || 'an Area'}.`,
+        };
       case 'ItemGenerated': {
         if (event.silentStream) return null;
         const item = this.gameRepository.getItem(event.itemId);

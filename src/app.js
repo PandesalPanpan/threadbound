@@ -18,6 +18,7 @@ import { SimpleDungeonService } from './application/SimpleDungeonService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
+import { AreaService } from './application/AreaService.js';
 import { RunCommandIdempotencyService } from './application/RunCommandIdempotencyService.js';
 import { VISUAL_ASSETS, VISUAL_ASSET_CATALOG_VERSION } from './content/VisualAssetCatalog.js';
 import { decorateRunUpgradeOffers } from './domain/RunUpgradeOfferPolicy.js';
@@ -120,6 +121,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const combatPreview = new CombatPreviewService({ repository });
   const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
   const partyService = new PartyService({ repository, eventBus });
+  const areaService = new AreaService({ repository, eventBus });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
   const purchaseService = threadedGateway ? new HoneyPurchaseService({ repository, threadedGateway }) : null;
   const runCommandIdempotency = new RunCommandIdempotencyService({ repository: runCommandRepository });
@@ -343,6 +345,15 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/party/ready', requireConnection, (request, response) => response.json({ party: partyService.setReady(request.session.threaded.playerId, Boolean(request.body?.ready)) }));
   app.post('/api/party/leave', requireConnection, (request, response) => { partyService.leaveParty(request.session.threaded.playerId); response.json({ party: null }); });
 
+  app.get('/api/areas', requireConnection, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json({ area: areaService.browse(request.session.threaded.playerId) });
+  });
+  app.post('/api/areas/:areaNumber/travel', requireConnection, (request, response) => {
+    const area = areaService.travel(request.session.threaded.playerId, request.params.areaNumber);
+    return response.json({ area });
+  });
+
   app.post('/api/hunt', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
     const hunt = huntService.hunt(playerId);
@@ -436,6 +447,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'shop_offer_not_found',
       'unsupported_shop_offer',
       'simple_combat_attack_only',
+      'area_locked',
     ]);
     const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic|simple combat|hunting/i.test(knownMessage) ? 409 : 500;
     response.status(status).json({ error: error?.code || (status === 409 ? 'game_rule_violation' : 'internal_error'), message: knownMessage });

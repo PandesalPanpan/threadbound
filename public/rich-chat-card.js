@@ -2,11 +2,12 @@ import './shop-rich-card.js';
 import './inventory-rich-card.js';
 import './profile-rich-card.js';
 import './bank-rich-card.js';
+import './area-rich-card.js';
 import './bank-profile-sync.js';
 import './rich-card-visual-polish.js';
 
-const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer';
-const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank']);
+const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list';
+const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area']);
 
 function commandFromCard(card) {
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
@@ -20,6 +21,7 @@ function commandFromCard(card) {
   if (card.dataset.inventoryRichCard === 'true') return 'inventory';
   if (card.dataset.profileRichCard === 'true') return 'profile';
   if (card.dataset.bankRichCard === 'true') return 'bank';
+  if (card.dataset.areaRichCard === 'true') return 'area';
   return card.dataset.richCardKind || 'panel';
 }
 
@@ -52,6 +54,12 @@ function snapshotDetails(card, kind) {
     return [
       firstText(card, '[data-testid="profile-xp"]'),
       firstText(card, '[data-testid="profile-gold"]'),
+    ].filter(Boolean).join(' · ');
+  }
+  if (kind === 'area') {
+    return [
+      firstText(card, '[data-testid="area-current"]'),
+      firstText(card, '[data-testid="area-highest-unlocked"]'),
     ].filter(Boolean).join(' · ');
   }
   if (kind === 'shop') {
