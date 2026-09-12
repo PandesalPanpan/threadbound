@@ -39,8 +39,8 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
   } : null;
 
   const resultText = victory
-    ? `${actorName} defeated ${enemyName}.`
-    : `${actorName} was defeated by ${enemyName}.`;
+    ? `${actorName} found and killed ${enemyName}.`
+    : `${actorName} found ${enemyName} but was defeated.`;
   const rewardText = victory ? ` +${gold} Gold · +${xp} XP.` : ' No rewards.';
   const hpText = ` −${damageTaken} HP · ${remainingHp}/${maxHp} HP.`;
   const levelText = event.leveledUp ? ` Level ${nonNegativeNumber(event.level)}!` : '';
