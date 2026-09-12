@@ -28,6 +28,7 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
   }, { actorName: 'Mira' });
 
   assert.deepEqual(receipt.rewards, { gold: 7, xp: 20 });
+  assert.equal(receipt.deathPenalty, null);
   assert.deepEqual(receipt.progression, { level: 2, leveledUp: true, levelsGained: 1 });
   assert.deepEqual(receipt.loot, { id: 'item-1', name: 'Gleaming Fang', rarity: 'rare', attackBonus: 3 });
   assert.deepEqual(receipt.questProgress, [
@@ -44,7 +45,7 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
   assert.doesNotMatch(receipt.text, /Dust|Relic|Temper/);
 });
 
-test('failed Hunts discard stale reward-looking fields from the receipt', () => {
+test('failed Hunt projects authoritative carried-Gold death loss while keeping Bank safe', () => {
   const receipt = projectHuntReceipt({
     type: 'HuntResolved',
     victory: false,
@@ -53,6 +54,9 @@ test('failed Hunts discard stale reward-looking fields from the receipt', () => 
     remainingHp: 0,
     maxHp: 40,
     gold: 999,
+    goldLost: 12,
+    carriedGold: 48,
+    bankedGold: 40,
     experienceGained: 999,
     leveledUp: true,
     itemName: 'Impossible Sword',
@@ -60,11 +64,26 @@ test('failed Hunts discard stale reward-looking fields from the receipt', () => 
   }, { actorName: 'Mira' });
 
   assert.deepEqual(receipt.rewards, { gold: 0, xp: 0 });
+  assert.deepEqual(receipt.deathPenalty, { goldLost: 12, carriedGold: 48, bankedGold: 40 });
   assert.equal(receipt.loot, null);
   assert.equal(receipt.healthPotionsFound, 0);
   assert.match(receipt.text, /^Defeat — Mira fell to Ash Hound\./);
-  assert.match(receipt.text, /No rewards/);
+  assert.match(receipt.text, /−12 carried Gold · Bank safe/);
   assert.doesNotMatch(receipt.text, /999|Impossible|Level up/);
+});
+
+test('failed Hunt with no carried-Gold loss still reports no rewards', () => {
+  const receipt = projectHuntReceipt({
+    type: 'HuntResolved',
+    victory: false,
+    enemyName: 'Ash Hound',
+    damageTaken: 12,
+    remainingHp: 0,
+    maxHp: 40,
+    goldLost: 0,
+  }, { actorName: 'Mira' });
+
+  assert.match(receipt.text, /No rewards/);
 });
 
 test('rejects non-Hunt events instead of inventing receipt state', () => {
