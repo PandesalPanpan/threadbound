@@ -1,6 +1,6 @@
 # Area progression foundation
 
-Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — merged in PR #74 at `fbf8cf37`, with merged `main` CI #1437 green.**
+Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — merged in PR #74 at `fbf8cf37`, with merged `main` CI #1437 green. M5-03 implementation/acceptance is carried by `feature/m5-03-area-revisit` pending green merge evidence.**
 
 ## Boundary
 
@@ -8,9 +8,9 @@ Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — 
 
 `src/infrastructure/SQLiteAreaRepository.js` owns durable player Area position in the shared SQLite database. Existing players are migration-safe: the first Area read lazily creates `current = 1` and `highest unlocked = 1`. The repository rejects unknown players and SQLite enforces the same current <= highest invariant.
 
-`src/application/AreaService.js` is the M5-02 Service Layer boundary. It projects authoritative unlocked travel choices and coordinates current-Area changes through the existing Domain Model and Area repository. Browser code never grants an unlock or writes location state directly.
+`src/application/AreaService.js` is the Service Layer boundary. It projects authoritative unlocked travel choices and coordinates current-Area changes through the existing Domain Model and Area repository. Browser code never grants an unlock or writes location state directly.
 
-M5-01/M5-02 deliberately use stable canon-neutral identities (`area-1`, `area-2`, ...) and labels (`Area 1`, `Area 2`, ...). This is world-position/travel infrastructure, not new Arc content. Named Areas, Arc mappings, Adventure content, and progression unlock commands remain later ordered milestones.
+M5-01 through M5-03 deliberately use stable canon-neutral identities (`area-1`, `area-2`, ...) and labels (`Area 1`, `Area 2`, ...). This is world-position/travel infrastructure, not new Arc content. Named Areas, Arc mappings, Adventure content, and progression unlock commands remain later ordered milestones.
 
 ## Domain and application contract
 
@@ -25,8 +25,9 @@ M5-01/M5-02 deliberately use stable canon-neutral identities (`area-1`, `area-2`
 
 `AreaService` adds:
 
-- `browse(playerId)` — projects current/highest state plus only the contiguous unlocked Area choices;
+- `browse(playerId)` — projects current/highest state plus every contiguous unlocked Area choice;
 - `travel(playerId, areaNumber)` — validates through `AreaProgression`, persists through `SQLiteAreaRepository`, and publishes `AreaTraveled` only when location actually changes;
+- any Area at or below `highestUnlockedAreaNumber` remains visitable, so moving back to an older Area never lowers or consumes the unlock frontier;
 - same-Area travel is idempotent and does not create duplicate public receipts;
 - locked travel fails server-side with `area_locked`, including direct API attempts that bypass presentation controls.
 
@@ -41,7 +42,7 @@ The Domain Model never depends on browser presentation, URLs, images, or Arc-gen
 - `highest_unlocked_area_number`;
 - `updated_at`.
 
-The row cascades with the player and survives normal process/database restart. Travel updates this same row; there is no browser-owned duplicate Area state.
+The row cascades with the player and survives normal process/database restart. Travel updates this same row; there is no browser-owned duplicate Area state. Revisiting an older Area changes only `current_area_number`; `highest_unlocked_area_number` remains durable and monotonic.
 
 ## Adventure Stream presentation
 
@@ -53,6 +54,8 @@ M5-02 adds an app-like Area rich card inside the existing Adventure Stream rathe
 - a 44px Travel action for non-current choices;
 - a disabled Current state for the active Area.
 
+M5-03 keeps all previously unlocked rows available after each successful revisit. The browser renders the server projection returned after travel; it does not infer, consume, or mutate unlock state locally.
+
 Only the server-returned unlocked list is rendered. A successful travel publishes one `AreaTraveled` domain event, which becomes one concise public Adventure Stream receipt. Historical Area cards collapse through the existing reusable rich-card snapshot behavior.
 
 ## Objective acceptance
@@ -63,8 +66,10 @@ Only the server-returned unlocked list is rendered. A successful travel publishe
 
 1. browse projects current/highest state and only unlocked choices;
 2. valid travel persists and publishes exactly one domain event;
-3. locked travel fails without mutation or misleading receipt;
-4. selecting the already-current Area is idempotent.
+3. with Areas 1-3 unlocked, travel 3 -> 1 -> 2 -> 3 remains legal and keeps highest-unlocked at Area 3 throughout;
+4. each real location change publishes the corresponding authoritative `AreaTraveled` transition without changing the unlock frontier;
+5. locked travel fails without mutation or misleading receipt;
+6. selecting the already-current Area is idempotent.
 
 `test/area-stream-receipt.test.js` proves a committed `AreaTraveled` event creates one concise Adventure Stream receipt.
 
@@ -73,12 +78,14 @@ Only the server-returned unlocked list is rendered. A successful travel publishe
 1. the card opens inside the Adventure Stream from the plain `area` command;
 2. only authoritative unlocked Areas are presented;
 3. a direct HTTP attempt to bypass the card and travel to locked Area 2 receives `area_locked` and leaves Area 1 authoritative;
-4. the card fits mobile width and its dismiss/current controls meet the 44px target;
-5. no retired Thread Dust / Relic Pouch / Temper language appears in the Area card;
-6. a representative screenshot is emitted to `ux-review/area-rich-card-mobile.png` for visual inspection.
+4. the card can present a server projection with Areas 1-3 unlocked and keeps older Areas tappable while moving 3 -> 1 -> 2 -> 3;
+5. current/highest labels update independently, so revisiting Area 1 still shows the Area 3 unlock frontier;
+6. the card fits mobile width and its dismiss/current controls meet the 44px target;
+7. no retired Thread Dust / Relic Pouch / Temper language appears in the Area card;
+8. a representative screenshot is emitted to `ux-review/area-rich-card-mobile.png` for visual inspection.
 
-PR #74 passed syntax/unit-contract and the complete active Chromium E2E suite before merge. The 390x844 `area-rich-card-mobile.png` artifact was inspected: the card stays inside the Adventure Stream, current/highest state is readable, controls fit without horizontal overflow, and the composer/mobile navigation remain usable. Merged `main` CI #1437 repeated both required jobs successfully.
+The Playwright multi-Area projection is presentation-contract coverage only; authoritative revisit legality and persistence are proven by the real Domain Model + SQLite repository/service test above. No test-only production unlock endpoint is introduced merely to pre-empt M5-06 progression unlocking.
 
 ## Next ordered task
 
-The next earliest unchecked milestone is **M5-03 — allow free revisit of all previously unlocked Areas**. M5-03 should add explicit end-to-end evidence for revisiting an older Area once a player has multiple unlocked Areas; M5-02 does not pre-claim that milestone merely because its service can already represent those choices.
+After M5-03 is merged, checked, and green on `main`, the next earliest unchecked milestone is **M5-04 — implement ordinary Adventure activity using shared battle/world policies**.

@@ -53,6 +53,39 @@ test('AreaService travel persists through the Area repository and publishes one 
   }
 });
 
+test('AreaService freely revisits every previously unlocked Area without lowering the unlock frontier', () => {
+  const { repository, player, events, areaRepository, service } = fixture();
+  try {
+    areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(3).withCurrentArea(3));
+
+    const area1 = service.travel(player.id, 1);
+    assert.equal(area1.currentAreaNumber, 1);
+    assert.equal(area1.highestUnlockedAreaNumber, 3);
+    assert.deepEqual(area1.areas.map(({ number, current }) => ({ number, current })), [
+      { number: 1, current: true },
+      { number: 2, current: false },
+      { number: 3, current: false },
+    ]);
+
+    const area2 = service.travel(player.id, 2);
+    assert.equal(area2.currentAreaNumber, 2);
+    assert.equal(area2.highestUnlockedAreaNumber, 3);
+
+    const area3 = service.travel(player.id, 3);
+    assert.equal(area3.currentAreaNumber, 3);
+    assert.equal(area3.highestUnlockedAreaNumber, 3);
+    assert.equal(areaRepository.get(player.id).highestUnlockedAreaNumber, 3);
+
+    assert.deepEqual(events.map((event) => [event.fromArea.number, event.toArea.number, event.highestUnlockedArea.number]), [
+      [3, 1, 3],
+      [1, 2, 3],
+      [2, 3, 3],
+    ]);
+  } finally {
+    repository.close();
+  }
+});
+
 test('AreaService rejects travel past the unlocked frontier and does not publish misleading receipts', () => {
   const { repository, player, events, service } = fixture();
   try {
