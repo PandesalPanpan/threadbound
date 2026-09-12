@@ -93,7 +93,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     victory,
     enemy: Object.freeze({ id: event.enemyId || null, name: enemyName }),
     hp: Object.freeze({ damageTaken, remaining: remainingHp, max: maxHp }),
-    rewards: Object.freeze({ gold, xp, goldLost }),
+    rewards: Object.freeze({ gold, xp }),
     deathPenalty: victory ? null : Object.freeze({ goldLost, carriedGold, bankedGold }),
     progression: Object.freeze({
       level: nonNegativeNumber(event.level),
