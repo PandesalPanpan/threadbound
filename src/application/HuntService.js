@@ -1,4 +1,5 @@
 import { Character } from '../domain/Character.js';
+import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
 import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
@@ -46,6 +47,7 @@ export class HuntService {
     rng = Math.random,
     now = () => new Date(),
     huntCooldownSeconds = configuredHuntCooldownSeconds(),
+    activityBuffCodes = () => [],
   }) {
     this.repository = repository;
     this.eventBus = eventBus;
@@ -56,6 +58,7 @@ export class HuntService {
     this.rng = rng;
     this.now = now;
     this.huntCooldownSeconds = huntCooldownSeconds;
+    this.activityBuffCodes = activityBuffCodes;
   }
 
   hunt(playerId) {
@@ -76,10 +79,16 @@ export class HuntService {
       throw error;
     }
 
+    const cooldownPolicy = resolveActivityCooldown({
+      activity: 'hunt',
+      baseCooldownSeconds: this.huntCooldownSeconds,
+      equipment,
+      buffCodes: this.activityBuffCodes(playerId),
+    });
     const now = this.now();
     const cooldown = this.cooldownRepository.claim(playerId, {
       now,
-      cooldownSeconds: this.huntCooldownSeconds,
+      cooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
     });
     if (!cooldown.claimed) {
       const error = new Error(`Hunt is recharging. Ready in ${cooldown.remainingSeconds}s (${cooldown.nextReadyAt}).`);
@@ -152,7 +161,9 @@ export class HuntService {
       experienceToNextLevel: progression.experienceToNextLevel,
       battleOutcome: result.battle.outcome,
       battleTurnCount: result.battle.turns.length,
-      huntCooldownSeconds: this.huntCooldownSeconds,
+      huntCooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
+      huntBaseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
+      huntCooldownReductionPercent: cooldownPolicy.appliedReductionPercent,
       nextHuntReadyAt: cooldown.nextReadyAt,
       // Preserve the old event field until legacy consumers are migrated.
       threadDust: result.gold,
@@ -176,8 +187,11 @@ export class HuntService {
       leveledUp: levelsGained > 0,
       cooldown: {
         ready: false,
-        remainingSeconds: this.huntCooldownSeconds,
+        remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
         nextReadyAt: cooldown.nextReadyAt,
+        baseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
+        reductionPercent: cooldownPolicy.appliedReductionPercent,
+        modifiers: cooldownPolicy.modifiers,
       },
       item: item ? this.repository.getItem(item.id) : null,
       character: {
