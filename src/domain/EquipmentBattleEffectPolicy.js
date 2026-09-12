@@ -29,6 +29,12 @@ const RAW_CATALOG = Object.freeze({
       Object.freeze({ kind: 'bonus-damage', trigger: 'target-tag', targetTag: 'boss', amount: 2 }),
     ]),
   }),
+  quick_hunt: Object.freeze({
+    code: 'quick_hunt',
+    name: 'Trailrunner',
+    description: 'Reduces the Hunt cooldown by 20%, subject to the global activity cooldown cap.',
+    mechanics: Object.freeze([]),
+  }),
   ember_edge: Object.freeze({
     code: 'ember_edge',
     name: 'Ember Edge',

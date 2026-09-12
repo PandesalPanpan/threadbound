@@ -18,11 +18,13 @@ test('equipment effect catalog is constrained data backed by the automatic effec
     'none',
     'opening_strike',
     'boss_bane',
+    'quick_hunt',
     'ember_edge',
     'venom_edge',
     'frost_edge',
     'mind_edge',
   ]);
+  assert.deepEqual(equipmentBattleEffectDefinition('quick_hunt').mechanics, []);
   assert.equal(equipmentBattleEffectDefinition('ember_edge').mechanics[0].effect.type, 'fire');
   assert.equal(equipmentBattleEffectDefinition('venom_edge').mechanics[0].effect.type, 'poison');
   assert.equal(equipmentBattleEffectDefinition('frost_edge').mechanics[0].effect.type, 'ice');
