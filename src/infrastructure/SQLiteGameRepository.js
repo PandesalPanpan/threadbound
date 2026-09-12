@@ -176,7 +176,7 @@ export class SQLiteGameRepository {
     this.db.prepare('DELETE FROM party_members WHERE party_id = ? AND player_id = ?').run(partyId, playerId);
   }
 
-  deleteParty(partyId) { this.db.prepare('DELETE FROM party_members WHERE party_id = ?').run(partyId); this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId); }
+  deleteParty(partyId) { this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId); }
   setPartyStatus(partyId, status) { this.db.prepare('UPDATE parties SET status = ? WHERE id = ?').run(status, partyId); }
 
   createRun(state) {
