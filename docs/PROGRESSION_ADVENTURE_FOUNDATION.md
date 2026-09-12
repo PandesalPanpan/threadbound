@@ -1,6 +1,6 @@
 # Progression Adventure foundation
 
-Status: **M5-06 and M5-07 complete. M5-08 is implemented in PR #80 pending green merge verification.**
+Status: **M5-06 through M5-08 complete. M5-08 merged in PR #80 at `66d7a214`; post-merge `main` CI #1508 is green.**
 
 ## Shipped contract
 
@@ -49,8 +49,8 @@ New Arc identities/content remain Phase 10 work. HUMAN playtest gates remain man
 
 `test/progression-boss-enrage.test.js` proves the four-stack cap, boss-only 10%-per-stack scaling, failure idempotency, durable reset-on-victory, and `SimpleDungeonService` projection of persisted Enrage into the next authoritative progression definition.
 
-M5-08 changes authoritative gameplay/persistence and receipt copy only; it does not introduce a substantial layout change, so a new mobile visual baseline is not required unless Playwright/CI reveals presentation regression.
+PR #80 passed `npm run check`, the full unit/contract suite, and the complete active Chromium E2E suite before merge. Post-merge `main` CI #1508 repeated the required gates successfully. M5-08 changes authoritative gameplay/persistence and receipt copy only; it does not introduce a substantial layout change, so no new mobile visual baseline was required.
 
 ## Next ordered task
 
-After M5-08 is merged and green on `main`, the next earliest unchecked dependency-satisfied milestone is the first item in **Phase 6 — Towns, NPCs, Quests**.
+The next earliest unchecked dependency-satisfied milestone is **M6-01 — introduce Town model as an Area hub**.
