@@ -268,7 +268,7 @@ if (stream) {
     commandCard.innerHTML = '';
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
-    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>inventory</strong> — inspect, equip, Temper, or salvage permanent gear<br><strong>shop</strong> — buy recovery supplies from Mara<br><strong>recovery</strong> — check healing time or use a potion<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Only the two most relevant actions stay beside the composer; every command remains available by typing it.';
+    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>inventory</strong> — inspect, equip, Temper, or salvage permanent gear<br><strong>shop</strong> — buy healing supplies from Mara<br><strong>heal</strong> — use a health potion now; HP also returns naturally over time<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Only the two most relevant actions stay beside the composer; every command remains available by typing it.';
     commandCard.append(help);
     decorateFigmaSurface();
   }
@@ -309,7 +309,7 @@ if (stream) {
     commandCard.innerHTML = '';
     const recovery = document.createElement('div');
     recovery.className = 'simple-loop-help';
-    recovery.innerHTML = `<strong>Recovery · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : 'Next HP in <span data-simple-recovery-next></span> · full in <span data-simple-recovery-full></span>.'}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} · type <strong>shop</strong> for supplies.`;
+    recovery.innerHTML = `<strong>Heal · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : 'Natural healing: next HP in <span data-simple-recovery-next></span> · full in <span data-simple-recovery-full></span>.'}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} · type <strong>heal</strong> to use one or <strong>shop</strong> for supplies.`;
     commandCard.append(recovery);
     updateRecoveryClock();
     decorateFigmaSurface();
@@ -324,7 +324,7 @@ if (stream) {
     if (next) next.textContent = durationLabel(nextSeconds);
     if (full) full.textContent = durationLabel(fullSeconds);
     const rest = actionBar.querySelector('[data-testid="stream-rest"]');
-    if (rest) rest.textContent = `Recovery · ${durationLabel(nextSeconds)}`;
+    if (rest) rest.textContent = `Heal · ${durationLabel(nextSeconds)}`;
     if (nextSeconds === 0 && dashboard.character.currentHealth < dashboard.character.maxHealth && !syncing) sync({ force: true }).then(() => {
       if (commandCard?.querySelector('[data-simple-recovery-next]')) renderRecovery();
     }).catch(() => {});
@@ -354,7 +354,7 @@ if (stream) {
 
     if (noRun) {
       if (dashboard.character.currentHealth <= 0) {
-        addButton(`Recovery · ${durationLabel(dashboard.character.healthRecovery?.nextHealthInSeconds)}`, 'heal', async () => renderRecovery(), 'stream-rest');
+        addButton(`Heal · ${durationLabel(dashboard.character.healthRecovery?.nextHealthInSeconds)}`, 'heal', async () => renderRecovery(), 'stream-rest');
         addButton('Shop', 'shop', async () => openShop(), 'stream-shop');
         return;
       }
