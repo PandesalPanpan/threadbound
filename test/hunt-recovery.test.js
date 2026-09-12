@@ -13,6 +13,7 @@ function setup(rngValues = []) {
     repository,
     eventBus: { publish: (event) => events.push(event) },
     rng: () => rngValues[index++] ?? 0.99,
+    huntCooldownSeconds: 0,
   });
   return { repository, player, service, events };
 }
