@@ -597,7 +597,6 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M1-06** Establish rarity contract: Common -> Mythic and consistent rich-card styling.
 - [x] **M1-07** Preserve Honey as external Threaded-owned premium currency; prove local mode cannot mutate it.
 ### Phase 2 — chat shell and rich cards
-
 - [x] **M2-01** Define a reusable rich chat-card/panel presentation primitive for app-like cards inside the stream.
 - [x] **M2-02** Inventory rich card: all items, equipment slots, stats, rarity, sprites, Equip/Sell/Upgrade actions.
 - [x] **M2-03** Shop rich card: generated/catalog stock, sprites, prices, Buy/Sell, affordability, normal equipment/potions.
@@ -612,7 +611,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M3-02** Implement Attack/Defense/HP/Crit semantics with deterministic/testable RNG injection where needed.
 - [x] **M3-03** Implement Speed initiative/action-frequency policy including bounded extra actions.
 - [x] **M3-04** Implement constrained Fire, Poison, Ice, Psychic effect vocabulary.
-- [ ] **M3-05** Implement resistance/high-resistance/immunity handling.
+- [x] **M3-05** Implement resistance/high-resistance/immunity handling.
 - [ ] **M3-06** Implement generated/special equipment effects through constrained validated effect data.
 - [ ] **M3-07** Add concise main receipt + detailed battle-turn read model.
 - [ ] **M3-08** Add Battle Details modal/expansion without flooding the stream.
