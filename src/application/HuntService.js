@@ -1,7 +1,8 @@
 import { Character } from '../domain/Character.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
-import { resolveHunt } from '../domain/HuntEncounter.js';
+import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
+import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 const RARITY_TIERS = Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 });
@@ -21,13 +22,22 @@ function capHuntDrop(item) {
 
 /**
  * Application service for the short-form progression loop. Hunts deliberately do
- * not create a persisted DungeonRun: one command resolves one small encounter.
+ * not create a persisted DungeonRun: one command resolves one authoritative
+ * automatic battle, then this service coordinates persistence/rewards/events.
  */
 export class HuntService {
-  constructor({ repository, eventBus, progressionRepository = null, itemGenerator = new ItemGenerator(), rng = Math.random }) {
+  constructor({
+    repository,
+    eventBus,
+    progressionRepository = null,
+    equipmentRepository = null,
+    itemGenerator = new ItemGenerator(),
+    rng = Math.random,
+  }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
+    this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.rng = rng;
   }
@@ -41,18 +51,32 @@ export class HuntService {
 
     const player = this.repository.getPlayer(playerId);
     if (!player) throw new Error('Player not found.');
-    const equipped = player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null;
-    const character = new Character({ ...player, equippedItem: equipped });
+    const equipment = this.equipmentRepository.getLoadout(playerId);
+    const equipped = equipment.weapon || (player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null);
+    const character = new Character({ ...player, equippedItem: equipped, equipment });
     if (player.currentHealth <= 0) {
       const error = new Error('You are too wounded to Hunt. Use a health potion or wait for out-of-combat recovery.');
       error.code = 'too_wounded_to_hunt';
       throw error;
     }
-    const result = resolveHunt({
-      attackPower: character.attackPower,
-      maxHealth: character.maxHealth,
+
+    const stats = character.stats;
+    const result = resolveAutomaticHunt({
+      player: {
+        id: player.id,
+        name: character.displayName,
+        displayName: character.displayName,
+        attack: stats.attack,
+        defense: stats.defense,
+        maxHp: stats.maxHp,
+        speed: stats.speed,
+        critChance: stats.critChance,
+        equipment,
+        equippedItem: equipped,
+      },
       currentHealth: player.currentHealth,
       enemyRoll: this.rng(),
+      random: this.rng,
     });
     const progressionBefore = progressionForExperience(this.progressionRepository.get(playerId).experience);
 
@@ -97,6 +121,8 @@ export class HuntService {
       experienceIntoLevel: progression.experienceIntoLevel,
       experienceNeededForLevel: progression.experienceNeededForLevel,
       experienceToNextLevel: progression.experienceToNextLevel,
+      battleOutcome: result.battle.outcome,
+      battleTurnCount: result.battle.turns.length,
       // Preserve the old event field until legacy consumers are migrated.
       threadDust: result.gold,
       itemId: item?.id || null,
@@ -116,8 +142,8 @@ export class HuntService {
       leveledUp: levelsGained > 0,
       item: item ? this.repository.getItem(item.id) : null,
       character: {
-        attackPower: character.attackPower,
-        maxHealth: character.maxHealth,
+        attackPower: stats.attack,
+        maxHealth: stats.maxHp,
         currentHealth: result.remainingHp,
         healthPotions: refreshed.healthPotions ?? player.healthPotions,
         gold,
