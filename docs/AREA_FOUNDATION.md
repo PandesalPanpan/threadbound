@@ -1,6 +1,6 @@
 # Area progression foundation
 
-Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 implemented in PR #74 pending merge/main-green reconciliation.**
+Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — merged in PR #74 at `fbf8cf37`, with merged `main` CI #1437 green.**
 
 ## Boundary
 
@@ -77,8 +77,8 @@ Only the server-returned unlocked list is rendered. A successful travel publishe
 5. no retired Thread Dust / Relic Pouch / Temper language appears in the Area card;
 6. a representative screenshot is emitted to `ux-review/area-rich-card-mobile.png` for visual inspection.
 
-The active CI suite must pass syntax, unit/contract, and complete active Chromium E2E before PR #74 is mergeable. The M5-02 checklist box remains unchecked until that PR is merged and `main` is verified green.
+PR #74 passed syntax/unit-contract and the complete active Chromium E2E suite before merge. The 390x844 `area-rich-card-mobile.png` artifact was inspected: the card stays inside the Adventure Stream, current/highest state is readable, controls fit without horizontal overflow, and the composer/mobile navigation remain usable. Merged `main` CI #1437 repeated both required jobs successfully.
 
 ## Next ordered task
 
-After M5-02 is merged, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M5-03 — allow free revisit of all previously unlocked Areas**. M5-03 should add explicit end-to-end evidence for revisiting an older Area once a player has multiple unlocked Areas; M5-02 does not pre-claim that milestone merely because its service can already represent those choices.
+The next earliest unchecked milestone is **M5-03 — allow free revisit of all previously unlocked Areas**. M5-03 should add explicit end-to-end evidence for revisiting an older Area once a player has multiple unlocked Areas; M5-02 does not pre-claim that milestone merely because its service can already represent those choices.
