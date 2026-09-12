@@ -1,5 +1,6 @@
 import { Character } from '../domain/Character.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
+import { HEALING_RULES, resolveHealAction } from '../domain/HealingPolicy.js';
 import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
@@ -74,7 +75,7 @@ export class HuntService {
     const equipped = equipment.weapon || (player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null);
     const character = new Character({ ...player, equippedItem: equipped, equipment });
     if (player.currentHealth <= 0) {
-      const error = new Error('You are too wounded to Hunt. Use a health potion or wait for out-of-combat recovery.');
+      const error = new Error('You are too wounded to Hunt. Heal with a health potion or recover naturally over time.');
       error.code = 'too_wounded_to_hunt';
       throw error;
     }
@@ -210,16 +211,28 @@ export class HuntService {
     };
   }
 
+  heal(playerId) {
+    const player = this.repository.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    const plan = resolveHealAction({
+      activeRun: this.repository.getActiveRun(playerId),
+      currentHealth: player.currentHealth,
+      maxHealth: player.maxHealth,
+      healthPotions: player.healthPotions,
+    });
+    const recovery = this.repository.useHealthPotion(playerId, { heal: HEALING_RULES.healthPotionHeal });
+    this.eventBus.publish({ type: 'HealthPotionUsed', playerId, healMethod: plan.method, ...recovery });
+    return recovery;
+  }
+
+  // Compatibility adapter for the existing /api/recovery/potion route and older
+  // callers. New application code should use the routine `heal` action.
   useHealthPotion(playerId) {
-    if (this.repository.getActiveRun(playerId)) {
-      const error = new Error('Health potions can only be used outside a dungeon.');
-      error.code = 'potion_during_dungeon';
+    try {
+      return this.heal(playerId);
+    } catch (error) {
+      if (error.code === 'heal_during_dungeon') error.code = 'potion_during_dungeon';
       throw error;
     }
-    const recoveredPlayer = this.repository.getPlayer(playerId);
-    this.repository.setPlayerHealth(playerId, recoveredPlayer.currentHealth);
-    const recovery = this.repository.useHealthPotion(playerId);
-    this.eventBus.publish({ type: 'HealthPotionUsed', playerId, ...recovery });
-    return recovery;
   }
 }
