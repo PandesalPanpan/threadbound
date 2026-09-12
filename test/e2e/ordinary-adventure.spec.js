@@ -52,11 +52,14 @@ test('ordinary Adventure resolves from the mobile Adventure Stream with authorit
   });
   expect(event.metadata.nextAdventureReadyAt).toMatch(/Z$/);
 
-  const repeatResponse = page.waitForResponse((response) => response.url().endsWith('/api/adventure') && response.request().method() === 'POST');
+  const repeatResponsePromise = page.waitForResponse((response) => response.url().endsWith('/api/adventure') && response.request().method() === 'POST');
   await page.getByTestId('stream-message').fill('adventure');
   await page.getByTestId('stream-send').click();
-  expect((await repeatResponse).status()).toBe(409);
-  await expect(page.getByTestId('app-status')).toContainText('Adventure is recharging');
+  const repeatResponse = await repeatResponsePromise;
+  expect(repeatResponse.status()).toBe(409);
+  const blocked = await repeatResponse.json();
+  expect(blocked.error).toBe('adventure_cooldown');
+  expect(blocked.message).toMatch(/^Adventure is recharging\. Ready in \d+s \(.+Z\)\.$/);
 
   await expect(page.getByTestId('stream-message')).toBeVisible();
   await expect(page.getByTestId('stream-message')).toBeEditable();
