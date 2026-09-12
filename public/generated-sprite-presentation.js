@@ -84,6 +84,7 @@ if (stream) {
     #stream .stream-hunt-chip.level { color:#d9b8ff; border:1px solid rgba(179,109,255,.25); background:rgba(179,109,255,.08); }
     #stream .stream-hunt-loot { display:grid; grid-template-columns:28px minmax(0,1fr); gap:6px; align-items:center; margin-top:5px; color:#c8cad2; font-size:.62rem; }
     #stream .stream-hunt-loot .thread-generated-sprite { width:28px; min-width:28px; }
+    #stream .stream-hunt-quest { color:#7fd7ff; }
     @media (max-width:520px) {
       #stream .stream-health-unit .thread-generated-sprite { width:28px; min-width:28px; }
       #stream .stream-hunt-visual { grid-template-columns:40px minmax(0,1fr); gap:8px; padding:7px; }
@@ -113,6 +114,14 @@ if (stream) {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+  }
+
+  function labelize(value) {
+    return String(value || '')
+      .split(/[-_]/g)
+      .filter(Boolean)
+      .map((part) => part[0]?.toUpperCase() + part.slice(1))
+      .join(' ');
   }
 
   function replaceImage(image, frame, { className = '', testId = null, label = '' } = {}) {
@@ -237,7 +246,8 @@ if (stream) {
         const item = itemForName(metadata.itemName) || { id: metadata.itemId, name: metadata.itemName };
         loot.append(createSpriteElement(itemSpriteFrame(item), { className: 'thread-generated-item-sprite', label: metadata.itemName }));
         const lootCopy = document.createElement('span');
-        lootCopy.textContent = `You got ${metadata.itemName} · +${metadata.itemAttackBonus || 0} ATK`;
+        const rarity = metadata.itemRarity ? `${labelize(metadata.itemRarity)} · ` : '';
+        lootCopy.textContent = `${rarity}${metadata.itemName} · +${metadata.itemAttackBonus || 0} Attack`;
         loot.append(lootCopy);
         copy.append(loot);
       }
@@ -249,6 +259,24 @@ if (stream) {
         potionCopy.textContent = '+1 health potion';
         potion.append(potionCopy);
         copy.append(potion);
+      }
+      for (const progress of Array.isArray(metadata.questProgress) ? metadata.questProgress : []) {
+        const questName = String(progress?.questName || progress?.name || '').trim();
+        if (!questName) continue;
+        const current = Math.max(0, Number(progress.current) || 0);
+        const required = Math.max(current, Number(progress.required) || 0);
+        const quest = document.createElement('div');
+        quest.className = 'stream-hunt-loot stream-hunt-quest';
+        quest.append(createSpriteElement(itemSpriteFrame({ visualAssetId: 'item.quest-scroll.v1', id: 'hunt-quest-progress', name: 'Quest' }), {
+          className: 'thread-generated-item-sprite',
+          label: 'Quest progress',
+        }));
+        const questCopy = document.createElement('span');
+        questCopy.textContent = progress.completed
+          ? `Quest complete · ${questName}`
+          : required > 0 ? `Quest · ${questName} ${current}/${required}` : `Quest · ${questName}`;
+        quest.append(questCopy);
+        copy.append(quest);
       }
       visual.append(copy);
       content.append(visual);

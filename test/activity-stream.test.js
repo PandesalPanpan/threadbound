@@ -36,6 +36,58 @@ test('chat rejects empty and oversized messages', () => {
   assert.throws(() => service.postChat({ playerId: a.id, body: 'x'.repeat(MAX_CHAT_LENGTH + 1) }), (error) => error.code === 'invalid_chat_message');
 });
 
+test('Hunt receipt projects canonical rewards, loot, level-up, and optional quest results in one entry', () => {
+  const { service, a } = setup();
+  const receipt = service.recordDomainEvent({
+    type: 'HuntResolved',
+    playerId: a.id,
+    enemyId: 'thread-wolf',
+    enemyName: 'Thread Wolf',
+    victory: true,
+    damageTaken: 8,
+    remainingHp: 32,
+    maxHp: 40,
+    gold: 12,
+    experienceGained: 20,
+    leveledUp: true,
+    level: 2,
+    itemName: 'Wolfguard Helm',
+    itemRarity: 'rare',
+    itemAttackBonus: 3,
+    healthPotionsFound: 1,
+    questProgress: [
+      { questId: 'wolf-watch', questName: 'Wolf Watch', current: 3, required: 8, completed: false },
+      { questId: 'first-hunt', questName: 'First Hunt', current: 1, required: 1, completed: true },
+    ],
+  });
+
+  assert.equal(receipt.body, 'Victory — Local Weaver A defeated Thread Wolf. −8 HP · 32/40 HP. +12 Gold · +20 XP. Level up — 2. Loot — Rare Wolfguard Helm · +3 Attack. +1 Health Potion. Quest — Wolf Watch 3/8. Quest complete — First Hunt.');
+  assert.doesNotMatch(receipt.body, /Dust|Relic|Temper/);
+  assert.equal(receipt.metadata.gold, 12);
+  assert.equal(receipt.metadata.questProgress.length, 2);
+  assert.equal(service.recent().length, 1);
+});
+
+test('failed Hunt receipt reports HP and no rewards without inventing progress', () => {
+  const { service, a } = setup();
+  const receipt = service.recordDomainEvent({
+    type: 'HuntResolved',
+    playerId: a.id,
+    enemyId: 'thread-wolf',
+    enemyName: 'Thread Wolf',
+    victory: false,
+    damageTaken: 4,
+    remainingHp: 0,
+    maxHp: 40,
+    gold: 0,
+    experienceGained: 0,
+    questProgress: [],
+  });
+
+  assert.equal(receipt.body, 'Defeat — Local Weaver A fell to Thread Wolf. −4 HP · 0/40 HP. No rewards.');
+  assert.doesNotMatch(receipt.body, /\+0 Gold|\+0 XP/);
+});
+
 test('one explicit combat command becomes one useful system result message', () => {
   const { service, a } = setup();
   const started = service.recordDomainEvent({

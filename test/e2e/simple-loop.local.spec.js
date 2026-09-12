@@ -31,7 +31,7 @@ test('command results scroll fully into view as their content grows', async ({ b
     await expect(reply).toContainText('dungeon');
     await page.getByTestId('stream-message').fill('hunt');
     await page.getByTestId('stream-send').click();
-    const receipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
+    const receipt = page.getByTestId('stream-system-entry').filter({ hasText: /Victory — .* defeated/i }).last();
     await expect(receipt).toBeVisible();
     await expect(receipt.getByTestId('stream-hunt-sprite')).toBeVisible();
     await expect(receipt.locator('.stream-hunt-chip.loss')).toContainText('HP');

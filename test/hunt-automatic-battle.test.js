@@ -79,6 +79,9 @@ test('HuntService persists the shared simulator result while retaining one-comma
   assert.equal(event.battleOutcome, result.battle.outcome);
   assert.equal(event.battleTurnCount, result.battle.turns.length);
   assert.equal(event.remainingHp, result.remainingHp);
+  assert.equal(event.gold, result.gold);
+  assert.equal(event.experienceGained, result.experience);
+  assert.deepEqual(event.questProgress, []);
 
   repository.close();
 });
