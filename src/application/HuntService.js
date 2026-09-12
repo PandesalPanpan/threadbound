@@ -9,6 +9,14 @@ import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlaye
 
 const RARITY_TIERS = Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 });
 
+function configuredHuntCooldownSeconds() {
+  const raw = process.env.THREADBOUND_HUNT_COOLDOWN_SECONDS;
+  if (raw == null || String(raw).trim() === '') return HUNT_COOLDOWN_SECONDS;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) throw new Error('THREADBOUND_HUNT_COOLDOWN_SECONDS must be a non-negative number.');
+  return Math.floor(value);
+}
+
 function capHuntDrop(item) {
   const tier = Number(item.rarityTier || RARITY_TIERS[item.rarity] || 1);
   if (tier <= 3) return item;
@@ -37,7 +45,7 @@ export class HuntService {
     itemGenerator = new ItemGenerator(),
     rng = Math.random,
     now = () => new Date(),
-    huntCooldownSeconds = HUNT_COOLDOWN_SECONDS,
+    huntCooldownSeconds = configuredHuntCooldownSeconds(),
   }) {
     this.repository = repository;
     this.eventBus = eventBus;
