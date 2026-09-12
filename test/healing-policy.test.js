@@ -36,7 +36,7 @@ test('Heal is rejected at full health and when no potion is available', () => {
   );
   assert.throws(
     () => resolveHealAction({ currentHealth: 20, maxHealth: 40, healthPotions: 0 }),
-    (error) => error.code === 'no_health_potions' && /recover naturally/i.test(error.message),
+    (error) => error.code === 'no_health_potions' && /heal naturally/i.test(error.message),
   );
 });
 
