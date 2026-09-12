@@ -1,50 +1,44 @@
 # Automatic battle engine foundation
 
-Status: M3-07 concise receipt and detailed battle-turn read model layered onto the shared M3-01 lifecycle through M3-06 combat/equipment semantics.
+Status: M3-08 Battle Details presentation layered onto the shared M3-01 lifecycle through M3-07 read-model semantics.
 
 ## Boundary
 
 `src/domain/AutomaticBattleSimulator.js` owns the generic automatic battle lifecycle. `src/domain/AutomaticBattleActionPolicy.js` owns canonical basic-attack Attack/Defense/Crit semantics. `src/domain/AutomaticBattleInitiativePolicy.js` owns Speed scheduling. `src/domain/AutomaticBattleEffectPolicy.js` owns the constrained Fire/Poison/Ice/Psychic vocabulary and stat/tick semantics. `src/domain/AutomaticBattleResistancePolicy.js` owns resistance handling. `src/domain/EquipmentBattleEffectPolicy.js` owns constrained equipment mechanics.
 
-`src/application/AutomaticBattleReadModel.js` is the M3-07 presentation/read-model boundary. It consumes an already-authoritative simulator result and projects two shapes without rerunning combat formulas:
+`src/application/AutomaticBattleReadModel.js` consumes an already-authoritative simulator result and projects a compact receipt plus detailed turn data without rerunning combat formulas.
 
-- a compact main receipt suitable for one Adventure Stream entry;
-- a detailed turn projection suitable for the later Battle Details UI.
+`public/battle-details.js` is the M3-08 Presentation Model boundary. It consumes only that M3-07 projection and attaches an accessible `Battle details` control/dialog to an Adventure Stream receipt. It formats projected facts but never decides damage, Crits, Speed frequency, effects, resistance, rewards, or persistence.
 
 Application services remain responsible for use-case coordination, persistence, activity rewards, receipts/publication, and committed state. Browser code remains presentation only.
 
 ## Concise automatic-battle receipt
 
-`projectAutomaticBattleResult(result, { viewerId })` produces a viewer-relative receipt with:
-
-- Victory / Defeat / Draw / Paused result;
-- opponent/result headline;
-- viewer HP before -> after when a viewer is supplied;
-- total turn count;
-- winner/loser IDs and compact HP projections;
-- `detailsAvailable` rather than embedding turn-by-turn narration in the stream message.
+`projectAutomaticBattleResult(result, { viewerId })` produces a viewer-relative receipt with Victory/Defeat/Draw/Paused result, opponent/result headline, viewer HP before -> after, total turn count, compact HP projections, and `detailsAvailable` rather than embedding turn narration in the stream.
 
 The generic battle receipt intentionally does not invent XP, Gold, loot, quest progress, cooldowns, or death penalties. Those belong to Hunt/Adventure/Duel application services when those activities migrate to the shared engine.
 
+## Battle Details presentation
+
+`attachBattleDetails(host, projection)` keeps turn history out of the main stream and exposes it on demand in a modal nested with the receipt presentation. The modal includes:
+
+- turn number and projected turn summary;
+- critical-hit markers;
+- Speed extra-action markers;
+- Fire/Poison damage and effect expiration;
+- constrained effect application and resistance/immunity outcomes;
+- mobile-safe scrolling and 44px open/close touch targets;
+- Escape, backdrop, and explicit close behavior with focus returned to the trigger.
+
+The component builds DOM with `textContent` and consumes only projected read-model data. It does not interpret raw simulator objects or execute generated content.
+
 ## Detailed turn read model
 
-The detailed projection retains inspectable authoritative facts already emitted by the simulator:
-
-- actor and target identity;
-- damage, healing, and HP transitions;
-- critical hits;
-- periodic Fire/Poison damage and effect expiration;
-- resistance-aware effect application/blocking;
-- consecutive actions surfaced as Speed extra actions;
-- effect-only defeats where an actor dies before targeting an opponent.
-
-Each turn also gets one concise summary string for future presentation. The projector never recalculates damage, Crit chance, Speed scheduling, effect potency, or resistance.
+The detailed projection retains authoritative actor/target identity, damage/healing/HP transitions, critical hits, Fire/Poison ticks and expiration, resistance-aware effect application/blocking, consecutive Speed actions, and effect-only defeats. Each turn has a concise summary string for presentation.
 
 ## Constrained equipment effects
 
 Persisted/generated items carry stable `effectCode` values for migration compatibility. Combat does not trust or execute serialized `item.effect` objects. `EQUIPMENT_EFFECT_CATALOG` remains the authoritative allowlist for bounded bonus damage and Fire/Poison/Ice/Psychic application.
-
-Existing `opening_strike` and `boss_bane` item codes remain valid. Elemental equipment codes reuse the shared effect/resistance path, and unknown codes/mechanics fail closed.
 
 ## Constrained effect vocabulary
 
@@ -59,32 +53,29 @@ Effects are normalized data only. Unknown fields are discarded and unknown types
 
 ## Resistance contract
 
-Combatants may declare normal, resistant, high-resistant, or immune handling per allowlisted effect type. Incoming equipment-applied effects use exactly the same resistance path as any other automatic battle effect. Turn metadata feeds the M3-07 read model directly.
+Combatants may declare normal, resistant, high-resistant, or immune handling per allowlisted effect type. Incoming equipment-applied effects use the same resistance path as other automatic battle effects. Turn metadata feeds the read model directly.
 
 ## Speed initiative policy
 
-Speed controls both initiative and action frequency using the deterministic virtual timeline. Effective Speed remains capped at **2x the slowest combatant's Speed** for action-frequency purposes, preventing extreme/generated stats from creating runaway action chains. The read model exposes consecutive same-actor actions for later Battle Details presentation.
+Speed controls initiative and action frequency using the deterministic virtual timeline. Effective Speed remains capped at **2x the slowest combatant's Speed** for action-frequency purposes. The read model exposes consecutive same-actor actions for Battle Details.
 
 ## Compatibility and migration
 
-No shipped player loop is switched to the new simulator in M3-07. Existing Hunt, simple dungeon, and legacy tactical-run behavior remain untouched so migration stays strangler-style and green. M4-01 remains the ordered Hunt migration point after Phase 3 semantics are complete.
-
-M3-07 therefore establishes the shared receipt/detail projection before M3-08 adds the actual Battle Details modal/expansion. This prevents UI code from interpreting raw simulator metadata or recreating combat semantics.
+M3-08 does not switch the shipped Hunt/simple-dungeon path to the automatic simulator early. The Battle Details component is a reusable presentation primitive ready for M4-01 and later Adventure/Duel integrations. Existing tactical compatibility paths remain untouched and are not restored as the default.
 
 ## Objective acceptance
 
-`test/automatic-battle-read-model.test.js` proves:
+`test/automatic-battle-read-model.test.js` continues to prove authoritative projection semantics. `test/e2e/battle-details.local.spec.js` additionally proves:
 
-1. a normal automatic battle becomes one concise viewer-relative receipt rather than turn spam;
-2. HP before/after and turn counts are projected from authoritative simulator output;
-3. detailed turns expose critical hits and consecutive Speed actions;
-4. Fire/Poison tick/expiration metadata and resistance application/blocking remain inspectable;
-5. effect-only defeat turns remain representable without inventing a target action;
-6. malformed/incomplete result shapes fail closed;
-7. the projector composes with the real shared simulator rather than a separate combat path.
+1. the concise receipt remains the only timeline message while turn history stays hidden until requested;
+2. the modal renders projected Crit, Speed, effect, and resistance facts without browser-side combat calculation;
+3. the open and close controls meet the 44px mobile target requirement;
+4. the 390x844 presentation does not overflow horizontally;
+5. the modal closes cleanly and restores the trigger state;
+6. a representative mobile screenshot is emitted to `ux-review/battle-details-mobile.png` for visual inspection.
 
-Existing simulator/action/initiative/effect/resistance/equipment tests plus the full browser E2E suite remain regression gates. No mobile screenshot-specific gate is required for M3-07 because the milestone adds an application read model only; M3-08 is the ordered player-facing UI milestone.
+Full unit/contract and active Chromium E2E suites remain merge gates.
 
 ## Next ordered task
 
-After M3-07 is merged, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M3-08 — add Battle Details modal/expansion without flooding the stream**.
+After M3-08 is merged, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M3-09 — keep major progression bosses capable of sparse player/party decision points without a permanent tactical dashboard**.
