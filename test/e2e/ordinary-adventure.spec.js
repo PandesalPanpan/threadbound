@@ -11,7 +11,7 @@ async function login(page) {
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
-test('ordinary Adventure resolves from the mobile Adventure Stream using the authoritative current Area', async ({ page, context }) => {
+test('ordinary Adventure resolves from the mobile Adventure Stream with authoritative rewards and cooldown', async ({ page, context }) => {
   await login(page);
 
   const beforeResponse = await context.request.get('/api/dashboard');
@@ -28,6 +28,9 @@ test('ordinary Adventure resolves from the mobile Adventure Stream using the aut
   await expect(receipt).toBeVisible();
   await expect(receipt).toContainText('Thread Wolf');
   await expect(receipt).toContainText(/\d+\/\d+ HP/);
+  await expect(receipt).toContainText('+30 XP');
+  await expect(receipt).toContainText('+6 Gold');
+  await expect(receipt).toContainText('Next Adventure');
 
   const afterResponse = await context.request.get('/api/dashboard');
   expect(afterResponse.ok()).toBe(true);
@@ -43,9 +46,20 @@ test('ordinary Adventure resolves from the mobile Adventure Stream using the aut
     areaId: 'area-1',
     areaNumber: 1,
     enemyId: 'thread-wolf',
-    gold: 0,
-    experienceGained: 0,
+    gold: 6,
+    experienceGained: 30,
+    adventureCooldownSeconds: 45,
   });
+  expect(event.metadata.nextAdventureReadyAt).toMatch(/Z$/);
+
+  const repeatResponsePromise = page.waitForResponse((response) => response.url().endsWith('/api/adventure') && response.request().method() === 'POST');
+  await page.getByTestId('stream-message').fill('adventure');
+  await page.getByTestId('stream-send').click();
+  const repeatResponse = await repeatResponsePromise;
+  expect(repeatResponse.status()).toBe(409);
+  const blocked = await repeatResponse.json();
+  expect(blocked.error).toBe('adventure_cooldown');
+  expect(blocked.message).toMatch(/^Adventure is recharging\. Ready in \d+s \(.+Z\)\.$/);
 
   await expect(page.getByTestId('stream-message')).toBeVisible();
   await expect(page.getByTestId('stream-message')).toBeEditable();
