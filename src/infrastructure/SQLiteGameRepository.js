@@ -176,7 +176,7 @@ export class SQLiteGameRepository {
     this.db.prepare('DELETE FROM party_members WHERE party_id = ? AND player_id = ?').run(partyId, playerId);
   }
 
-  deleteParty(partyId) { this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId); }
+  deleteParty(partyId) { this.db.prepare('DELETE FROM party_members WHERE party_id = ?').run(partyId); this.db.prepare('DELETE FROM parties WHERE id = ?').run(partyId); }
   setPartyStatus(partyId, status) { this.db.prepare('UPDATE parties SET status = ? WHERE id = ?').run(status, partyId); }
 
   createRun(state) {
@@ -227,7 +227,7 @@ export class SQLiteGameRepository {
     return this.#decodeRunRow(row);
   }
 
-  completeRunWithRewards(state, rewardsByPlayer, { threadDust = 15, worldProgressKey }) {
+  completeRunWithRewards(state, rewardsByPlayer, { threadDust = 15, worldProgressKey, areaUnlockNumber = null }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const storedRow = this.db.prepare('SELECT state_json, version FROM dungeon_runs WHERE id = ?').get(state.id);
@@ -235,7 +235,7 @@ export class SQLiteGameRepository {
       const stored = this.#decodeRunRow(storedRow);
       if (stored.rewardsGranted) {
         this.db.exec('ROLLBACK');
-        return { applied: false, state: stored };
+        return { applied: false, state: stored, areaUnlocks: [] };
       }
       if (stored.version !== state.version) {
         const error = new Error('Dungeon state changed before completion rewards could be saved. Refresh and retry.');
@@ -248,6 +248,36 @@ export class SQLiteGameRepository {
         this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(threadDust, playerId);
       }
       this.db.prepare('INSERT INTO world_progress (progress_key, amount) VALUES (?, 1) ON CONFLICT(progress_key) DO UPDATE SET amount = amount + 1').run(worldProgressKey);
+
+      const areaUnlocks = [];
+      if (Number.isInteger(areaUnlockNumber) && areaUnlockNumber > 1) {
+        const ensureArea = this.db.prepare(`
+          INSERT OR IGNORE INTO player_area_progression (
+            player_id,
+            current_area_number,
+            highest_unlocked_area_number
+          ) VALUES (?, 1, 1)
+        `);
+        const readArea = this.db.prepare('SELECT highest_unlocked_area_number FROM player_area_progression WHERE player_id = ?');
+        const unlockArea = this.db.prepare(`
+          UPDATE player_area_progression
+          SET highest_unlocked_area_number = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE player_id = ? AND highest_unlocked_area_number < ?
+        `);
+        for (const participant of state.participants) {
+          ensureArea.run(participant.playerId);
+          const before = readArea.get(participant.playerId);
+          const result = unlockArea.run(areaUnlockNumber, participant.playerId, areaUnlockNumber);
+          if (result.changes === 1) {
+            areaUnlocks.push({
+              playerId: participant.playerId,
+              previousHighestUnlockedAreaNumber: Number(before?.highest_unlocked_area_number || 1),
+              areaNumber: areaUnlockNumber,
+            });
+          }
+        }
+      }
+
       const nextState = { ...state, version: state.version + 1 };
       const update = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
         nextState.phase, JSON.stringify(nextState), nextState.version, new Date().toISOString(), nextState.id, state.version,
@@ -264,7 +294,7 @@ export class SQLiteGameRepository {
       }
 
       this.db.exec('COMMIT');
-      return { applied: true, state: nextState };
+      return { applied: true, state: nextState, areaUnlocks };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -394,6 +424,13 @@ export class SQLiteGameRepository {
         PRIMARY KEY (run_id, player_id)
       );
       CREATE INDEX IF NOT EXISTS idx_run_participants_player ON dungeon_run_participants(player_id);
+      CREATE TABLE IF NOT EXISTS player_area_progression (
+        player_id TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+        current_area_number INTEGER NOT NULL DEFAULT 1 CHECK(current_area_number >= 1),
+        highest_unlocked_area_number INTEGER NOT NULL DEFAULT 1 CHECK(highest_unlocked_area_number >= 1),
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CHECK(current_area_number <= highest_unlocked_area_number)
+      );
       CREATE TABLE IF NOT EXISTS player_achievements (
         player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
         achievement_id TEXT NOT NULL,
