@@ -624,7 +624,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M4-04** Support capped equipment/buff modifiers that reduce activity cooldowns.
 - [x] **M4-05** Normalize `heal` command/action and recovery rules with simple terminology.
 - [x] **M4-06** Implement normal death: 20% carried-Gold loss, banked Gold safe.
-- [ ] **M4-07** Add explicit warned dangerous-content item-loss fallback when configured and carried Gold is below minimum; never silently destroy protected/bound gear.
+- [x] **M4-07** Add explicit warned dangerous-content item-loss fallback when configured and carried Gold is below minimum; never silently destroy protected/bound gear.
 
 ### Phase 5 — Areas, travel, Adventure, progression
 
