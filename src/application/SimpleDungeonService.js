@@ -9,15 +9,16 @@ export const AREA_ONE_PROGRESSION_DUNGEON_ID = 'progression-area-1';
 
 function builtInProgressionDefinition(dungeonId) {
   if (dungeonId !== AREA_ONE_PROGRESSION_DUNGEON_ID) return null;
-  // M5-06 deliberately reuses the migration-safe Frayed Hollow encounter instead
-  // of authoring new Arc content before Phase 10. M5-07 will own Area unlocks.
-  // The snapshotted definition receives the progression activity id so the run
-  // aggregate can validate its identity without adding fake content to DUNGEONS.
+  // The first progression challenge deliberately reuses the migration-safe
+  // Frayed Hollow encounter instead of authoring new Arc content before Phase 10.
+  // Unlock metadata is server-owned content data; completion persistence decides
+  // whether the first valid clear actually advances either participant.
   return Object.freeze({
     ...DUNGEONS['frayed-hollow'],
     id: AREA_ONE_PROGRESSION_DUNGEON_ID,
     progressionAdventure: true,
     requiredHumanPlayers: 2,
+    unlocksAreaNumber: 2,
   });
 }
 
