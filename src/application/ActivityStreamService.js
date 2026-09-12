@@ -149,6 +149,15 @@ export class ActivityStreamService {
         const receipt = projectHuntReceipt(event, { actorName: actorName || 'Adventurer', fallbackEnemyName: enemyName || 'enemy' });
         return { actorName: 'THREADBOUND', body: receipt.text };
       }
+      case 'AdventureResolved': {
+        const outcome = event.victory ? 'defeated' : 'fell to';
+        const health = `${event.remainingHp}/${event.maxHp} HP`;
+        const loss = Number(event.goldLost || 0) > 0 ? ` · −${event.goldLost} carried Gold · Bank safe` : '';
+        return {
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'Adventurer'} Adventured in ${event.areaName || `Area ${event.areaNumber}`} and ${outcome} ${event.enemyName || enemyName || 'an enemy'}. −${event.damageTaken || 0} HP · ${health}${loss}.`,
+        };
+      }
       case 'HealthPotionUsed':
         return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
       case 'HealthPotionPurchased':

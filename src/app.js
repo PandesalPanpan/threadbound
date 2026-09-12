@@ -13,6 +13,7 @@ import { ActivityStreamService } from './application/ActivityStreamService.js';
 import { CombatPreviewService } from './application/CombatPreviewService.js';
 import { GameService } from './application/GameService.js';
 import { HuntService } from './application/HuntService.js';
+import { AdventureService } from './application/AdventureService.js';
 import { ShopService } from './application/ShopService.js';
 import { SimpleDungeonService } from './application/SimpleDungeonService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
@@ -46,7 +47,7 @@ function topNav(active, authMode = 'threaded') {
 }
 
 function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Hunt for gear, grow stronger, then challenge dangerous dungeons with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/simple-loop.js"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Hunt for gear, grow stronger, then challenge dangerous dungeons with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/simple-loop.js"></script><script type="module" src="/ordinary-adventure.js"></script></body></html>`;
 }
 
 function codexPage(authMode) {
@@ -116,6 +117,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
   const huntService = new HuntService({ repository, eventBus });
+  const adventureService = new AdventureService({ repository, eventBus });
   const shopService = new ShopService({ repository, eventBus });
   const simpleDungeonService = new SimpleDungeonService({ repository, eventBus, arcManifestService });
   const combatPreview = new CombatPreviewService({ repository });
@@ -359,6 +361,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const hunt = huntService.hunt(playerId);
     return response.json({ hunt, dashboard: gameService.dashboard(playerId) });
   });
+  app.post('/api/adventure', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const adventure = adventureService.adventure(playerId);
+    return response.json({ adventure, dashboard: gameService.dashboard(playerId) });
+  });
   app.post('/api/recovery/potion', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
     const recovery = huntService.useHealthPotion(playerId);
@@ -440,6 +447,9 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'relic_attunement_locked',
       'hunt_during_dungeon',
       'too_wounded_to_hunt',
+      'adventure_during_dungeon',
+      'too_wounded_to_adventure',
+      'adventure_unavailable_in_area',
       'health_already_full',
       'no_health_potions',
       'potion_during_dungeon',
