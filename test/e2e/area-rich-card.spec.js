@@ -23,6 +23,24 @@ async function openArea(page) {
   return card;
 }
 
+function areaProjection(currentAreaNumber) {
+  return {
+    area: {
+      currentArea: { id: `area-${currentAreaNumber}`, number: currentAreaNumber, name: `Area ${currentAreaNumber}` },
+      highestUnlockedArea: { id: 'area-3', number: 3, name: 'Area 3' },
+      currentAreaNumber,
+      highestUnlockedAreaNumber: 3,
+      areas: [1, 2, 3].map((number) => ({
+        id: `area-${number}`,
+        number,
+        name: `Area ${number}`,
+        current: number === currentAreaNumber,
+        unlocked: true,
+      })),
+    },
+  };
+}
+
 test('Area rich card keeps travel in the Adventure Stream and only offers authoritative unlocked Areas', async ({ page, context }) => {
   await login(page);
 
@@ -76,4 +94,42 @@ test('Area rich card keeps travel in the Adventure Stream and only offers author
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/area-rich-card-mobile.png`, fullPage: true });
+});
+
+test('Area rich card keeps every previously unlocked Area selectable while revisiting older locations', async ({ page }) => {
+  let currentAreaNumber = 3;
+  const travels = [];
+
+  await page.route('**/api/areas', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(areaProjection(currentAreaNumber)) });
+  });
+  await page.route(/\/api\/areas\/(\d+)\/travel$/, async (route) => {
+    const target = Number(new URL(route.request().url()).pathname.split('/').at(-2));
+    travels.push(target);
+    currentAreaNumber = target;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(areaProjection(currentAreaNumber)) });
+  });
+
+  await login(page);
+  const card = await openArea(page);
+  await expect(card.getByTestId('area-current')).toHaveText('Area 3');
+  await expect(card.getByTestId('area-highest-unlocked')).toHaveText('Area 3');
+  await expect(card.getByTestId('area-travel-1')).toBeEnabled();
+  await expect(card.getByTestId('area-travel-2')).toBeEnabled();
+  await expect(card.getByTestId('area-travel-3')).toBeDisabled();
+
+  await card.getByTestId('area-travel-1').click();
+  await expect(card.getByTestId('area-current')).toHaveText('Area 1');
+  await expect(card.getByTestId('area-highest-unlocked')).toHaveText('Area 3');
+  await expect(card.getByTestId('area-travel-2')).toBeEnabled();
+  await expect(card.getByTestId('area-travel-3')).toBeEnabled();
+
+  await card.getByTestId('area-travel-2').click();
+  await expect(card.getByTestId('area-current')).toHaveText('Area 2');
+  await expect(card.getByTestId('area-highest-unlocked')).toHaveText('Area 3');
+
+  await card.getByTestId('area-travel-3').click();
+  await expect(card.getByTestId('area-current')).toHaveText('Area 3');
+  expect(travels).toEqual([1, 2, 3]);
 });
