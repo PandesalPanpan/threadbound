@@ -299,7 +299,7 @@ Humans, simulated adventurers, mobs, elites, and bosses should use compatible co
 
 Speed determines initiative and action frequency, not merely who attacks first.
 
-A sufficiently large Speed advantage may grant additional actions before the slower combatant acts again. The exact formula is a balance decision and must be centralized in domain policy, covered by tests, and inspectable through battle details.
+A sufficiently large Speed advantage may grant additional actions before the slower opponent acts again. The exact formula is a balance decision and must be centralized in domain policy, covered by tests, and inspectable through battle details.
 
 ### 5.5 Effects and resistances
 
@@ -619,7 +619,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 ### Phase 4 — Hunt, cooldowns, death, healing
 
 - [x] **M4-01** Rebuild Hunt on the shared automatic battle engine.
-- [ ] **M4-02** Add XP/Gold/loot/quest result projection to Hunt receipts.
+- [x] **M4-02** Add XP/Gold/loot/quest result projection to Hunt receipts.
 - [ ] **M4-03** Add server-owned short Hunt cooldown and clear next-ready projection.
 - [ ] **M4-04** Support capped equipment/buff modifiers that reduce activity cooldowns.
 - [ ] **M4-05** Normalize `heal` command/action and recovery rules with simple terminology.
