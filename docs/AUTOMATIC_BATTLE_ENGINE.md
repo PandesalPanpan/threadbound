@@ -1,86 +1,76 @@
 # Automatic battle engine foundation
 
-Status: M3-05 resistance/high-resistance/immunity handling layered onto the shared M3-01 lifecycle, M3-02 stat semantics, M3-03 Speed policy, and M3-04 constrained effect vocabulary.
+Status: M3-06 generated/special equipment effects layered onto the shared M3-01 lifecycle, M3-02 stat semantics, M3-03 Speed policy, M3-04 constrained effect vocabulary, and M3-05 resistance handling.
 
 ## Boundary
 
-`src/domain/AutomaticBattleSimulator.js` is a Domain Model/Policy boundary. It owns the generic automatic battle lifecycle:
+`src/domain/AutomaticBattleSimulator.js` owns the generic automatic battle lifecycle. `src/domain/AutomaticBattleActionPolicy.js` owns canonical basic-attack Attack/Defense/Crit semantics. `src/domain/AutomaticBattleInitiativePolicy.js` owns Speed scheduling. `src/domain/AutomaticBattleEffectPolicy.js` owns the constrained Fire/Poison/Ice/Psychic vocabulary and stat/tick semantics. `src/domain/AutomaticBattleResistancePolicy.js` owns resistance handling.
 
-- cloned authoritative combatant HP/effect/resistance state for the simulation;
-- bounded turn iteration;
-- actor and target selection hooks;
-- application of resolved damage/healing, periodic effect damage, and resistance-aware incoming effects;
-- terminal victory/draw results;
-- concise structured turn history for later read-model work;
-- optional domain-owned phase stopping so a progression boss can pause at a sparse decision point without creating a tactical dashboard.
+`src/domain/EquipmentBattleEffectPolicy.js` now owns the M3-06 equipment-mechanic boundary. Equipment mechanics are plain validated data selected from one authoritative allowlisted catalog. Application services remain responsible for use-case coordination, persistence, rewards, receipts, and publication after a committed result. The browser/activity stream remains a projection and never runs combat rules.
 
-`src/domain/AutomaticBattleActionPolicy.js` owns canonical basic-attack Attack/Defense/Crit semantics. `src/domain/AutomaticBattleInitiativePolicy.js` owns Speed scheduling. `src/domain/AutomaticBattleEffectPolicy.js` owns the constrained effect vocabulary and stat/tick semantics. `src/domain/AutomaticBattleResistancePolicy.js` owns the M3-05 resistance contract.
+## Constrained equipment effects
 
-Application services remain responsible for use-case coordination, persistence, rewards, receipts, and publication after a committed result. The browser/activity stream remains a projection and never runs combat rules.
+Persisted/generated items continue to carry their stable `effectCode` for migration compatibility. Combat does **not** trust or execute the serialized `item.effect` object. The authoritative policy resolves `effectCode` against `EQUIPMENT_EFFECT_CATALOG`, so an item payload cannot inject a callback, script, arbitrary mechanic, or unknown status type.
+
+The current catalog preserves the two legacy-compatible special effects and adds constrained elemental examples:
+
+- `opening_strike` — declarative `bonus-damage` on the actor's first action;
+- `boss_bane` — declarative `bonus-damage` against a target tagged as a boss;
+- `ember_edge` — on-hit Fire;
+- `venom_edge` — on-hit Poison;
+- `frost_edge` — on-hit Ice;
+- `mind_edge` — on-hit Psychic;
+- `none` — no combat mechanic.
+
+Only two mechanic kinds are currently valid: bounded `bonus-damage` and `apply-effect`. Triggers are allowlisted and validated (`first-action`, `target-tag`, `on-hit`). `apply-effect` delegates its payload to `normalizeAutomaticBattleEffect`, so generated equipment cannot bypass the established effect vocabulary, potency/duration caps, Poison stack cap, Speed/stat floors, or resistance/immunity handling.
+
+`createEquipmentAwareAutomaticBasicAttackResolver()` composes the existing canonical basic attack with this equipment policy rather than creating another battle loop. It reads effect codes from the actor's five-slot equipment projection (plus migration-compatible `equippedItem`/explicit effect-code inputs), applies bonus-damage rules, and emits constrained `targetEffects` for the shared simulator to resolve through M3-05 resistance policy.
+
+## Generated-item compatibility
+
+`ItemGenerator` now sources `ITEM_EFFECTS` from the authoritative equipment-effect catalog. The `ITEM_EFFECTS` export remains available because Arc validation/services and persisted compatibility currently depend on it. Generated item `effect` JSON is still serialized with labels/mechanic data for inspection and migration, plus existing Upgrade/attunement fields, but authoritative combat always re-resolves the stable `effectCode` through the catalog.
+
+Existing `opening_strike` and `boss_bane` item codes therefore remain valid. Newly generated rare+ weapons may also receive one of the elemental codes without allowing generated content to invent mechanics. Arc Manifest validation continues to accept only keys that exist in the same allowlist.
 
 ## Constrained effect vocabulary
 
-The automatic engine accepts exactly four effect types:
+The automatic engine accepts exactly four status/element effect types:
 
-- **Fire** — bounded periodic damage at the affected combatant's turn start.
-- **Poison** — bounded stacking periodic damage pressure; stacks cap at five.
+- **Fire** — bounded periodic damage at turn start.
+- **Poison** — bounded stacking periodic damage; stacks cap at five.
 - **Ice** — reduces effective Speed while active, with a floor of `1`.
 - **Psychic** — reduces effective Attack and Defense while active, preserving safe stat floors.
 
-Effects are plain validated data: `type`, bounded `potency`, bounded `remainingTurns`, and `stacks` only for Poison. Unknown fields are discarded by normalization and unknown effect types are rejected. Generated content therefore cannot attach callbacks, scripts, or arbitrary mechanics through the combat effect contract.
-
-Potency and duration have explicit safety caps. These caps are engine-integrity bounds rather than final balance tuning; Arc/equipment budget validation follows in later ordered milestones.
-
-Fire/Poison ticks resolve inside `AutomaticBattleSimulator`, so lethal periodic damage can end a battle before another basic attack. Ice is projected by initiative policy before actor scheduling. Psychic is projected by the basic-attack policy before Attack/Defense damage is calculated. Effect duration advances on the affected actor's turns.
+Effects are normalized data only. Unknown fields are discarded and unknown types are rejected.
 
 ## Resistance contract
 
-Combatants may declare resistance per allowlisted effect type only. The supported levels are:
-
-- **normal** — 100% potency;
-- **resistant** — 50% potency;
-- **high-resistant** — 25% potency;
-- **immune** — the incoming effect is blocked completely.
-
-Resistance is deterministic. Non-immune resistance changes effect potency only; duration and Poison stack count retain their already-bounded validated values. Reduced potency floors at `1`, so resistance cannot accidentally become immunity. Unknown effect keys or resistance levels fail validation at the authoritative simulator boundary.
-
-An action may return `targetEffects` containing constrained effect data. `AutomaticBattleSimulator` resolves every incoming effect through `AutomaticBattleResistancePolicy` before merging it into target state. Each turn records compact `effectApplications` metadata with the incoming potency, applied potency, resistance tier, multiplier, and whether immunity blocked the effect. This supplies inspectable facts for the ordered Battle Details/read-model milestones without moving combat rules into presentation code.
-
-This milestone intentionally does not decide which generated equipment emits these effects; generated/special equipment effect definitions and validation belong to M3-06.
+Combatants may declare normal, resistant, high-resistant, or immune handling per allowlisted effect type. Incoming equipment-applied effects use exactly the same resistance path as any other automatic battle effect. Each turn records `effectApplications` metadata for later Battle Details/read-model work.
 
 ## Speed initiative policy
 
-Speed controls both who acts first and how often a combatant acts. The policy uses a deterministic virtual timeline:
-
-1. normalize effective Speed to an integer of at least `1` after active Ice projection;
-2. count how many actions each combatant has already taken;
-3. calculate `nextActionAt = (actionsTaken + 1) / effectiveSpeed`;
-4. the combatant with the smallest `nextActionAt` acts next;
-5. exact ties are resolved by stable combatant order.
-
-Effective Speed remains capped at **2x the slowest combatant's Speed** for action-frequency purposes, preventing extreme/generated stats from producing runaway action chains.
+Speed controls both initiative and action frequency using the existing deterministic virtual timeline. Effective Speed remains capped at **2x the slowest combatant's Speed** for action-frequency purposes, preventing extreme/generated stats from creating runaway action chains.
 
 ## Compatibility and migration
 
-No shipped player loop is switched to the new simulator in M3-05. Existing Hunt, simple dungeon, and legacy tactical-run behavior remain untouched so migration stays strangler-style and green. M4-01 remains the ordered Hunt migration point after Phase 3 semantics are complete.
+No shipped player loop is switched to the new simulator in M3-06. Existing Hunt, simple dungeon, and legacy tactical-run behavior remain untouched so migration stays strangler-style and green. M4-01 remains the ordered Hunt migration point after Phase 3 semantics are complete.
 
-Combatants without resistances behave exactly as before. Existing combatants without effects or Speed still normalize safely. The simulator remains activity-agnostic and reusable by Hunt, Adventure, Duel, and suitable boss phases.
+Legacy tactical `DungeonRun` still contains its old compatibility handling for `opening_strike`/`boss_bane`; M3-06 does not deepen or make that tactical path the default. New automatic-combat integration uses the shared equipment policy.
 
 ## Objective acceptance
 
-`test/automatic-battle-resistance-policy.test.js` proves:
+`test/equipment-battle-effect-policy.test.js` proves:
 
-1. the resistance vocabulary is constrained to normal/resistant/high-resistant/immune;
-2. unknown effect keys and unsupported resistance mechanics are rejected;
-3. normal effects retain full validated potency;
-4. resistance and high resistance deterministically reduce potency to 50% and 25% with a minimum of one;
-5. immunity blocks an incoming effect entirely;
-6. the shared simulator applies `targetEffects` through resistance handling and records inspectable application metadata;
-7. reduced Fire potency becomes the actual authoritative periodic damage on the affected target's later turn;
-8. invalid resistance data fails at the authoritative simulator boundary.
+1. the equipment effect catalog is explicit constrained data;
+2. elemental equipment effects reuse only Fire/Poison/Ice/Psychic;
+3. arbitrary mechanic kinds and executable-looking effect types are rejected;
+4. existing opening-strike and boss-bane behavior can be resolved from declarative catalog data;
+5. serialized item payloads cannot inject mechanics because combat trusts `effectCode`, not `item.effect`;
+6. unknown persisted/generated effect codes fail closed;
+7. equipment-aware automatic attacks emit target effects into the shared simulator and receive the existing resistance handling.
 
-Existing simulator, effect, action-policy, initiative-policy, unit/contract, and browser E2E suites remain regression gates. No new Playwright/UI-specific coverage or mobile screenshot is required because M3-05 changes no currently shipped player-facing presentation.
+Existing simulator, action, initiative, effect, resistance, unit/contract, and browser E2E suites remain regression gates. No new Playwright/UI-specific coverage or mobile screenshot is required because M3-06 changes no currently shipped player-facing presentation.
 
 ## Next ordered task
 
-After M3-05 is merged, documented, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M3-06 — implement generated/special equipment effects through constrained validated effect data**.
+After M3-06 is merged, documented, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M3-07 — add concise main receipt + detailed battle-turn read model**.
