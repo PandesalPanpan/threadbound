@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testMatch: ['**/simple-loop.local.spec.js', '**/derived-stats.local.spec.js', '**/rich-chat-card.local.spec.js'],
+  testMatch: ['**/simple-loop.local.spec.js', '**/derived-stats.local.spec.js', '**/rich-chat-card.local.spec.js', '**/battle-details.local.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
