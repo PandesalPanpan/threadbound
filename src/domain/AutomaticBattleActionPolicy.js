@@ -1,3 +1,5 @@
+import { projectCombatantWithAutomaticEffects } from './AutomaticBattleEffectPolicy.js';
+
 const DEFAULT_CRIT_MULTIPLIER = 2;
 
 function finiteNumber(value, fallback = 0) {
@@ -32,16 +34,19 @@ function requireRandomRoll(value) {
  * cannot deadlock solely because Defense meets/exceeds Attack. Crit Chance is a
  * bounded fraction in [0, 1]. RNG is injected so authoritative simulations are
  * deterministic in tests and can later be seeded by an application/domain
- * boundary without putting randomness in the browser.
+ * boundary without putting randomness in the browser. Psychic stat pressure is
+ * projected by the constrained effect policy before damage is calculated.
  */
 export function resolveAutomaticBasicAttack({ actor, target, random = Math.random, critMultiplier = DEFAULT_CRIT_MULTIPLIER } = {}) {
   if (!actor || typeof actor !== 'object') throw new Error('Basic attack requires an actor.');
   if (!target || typeof target !== 'object') throw new Error('Basic attack requires a target.');
   if (typeof random !== 'function') throw new Error('Basic attack random source must be a function.');
 
-  const attack = normalizeAttack(actor.attack);
-  const defense = normalizeDefense(target.defense);
-  const critChance = normalizeCritChance(actor.critChance);
+  const projectedActor = projectCombatantWithAutomaticEffects(actor);
+  const projectedTarget = projectCombatantWithAutomaticEffects(target);
+  const attack = normalizeAttack(projectedActor.attack);
+  const defense = normalizeDefense(projectedTarget.defense);
+  const critChance = normalizeCritChance(projectedActor.critChance);
   const multiplier = Math.max(1, finiteNumber(critMultiplier, DEFAULT_CRIT_MULTIPLIER));
   const baseDamage = Math.max(1, attack - defense);
   const critRoll = requireRandomRoll(random());
