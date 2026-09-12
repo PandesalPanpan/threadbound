@@ -16,6 +16,15 @@ function setup() {
   return { repository, player, service, events };
 }
 
+function captureError(action) {
+  try {
+    action();
+  } catch (error) {
+    return error;
+  }
+  assert.fail('Expected action to throw.');
+}
+
 test('routine Heal consumes one potion and heals by the canonical bounded amount', () => {
   const { repository, player, service, events } = setup();
   repository.setPlayerHealth(player.id, 25);
@@ -30,14 +39,13 @@ test('routine Heal consumes one potion and heals by the canonical bounded amount
 });
 
 test('Heal is rejected at full health and when no potion is available', () => {
-  assert.throws(
-    () => resolveHealAction({ currentHealth: 40, maxHealth: 40, healthPotions: 1 }),
-    (error) => error.code === 'health_already_full',
-  );
-  assert.throws(
-    () => resolveHealAction({ currentHealth: 20, maxHealth: 40, healthPotions: 0 }),
-    (error) => error.code === 'no_health_potions' && /heal naturally/i.test(error.message),
-  );
+  const fullHealthError = captureError(() => resolveHealAction({ currentHealth: 40, maxHealth: 40, healthPotions: 1 }));
+  assert.equal(fullHealthError.code, 'health_already_full');
+  assert.match(fullHealthError.message, /full health/i);
+
+  const noPotionError = captureError(() => resolveHealAction({ currentHealth: 20, maxHealth: 40, healthPotions: 0 }));
+  assert.equal(noPotionError.code, 'no_health_potions');
+  assert.match(noPotionError.message, /heal naturally/i);
 });
 
 test('routine Heal remains outside active dungeons while legacy potion route keeps its error code', () => {
