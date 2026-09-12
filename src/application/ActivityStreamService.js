@@ -1,3 +1,5 @@
+import { projectHuntReceipt } from './HuntReceiptReadModel.js';
+
 const MAX_CHAT_LENGTH = 500;
 
 function titleize(value) {
@@ -144,14 +146,8 @@ export class ActivityStreamService {
 
     switch (event.type) {
       case 'HuntResolved': {
-        const result = event.victory
-          ? `${actorName} found and killed ${event.enemyName || enemyName}.`
-          : `${actorName} found ${event.enemyName || enemyName} but was defeated.`;
-        const rewards = event.victory ? ` +${event.threadDust} Dust.` : ' No rewards.';
-        const hp = ` −${event.damageTaken} HP · ${event.remainingHp}/${event.maxHp} HP.`;
-        const loot = event.itemName ? ` Loot: ${event.itemName} (+${event.itemAttackBonus} ATK).` : '';
-        const potion = event.healthPotionsFound ? ' Found a health potion.' : '';
-        return { actorName: 'THREADBOUND', body: `${result}${rewards}${hp}${loot}${potion}` };
+        const receipt = projectHuntReceipt(event, { actorName: actorName || 'Adventurer', fallbackEnemyName: enemyName || 'enemy' });
+        return { actorName: 'THREADBOUND', body: receipt.text };
       }
       case 'HealthPotionUsed':
         return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
