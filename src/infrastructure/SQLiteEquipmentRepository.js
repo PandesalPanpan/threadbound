@@ -18,6 +18,14 @@ function decodeItem(row) {
   };
 }
 
+export function isItemLossProtected(item) {
+  if (!item || typeof item !== 'object') return true;
+  if (item.bound === true || item.protected === true) return true;
+  if (item.effect?.bound === true || item.effect?.protected === true) return true;
+  if (['bound', 'protected'].includes(String(item.effect?.lossProtection || '').toLowerCase())) return true;
+  return String(item.source || '').toLowerCase() === 'honey-purchase';
+}
+
 export class SQLiteEquipmentRepository {
   constructor({ database }) {
     this.db = database;
@@ -66,6 +74,45 @@ export class SQLiteEquipmentRepository {
 
   isEquipped(playerId, itemId) {
     return Boolean(this.db.prepare('SELECT 1 FROM player_equipment WHERE player_id = ? AND item_id = ? LIMIT 1').get(playerId, itemId));
+  }
+
+  /**
+   * Destructive equipment mutation reserved for an already-authorized dangerous
+   * death result. The repository rechecks ownership/equipped state and refuses
+   * protected/bound/Honey-purchased items so a caller cannot bypass domain policy.
+   */
+  loseEquippedItem(playerId, itemId) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.db.prepare(`
+        SELECT i.*, pe.slot AS equipped_slot
+        FROM player_equipment pe
+        JOIN items i ON i.id = pe.item_id
+        WHERE pe.player_id = ? AND pe.item_id = ?
+        LIMIT 1
+      `).get(playerId, itemId);
+      if (!row) {
+        const error = new Error('Only an equipped item owned by the player can be lost.');
+        error.code = 'item_loss_not_equipped';
+        throw error;
+      }
+      const item = decodeItem(row);
+      if (isItemLossProtected(item)) {
+        const error = new Error('Bound or protected equipment cannot be lost on death.');
+        error.code = 'item_loss_protected';
+        throw error;
+      }
+
+      // Keep the legacy weapon pointer coherent before the item row disappears.
+      this.db.prepare('UPDATE players SET equipped_item_id = NULL WHERE id = ? AND equipped_item_id = ?').run(playerId, itemId);
+      const removed = this.db.prepare('DELETE FROM items WHERE id = ? AND player_id = ?').run(itemId, playerId);
+      if (removed.changes !== 1) throw new Error('Equipped item changed before death loss could be committed.');
+      this.db.exec('COMMIT');
+      return { item, slot: normalizeEquipmentSlot(row.equipped_slot) };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
   }
 
   #migrate() {
