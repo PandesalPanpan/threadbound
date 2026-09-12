@@ -247,6 +247,7 @@ Rarities:
 - Epic
 - Legendary
 - Mythic
+
 Use strong consistent rarity styling in rich cards and receipts.
 
 Equipment may also provide small special effects such as:
@@ -496,6 +497,7 @@ Example events:
 ## 9. Arc Manifest evolution
 
 Keep the existing validated Arc Manifest pipeline, but evolve its contract toward the new world model.
+
 The schema should eventually cover or reference:
 
 - Arc metadata/tone;
