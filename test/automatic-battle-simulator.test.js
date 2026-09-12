@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createSparseBossDecisionPolicy } from '../src/domain/AutomaticBattleDecisionPolicy.js';
 import { AutomaticBattleSimulator, simulateAutomaticBattle } from '../src/domain/AutomaticBattleSimulator.js';
 
 function fixedDamagePolicy({ actor }) {
@@ -71,8 +72,66 @@ test('boss-compatible phase policy can pause the automatic loop at a domain-owne
 
   assert.equal(result.outcome, 'paused');
   assert.equal(result.stopReason, 'decision-point');
+  assert.equal(result.pendingDecision, null);
   assert.equal(result.winnerId, null);
   assert.equal(result.turns.length, 2);
+});
+
+test('structured boss decision pauses can resume without resetting battle history or initiative', () => {
+  const simulator = new AutomaticBattleSimulator({
+    resolveAction: ({ actor }) => ({ targetDamage: actor.id === 'party' ? 4 : 2 }),
+    shouldStop: createSparseBossDecisionPolicy({
+      bossId: 'boss',
+      decisions: [
+        {
+          id: 'brace',
+          scope: 'party',
+          prompt: 'The boss is charging. Choose the party response.',
+          actions: ['continue', 'heal', 'coordinate'],
+          afterTurn: 2,
+        },
+      ],
+    }),
+    maxTurns: 10,
+  });
+
+  const paused = simulator.simulate({
+    combatants: [
+      { id: 'party', hp: 20, maxHp: 20, speed: 10 },
+      { id: 'boss', hp: 10, maxHp: 10, speed: 10 },
+    ],
+    context: { activity: 'boss-phase' },
+  });
+
+  assert.equal(paused.outcome, 'paused');
+  assert.equal(paused.stopReason, 'boss-decision');
+  assert.equal(paused.pendingDecision.id, 'brace');
+  assert.equal(paused.pendingDecision.scope, 'party');
+  assert.deepEqual(paused.turns.map((turn) => turn.actorId), ['party', 'boss']);
+
+  const resumed = simulator.simulate({
+    combatants: paused.combatants,
+    priorTurns: paused.turns,
+    context: { activity: 'boss-phase', resolvedDecisionIds: ['brace'] },
+  });
+
+  assert.equal(resumed.outcome, 'victory');
+  assert.equal(resumed.winnerId, 'party');
+  assert.equal(resumed.pendingDecision, null);
+  assert.deepEqual(resumed.turns.map((turn) => turn.turnNumber), [1, 2, 3, 4, 5]);
+  assert.deepEqual(resumed.turns.map((turn) => turn.actorId), ['party', 'boss', 'party', 'boss', 'party']);
+  assert.equal(resumed.combatants.find((entry) => entry.id === 'party').hp, 16);
+});
+
+test('continuation rejects discontinuous prior turn history', () => {
+  const simulator = new AutomaticBattleSimulator({ resolveAction: () => ({ targetDamage: 1 }) });
+  assert.throws(() => simulator.simulate({
+    combatants: [
+      { id: 'a', hp: 5, maxHp: 5 },
+      { id: 'b', hp: 5, maxHp: 5 },
+    ],
+    priorTurns: [{ turnNumber: 2, actorId: 'a' }],
+  }), /priorTurns must be contiguous/);
 });
 
 test('turn policy is replaceable without moving battle state ownership out of the simulator', () => {
