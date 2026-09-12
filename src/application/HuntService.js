@@ -1,8 +1,10 @@
 import { Character } from '../domain/Character.js';
+import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
+import { SQLiteHuntCooldownRepository } from '../infrastructure/SQLiteHuntCooldownRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 const RARITY_TIERS = Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 });
@@ -31,15 +33,21 @@ export class HuntService {
     eventBus,
     progressionRepository = null,
     equipmentRepository = null,
+    cooldownRepository = null,
     itemGenerator = new ItemGenerator(),
     rng = Math.random,
+    now = () => new Date(),
+    huntCooldownSeconds = HUNT_COOLDOWN_SECONDS,
   }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
+    this.cooldownRepository = cooldownRepository || new SQLiteHuntCooldownRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.rng = rng;
+    this.now = now;
+    this.huntCooldownSeconds = huntCooldownSeconds;
   }
 
   hunt(playerId) {
@@ -57,6 +65,19 @@ export class HuntService {
     if (player.currentHealth <= 0) {
       const error = new Error('You are too wounded to Hunt. Use a health potion or wait for out-of-combat recovery.');
       error.code = 'too_wounded_to_hunt';
+      throw error;
+    }
+
+    const now = this.now();
+    const cooldown = this.cooldownRepository.claim(playerId, {
+      now,
+      cooldownSeconds: this.huntCooldownSeconds,
+    });
+    if (!cooldown.claimed) {
+      const error = new Error(`Hunt is recharging. Ready in ${cooldown.remainingSeconds}s (${cooldown.nextReadyAt}).`);
+      error.code = 'hunt_cooldown';
+      error.nextReadyAt = cooldown.nextReadyAt;
+      error.remainingSeconds = cooldown.remainingSeconds;
       throw error;
     }
 
@@ -123,6 +144,8 @@ export class HuntService {
       experienceToNextLevel: progression.experienceToNextLevel,
       battleOutcome: result.battle.outcome,
       battleTurnCount: result.battle.turns.length,
+      huntCooldownSeconds: this.huntCooldownSeconds,
+      nextHuntReadyAt: cooldown.nextReadyAt,
       // Preserve the old event field until legacy consumers are migrated.
       threadDust: result.gold,
       itemId: item?.id || null,
@@ -143,6 +166,11 @@ export class HuntService {
       progression,
       levelsGained,
       leveledUp: levelsGained > 0,
+      cooldown: {
+        ready: false,
+        remainingSeconds: this.huntCooldownSeconds,
+        nextReadyAt: cooldown.nextReadyAt,
+      },
       item: item ? this.repository.getItem(item.id) : null,
       character: {
         attackPower: stats.attack,
