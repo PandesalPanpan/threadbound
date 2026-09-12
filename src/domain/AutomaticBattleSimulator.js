@@ -1,3 +1,5 @@
+import { selectActorBySpeed } from './AutomaticBattleInitiativePolicy.js';
+
 function requirePositiveInteger(value, label) {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${label} must be a positive integer.`);
@@ -36,10 +38,6 @@ function cloneCombatants(combatants) {
   return combatants.map((combatant) => ({ ...combatant }));
 }
 
-function defaultTurnSelector({ turnNumber, combatants }) {
-  return combatants[(turnNumber - 1) % combatants.length].id;
-}
-
 function defaultTargetSelector({ actor, combatants }) {
   return combatants.find((combatant) => combatant.id !== actor.id)?.id || null;
 }
@@ -68,14 +66,14 @@ function finalizeResult({ combatants, turns, outcome, context, stopReason = null
  *
  * The simulator owns authoritative battle lifecycle state: HP mutation,
  * termination, turn history, and optional phase pausing. Stat formulas, RNG,
- * initiative frequency, effects, and resistances are intentionally injected as
- * domain policies so later milestones can add them without duplicating loops in
- * Hunt, Adventure, Duel, or progression-boss services.
+ * initiative frequency, effects, and resistances are domain policies so later
+ * milestones can add them without duplicating loops in Hunt, Adventure, Duel,
+ * or progression-boss services.
  */
 export class AutomaticBattleSimulator {
   constructor({
     resolveAction,
-    selectActor = defaultTurnSelector,
+    selectActor = selectActorBySpeed,
     selectTarget = defaultTargetSelector,
     shouldStop = null,
     maxTurns = 200,
