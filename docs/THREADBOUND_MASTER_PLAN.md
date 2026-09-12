@@ -397,7 +397,6 @@ Example:
 
 Players should not lose buff value merely because they go AFK.
 ## 7. Death and failure
-
 ### 7.1 Normal death
 
 Default consequence:
@@ -615,7 +614,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M3-06** Implement generated/special equipment effects through constrained validated effect data.
 - [x] **M3-07** Add concise main receipt + detailed battle-turn read model.
 - [x] **M3-08** Add Battle Details modal/expansion without flooding the stream.
-- [ ] **M3-09** Keep major progression bosses capable of sparse player/party decision points without a permanent tactical dashboard.
+- [x] **M3-09** Keep major progression bosses capable of sparse player/party decision points without a permanent tactical dashboard.
 
 ### Phase 4 — Hunt, cooldowns, death, healing
 
