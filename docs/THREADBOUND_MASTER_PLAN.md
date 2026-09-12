@@ -611,7 +611,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 ### Phase 3 — automatic battle engine
 
-- [ ] **M3-01** Create one authoritative automatic combat simulator usable by Hunt, Adventure, Duel, and suitable boss phases.
+- [x] **M3-01** Create one authoritative automatic combat simulator usable by Hunt, Adventure, Duel, and suitable boss phases.
 - [ ] **M3-02** Implement Attack/Defense/HP/Crit semantics with deterministic/testable RNG injection where needed.
 - [ ] **M3-03** Implement Speed initiative/action-frequency policy including bounded extra actions.
 - [ ] **M3-04** Implement constrained Fire, Poison, Ice, Psychic effect vocabulary.
