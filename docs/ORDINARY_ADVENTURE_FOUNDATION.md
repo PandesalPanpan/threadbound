@@ -1,6 +1,6 @@
 # Ordinary Adventure foundation
 
-Status: M5-05 implementation candidate. The master checklist remains authoritative; this document records the boundary implemented by the milestone and does not mark the checklist complete before merge and green `main` CI.
+Status: M5-05 complete on `main`; the canonical checklist is updated only after the implementation merged and full `main` CI passed.
 
 ## Player contract
 
@@ -32,4 +32,4 @@ The presentation change is additive text inside the existing compact stream rece
 
 ## Next ordered task
 
-After M5-05 is merged, green on `main`, and objectively checked off, the next earliest milestone is **M5-06 — implement progression Adventure/boss requiring both human players by default**.
+The next earliest milestone is **M5-06 — implement progression Adventure/boss requiring both human players by default**.
