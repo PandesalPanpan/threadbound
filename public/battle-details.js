@@ -5,6 +5,17 @@ const EFFECT_LABELS = Object.freeze({
   psychic: 'Psychic',
 });
 
+let dialogSequence = 0;
+
+function ensureStylesheet() {
+  if (document.querySelector('link[data-battle-details-styles]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/battle-details.css';
+  link.dataset.battleDetailsStyles = 'true';
+  document.head.append(link);
+}
+
 function requireElement(value) {
   if (!(value instanceof Element)) throw new Error('Battle Details requires a host element.');
   return value;
@@ -71,10 +82,12 @@ function createTurnRow(turn) {
 }
 
 function createDialog(projection, trigger) {
+  dialogSequence += 1;
+  const titleId = `battle-details-title-${dialogSequence}`;
   const dialog = document.createElement('dialog');
   dialog.className = 'battle-details-dialog';
   dialog.dataset.testid = 'battle-details-dialog';
-  dialog.setAttribute('aria-labelledby', 'battle-details-title');
+  dialog.setAttribute('aria-labelledby', titleId);
 
   const panel = document.createElement('div');
   panel.className = 'battle-details-panel';
@@ -84,14 +97,16 @@ function createDialog(projection, trigger) {
   const heading = document.createElement('div');
   appendText(heading, 'span', 'battle-details-kicker', 'BATTLE DETAILS');
   const title = appendText(heading, 'h3', '', projection.receipt.headline || 'Automatic battle');
-  title.id = 'battle-details-title';
+  title.id = titleId;
   appendText(heading, 'p', 'battle-details-summary', `${projection.receipt.turnCount ?? projection.details.turns.length} turns · authoritative battle log`);
   header.append(heading);
 
-  const close = appendText(header, 'button', 'battle-details-close', '×');
+  const close = document.createElement('button');
   close.type = 'button';
+  close.className = 'battle-details-close';
   close.dataset.testid = 'battle-details-close';
   close.setAttribute('aria-label', 'Close battle details');
+  close.textContent = '×';
   header.append(close);
   panel.append(header);
 
@@ -127,6 +142,7 @@ export function attachBattleDetails(host, projection) {
   const entry = requireElement(host);
   const model = requireProjection(projection);
   if (entry.querySelector('[data-testid="battle-details-trigger"]')) return entry;
+  ensureStylesheet();
 
   const trigger = document.createElement('button');
   trigger.type = 'button';
