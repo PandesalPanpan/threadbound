@@ -247,7 +247,6 @@ Rarities:
 - Epic
 - Legendary
 - Mythic
-
 Use strong consistent rarity styling in rich cards and receipts.
 
 Equipment may also provide small special effects such as:
@@ -497,7 +496,6 @@ Example events:
 ## 9. Arc Manifest evolution
 
 Keep the existing validated Arc Manifest pipeline, but evolve its contract toward the new world model.
-
 The schema should eventually cover or reference:
 
 - Arc metadata/tone;
@@ -622,7 +620,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M4-02** Add XP/Gold/loot/quest result projection to Hunt receipts.
 - [x] **M4-03** Add server-owned short Hunt cooldown and clear next-ready projection.
 - [x] **M4-04** Support capped equipment/buff modifiers that reduce activity cooldowns.
-- [ ] **M4-05** Normalize `heal` command/action and recovery rules with simple terminology.
+- [x] **M4-05** Normalize `heal` command/action and recovery rules with simple terminology.
 - [ ] **M4-06** Implement normal death: 20% carried-Gold loss, banked Gold safe.
 - [ ] **M4-07** Add explicit warned dangerous-content item-loss fallback when configured and carried Gold is below minimum; never silently destroy protected/bound gear.
 
