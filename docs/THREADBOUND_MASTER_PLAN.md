@@ -299,7 +299,7 @@ Humans, simulated adventurers, mobs, elites, and bosses should use compatible co
 
 Speed determines initiative and action frequency, not merely who attacks first.
 
-A sufficiently large Speed advantage may grant additional actions before the slower opponent acts again. The exact formula is a balance decision and must be centralized in domain policy, covered by tests, and inspectable through battle details.
+A sufficiently large Speed advantage may grant additional actions before the slower combatant acts again. The exact formula is a balance decision and must be centralized in domain policy, covered by tests, and inspectable through battle details.
 
 ### 5.5 Effects and resistances
 
