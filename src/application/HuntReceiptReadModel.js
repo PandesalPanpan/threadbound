@@ -1,0 +1,88 @@
+function nonNegativeNumber(value) {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+function titleize(value) {
+  return String(value || '')
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function normalizeQuestProgress(entries) {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .filter((entry) => entry && typeof entry === 'object' && (entry.questName || entry.name || entry.label || entry.questId))
+    .map((entry) => {
+      const current = nonNegativeNumber(entry.current);
+      return Object.freeze({
+        questId: entry.questId ? String(entry.questId) : null,
+        questName: String(entry.questName || entry.name || entry.label || entry.questId),
+        current,
+        required: Math.max(current, nonNegativeNumber(entry.required ?? entry.target)),
+        completed: Boolean(entry.completed),
+      });
+    });
+}
+
+/**
+ * Projects already-authoritative HuntResolved facts into one concise stream receipt.
+ * It never calculates combat, rewards, loot, level, or quest completion.
+ */
+export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEnemyName = 'enemy' } = {}) {
+  if (!event || event.type !== 'HuntResolved') throw new Error('Hunt receipt requires a HuntResolved event.');
+
+  const victory = Boolean(event.victory);
+  const enemyName = String(event.enemyName || fallbackEnemyName || 'enemy');
+  const damageTaken = nonNegativeNumber(event.damageTaken);
+  const remainingHp = nonNegativeNumber(event.remainingHp);
+  const maxHp = nonNegativeNumber(event.maxHp);
+  const gold = victory ? nonNegativeNumber(event.gold ?? event.threadDust) : 0;
+  const xp = victory ? nonNegativeNumber(event.experienceGained ?? event.xp) : 0;
+  const healthPotionsFound = victory ? nonNegativeNumber(event.healthPotionsFound) : 0;
+  const questProgress = normalizeQuestProgress(event.questProgress);
+  const loot = victory && event.itemName ? Object.freeze({
+    id: event.itemId || null,
+    name: String(event.itemName),
+    rarity: event.itemRarity ? String(event.itemRarity) : null,
+    attackBonus: nonNegativeNumber(event.itemAttackBonus),
+  }) : null;
+
+  const resultText = victory
+    ? `Victory — ${actorName} defeated ${enemyName}.`
+    : `Defeat — ${actorName} fell to ${enemyName}.`;
+  const hpText = ` −${damageTaken} HP · ${remainingHp}/${maxHp} HP.`;
+  const rewardText = victory ? ` +${gold} Gold · +${xp} XP.` : ' No rewards.';
+  const levelText = victory && event.leveledUp ? ` Level up — ${nonNegativeNumber(event.level)}.` : '';
+  const lootText = loot
+    ? ` Loot — ${loot.rarity ? `${titleize(loot.rarity)} ` : ''}${loot.name} · +${loot.attackBonus} Attack.`
+    : '';
+  const potionText = healthPotionsFound
+    ? ` +${healthPotionsFound} Health Potion${healthPotionsFound === 1 ? '' : 's'}.`
+    : '';
+  const questText = questProgress.map((progress) => {
+    if (progress.completed) return ` Quest complete — ${progress.questName}.`;
+    return progress.required > 0
+      ? ` Quest — ${progress.questName} ${progress.current}/${progress.required}.`
+      : ` Quest — ${progress.questName}.`;
+  }).join('');
+
+  return Object.freeze({
+    kind: 'hunt-result',
+    victory,
+    enemy: Object.freeze({ id: event.enemyId || null, name: enemyName }),
+    hp: Object.freeze({ damageTaken, remaining: remainingHp, max: maxHp }),
+    rewards: Object.freeze({ gold, xp }),
+    progression: Object.freeze({
+      level: nonNegativeNumber(event.level),
+      leveledUp: victory && Boolean(event.leveledUp),
+      levelsGained: victory ? nonNegativeNumber(event.levelsGained) : 0,
+    }),
+    loot,
+    healthPotionsFound,
+    questProgress: Object.freeze(questProgress),
+    text: `${resultText}${hpText}${rewardText}${levelText}${lootText}${potionText}${questText}`,
+  });
+}

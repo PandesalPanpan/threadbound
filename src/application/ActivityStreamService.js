@@ -1,3 +1,5 @@
+import { projectHuntReceipt } from './HuntReceiptReadModel.js';
+
 const MAX_CHAT_LENGTH = 500;
 
 function titleize(value) {
@@ -14,20 +16,6 @@ function relicTriggerCopy(trigger) {
   if (trigger.effect === 'prime_damage') return ` · ◇ ${trigger.name}: +${trigger.amount} next damage primed`;
   if (trigger.effect === 'bonus_healing') return ` · ◇ ${trigger.name}: +${trigger.amount} bonus healing`;
   return ` · ◇ ${trigger.name} triggered`;
-}
-
-function huntQuestCopy(progress) {
-  if (!Array.isArray(progress)) return '';
-  return progress
-    .filter((entry) => entry && (entry.questName || entry.name))
-    .map((entry) => {
-      const name = String(entry.questName || entry.name);
-      if (entry.completed) return ` Quest complete — ${name}.`;
-      const current = Math.max(0, Number(entry.current) || 0);
-      const required = Math.max(current, Number(entry.required) || 0);
-      return required > 0 ? ` Quest — ${name} ${current}/${required}.` : ` Quest — ${name}.`;
-    })
-    .join('');
 }
 
 export class ActivityStreamService {
@@ -158,20 +146,8 @@ export class ActivityStreamService {
 
     switch (event.type) {
       case 'HuntResolved': {
-        const opponent = event.enemyName || enemyName;
-        const result = event.victory
-          ? `Victory — ${actorName} defeated ${opponent}.`
-          : `Defeat — ${actorName} fell to ${opponent}.`;
-        const hp = ` −${Math.max(0, Number(event.damageTaken) || 0)} HP · ${event.remainingHp}/${event.maxHp} HP.`;
-        const gold = Math.max(0, Number(event.gold ?? event.threadDust) || 0);
-        const xp = Math.max(0, Number(event.experienceGained ?? event.xp) || 0);
-        const rewards = event.victory ? ` +${gold} Gold · +${xp} XP.` : ' No rewards.';
-        const level = event.leveledUp ? ` Level up — ${event.level}.` : '';
-        const rarity = event.itemRarity ? `${titleize(event.itemRarity)} ` : '';
-        const loot = event.itemName ? ` Loot — ${rarity}${event.itemName} · +${Math.max(0, Number(event.itemAttackBonus) || 0)} Attack.` : '';
-        const potion = event.healthPotionsFound ? ` +${event.healthPotionsFound} Health Potion${event.healthPotionsFound === 1 ? '' : 's'}.` : '';
-        const quest = huntQuestCopy(event.questProgress);
-        return { actorName: 'THREADBOUND', body: `${result}${hp}${rewards}${level}${loot}${potion}${quest}` };
+        const receipt = projectHuntReceipt(event, { actorName: actorName || 'Adventurer', fallbackEnemyName: enemyName || 'enemy' });
+        return { actorName: 'THREADBOUND', body: receipt.text };
       }
       case 'HealthPotionUsed':
         return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
