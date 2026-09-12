@@ -197,7 +197,6 @@ Bots must:
 ### 4.1 Level and XP
 
 Players gain XP primarily from Hunt, Adventure, quests, bosses, and selected activities.
-
 Level should be one of the clearest long-term progression signals and should gate/recommend content without preventing players from revisiting old Areas.
 
 ### 4.2 Currency
@@ -397,7 +396,6 @@ Example:
 `Spicy Wyvern Stew · +10% Attack for next 8 fights`
 
 Players should not lose buff value merely because they go AFK.
-
 ## 7. Death and failure
 
 ### 7.1 Normal death
@@ -598,7 +596,6 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M1-05** Establish readable derived stats: Attack, Defense, Max HP, Speed, Crit Chance.
 - [x] **M1-06** Establish rarity contract: Common -> Mythic and consistent rich-card styling.
 - [x] **M1-07** Preserve Honey as external Threaded-owned premium currency; prove local mode cannot mutate it.
-
 ### Phase 2 — chat shell and rich cards
 
 - [x] **M2-01** Define a reusable rich chat-card/panel presentation primitive for app-like cards inside the stream.
@@ -614,7 +611,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M3-01** Create one authoritative automatic combat simulator usable by Hunt, Adventure, Duel, and suitable boss phases.
 - [x] **M3-02** Implement Attack/Defense/HP/Crit semantics with deterministic/testable RNG injection where needed.
 - [x] **M3-03** Implement Speed initiative/action-frequency policy including bounded extra actions.
-- [ ] **M3-04** Implement constrained Fire, Poison, Ice, Psychic effect vocabulary.
+- [x] **M3-04** Implement constrained Fire, Poison, Ice, Psychic effect vocabulary.
 - [ ] **M3-05** Implement resistance/high-resistance/immunity handling.
 - [ ] **M3-06** Implement generated/special equipment effects through constrained validated effect data.
 - [ ] **M3-07** Add concise main receipt + detailed battle-turn read model.
