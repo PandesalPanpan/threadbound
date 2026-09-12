@@ -4,6 +4,8 @@ import { AdventureRun, DUNGEONS } from '../domain/AdventureRun.js';
 import { Party } from '../domain/Party.js';
 import { dungeonReadiness } from '../domain/SimpleDungeonPolicy.js';
 import { progressionAdventureRequirement, requireProgressionAdventureParty } from '../domain/ProgressionAdventurePolicy.js';
+import { applyProgressionBossEnrage } from '../domain/ProgressionBossEnragePolicy.js';
+import { SQLiteProgressionBossEnrageRepository } from '../infrastructure/SQLiteProgressionBossEnrageRepository.js';
 
 export const AREA_ONE_PROGRESSION_DUNGEON_ID = 'progression-area-1';
 
@@ -29,15 +31,28 @@ function builtInProgressionDefinition(dungeonId) {
  * but add an authoritative two-human party gate before any run is persisted.
  */
 export class SimpleDungeonService {
-  constructor({ repository, eventBus, arcManifestService = null, idFactory = randomUUID }) {
+  constructor({ repository, eventBus, arcManifestService = null, enrageRepository = null, idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.arcManifestService = arcManifestService;
+    this.enrageRepository = enrageRepository || new SQLiteProgressionBossEnrageRepository({ database: repository.db });
     this.idFactory = idFactory;
+
+    eventBus.subscribe((event) => {
+      if (event.dungeonId !== AREA_ONE_PROGRESSION_DUNGEON_ID || !event.runId) return;
+      if (event.type === 'DungeonFailed') {
+        event.progressionEnrageStack = this.enrageRepository.recordFailure(event.dungeonId, event.runId);
+      } else if (event.type === 'DungeonCompleted') {
+        this.enrageRepository.recordVictory(event.dungeonId, event.runId);
+        event.progressionEnrageStack = 0;
+      }
+    });
   }
 
   definition(dungeonId) {
-    return builtInProgressionDefinition(dungeonId) || DUNGEONS[dungeonId] || this.arcManifestService?.resolveDungeon(dungeonId) || null;
+    const builtIn = builtInProgressionDefinition(dungeonId);
+    if (builtIn) return applyProgressionBossEnrage(builtIn, this.enrageRepository.get(dungeonId));
+    return DUNGEONS[dungeonId] || this.arcManifestService?.resolveDungeon(dungeonId) || null;
   }
 
   readiness(playerId, dungeonId) {
@@ -71,6 +86,7 @@ export class SimpleDungeonService {
       dungeonName: definition.name,
       recommendedAttack: Number(definition.recommendedAttack || 9),
       progressionAdventure: Boolean(definition.progressionAdventure),
+      progressionEnrage: definition.progressionEnrage || null,
       requiredHumanPlayers: progressionRequirement?.requiredHumanPlayers || null,
       partyRequirementMet: progressionRequirement?.satisfied ?? true,
       ready: members.every((member) => member.ready) && (progressionRequirement?.satisfied ?? true),
@@ -136,6 +152,10 @@ export class SimpleDungeonService {
     });
     const persisted = this.repository.createRun(run.toJSON());
     const actor = persisted.participants.find((participant) => participant.playerId === playerId);
+    const enrage = dungeonDefinition.progressionEnrage || null;
+    const enrageCopy = enrage?.stack > 0
+      ? ` · Boss Enraged ${enrage.stack}/${enrage.cap} (+${enrage.percentIncrease}% HP/damage)`
+      : '';
     this.eventBus.publish({
       type: 'DungeonStarted',
       playerId,
@@ -146,10 +166,11 @@ export class SimpleDungeonService {
       ownerId,
       simpleCombat: true,
       progressionAdventure: Boolean(dungeonDefinition.progressionAdventure),
+      progressionEnrage: enrage,
       requiredHumanPlayers: progressionRequirement?.requiredHumanPlayers || null,
       recommendedAttack: persisted.dungeonDefinition?.recommendedAttack || 9,
       enemyId: persisted.enemy?.id || null,
-      enemyName: persisted.enemy?.name || null,
+      enemyName: `${persisted.enemy?.name || 'Enemy'}${enrageCopy}`,
       enemyHp: persisted.enemy?.hp ?? null,
       enemyMaxHp: persisted.enemy?.maxHp ?? null,
       actorHp: actor?.hp ?? null,
