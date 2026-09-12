@@ -27,9 +27,19 @@ function normalizeQuestProgress(entries) {
     });
 }
 
+function normalizeCooldown(event) {
+  if (!event.nextHuntReadyAt) return null;
+  const readyAt = new Date(event.nextHuntReadyAt);
+  if (Number.isNaN(readyAt.getTime())) return null;
+  return Object.freeze({
+    nextReadyAt: readyAt.toISOString(),
+    cooldownSeconds: nonNegativeNumber(event.huntCooldownSeconds),
+  });
+}
+
 /**
  * Projects already-authoritative HuntResolved facts into one concise stream receipt.
- * It never calculates combat, rewards, loot, level, or quest completion.
+ * It never calculates combat, rewards, loot, level, quest completion, or cooldown legality.
  */
 export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEnemyName = 'enemy' } = {}) {
   if (!event || event.type !== 'HuntResolved') throw new Error('Hunt receipt requires a HuntResolved event.');
@@ -43,6 +53,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
   const xp = victory ? nonNegativeNumber(event.experienceGained ?? event.xp) : 0;
   const healthPotionsFound = victory ? nonNegativeNumber(event.healthPotionsFound) : 0;
   const questProgress = normalizeQuestProgress(event.questProgress);
+  const cooldown = normalizeCooldown(event);
   const loot = victory && event.itemName ? Object.freeze({
     id: event.itemId || null,
     name: String(event.itemName),
@@ -68,6 +79,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
       ? ` Quest — ${progress.questName} ${progress.current}/${progress.required}.`
       : ` Quest — ${progress.questName}.`;
   }).join('');
+  const cooldownText = cooldown ? ` Next Hunt — ${cooldown.nextReadyAt}.` : '';
 
   return Object.freeze({
     kind: 'hunt-result',
@@ -83,6 +95,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     loot,
     healthPotionsFound,
     questProgress: Object.freeze(questProgress),
-    text: `${resultText}${hpText}${rewardText}${levelText}${lootText}${potionText}${questText}`,
+    cooldown,
+    text: `${resultText}${hpText}${rewardText}${levelText}${lootText}${potionText}${questText}${cooldownText}`,
   });
 }
