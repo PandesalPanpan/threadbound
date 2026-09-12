@@ -34,7 +34,7 @@ test('projects Gold, XP, HP, level-up, rarity loot, potion, and quest progress f
   assert.equal(receipt.progression.leveledUp, true);
   assert.deepEqual(receipt.loot, { id: 'item-1', name: 'Gleaming Fang', rarity: 'rare', attackBonus: 3 });
   assert.equal(receipt.questProgress.length, 2);
-  assert.match(receipt.text, /Mira defeated Forest Slime/);
+  assert.match(receipt.text, /Mira found and killed Forest Slime/);
   assert.match(receipt.text, /\+7 Gold · \+20 XP/);
   assert.match(receipt.text, /36\/40 HP/);
   assert.match(receipt.text, /Level 2!/);
@@ -77,7 +77,7 @@ test('Activity Stream persists the canonical Gold/XP Hunt receipt while retainin
 
   assert.equal(appended.length, 1);
   assert.equal(entry.actorName, 'THREADBOUND');
-  assert.match(entry.body, /Mira defeated Forest Slime/);
+  assert.match(entry.body, /Mira found and killed Forest Slime/);
   assert.match(entry.body, /\+7 Gold · \+20 XP/);
   assert.match(entry.body, /rare Gleaming Fang/);
   assert.doesNotMatch(entry.body, /Dust/);
@@ -98,7 +98,7 @@ test('failed Hunts project no Gold or XP even when stale reward fields are prese
   }, { actorName: 'Mira' });
 
   assert.deepEqual(receipt.rewards, { gold: 0, xp: 0 });
-  assert.match(receipt.text, /Mira was defeated by Ash Hound/);
+  assert.match(receipt.text, /Mira found Ash Hound but was defeated/);
   assert.match(receipt.text, /No rewards/);
   assert.doesNotMatch(receipt.text, /999/);
 });
