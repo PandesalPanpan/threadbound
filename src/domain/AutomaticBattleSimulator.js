@@ -1,8 +1,13 @@
 import { selectActorBySpeed } from './AutomaticBattleInitiativePolicy.js';
 import {
+  mergeAutomaticBattleEffect,
   normalizeAutomaticBattleEffects,
   resolveAutomaticEffectTurnStart,
 } from './AutomaticBattleEffectPolicy.js';
+import {
+  normalizeAutomaticBattleResistances,
+  resolveAutomaticBattleEffectResistance,
+} from './AutomaticBattleResistancePolicy.js';
 
 function requirePositiveInteger(value, label) {
   if (!Number.isInteger(value) || value <= 0) {
@@ -36,6 +41,7 @@ function normalizeCombatant(combatant, index) {
     hp,
     maxHp,
     effects: [...normalizeAutomaticBattleEffects(combatant.effects || [])],
+    resistances: { ...normalizeAutomaticBattleResistances(combatant.resistances || {}) },
   };
 }
 
@@ -43,6 +49,7 @@ function cloneCombatant(combatant) {
   return {
     ...combatant,
     effects: Array.isArray(combatant.effects) ? combatant.effects.map((effect) => ({ ...effect })) : [],
+    resistances: { ...(combatant.resistances || {}) },
   };
 }
 
@@ -73,14 +80,37 @@ function finalizeResult({ combatants, turns, outcome, context, stopReason = null
   };
 }
 
+function applyTargetEffects(target, targetEffects = []) {
+  if (targetEffects == null) return [];
+  if (!Array.isArray(targetEffects)) throw new Error('Automatic battle targetEffects must be an array.');
+
+  const applications = [];
+  for (const incomingEffect of targetEffects) {
+    const resolution = resolveAutomaticBattleEffectResistance({ target, effect: incomingEffect });
+    if (resolution.applied) {
+      target.effects = [...mergeAutomaticBattleEffect(target.effects, resolution.effect)];
+    }
+    applications.push({
+      type: resolution.incomingEffect.type,
+      resistanceLevel: resolution.resistanceLevel,
+      applied: resolution.applied,
+      blocked: resolution.blocked,
+      incomingPotency: resolution.incomingEffect.potency,
+      appliedPotency: resolution.effect?.potency ?? 0,
+      potencyMultiplier: resolution.potencyMultiplier,
+    });
+  }
+  return applications;
+}
+
 /**
  * Activity-agnostic automatic battle loop.
  *
  * The simulator owns authoritative battle lifecycle state: HP mutation,
- * termination, turn history, constrained periodic effect ticks, and optional
- * phase pausing. Stat formulas, RNG, initiative frequency, effect vocabulary,
- * and resistances remain domain policies so Hunt, Adventure, Duel, and bosses
- * reuse one lifecycle instead of copying combat state machines.
+ * termination, turn history, constrained periodic effect ticks, resistance-aware
+ * effect application, and optional phase pausing. Stat formulas, RNG, initiative
+ * frequency, effect vocabulary, and resistance semantics remain domain policies
+ * so Hunt, Adventure, Duel, and bosses reuse one lifecycle.
  */
 export class AutomaticBattleSimulator {
   constructor({
@@ -150,6 +180,7 @@ export class AutomaticBattleSimulator {
           metadata: {
             kind: 'effect-tick',
             effectEvents: effectStart.events.map((event) => ({ ...event })),
+            effectApplications: [],
           },
         });
         actor.effects = [...effectStart.remainingEffects];
@@ -184,6 +215,7 @@ export class AutomaticBattleSimulator {
       target.hp = Math.max(0, target.hp - targetDamage);
       actor.hp = Math.min(actor.maxHp, actor.hp + selfHealing);
       actor.effects = [...effectStart.remainingEffects];
+      const effectApplications = applyTargetEffects(target, action.targetEffects ?? []);
 
       const turn = {
         turnNumber,
@@ -200,6 +232,7 @@ export class AutomaticBattleSimulator {
         metadata: {
           ...(action.metadata ?? {}),
           effectEvents: effectStart.events.map((event) => ({ ...event })),
+          effectApplications,
         },
       };
       turns.push(turn);
