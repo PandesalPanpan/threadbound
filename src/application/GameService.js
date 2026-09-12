@@ -328,9 +328,14 @@ export class GameService {
       const completedRun = new DungeonRun(outcome.state);
       completedRun.markRewards(rewardItemIds);
       const generatedArcId = outcome.state.dungeonDefinition?.arcId;
+      const configuredUnlock = Number(outcome.state.dungeonDefinition?.unlocksAreaNumber);
+      const areaUnlockNumber = outcome.state.dungeonDefinition?.progressionAdventure && Number.isInteger(configuredUnlock) && configuredUnlock > 1
+        ? configuredUnlock
+        : null;
       const completion = this.repository.completeRunWithRewards(completedRun.toJSON(), rewardsByPlayer, {
         threadDust: 15,
         worldProgressKey: generatedArcId ? `arc:${generatedArcId}:${outcome.state.dungeonId}:clears` : 'arc-1-frayed-hollow-clears',
+        areaUnlockNumber,
       });
 
       outcome.state = completion.state;
@@ -346,6 +351,16 @@ export class GameService {
             dungeonId: completion.state.dungeonId,
           });
           this.eventBus.publish({ type: 'ItemGenerated', playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
+        }
+        for (const unlock of completion.areaUnlocks || []) {
+          this.eventBus.publish({
+            type: 'AreaUnlocked',
+            playerId: unlock.playerId,
+            participantIds,
+            runId: completion.state.id,
+            dungeonId: completion.state.dungeonId,
+            areaNumber: unlock.areaNumber,
+          });
         }
       }
     }
