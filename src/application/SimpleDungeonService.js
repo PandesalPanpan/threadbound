@@ -11,8 +11,11 @@ function builtInProgressionDefinition(dungeonId) {
   if (dungeonId !== AREA_ONE_PROGRESSION_DUNGEON_ID) return null;
   // M5-06 deliberately reuses the migration-safe Frayed Hollow encounter instead
   // of authoring new Arc content before Phase 10. M5-07 will own Area unlocks.
+  // The snapshotted definition receives the progression activity id so the run
+  // aggregate can validate its identity without adding fake content to DUNGEONS.
   return Object.freeze({
     ...DUNGEONS['frayed-hollow'],
+    id: AREA_ONE_PROGRESSION_DUNGEON_ID,
     progressionAdventure: true,
     requiredHumanPlayers: 2,
   });
