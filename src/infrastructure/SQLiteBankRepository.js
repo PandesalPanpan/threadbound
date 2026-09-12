@@ -8,6 +8,16 @@ function normalizeAmount(value) {
   return amount;
 }
 
+function normalizeLoss(value) {
+  const amount = Math.floor(Number(value));
+  if (!Number.isInteger(amount) || amount < 0) {
+    const error = new Error('Carried Gold loss must be a non-negative whole number.');
+    error.code = 'invalid_carried_gold_loss';
+    throw error;
+  }
+  return amount;
+}
+
 export class SQLiteBankRepository {
   constructor({ database }) {
     this.db = database;
@@ -23,6 +33,29 @@ export class SQLiteBankRepository {
     `).get(playerId);
     if (!row) throw new Error('Player not found.');
     return { carriedGold: Number(row.carried_gold || 0), bankedGold: Number(row.banked_gold || 0) };
+  }
+
+  loseCarriedGold(playerId, value) {
+    const requested = normalizeLoss(value);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const before = this.getBalance(playerId);
+      const goldLost = Math.min(before.carriedGold, requested);
+      if (goldLost > 0) {
+        this.db.prepare('UPDATE players SET thread_dust = thread_dust - ? WHERE id = ?').run(goldLost, playerId);
+      }
+      const after = this.getBalance(playerId);
+      this.db.exec('COMMIT');
+      return {
+        carriedGoldBefore: before.carriedGold,
+        carriedGold: after.carriedGold,
+        bankedGold: after.bankedGold,
+        goldLost,
+      };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
   }
 
   deposit(playerId, value) {
@@ -79,4 +112,4 @@ export class SQLiteBankRepository {
   }
 }
 
-export { normalizeAmount };
+export { normalizeAmount, normalizeLoss };
