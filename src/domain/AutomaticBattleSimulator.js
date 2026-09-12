@@ -57,6 +57,55 @@ function cloneCombatants(combatants) {
   return combatants.map(cloneCombatant);
 }
 
+function cloneTurn(turn) {
+  return {
+    ...turn,
+    metadata: turn?.metadata ? {
+      ...turn.metadata,
+      effectEvents: Array.isArray(turn.metadata.effectEvents)
+        ? turn.metadata.effectEvents.map((event) => ({ ...event }))
+        : turn.metadata.effectEvents,
+      effectApplications: Array.isArray(turn.metadata.effectApplications)
+        ? turn.metadata.effectApplications.map((application) => ({ ...application }))
+        : turn.metadata.effectApplications,
+    } : turn?.metadata ?? null,
+  };
+}
+
+function normalizePriorTurns(priorTurns) {
+  if (priorTurns == null) return [];
+  if (!Array.isArray(priorTurns)) throw new Error('Automatic battle priorTurns must be an array.');
+  return priorTurns.map((turn, index) => {
+    if (!turn || typeof turn !== 'object') throw new Error(`Prior turn ${index + 1} must be an object.`);
+    if (turn.turnNumber !== index + 1) {
+      throw new Error('Automatic battle priorTurns must be contiguous from turn 1.');
+    }
+    return cloneTurn(turn);
+  });
+}
+
+function clonePendingDecision(decision) {
+  if (!decision) return null;
+  return {
+    ...decision,
+    actions: Array.isArray(decision.actions) ? decision.actions.map((action) => ({ ...action })) : [],
+  };
+}
+
+function normalizeStopSignal(signal) {
+  if (!signal) return null;
+  if (typeof signal !== 'object') {
+    return { stopReason: String(signal), pendingDecision: null };
+  }
+
+  const stopReason = String(signal.reason || signal.stopReason || 'decision-point').trim();
+  if (!stopReason) throw new Error('Automatic battle stop signal requires a reason.');
+  return {
+    stopReason,
+    pendingDecision: clonePendingDecision(signal.pendingDecision || null),
+  };
+}
+
 function defaultTargetSelector({ actor, combatants }) {
   return combatants.find((combatant) => combatant.id !== actor.id)?.id || null;
 }
@@ -65,7 +114,7 @@ function livingCombatants(combatants) {
   return combatants.filter((combatant) => combatant.hp > 0);
 }
 
-function finalizeResult({ combatants, turns, outcome, context, stopReason = null }) {
+function finalizeResult({ combatants, turns, outcome, context, stopReason = null, pendingDecision = null }) {
   const living = livingCombatants(combatants);
   const defeated = combatants.filter((combatant) => combatant.hp <= 0);
 
@@ -74,8 +123,9 @@ function finalizeResult({ combatants, turns, outcome, context, stopReason = null
     winnerId: outcome === 'victory' && living.length === 1 ? living[0].id : null,
     loserId: outcome === 'victory' && defeated.length === 1 ? defeated[0].id : null,
     stopReason,
+    pendingDecision: clonePendingDecision(pendingDecision),
     combatants: cloneCombatants(combatants),
-    turns: turns.map((turn) => ({ ...turn })),
+    turns: turns.map(cloneTurn),
     context,
   };
 }
@@ -108,9 +158,10 @@ function applyTargetEffects(target, targetEffects = []) {
  *
  * The simulator owns authoritative battle lifecycle state: HP mutation,
  * termination, turn history, constrained periodic effect ticks, resistance-aware
- * effect application, and optional phase pausing. Stat formulas, RNG, initiative
- * frequency, effect vocabulary, and resistance semantics remain domain policies
- * so Hunt, Adventure, Duel, and bosses reuse one lifecycle.
+ * effect application, and optional sparse phase pausing. Stat formulas, RNG,
+ * initiative frequency, effect vocabulary, resistance semantics, and boss
+ * decision triggers remain domain policies so Hunt, Adventure, Duel, and bosses
+ * reuse one lifecycle.
  */
 export class AutomaticBattleSimulator {
   constructor({
@@ -134,7 +185,7 @@ export class AutomaticBattleSimulator {
     this.maxTurns = requirePositiveInteger(maxTurns, 'maxTurns');
   }
 
-  simulate({ combatants, context = null } = {}) {
+  simulate({ combatants, context = null, priorTurns = [] } = {}) {
     if (!Array.isArray(combatants) || combatants.length !== 2) {
       throw new Error('Automatic battles currently require exactly two combatants.');
     }
@@ -144,9 +195,9 @@ export class AutomaticBattleSimulator {
       throw new Error('Automatic battle combatant ids must be unique.');
     }
 
-    const turns = [];
+    const turns = normalizePriorTurns(priorTurns);
 
-    for (let turnNumber = 1; turnNumber <= this.maxTurns; turnNumber += 1) {
+    for (let turnNumber = turns.length + 1; turnNumber <= this.maxTurns; turnNumber += 1) {
       if (livingCombatants(state).length <= 1) {
         return finalizeResult({ combatants: state, turns, outcome: 'victory', context });
       }
@@ -154,7 +205,7 @@ export class AutomaticBattleSimulator {
       const actorId = this.selectActor({
         turnNumber,
         combatants: cloneCombatants(state),
-        turns: turns.map((turn) => ({ ...turn })),
+        turns: turns.map(cloneTurn),
         context,
       });
       const actor = state.find((combatant) => combatant.id === actorId && combatant.hp > 0);
@@ -191,7 +242,7 @@ export class AutomaticBattleSimulator {
         turnNumber,
         actor: cloneCombatant(actor),
         combatants: cloneCombatants(state),
-        turns: turns.map((turn) => ({ ...turn })),
+        turns: turns.map(cloneTurn),
         context,
       });
       const target = state.find((combatant) => combatant.id === targetId && combatant.id !== actor.id && combatant.hp > 0);
@@ -202,7 +253,7 @@ export class AutomaticBattleSimulator {
         actor: cloneCombatant(actor),
         target: cloneCombatant(target),
         combatants: cloneCombatants(state),
-        turns: turns.map((turn) => ({ ...turn })),
+        turns: turns.map(cloneTurn),
         context,
       });
       if (!action || typeof action !== 'object') throw new Error(`Turn ${turnNumber} action policy must return an object.`);
@@ -242,15 +293,22 @@ export class AutomaticBattleSimulator {
       }
 
       if (this.shouldStop) {
-        const stopReason = this.shouldStop({
+        const stopSignal = normalizeStopSignal(this.shouldStop({
           turnNumber,
           combatants: cloneCombatants(state),
-          turns: turns.map((entry) => ({ ...entry })),
-          lastTurn: { ...turn },
+          turns: turns.map(cloneTurn),
+          lastTurn: cloneTurn(turn),
           context,
-        });
-        if (stopReason) {
-          return finalizeResult({ combatants: state, turns, outcome: 'paused', context, stopReason: String(stopReason) });
+        }));
+        if (stopSignal) {
+          return finalizeResult({
+            combatants: state,
+            turns,
+            outcome: 'paused',
+            context,
+            stopReason: stopSignal.stopReason,
+            pendingDecision: stopSignal.pendingDecision,
+          });
         }
       }
     }

@@ -37,6 +37,27 @@ function hpProjection(result, combatant) {
   });
 }
 
+function projectPendingDecision(result) {
+  const decision = result.pendingDecision;
+  if (!decision) return null;
+  const id = String(decision.id || '').trim();
+  const scope = String(decision.scope || '').trim();
+  const prompt = String(decision.prompt || '').trim();
+  if (!id || !scope || !prompt || !Array.isArray(decision.actions) || decision.actions.length === 0) {
+    throw new Error('Automatic battle pending decision is incomplete.');
+  }
+
+  return Object.freeze({
+    id,
+    scope,
+    prompt,
+    actions: Object.freeze(decision.actions.map((action) => Object.freeze({
+      id: String(action?.id || '').trim(),
+      label: String(action?.label || '').trim(),
+    }))),
+  });
+}
+
 function outcomeLabel(result, viewerId) {
   if (result.outcome === 'paused') return 'Paused';
   if (result.outcome === 'draw') return 'Draw';
@@ -47,7 +68,7 @@ function outcomeLabel(result, viewerId) {
   return 'Victory';
 }
 
-function headlineFor(result, viewerId) {
+function headlineFor(result, viewerId, pendingDecision = null) {
   const winner = combatantById(result, result.winnerId);
   const loser = combatantById(result, result.loserId);
   const label = outcomeLabel(result, viewerId);
@@ -57,13 +78,15 @@ function headlineFor(result, viewerId) {
     if (viewerId === result.loserId) return `${label} · Defeated by ${combatantLabel(winner)}`;
     return `${label} · ${combatantLabel(winner)} defeated ${combatantLabel(loser)}`;
   }
-  if (result.outcome === 'paused') return `${label} · ${String(result.stopReason || 'Decision point')}`;
+  if (result.outcome === 'paused') {
+    return `${label} · ${pendingDecision?.prompt || String(result.stopReason || 'Decision point')}`;
+  }
   if (result.outcome === 'draw') return `${label} · ${result.turns.length} turns`;
   return label;
 }
 
-function mainReceiptText(result, viewerId, hp) {
-  const headline = headlineFor(result, viewerId);
+function mainReceiptText(result, viewerId, hp, pendingDecision = null) {
+  const headline = headlineFor(result, viewerId, pendingDecision);
   const viewer = viewerId ? hp.find((entry) => entry.id === viewerId) : null;
   const hpText = viewer
     ? ` · HP ${viewer.initialHp} → ${viewer.finalHp}/${viewer.maxHp}`
@@ -154,22 +177,25 @@ function projectTurn(result, turn, previousTurn) {
 /**
  * Presentation/read-model projection for authoritative automatic battle results.
  * It never reruns combat formulas. The concise receipt is suitable for the
- * Adventure Stream; detailed turns are retained for M3-08 Battle Details UI.
+ * Adventure Stream; detailed turns and sparse boss decisions are projected from
+ * authoritative battle output rather than becoming browser-owned game rules.
  */
 export function projectAutomaticBattleResult(result, { viewerId = null } = {}) {
   requireBattleResult(result);
   const hp = Object.freeze(result.combatants.map((combatant) => hpProjection(result, combatant)));
   const turns = Object.freeze(result.turns.map((turn, index) => projectTurn(result, turn, result.turns[index - 1] || null)));
+  const pendingDecision = projectPendingDecision(result);
   const receipt = Object.freeze({
     kind: 'automatic-battle-result',
     outcome: result.outcome,
     outcomeLabel: outcomeLabel(result, viewerId),
-    headline: headlineFor(result, viewerId),
-    text: mainReceiptText(result, viewerId, hp),
+    headline: headlineFor(result, viewerId, pendingDecision),
+    text: mainReceiptText(result, viewerId, hp, pendingDecision),
     winnerId: result.winnerId || null,
     loserId: result.loserId || null,
     turnCount: turns.length,
     hp,
+    pendingDecision,
     detailsAvailable: turns.length > 0,
   });
 
@@ -178,6 +204,7 @@ export function projectAutomaticBattleResult(result, { viewerId = null } = {}) {
     details: Object.freeze({
       outcome: result.outcome,
       stopReason: result.stopReason || null,
+      pendingDecision,
       turnCount: turns.length,
       turns,
     }),
