@@ -634,7 +634,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M5-04** Implement ordinary Adventure activity using shared battle/world policies.
 - [x] **M5-05** Add Adventure cooldown/rewards/loot/story-event projection.
 - [x] **M5-06** Implement progression Adventure/boss requiring both human players by default.
-- [ ] **M5-07** Unlock next Area transactionally on first valid progression clear.
+- [x] **M5-07** Unlock next Area transactionally on first valid progression clear.
 - [ ] **M5-08** Add capped progression-boss death/enrage stacks and reset-on-victory.
 
 ### Phase 6 — Towns, NPCs, Quests
