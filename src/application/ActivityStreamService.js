@@ -152,10 +152,15 @@ export class ActivityStreamService {
       case 'AdventureResolved': {
         const outcome = event.victory ? 'defeated' : 'fell to';
         const health = `${event.remainingHp}/${event.maxHp} HP`;
+        const rewards = event.victory ? ` · +${event.experienceGained || 0} XP · +${event.gold || 0} Gold` : '';
+        const loot = event.itemName ? ` · Found ${event.itemName}${event.itemRarity ? ` (${titleize(event.itemRarity)})` : ''}` : '';
+        const story = event.storyEvent?.text ? ` · ${event.storyEvent.text}` : '';
         const loss = Number(event.goldLost || 0) > 0 ? ` · −${event.goldLost} carried Gold · Bank safe` : '';
+        const cooldown = event.nextAdventureReadyAt ? ` · Next Adventure ${event.nextAdventureReadyAt}` : '';
+        const levelUp = event.leveledUp ? ` · LEVEL UP → ${event.level}` : '';
         return {
           actorName: 'THREADBOUND',
-          body: `${actorName || 'Adventurer'} Adventured in ${event.areaName || `Area ${event.areaNumber}`} and ${outcome} ${event.enemyName || enemyName || 'an enemy'}. −${event.damageTaken || 0} HP · ${health}${loss}.`,
+          body: `${actorName || 'Adventurer'} Adventured in ${event.areaName || `Area ${event.areaNumber}`} and ${outcome} ${event.enemyName || enemyName || 'an enemy'}. −${event.damageTaken || 0} HP · ${health}${rewards}${levelUp}${loot}${loss}${story}${cooldown}.`,
         };
       }
       case 'HealthPotionUsed':
