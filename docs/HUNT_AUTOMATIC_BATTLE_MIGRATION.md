@@ -1,45 +1,39 @@
 # Hunt automatic-battle migration
 
-Status: M4-02 implementation candidate. The shipped `hunt` use case resolves combat through the shared `AutomaticBattleSimulator` and projects its authoritative rewards as one concise result-first Adventure Stream receipt.
+Status: M4-02 implementation candidate. The shipped `hunt` use case resolves combat through the shared `AutomaticBattleSimulator`, and its committed `HuntResolved` event projects one concise result-first Adventure Stream receipt.
 
 ## Boundary
 
 `HuntService` remains the Service Layer coordinator. It blocks Hunt during an active dungeon, loads the authoritative player and five-slot equipment loadout, asks the Hunt domain policy to resolve one automatic battle, then persists HP/rewards/progression and publishes one `HuntResolved` event.
 
-`HuntEncounter` still owns Hunt enemy selection and Hunt-specific reward values. `AutomaticBattleSimulator` now owns authoritative HP mutation and turn lifecycle. The shared Attack/Defense/Crit, Speed initiative, constrained equipment effects, and status/resistance policies therefore apply to Hunt rather than a separate `ceil(enemy HP / Attack)` combat shortcut.
+`HuntEncounter` owns Hunt enemy selection and Hunt-specific reward values. `AutomaticBattleSimulator` owns authoritative HP mutation and turn lifecycle. The shared Attack/Defense/Crit, Speed initiative, constrained equipment effects, and status/resistance policies therefore apply to Hunt rather than a separate combat shortcut.
 
-The browser still owns no combat or reward rules. Cooldowns, death penalties, and new Arc content remain ordered later M4 tasks.
+`HuntReceiptReadModel` consumes already-committed `HuntResolved` facts and projects Victory/Defeat, HP, Gold, XP, level-up, rarity-aware loot, potion, and optional Quest-result facts without recalculating rules. Failed Hunts discard stale reward-looking fields. `ActivityStreamService` persists its complete text for accessibility and non-enhanced clients.
+
+The richer browser Presentation Model consumes the same persisted event metadata and renders compact semantic chips plus sprite-backed loot and Quest rows. It does not own combat, rewards, loot, or Quest completion. The complete text becomes visually hidden when the rich receipt is attached, preventing duplicate visible outcomes.
+
+## Quest projection boundary
+
+M4-02 does **not** introduce the Quest domain ahead of Phase 6. `questProgress` is an optional list of `{ questId, questName, current, required, completed }` result data. Hunt currently publishes an empty list; a future authoritative Quest service may populate it without requiring the browser to infer progress. The read model also accepts the temporary `label`/`target` aliases used by migration callers.
 
 ## Migration compatibility
 
-The existing Hunt enemy identities, baseline HP, Gold, XP, drop chances, and legacy `retaliation` values remain readable. Canonical enemy Attack values are chosen so the baseline Level-1 Adventurer with 2 Defense takes the same ordinary no-Crit damage as before. Existing Gold/`threadDust` aliases and `HuntResolved` fields remain compatible.
+Existing Hunt enemy identities, baseline HP, Gold, XP, drop chances, and legacy `retaliation` values remain readable. Existing Gold/`threadDust` and XP aliases remain supported while new player-facing Hunt receipt copy uses **Gold** rather than Dust.
 
-`resolveHunt(...)` remains as a focused legacy compatibility helper, but the shipped `HuntService.hunt(...)` path no longer calls it. New Hunt combat uses `resolveAutomaticHunt(...)` and returns the authoritative `battle` result for later concise-receipt/Battle Details projection work.
+`resolveHunt(...)` remains as a focused legacy compatibility helper, but the shipped `HuntService.hunt(...)` path uses `resolveAutomaticHunt(...)` and returns the authoritative `battle` result.
 
 ## Objective acceptance
 
-Focused tests prove that:
+M4-02 tests prove:
 
-1. the baseline Thread Wolf Hunt preserves its familiar result while turn history and HP come from `AutomaticBattleSimulator`;
-2. Hunt consumes shared Speed semantics and constrained equipment effects;
-3. `HuntService` persists the simulator's final HP and rewards and exposes battle outcome/turn count in the authoritative event;
-4. existing Hunt recovery, Gold migration, and XP/Level tests remain regression gates.
+1. Hunt combat still comes from `AutomaticBattleSimulator`, and `HuntService` persists HP/rewards/progression before publishing `HuntResolved`.
+2. Victory receipts project HP, Gold, XP, level-up, item rarity/stats, potion finds, and optional in-progress/completed Quest results in one entry.
+3. Defeat receipts report HP and `No rewards` without stale loot/progression or noisy `+0` reward fields.
+4. Legacy `threadDust` / `xp` aliases remain readable while canonical copy says Gold.
+5. Enhanced mobile receipts show the same authoritative Gold/XP result, and their accessible fallback contains no legacy Dust terminology.
+6. The representative 390×844 Hunt screenshot preserves the compact result-first hierarchy and unobstructed next actions.
 
-No new browser presentation is introduced by M4-01, so there is no additional screenshot requirement for this milestone. The complete active Chromium E2E suite remains the browser regression gate.
-
-## Hunt result projection (M4-02)
-
-`HuntResolved` is the single public receipt source for one Hunt command. Its persisted body now leads with Victory/Defeat and includes canonical HP, Gold, XP, level-up, rarity-aware loot, potion, and optional Quest-result copy. The richer browser Presentation Model consumes the same persisted event metadata and renders the values as compact semantic chips and sprite-backed result rows. The underlying text remains complete for accessibility and non-enhanced clients while becoming visually hidden when the rich receipt is attached, so the result is not duplicated on screen.
-
-Quest support in this milestone is projection-only. `questProgress` is an explicit optional list of `{ questId, questName, current, required, completed }` result data. Hunt currently publishes an empty list; the Phase 6 authoritative Quest service may populate it later without requiring the browser to infer progress or moving Quest rules ahead of schedule.
-
-M4-02 acceptance proves:
-
-1. Victory receipts project HP, Gold, XP, level-up, item rarity/stats, potion finds, and optional in-progress/completed Quest results in one entry.
-2. Defeat receipts report HP and `No rewards` without noisy `+0` reward fields.
-3. Hunt events expose canonical Gold/XP plus the explicit Quest projection seam while retaining migration aliases.
-4. Enhanced mobile receipts show the same authoritative Gold/XP result, and their accessible fallback contains no legacy Dust terminology.
-5. The representative 390×844 Hunt screenshot preserves the compact result-first hierarchy and unobstructed next actions.
+`npm run check`, the full unit/contract suite, and all active Chromium E2E suites remain merge gates.
 
 ## Next ordered task
 
