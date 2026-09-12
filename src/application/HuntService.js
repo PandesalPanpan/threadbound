@@ -130,6 +130,9 @@ export class HuntService {
       itemRarity: item?.rarity || null,
       itemAttackBonus: item?.attackBonus || 0,
       healthPotionsFound,
+      // Phase 6 may populate this projection after authoritative quest progress is
+      // introduced. Keeping the shape explicit prevents the browser from inferring it.
+      questProgress: [],
     });
     if (item) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: 'hunt', silentStream: true });
 

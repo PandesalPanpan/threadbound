@@ -147,11 +147,15 @@ test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only d
   await expect(dungeon).toContainText('6/9');
 
   await hunt.click();
-  const huntReceipt = page.getByTestId('stream-system-entry').filter({ hasText: /found and killed/i }).last();
+  const huntReceipt = page.getByTestId('stream-system-entry').filter({ hasText: /Victory — .* defeated/i }).last();
   await expect(huntReceipt).toBeVisible({ timeout: 5000 });
   await expect(huntReceipt.locator('.stream-hunt-chip.reward')).toContainText('Gold');
   await expect(huntReceipt.locator('.stream-hunt-chip.progress')).toContainText(/\+\d+ XP/);
   await expect(huntReceipt.locator('.stream-hunt-chip.health')).toContainText('/40 HP');
+  const accessibleReceipt = huntReceipt.locator('.stream-entry-content > p');
+  await expect(accessibleReceipt).toContainText(/Victory — .* defeated .*\./);
+  await expect(accessibleReceipt).toContainText(/\+\d+ Gold · \+\d+ XP/);
+  await expect(accessibleReceipt).not.toContainText('Dust');
   await expect(huntReceipt.locator('.stream-app-badge')).toHaveText('APP');
   const huntSprite = huntReceipt.getByTestId('stream-hunt-sprite');
   await expect(huntSprite).toBeVisible({ timeout: 5000 });
