@@ -1,6 +1,6 @@
 # Area progression foundation
 
-Status: M5-01 implementation candidate.
+Status: **M5-01 complete — merged in PR #73 at `8884ee15`; post-merge main CI #1420 is green.**
 
 ## Boundary
 
@@ -46,8 +46,8 @@ The row cascades with the player and survives normal process/database restart. M
 6. SQLite lazily initializes existing players and persists current/highest state across repository restart;
 7. unknown players cannot receive orphaned Area state.
 
-No browser presentation changes are part of M5-01, so no new Playwright screenshot is required for this foundation milestone. M5-02 is the ordered rich chat-card/travel presentation task.
+PR #73 passed `npm run check`, the complete unit/contract suite, and the complete active Chromium Playwright suite before merge. Post-merge `main` CI #1420 passed the same gates. No browser presentation changed in M5-01, so no new mobile screenshot was required.
 
 ## Next ordered task
 
-After M5-01 is merged, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M5-02 — add Area rich card / travel selection entirely through the Adventure Stream**.
+The next earliest unchecked milestone is **M5-02 — add Area rich card / travel selection entirely through the Adventure Stream**.
