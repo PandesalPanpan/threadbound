@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ActivityStreamService } from '../src/application/ActivityStreamService.js';
 import { projectHuntReceipt } from '../src/application/HuntReceiptReadModel.js';
 
 test('projects Gold, XP, HP, level-up, rarity loot, potion, and quest progress from authoritative HuntResolved facts', () => {
@@ -42,6 +43,46 @@ test('projects Gold, XP, HP, level-up, rarity loot, potion, and quest progress f
   assert.match(receipt.text, /Slime Cleanup 4\/8/);
   assert.match(receipt.text, /First Hunt 1\/1 complete/);
   assert.doesNotMatch(receipt.text, /Dust/);
+});
+
+test('Activity Stream persists the canonical Gold/XP Hunt receipt while retaining raw event metadata', () => {
+  const appended = [];
+  const service = new ActivityStreamService({
+    streamRepository: { append: (entry) => { appended.push(entry); return entry; } },
+    gameRepository: {
+      getPlayer: () => ({ displayName: 'Mira' }),
+      getRun: () => null,
+      getItem: () => null,
+    },
+  });
+
+  const entry = service.recordDomainEvent({
+    type: 'HuntResolved',
+    playerId: 'hero',
+    victory: true,
+    enemyId: 'forest-slime',
+    enemyName: 'Forest Slime',
+    damageTaken: 4,
+    remainingHp: 36,
+    maxHp: 40,
+    gold: 7,
+    threadDust: 7,
+    experienceGained: 20,
+    level: 2,
+    leveledUp: true,
+    itemName: 'Gleaming Fang',
+    itemRarity: 'rare',
+    itemAttackBonus: 3,
+  });
+
+  assert.equal(appended.length, 1);
+  assert.equal(entry.actorName, 'THREADBOUND');
+  assert.match(entry.body, /Mira defeated Forest Slime/);
+  assert.match(entry.body, /\+7 Gold · \+20 XP/);
+  assert.match(entry.body, /rare Gleaming Fang/);
+  assert.doesNotMatch(entry.body, /Dust/);
+  assert.equal(entry.metadata.gold, 7);
+  assert.equal(entry.metadata.threadDust, 7);
 });
 
 test('failed Hunts project no Gold or XP even when stale reward fields are present', () => {
