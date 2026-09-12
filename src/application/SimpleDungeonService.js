@@ -3,11 +3,26 @@ import { Character } from '../domain/Character.js';
 import { AdventureRun, DUNGEONS } from '../domain/AdventureRun.js';
 import { Party } from '../domain/Party.js';
 import { dungeonReadiness } from '../domain/SimpleDungeonPolicy.js';
+import { progressionAdventureRequirement, requireProgressionAdventureParty } from '../domain/ProgressionAdventurePolicy.js';
+
+export const AREA_ONE_PROGRESSION_DUNGEON_ID = 'progression-area-1';
+
+function builtInProgressionDefinition(dungeonId) {
+  if (dungeonId !== AREA_ONE_PROGRESSION_DUNGEON_ID) return null;
+  // M5-06 deliberately reuses the migration-safe Frayed Hollow encounter instead
+  // of authoring new Arc content before Phase 10. M5-07 will own Area unlocks.
+  return Object.freeze({
+    ...DUNGEONS['frayed-hollow'],
+    progressionAdventure: true,
+    requiredHumanPlayers: 2,
+  });
+}
 
 /**
  * New player-facing dungeon use case. The legacy start path remains temporarily
  * available for migration/old acceptance fixtures, while this path creates the
- * new attack-only stat-check run.
+ * new attack-only stat-check run. Progression Adventures reuse this run boundary
+ * but add an authoritative two-human party gate before any run is persisted.
  */
 export class SimpleDungeonService {
   constructor({ repository, eventBus, arcManifestService = null, idFactory = randomUUID }) {
@@ -18,7 +33,7 @@ export class SimpleDungeonService {
   }
 
   definition(dungeonId) {
-    return DUNGEONS[dungeonId] || this.arcManifestService?.resolveDungeon(dungeonId) || null;
+    return builtInProgressionDefinition(dungeonId) || DUNGEONS[dungeonId] || this.arcManifestService?.resolveDungeon(dungeonId) || null;
   }
 
   readiness(playerId, dungeonId) {
@@ -26,8 +41,9 @@ export class SimpleDungeonService {
     if (!player) throw new Error('Player not found.');
     const definition = this.definition(dungeonId);
     if (!definition) throw new Error(`Unknown dungeon: ${dungeonId}`);
-    const party = this.repository.getPartyForPlayer(playerId);
-    const ids = party ? party.members.map((member) => member.playerId) : [playerId];
+    const storedParty = this.repository.getPartyForPlayer(playerId);
+    const party = storedParty ? new Party(storedParty) : null;
+    const ids = party ? party.participantIds() : [playerId];
     const members = ids.map((id) => {
       const row = this.repository.getPlayer(id);
       const equipped = row?.equippedItemId ? this.repository.getItem(row.equippedItemId) : null;
@@ -39,15 +55,21 @@ export class SimpleDungeonService {
       });
       return {
         playerId: id,
-        displayName: row?.displayName || 'Unknown Weaver',
+        displayName: row?.displayName || 'Unknown Adventurer',
         ...check,
       };
     });
+    const progressionRequirement = definition.progressionAdventure
+      ? progressionAdventureRequirement({ definition, party })
+      : null;
     return {
       dungeonId,
       dungeonName: definition.name,
       recommendedAttack: Number(definition.recommendedAttack || 9),
-      ready: members.every((member) => member.ready),
+      progressionAdventure: Boolean(definition.progressionAdventure),
+      requiredHumanPlayers: progressionRequirement?.requiredHumanPlayers || null,
+      partyRequirementMet: progressionRequirement?.satisfied ?? true,
+      ready: members.every((member) => member.ready) && (progressionRequirement?.satisfied ?? true),
       members,
     };
   }
@@ -63,19 +85,37 @@ export class SimpleDungeonService {
     let participantPlayers;
     let ownerType;
     let ownerId;
+    let progressionRequirement = null;
 
     if (storedParty) {
       const party = new Party(storedParty);
-      if (!party.canStart(playerId)) throw new Error('Only the ready party leader can start a dungeon.');
       participantPlayers = party.participantIds().map((participantId) => {
         if (this.repository.getActiveRun(participantId)) throw new Error('A party member is already in an active dungeon.');
         const participant = this.repository.getPlayer(participantId);
         if (!participant) throw new Error('Party member was not found.');
         return participant;
       });
+      if (dungeonDefinition.progressionAdventure) {
+        progressionRequirement = requireProgressionAdventureParty({
+          definition: dungeonDefinition,
+          party,
+          startedByPlayerId: playerId,
+          players: participantPlayers,
+        });
+      } else if (!party.canStart(playerId)) {
+        throw new Error('Only the ready party leader can start a dungeon.');
+      }
       ownerType = 'party';
       ownerId = party.id;
     } else {
+      if (dungeonDefinition.progressionAdventure) {
+        requireProgressionAdventureParty({
+          definition: dungeonDefinition,
+          party: null,
+          startedByPlayerId: playerId,
+          players: [player],
+        });
+      }
       participantPlayers = [player];
       ownerType = 'player';
       ownerId = player.id;
@@ -101,6 +141,8 @@ export class SimpleDungeonService {
       ownerType,
       ownerId,
       simpleCombat: true,
+      progressionAdventure: Boolean(dungeonDefinition.progressionAdventure),
+      requiredHumanPlayers: progressionRequirement?.requiredHumanPlayers || null,
       recommendedAttack: persisted.dungeonDefinition?.recommendedAttack || 9,
       enemyId: persisted.enemy?.id || null,
       enemyName: persisted.enemy?.name || null,
