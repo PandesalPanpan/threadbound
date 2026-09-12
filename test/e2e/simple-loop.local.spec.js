@@ -43,18 +43,18 @@ test('command results scroll fully into view as their content grows', async ({ b
       Math.ceil(element.scrollHeight - element.scrollTop - element.clientHeight)
     ))).toBeLessThanOrEqual(1);
 
-    await page.getByTestId('stream-message').fill('heal');
-    await page.getByTestId('stream-send').click();
-    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible();
-    await expect(page.getByTestId('stream-heal')).toHaveCount(0);
-
-    await page.getByTestId('stream-message').fill('hunt');
-    await page.getByTestId('stream-send').click();
+    // The first Hunt already creates recoverable attrition. Check the recovery
+    // countdown before healing instead of issuing a second Hunt inside its cooldown.
     await page.getByTestId('stream-message').fill('rest');
     await page.getByTestId('stream-send').click();
     await expect(page.getByTestId('stream-command-card')).toContainText(/Next HP in \d+[sm]/);
     const firstCountdown = await page.locator('[data-simple-recovery-next]').textContent();
     await expect.poll(() => page.locator('[data-simple-recovery-next]').textContent(), { timeout: 3000 }).not.toBe(firstCountdown);
+
+    await page.getByTestId('stream-message').fill('heal');
+    await page.getByTestId('stream-send').click();
+    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible();
+    await expect(page.getByTestId('stream-heal')).toHaveCount(0);
 
     await page.getByTestId('stream-message').fill('shop');
     await page.getByTestId('stream-send').click();

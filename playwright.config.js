@@ -32,6 +32,9 @@ export default defineConfig({
         SESSION_SECRET: 'threadbound-e2e-session-secret',
         THREADBOUND_DB_PATH: ':memory:',
         THREADBOUND_AUTH_MODE: 'threaded',
+        // Rich-card fixtures intentionally grind setup Gold; the dedicated local
+        // cooldown Playwright test runs against the real canonical duration.
+        THREADBOUND_HUNT_COOLDOWN_SECONDS: '0',
         THREADED_BASE_URL: 'http://127.0.0.1:4100',
         THREADED_CLIENT_ID: 'threadbound-e2e',
         THREADED_REDIRECT_URI: 'http://127.0.0.1:3001/oauth/callback',
