@@ -630,7 +630,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 - [x] **M5-01** Introduce persistent Area model and player highest-unlocked/current Area.
 - [x] **M5-02** Add Area rich card / travel selection entirely through the Adventure Stream.
-- [ ] **M5-03** Allow free revisit of all previously unlocked Areas.
+- [x] **M5-03** Allow free revisit of all previously unlocked Areas.
 - [ ] **M5-04** Implement ordinary Adventure activity using shared battle/world policies.
 - [ ] **M5-05** Add Adventure cooldown/rewards/loot/story-event projection.
 - [ ] **M5-06** Implement progression Adventure/boss requiring both human players by default.
