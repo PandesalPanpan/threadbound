@@ -1,3 +1,5 @@
+import { projectCombatantWithAutomaticEffects } from './AutomaticBattleEffectPolicy.js';
+
 export const AUTOMATIC_BATTLE_INITIATIVE_RULES = Object.freeze({
   minimumSpeed: 1,
   maxActionFrequencyMultiplier: 2,
@@ -33,7 +35,8 @@ function actionCounts(turns = []) {
  * than once before a slower opponent acts again. Effective Speed is capped at
  * 2x the slowest combatant's Speed, which bounds the advantage to at most two
  * actions per one slower action and prevents extreme/generated stats from
- * creating runaway turn chains.
+ * creating runaway turn chains. Ice is projected through the constrained
+ * automatic-battle effect policy before initiative is calculated.
  */
 export function speedInitiativeState({ combatants, turns = [] } = {}) {
   if (!Array.isArray(combatants) || combatants.length === 0) {
@@ -41,9 +44,10 @@ export function speedInitiativeState({ combatants, turns = [] } = {}) {
   }
 
   const normalized = combatants.map((combatant, index) => {
-    const id = String(combatant?.id || '').trim();
+    const projected = projectCombatantWithAutomaticEffects(combatant);
+    const id = String(projected?.id || '').trim();
     if (!id) throw new Error(`Combatant ${index + 1} requires an id for Speed initiative.`);
-    return { id, index, speed: normalizeBattleSpeed(combatant?.speed) };
+    return { id, index, speed: normalizeBattleSpeed(projected.speed) };
   });
   if (new Set(normalized.map((entry) => entry.id)).size !== normalized.length) {
     throw new Error('Speed initiative combatant ids must be unique.');
