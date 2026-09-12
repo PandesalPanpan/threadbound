@@ -1,81 +1,72 @@
 # Automatic battle engine foundation
 
-Status: M3-03 Speed initiative/action-frequency policy layered onto the shared M3-01 lifecycle and M3-02 canonical stat semantics.
+Status: M3-04 constrained effect vocabulary layered onto the shared M3-01 lifecycle, M3-02 stat semantics, and M3-03 Speed policy.
 
 ## Boundary
 
 `src/domain/AutomaticBattleSimulator.js` is a Domain Model/Policy boundary. It owns the generic automatic battle lifecycle:
 
-- cloned authoritative combatant HP state for the simulation;
+- cloned authoritative combatant HP/effect state for the simulation;
 - bounded turn iteration;
 - actor and target selection hooks;
-- application of resolved damage/healing to battle state;
+- application of resolved damage/healing and periodic effect damage;
 - terminal victory/draw results;
 - concise structured turn history for later read-model work;
 - optional domain-owned phase stopping so a progression boss can pause at a sparse decision point without creating a tactical dashboard.
 
-`src/domain/AutomaticBattleActionPolicy.js` owns the canonical M3-02 basic-attack stat semantics used by that lifecycle:
+`src/domain/AutomaticBattleActionPolicy.js` owns canonical basic-attack Attack/Defense/Crit semantics. `src/domain/AutomaticBattleInitiativePolicy.js` owns Speed scheduling. `src/domain/AutomaticBattleEffectPolicy.js` now owns the constrained M3-04 effect vocabulary and its stat/tick semantics.
 
-- `Attack` and `Defense` resolve through `max(1, Attack - Defense)` so ordinary auto-battles cannot deadlock on equal/high Defense;
-- `Crit Chance` is normalized to a probability in `[0, 1]`;
-- a critical basic attack uses a canonical 2x damage multiplier while still guaranteeing it exceeds the non-critical result;
-- RNG is injected into the action policy, never read from browser state, so tests and later seeded simulations can be deterministic;
-- HP mutation and clamping remain owned by `AutomaticBattleSimulator`, keeping action formulas separate from lifecycle state mutation.
+Application services remain responsible for use-case coordination, persistence, rewards, receipts, and publication after a committed result. The browser/activity stream remains a projection and never runs combat rules.
 
-`src/domain/AutomaticBattleInitiativePolicy.js` owns M3-03 Speed semantics. The simulator now uses it as the default actor selector while still allowing an explicit injected selector for focused tests or later special encounters.
+## Constrained effect vocabulary
 
-Application services remain responsible for use-case coordination, persistence, rewards, receipts, and publication after a committed result. The browser/activity stream remains a projection and never runs the simulator.
+The automatic engine accepts exactly four effect types:
+
+- **Fire** — bounded periodic damage at the affected combatant's turn start.
+- **Poison** — bounded stacking periodic damage pressure; stacks cap at five.
+- **Ice** — reduces effective Speed while active, with a floor of `1`.
+- **Psychic** — reduces effective Attack and Defense while active, preserving safe stat floors.
+
+Effects are plain validated data: `type`, bounded `potency`, bounded `remainingTurns`, and `stacks` only for Poison. Unknown fields are discarded by normalization and unknown effect types are rejected. This means generated content cannot attach callbacks, scripts, or arbitrary mechanics through the combat effect contract.
+
+Potency and duration have explicit safety caps. These caps are engine-integrity bounds rather than final balance tuning; Arc/equipment budget validation follows in later ordered milestones.
+
+Fire/Poison ticks resolve inside `AutomaticBattleSimulator`, so lethal periodic damage can end a battle before another basic attack. Ice is projected by initiative policy before actor scheduling. Psychic is projected by the basic-attack policy before Attack/Defense damage is calculated. Effect duration advances on the affected actor's turns.
+
+M3-04 intentionally does **not** implement resistance tiers, immunity, or vulnerability; those belong to M3-05. It also does not decide which generated equipment applies effects; validated generated/special equipment effect data belongs to M3-06.
 
 ## Speed initiative policy
 
-Speed controls both who acts first and how often a combatant acts.
+Speed controls both who acts first and how often a combatant acts. The policy uses a deterministic virtual timeline:
 
-The policy uses a deterministic virtual timeline:
-
-1. normalize each Speed to an integer of at least `1`;
+1. normalize effective Speed to an integer of at least `1` after active Ice projection;
 2. count how many actions each combatant has already taken;
 3. calculate `nextActionAt = (actionsTaken + 1) / effectiveSpeed`;
 4. the combatant with the smallest `nextActionAt` acts next;
-5. exact ties are resolved by stable combatant order so equal-Speed fights remain deterministic.
+5. exact ties are resolved by stable combatant order.
 
-A sufficiently faster combatant therefore receives extra actions naturally rather than through a separate random proc.
-
-To keep generated/extreme stats bounded, effective Speed is capped at **2x the slowest combatant's Speed** for action-frequency purposes. That means an actor can gain at most a two-actions-to-one frequency advantage from Speed alone. The raw character Speed stat is not rewritten; only the initiative projection applies this cap.
-
-`speedInitiativeState()` exposes normalized Speed, effective Speed, action counts, and the next virtual action time. This keeps the formula centralized and gives the later Battle Details read model an inspectable source instead of recreating initiative math in presentation code.
-
-## Policy seams
-
-Phase 3 remains incremental:
-
-- `resolveAction` has the canonical M3-02 Attack/Defense/Crit policy;
-- `selectActor` now defaults to the canonical M3-03 Speed initiative/action-frequency policy;
-- `shouldStop` remains the sparse boss-decision seam;
-- later effect/resistance policies can decorate action resolution without copying the battle loop.
-
-This keeps one battle lifecycle reusable rather than allowing Hunt, Adventure, Duel, and bosses to each invent their own combat state machine.
+Effective Speed remains capped at **2x the slowest combatant's Speed** for action-frequency purposes, preventing extreme/generated stats from producing runaway action chains.
 
 ## Compatibility and migration
 
-No shipped player loop is switched to the new simulator in M3-03. Existing `HuntEncounter`, simple dungeon, and legacy tactical-run behavior remain untouched so migration stays strangler-style and green. M4-01 is the ordered milestone that rebuilds Hunt on the shared engine after Phase 3 combat semantics exist.
+No shipped player loop is switched to the new simulator in M3-04. Existing Hunt, simple dungeon, and legacy tactical-run behavior remain untouched so migration stays strangler-style and green. M4-01 remains the ordered Hunt migration point after Phase 3 semantics are complete.
 
-Combatants without a Speed value normalize to `1`, so pre-M3-03 simulator callers preserve deterministic alternating behavior. Existing callers can still inject `selectActor` explicitly where a focused test or later encounter needs a special schedule.
-
-The simulator is activity-agnostic. Its `context` is opaque metadata supplied by the caller, so the same domain loop can be used for Hunt, Adventure, Duel, and suitable boss phases without importing application-service or presentation concerns.
+Combatants without effects behave exactly as before. Existing combatants without Speed still normalize safely. The simulator remains activity-agnostic and reusable by Hunt, Adventure, Duel, and suitable boss phases.
 
 ## Objective acceptance
 
-`test/automatic-battle-simulator.test.js` continues to prove the shared lifecycle. `test/automatic-battle-action-policy.test.js` proves M3-02 stat semantics. `test/automatic-battle-initiative-policy.test.js` proves M3-03 by covering:
+`test/automatic-battle-effect-policy.test.js` proves:
 
-1. deterministic equal-Speed alternation;
-2. extra actions from a sufficient Speed advantage;
-3. the 2x frequency cap for extreme Speed values;
-4. occasional extra actions from moderate Speed advantages;
-5. safe Speed normalization;
-6. default simulator integration while preserving custom selector injection.
+1. the allowlist is exactly Fire, Poison, Ice, and Psychic;
+2. unknown/arbitrary effect mechanics are rejected and unknown executable-looking fields are discarded;
+3. Fire periodic damage and actor-turn expiry;
+4. bounded Poison stacking and periodic pressure;
+5. Ice modifying authoritative Speed initiative without rewriting raw Speed;
+6. Psychic modifying authoritative Attack/Defense resolution with safe floors;
+7. Fire/Poison periodic damage resolving inside the shared simulator, including lethal pre-action ticks.
 
-No Playwright/UI change is required for M3-03 because this milestone changes no currently shipped player-facing presentation. Full existing E2E remains the regression gate before merge.
+Existing simulator, action-policy, initiative-policy, unit/contract, and browser E2E suites remain regression gates. No new Playwright/UI-specific coverage or mobile screenshot is required because M3-04 changes no currently shipped player-facing presentation.
 
 ## Next ordered task
 
-After M3-03 is merged and green on `main`, the next earliest unchecked milestone is **M3-04 — implement the constrained Fire, Poison, Ice, and Psychic effect vocabulary** without allowing generated content to inject executable mechanics.
+After M3-04 is merged, documented, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M3-05 — implement resistance/high-resistance/immunity handling** against this constrained effect vocabulary.

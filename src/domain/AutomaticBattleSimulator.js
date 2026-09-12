@@ -1,4 +1,8 @@
 import { selectActorBySpeed } from './AutomaticBattleInitiativePolicy.js';
+import {
+  normalizeAutomaticBattleEffects,
+  resolveAutomaticEffectTurnStart,
+} from './AutomaticBattleEffectPolicy.js';
 
 function requirePositiveInteger(value, label) {
   if (!Number.isInteger(value) || value <= 0) {
@@ -31,11 +35,19 @@ function normalizeCombatant(combatant, index) {
     id,
     hp,
     maxHp,
+    effects: [...normalizeAutomaticBattleEffects(combatant.effects || [])],
+  };
+}
+
+function cloneCombatant(combatant) {
+  return {
+    ...combatant,
+    effects: Array.isArray(combatant.effects) ? combatant.effects.map((effect) => ({ ...effect })) : [],
   };
 }
 
 function cloneCombatants(combatants) {
-  return combatants.map((combatant) => ({ ...combatant }));
+  return combatants.map(cloneCombatant);
 }
 
 function defaultTargetSelector({ actor, combatants }) {
@@ -65,10 +77,10 @@ function finalizeResult({ combatants, turns, outcome, context, stopReason = null
  * Activity-agnostic automatic battle loop.
  *
  * The simulator owns authoritative battle lifecycle state: HP mutation,
- * termination, turn history, and optional phase pausing. Stat formulas, RNG,
- * initiative frequency, effects, and resistances are domain policies so later
- * milestones can add them without duplicating loops in Hunt, Adventure, Duel,
- * or progression-boss services.
+ * termination, turn history, constrained periodic effect ticks, and optional
+ * phase pausing. Stat formulas, RNG, initiative frequency, effect vocabulary,
+ * and resistances remain domain policies so Hunt, Adventure, Duel, and bosses
+ * reuse one lifecycle instead of copying combat state machines.
  */
 export class AutomaticBattleSimulator {
   constructor({
@@ -118,9 +130,35 @@ export class AutomaticBattleSimulator {
       const actor = state.find((combatant) => combatant.id === actorId && combatant.hp > 0);
       if (!actor) throw new Error(`Turn ${turnNumber} selected an invalid or defeated actor.`);
 
+      const actorHpBefore = actor.hp;
+      const effectStart = resolveAutomaticEffectTurnStart(actor);
+      actor.hp = Math.max(0, actor.hp - effectStart.periodicDamage);
+
+      if (actor.hp <= 0) {
+        turns.push({
+          turnNumber,
+          actorId: actor.id,
+          targetId: null,
+          targetDamage: 0,
+          selfHealing: 0,
+          effectDamage: effectStart.periodicDamage,
+          actorHpBefore,
+          actorHpAfterEffects: actor.hp,
+          actorHpAfter: actor.hp,
+          targetHpBefore: null,
+          targetHpAfter: null,
+          metadata: {
+            kind: 'effect-tick',
+            effectEvents: effectStart.events.map((event) => ({ ...event })),
+          },
+        });
+        actor.effects = [...effectStart.remainingEffects];
+        return finalizeResult({ combatants: state, turns, outcome: 'victory', context });
+      }
+
       const targetId = this.selectTarget({
         turnNumber,
-        actor: { ...actor },
+        actor: cloneCombatant(actor),
         combatants: cloneCombatants(state),
         turns: turns.map((turn) => ({ ...turn })),
         context,
@@ -130,8 +168,8 @@ export class AutomaticBattleSimulator {
 
       const action = this.resolveAction({
         turnNumber,
-        actor: { ...actor },
-        target: { ...target },
+        actor: cloneCombatant(actor),
+        target: cloneCombatant(target),
         combatants: cloneCombatants(state),
         turns: turns.map((turn) => ({ ...turn })),
         context,
@@ -141,10 +179,11 @@ export class AutomaticBattleSimulator {
       const targetDamage = requireNonNegativeInteger(action.targetDamage ?? 0, `Turn ${turnNumber} targetDamage`);
       const selfHealing = requireNonNegativeInteger(action.selfHealing ?? 0, `Turn ${turnNumber} selfHealing`);
       const targetHpBefore = target.hp;
-      const actorHpBefore = actor.hp;
+      const actorHpAfterEffects = actor.hp;
 
       target.hp = Math.max(0, target.hp - targetDamage);
       actor.hp = Math.min(actor.maxHp, actor.hp + selfHealing);
+      actor.effects = [...effectStart.remainingEffects];
 
       const turn = {
         turnNumber,
@@ -152,11 +191,16 @@ export class AutomaticBattleSimulator {
         targetId: target.id,
         targetDamage,
         selfHealing,
+        effectDamage: effectStart.periodicDamage,
         actorHpBefore,
+        actorHpAfterEffects,
         actorHpAfter: actor.hp,
         targetHpBefore,
         targetHpAfter: target.hp,
-        metadata: action.metadata ?? null,
+        metadata: {
+          ...(action.metadata ?? {}),
+          effectEvents: effectStart.events.map((event) => ({ ...event })),
+        },
       };
       turns.push(turn);
 
