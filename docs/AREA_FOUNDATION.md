@@ -1,6 +1,6 @@
 # Area progression foundation
 
-Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — merged in PR #74 at `fbf8cf37`, with merged `main` CI #1437 green. M5-03 implementation/acceptance is carried by `feature/m5-03-area-revisit` pending green merge evidence.**
+Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — merged in PR #74 at `fbf8cf37`, with merged `main` CI #1437 green; M5-03 complete — merged in PR #75 at `a2ed6cb8`, with merged `main` CI #1445 green.**
 
 ## Boundary
 
@@ -84,8 +84,10 @@ Only the server-returned unlocked list is rendered. A successful travel publishe
 7. no retired Thread Dust / Relic Pouch / Temper language appears in the Area card;
 8. a representative screenshot is emitted to `ux-review/area-rich-card-mobile.png` for visual inspection.
 
-The Playwright multi-Area projection is presentation-contract coverage only; authoritative revisit legality and persistence are proven by the real Domain Model + SQLite repository/service test above. No test-only production unlock endpoint is introduced merely to pre-empt M5-06 progression unlocking.
+The Playwright multi-Area projection is presentation-contract coverage only; authoritative revisit legality and persistence are proven by the real Domain Model + SQLite repository/service test above. No test-only production unlock endpoint was introduced merely to pre-empt M5-06 progression unlocking.
+
+PR #75 passed `npm run check`, the full unit/contract suite, and the complete active Chromium E2E suite before merge. Merged `main` CI #1445 repeated both required jobs successfully. M5-03 made no shipped layout change, so the existing 390x844 Area-card visual baseline remains applicable rather than requiring a new visual redesign pass.
 
 ## Next ordered task
 
-After M5-03 is merged, checked, and green on `main`, the next earliest unchecked milestone is **M5-04 — implement ordinary Adventure activity using shared battle/world policies**.
+The next earliest unchecked milestone is **M5-04 — implement ordinary Adventure activity using shared battle/world policies**.
