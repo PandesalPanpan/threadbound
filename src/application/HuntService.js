@@ -1,10 +1,12 @@
 import { Character } from '../domain/Character.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
+import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
 import { HEALING_RULES, resolveHealAction } from '../domain/HealingPolicy.js';
 import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
+import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteHuntCooldownRepository } from '../infrastructure/SQLiteHuntCooldownRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
@@ -44,6 +46,7 @@ export class HuntService {
     progressionRepository = null,
     equipmentRepository = null,
     cooldownRepository = null,
+    bankRepository = null,
     itemGenerator = new ItemGenerator(),
     rng = Math.random,
     now = () => new Date(),
@@ -55,6 +58,7 @@ export class HuntService {
     this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.cooldownRepository = cooldownRepository || new SQLiteHuntCooldownRepository({ database: repository.db });
+    this.bankRepository = bankRepository || new SQLiteBankRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.rng = rng;
     this.now = now;
@@ -121,6 +125,7 @@ export class HuntService {
 
     let item = null;
     let healthPotionsFound = 0;
+    let deathPenalty = null;
     if (result.victory) {
       // SQLite still stores this balance in the legacy thread_dust column during migration.
       this.repository.addThreadDust(playerId, result.gold);
@@ -133,6 +138,16 @@ export class HuntService {
         healthPotionsFound = 1;
         this.repository.addHealthPotions(playerId, 1);
       }
+    } else if (result.remainingHp <= 0) {
+      const balance = this.bankRepository.getBalance(playerId);
+      const plannedPenalty = resolveNormalDeathPenalty({ carriedGold: balance.carriedGold });
+      const applied = this.bankRepository.loseCarriedGold(playerId, plannedPenalty.goldLost);
+      deathPenalty = Object.freeze({
+        ...plannedPenalty,
+        carriedGoldAfter: applied.carriedGold,
+        bankedGold: applied.bankedGold,
+        goldLost: applied.goldLost,
+      });
     }
     this.repository.setPlayerHealth(playerId, result.remainingHp);
 
@@ -151,6 +166,10 @@ export class HuntService {
       maxHp: result.maxHealth,
       victory: result.victory,
       gold: result.gold,
+      goldLost: deathPenalty?.goldLost || 0,
+      carriedGold: deathPenalty?.carriedGoldAfter ?? null,
+      bankedGold: deathPenalty?.bankedGold ?? null,
+      deathPenaltyPercent: deathPenalty?.lossPercent || 0,
       experienceGained: result.experience,
       xp: result.experience,
       experience: progression.experience,
@@ -186,6 +205,7 @@ export class HuntService {
       progression,
       levelsGained,
       leveledUp: levelsGained > 0,
+      deathPenalty,
       cooldown: {
         ready: false,
         remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
