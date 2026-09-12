@@ -74,8 +74,9 @@ test('ready pair can start progression boss and the authoritative run snapshots 
   parties.setReady(partner.id, true);
 
   const readiness = dungeons.readiness(leader.id, AREA_ONE_PROGRESSION_DUNGEON_ID);
-  assert.equal(readiness.ready, true);
   assert.equal(readiness.partyRequirementMet, true);
+  assert.equal(readiness.requiredHumanPlayers, 2);
+  assert.equal(readiness.ready, false, 'fresh characters can satisfy the mandatory party gate while remaining below the advisory Attack recommendation');
 
   const run = dungeons.startDungeon(leader.id, AREA_ONE_PROGRESSION_DUNGEON_ID);
   assert.equal(run.ownerType, 'party');
