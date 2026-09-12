@@ -613,7 +613,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M3-04** Implement constrained Fire, Poison, Ice, Psychic effect vocabulary.
 - [x] **M3-05** Implement resistance/high-resistance/immunity handling.
 - [x] **M3-06** Implement generated/special equipment effects through constrained validated effect data.
-- [ ] **M3-07** Add concise main receipt + detailed battle-turn read model.
+- [x] **M3-07** Add concise main receipt + detailed battle-turn read model.
 - [ ] **M3-08** Add Battle Details modal/expansion without flooding the stream.
 - [ ] **M3-09** Keep major progression bosses capable of sparse player/party decision points without a permanent tactical dashboard.
 
