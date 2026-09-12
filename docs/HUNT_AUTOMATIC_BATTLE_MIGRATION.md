@@ -1,6 +1,6 @@
 # Hunt automatic-battle migration
 
-Status: M4-04 implementation candidate. The shipped `hunt` use case resolves combat through the shared `AutomaticBattleSimulator`, publishes one concise result-first Adventure Stream receipt, and is paced by a server-owned short cooldown with capped equipment/buff reductions.
+Status: M4-06 implementation candidate. The shipped `hunt` use case resolves combat through the shared `AutomaticBattleSimulator`, publishes one concise result-first Adventure Stream receipt, is paced by a server-owned short cooldown with capped equipment/buff reductions, and applies the normal carried-Gold death rule on defeat.
 
 ## Boundary
 
@@ -10,9 +10,11 @@ Status: M4-04 implementation candidate. The shipped `hunt` use case resolves com
 
 `HuntCooldownPolicy` owns the canonical base duration (15 seconds) and next-ready projection math. `ActivityCooldownPolicy` owns constrained modifier composition and the global 50% reduction cap. `SQLiteHuntCooldownRepository` owns durable `player_id -> ready_at` persistence and an atomic claim transaction. The browser never decides whether a Hunt is ready or how modifiers stack.
 
-`HuntReceiptReadModel` consumes already-committed `HuntResolved` facts and projects Victory/Defeat, HP, Gold, XP, level-up, rarity-aware loot, potion, optional Quest-result facts, and the exact next-Hunt timestamp without recalculating rules. Failed Hunts discard stale reward-looking fields. `ActivityStreamService` persists its complete text for accessibility and non-enhanced clients.
+`DeathPenaltyPolicy` owns the normal death rule: lose 20% of carried Gold, rounded down to whole Gold. `HuntService` invokes that policy only after an authoritative defeat at zero HP. `SQLiteBankRepository.loseCarriedGold(...)` atomically mutates the carried balance while reading but never mutating banked Gold. M4-06 does not implement the dangerous-content item-loss fallback; that remains M4-07.
 
-The richer browser Presentation Model consumes the same persisted event metadata and renders compact semantic chips plus sprite-backed loot and Quest rows. It does not own combat, rewards, loot, Quest completion, or cooldown legality. The complete text becomes visually hidden when the rich receipt is attached, preventing duplicate visible outcomes.
+`HuntReceiptReadModel` consumes already-committed `HuntResolved` facts and projects Victory/Defeat, HP, Gold, XP, level-up, rarity-aware loot, potion, optional Quest-result facts, the exact next-Hunt timestamp, and any authoritative carried-Gold death loss without recalculating rules. A death receipt explicitly says the Bank is safe. Failed Hunts discard stale reward-looking fields. `ActivityStreamService` persists its complete text for accessibility and non-enhanced clients.
+
+The richer browser Presentation Model consumes the same persisted event metadata and renders the shared stream. It does not own combat, rewards, loot, death penalties, Quest completion, or cooldown legality.
 
 ## Cooldown contract
 
@@ -24,9 +26,15 @@ The canonical base Hunt cooldown remains 15 seconds. `ActivityCooldownPolicy` re
 
 Persisted/generated item `effect` JSON never controls cooldown mechanics. Equipment is interpreted only through stable allowlisted `effectCode` values, preserving the same generated-content safety boundary as combat effects.
 
+## Normal death contract
+
+Normal defeat at zero HP uses carried Gold as the only loss base. The domain policy calculates `floor(carriedGold * 20 / 100)`, which never takes more than 20% because of integer rounding. Banked Gold is excluded from the calculation and remains unchanged by the repository transaction. The committed `HuntResolved` event exposes `goldLost`, post-loss `carriedGold`, unchanged `bankedGold`, and the configured percentage so presentation never infers economy state.
+
+This milestone deliberately does not risk or destroy equipment. Any future item-loss fallback must satisfy M4-07's explicit dangerous-content warning and protected/bound-item rules before it can be enabled.
+
 ## Quest projection boundary
 
-M4-04 does **not** introduce the Quest domain ahead of Phase 6. `questProgress` is an optional list of `{ questId, questName, current, required, completed }` result data. Hunt currently publishes an empty list; a future authoritative Quest service may populate it without requiring the browser to infer progress. The read model also accepts the temporary `label`/`target` aliases used by migration callers.
+M4-06 does **not** introduce the Quest domain ahead of Phase 6. `questProgress` is an optional list of `{ questId, questName, current, required, completed }` result data. Hunt currently publishes an empty list; a future authoritative Quest service may populate it without requiring the browser to infer progress. The read model also accepts the temporary `label`/`target` aliases used by migration callers.
 
 ## Migration compatibility
 
@@ -36,17 +44,16 @@ Existing Hunt enemy identities, baseline HP, Gold, XP, drop chances, and legacy 
 
 ## Objective acceptance
 
-M4-04 tests prove:
+M4-06 tests prove:
 
-1. Hunt combat still comes from `AutomaticBattleSimulator`, and `HuntService` persists HP/rewards/progression before publishing `HuntResolved`.
-2. A successful Hunt returns and publishes an exact authoritative next-ready timestamp.
-3. An equipped `quick_hunt` item reduces the canonical 15-second Hunt cooldown to 12 seconds at the domain policy boundary.
-4. Equipment and allowlisted future buff modifiers compose but cannot reduce an activity beyond the 50% global cap.
-5. Unknown buff mechanics fail closed and unrelated equipment does not change Hunt pacing.
-6. The SQLite cooldown still enforces the resulting effective duration authoritatively and existing migration aliases/reward presentation remain intact.
+1. normal death loss is domain-owned and fixed at 20% of carried Gold, rounded down;
+2. Hunt defeat at zero HP applies that loss after authoritative combat resolution;
+3. the SQLite mutation cannot reduce banked Gold, even when requested loss exceeds the carried balance;
+4. `HuntResolved` and the Hunt receipt project the committed loss and explicitly communicate that the Bank is safe;
+5. victory reward projection and migration aliases remain unchanged.
 
-`npm run check`, the full unit/contract suite, and all active Chromium E2E suites remain merge gates. M4-04 changes authoritative timing data rather than the shipped layout, so the existing representative Hunt mobile screenshot remains the visual regression artifact.
+`npm run check`, the full unit/contract suite, and all active Chromium E2E suites remain merge gates. M4-06 changes economy/result data rather than the shipped layout, so the existing representative Hunt mobile screenshot remains the visual regression artifact.
 
 ## Next ordered task
 
-After M4-04 is merged, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M4-05 — normalize `heal` command/action and recovery rules with simple terminology**.
+After M4-06 is merged, checklist-reconciled, and green on `main`, the next earliest unchecked milestone is **M4-07 — explicit warned dangerous-content item-loss fallback when configured and carried Gold is below minimum, never silently destroying protected/bound gear**.

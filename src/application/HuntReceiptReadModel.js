@@ -39,7 +39,7 @@ function normalizeCooldown(event) {
 
 /**
  * Projects already-authoritative HuntResolved facts into one concise stream receipt.
- * It never calculates combat, rewards, loot, level, quest completion, or cooldown legality.
+ * It never calculates combat, rewards, loot, death penalties, level, quest completion, or cooldown legality.
  */
 export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEnemyName = 'enemy' } = {}) {
   if (!event || event.type !== 'HuntResolved') throw new Error('Hunt receipt requires a HuntResolved event.');
@@ -50,6 +50,9 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
   const remainingHp = nonNegativeNumber(event.remainingHp);
   const maxHp = nonNegativeNumber(event.maxHp);
   const gold = victory ? nonNegativeNumber(event.gold ?? event.threadDust) : 0;
+  const goldLost = victory ? 0 : nonNegativeNumber(event.goldLost);
+  const carriedGold = event.carriedGold == null ? null : nonNegativeNumber(event.carriedGold);
+  const bankedGold = event.bankedGold == null ? null : nonNegativeNumber(event.bankedGold);
   const xp = victory ? nonNegativeNumber(event.experienceGained ?? event.xp) : 0;
   const healthPotionsFound = victory ? nonNegativeNumber(event.healthPotionsFound) : 0;
   const questProgress = normalizeQuestProgress(event.questProgress);
@@ -65,7 +68,11 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     ? `Victory — ${actorName} defeated ${enemyName}.`
     : `Defeat — ${actorName} fell to ${enemyName}.`;
   const hpText = ` −${damageTaken} HP · ${remainingHp}/${maxHp} HP.`;
-  const rewardText = victory ? ` +${gold} Gold · +${xp} XP.` : ' No rewards.';
+  const rewardText = victory
+    ? ` +${gold} Gold · +${xp} XP.`
+    : goldLost > 0
+      ? ` −${goldLost} carried Gold · Bank safe.`
+      : ' No rewards.';
   const levelText = victory && event.leveledUp ? ` Level up — ${nonNegativeNumber(event.level)}.` : '';
   const lootText = loot
     ? ` Loot — ${loot.rarity ? `${titleize(loot.rarity)} ` : ''}${loot.name} · +${loot.attackBonus} Attack.`
@@ -87,6 +94,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     enemy: Object.freeze({ id: event.enemyId || null, name: enemyName }),
     hp: Object.freeze({ damageTaken, remaining: remainingHp, max: maxHp }),
     rewards: Object.freeze({ gold, xp }),
+    deathPenalty: victory ? null : Object.freeze({ goldLost, carriedGold, bankedGold }),
     progression: Object.freeze({
       level: nonNegativeNumber(event.level),
       leveledUp: victory && Boolean(event.leveledUp),
