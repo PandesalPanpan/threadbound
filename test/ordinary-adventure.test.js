@@ -69,18 +69,16 @@ test('AdventureService reads persisted current Area, mutates authoritative HP, a
   assert.equal(after, result.remainingHp);
   assert.ok(after <= before);
   assert.equal(events.length, 1);
-  assert.deepEqual(events[0], assert.match({
-    type: 'AdventureResolved',
-    playerId: player.id,
-    areaId: 'area-1',
-    areaNumber: 1,
-    enemyId: 'thread-wolf',
-    gold: 0,
-    experienceGained: 0,
-  }));
+  assert.equal(events[0].type, 'AdventureResolved');
+  assert.equal(events[0].playerId, player.id);
+  assert.equal(events[0].areaId, 'area-1');
+  assert.equal(events[0].areaNumber, 1);
+  assert.equal(events[0].enemyId, 'thread-wolf');
+  assert.equal(events[0].gold, 0);
+  assert.equal(events[0].experienceGained, 0);
 });
 
-test('AdventureService refuses ordinary Adventure while a dungeon is active or the player is wounded to zero', () => {
+test('AdventureService refuses ordinary Adventure while the player is wounded to zero', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-1' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'blocked-adventure-user', displayName: 'Adventurer' });
   const service = new AdventureService({ repository, eventBus: { publish() {} }, rng: () => 0.99 });
