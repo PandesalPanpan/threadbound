@@ -48,6 +48,22 @@ test('progression Adventure defaults to an exact two-human ready-party requireme
   }), assertCode('progression_party_required'));
 });
 
+test('Area-1 progression challenge no longer projects Frayed Hollow as the default first impression', () => {
+  const { dungeons, createPlayer } = fixture();
+  const player = createPlayer('preview');
+  const definition = dungeons.definition(AREA_ONE_PROGRESSION_DUNGEON_ID);
+  const readiness = dungeons.readiness(player.id, AREA_ONE_PROGRESSION_DUNGEON_ID);
+
+  assert.equal(definition.id, AREA_ONE_PROGRESSION_DUNGEON_ID);
+  assert.equal(definition.name, 'Sunpetal Guild Trial');
+  assert.equal(readiness.dungeonName, 'Sunpetal Guild Trial');
+  assert.equal(definition.progressionAdventure, true);
+  assert.equal(definition.unlocksAreaNumber, 2);
+  assert.ok(definition.encounters.length > 0);
+  assert.ok(definition.encounters.every((enemy) => !/frayed|hollow/i.test(`${enemy.id} ${enemy.name}`)));
+  assert.doesNotMatch(`${definition.boss.id} ${definition.boss.name}`, /frayed|hollow|needle/i);
+});
+
 test('progression Adventure cannot start solo or before both party members are ready', () => {
   const { parties, dungeons, createPlayer } = fixture();
   const leader = createPlayer('leader');
@@ -82,6 +98,7 @@ test('ready pair can start progression boss and the authoritative run snapshots 
   assert.equal(run.ownerType, 'party');
   assert.equal(run.ownerId, party.id);
   assert.equal(run.dungeonId, AREA_ONE_PROGRESSION_DUNGEON_ID);
+  assert.equal(run.dungeonDefinition.name, 'Sunpetal Guild Trial');
   assert.equal(run.simpleCombat, true);
   assert.deepEqual(run.participants.map((participant) => participant.playerId).sort(), [leader.id, partner.id].sort());
 
