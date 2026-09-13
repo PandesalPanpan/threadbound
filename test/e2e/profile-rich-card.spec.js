@@ -107,4 +107,7 @@ test('Profile rich card shows active authoritative buff names and remaining figh
 
   const width = await card.evaluate((element) => element.scrollWidth);
   expect(width).toBeLessThanOrEqual(390);
+
+  mkdirSync(REVIEW_DIR, { recursive: true });
+  await page.screenshot({ path: `${REVIEW_DIR}/profile-active-buffs-mobile.png`, fullPage: true });
 });
