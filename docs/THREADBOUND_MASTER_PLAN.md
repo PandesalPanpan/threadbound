@@ -667,7 +667,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 ### Phase 9 — side activities
 
-- [ ] **M9-01** Implement Gold-only Blackjack with authoritative transactions/idempotency.
+- [x] **M9-01** Implement Gold-only Blackjack with authoritative transactions/idempotency.
 - [ ] **M9-02** Implement Gold-only Coinflip.
 - [ ] **M9-03** Implement Gold-only Slots.
 - [ ] **M9-04** Present activities as rich chat cards and public receipts; never use Honey.
