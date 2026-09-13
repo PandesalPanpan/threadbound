@@ -12,7 +12,7 @@ export const FOUNDATION_TOWNS = Object.freeze([
     id: 'area-1-town',
     name: 'Area 1 Town',
     areaNumber: 1,
-    services: ['shop', 'upgrade', 'bank', 'heal'],
+    services: ['shop', 'upgrade', 'bank', 'heal', 'guild_hall'],
     npcIds: FOUNDATION_NPCS.map((npc) => npc.id),
   }),
 ]);
