@@ -44,6 +44,16 @@ function templateIndex(manifest) {
   return index;
 }
 
+function manifestTown(manifest, townId) {
+  const canonical = townById(townId);
+  if (canonical) return { id: canonical.id, areaNumber: canonical.areaNumber };
+  const generated = (manifest?.towns || []).find((town) => town?.id === townId);
+  if (!generated) return null;
+  const area = (manifest?.areas || []).find((entry) => entry?.id === generated.areaId);
+  if (!area || !Number.isInteger(area.number)) return null;
+  return { id: generated.id, areaNumber: area.number };
+}
+
 export function validateArcTownShopStocks(manifest) {
   const errors = [];
   const stocks = manifest?.shopStocks;
@@ -65,7 +75,7 @@ export function validateArcTownShopStocks(manifest) {
     else stockIds.add(stock.id);
 
     if (!text(stock.townId)) errors.push({ path: `${path}.townId`, code: 'town_required', message: 'Shop stock must reference a Town.' });
-    const town = townById(stock.townId);
+    const town = manifestTown(manifest, stock.townId);
     if (!town) errors.push({ path: `${path}.townId`, code: 'unknown_town_reference', message: `Unknown Town "${stock.townId}".` });
     if (!Number.isInteger(stock.areaNumber) || stock.areaNumber < 1) errors.push({ path: `${path}.areaNumber`, code: 'invalid_area_number', message: 'Shop stock Area must be a positive integer.' });
     else if (town && town.areaNumber !== stock.areaNumber) errors.push({ path: `${path}.areaNumber`, code: 'town_area_mismatch', message: 'Shop stock Area must match its Town.' });
