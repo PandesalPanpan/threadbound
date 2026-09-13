@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { SHOP_OFFERS, SHOP_VENDOR, shopOffer } from '../content/ShopCatalog.js';
+import { SHOP_OFFERS, SHOP_VENDOR } from '../content/ShopCatalog.js';
+import { arcTownShopOffers } from '../content/ArcTownShopCatalog.js';
 import { SQLiteShopRepository } from '../infrastructure/SQLiteShopRepository.js';
+import { SQLiteArcManifestRepository } from '../infrastructure/SQLiteArcManifestRepository.js';
+import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { BankService } from './BankService.js';
 
 function goldBalance(player) {
@@ -14,12 +17,20 @@ function bankTransportCommand(sku) {
 }
 
 export class ShopService {
-  constructor({ repository, eventBus, shopRepository = null, bankService = null, idFactory = randomUUID }) {
+  constructor({ repository, eventBus, shopRepository = null, bankService = null, manifestRepository = null, areaRepository = null, idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.shopRepository = shopRepository || new SQLiteShopRepository({ database: repository.db });
     this.bankService = bankService || new BankService({ repository, eventBus });
+    this.manifestRepository = manifestRepository || new SQLiteArcManifestRepository({ database: repository.db });
+    this.areaRepository = areaRepository || new SQLiteAreaRepository({ database: repository.db });
     this.idFactory = idFactory;
+  }
+
+  #offersFor(playerId) {
+    const area = this.areaRepository.get(playerId);
+    const arcOffers = arcTownShopOffers(this.manifestRepository.listPublished(), { areaNumber: area.currentAreaNumber });
+    return [...SHOP_OFFERS, ...arcOffers];
   }
 
   browse(playerId) {
@@ -27,6 +38,7 @@ export class ShopService {
     if (!player) throw new Error('Player not found.');
     const available = !this.repository.getActiveRun(playerId);
     const gold = goldBalance(player);
+    const offers = this.#offersFor(playerId);
     return {
       vendor: SHOP_VENDOR,
       currency: {
@@ -39,7 +51,7 @@ export class ShopService {
       bank: this.bankService.browse(playerId),
       available,
       unavailableReason: available ? null : 'Finish the active dungeon before visiting the shop.',
-      offers: SHOP_OFFERS.map(({ itemTemplate, ...offer }) => ({
+      offers: offers.map(({ itemTemplate, ...offer }) => ({
         ...offer,
         affordable: gold >= offer.cost,
         available,
@@ -60,7 +72,8 @@ export class ShopService {
       error.code = 'shop_during_dungeon';
       throw error;
     }
-    const offer = shopOffer(sku);
+    const normalizedSku = String(sku || '').trim().toLowerCase();
+    const offer = this.#offersFor(playerId).find((candidate) => candidate.sku.toLowerCase() === normalizedSku) || null;
     if (!offer) {
       const error = new Error('That shop offer is not available.');
       error.code = 'shop_offer_not_found';

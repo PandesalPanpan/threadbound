@@ -33,6 +33,7 @@
     "dungeons": { "type": "array", "minItems": 1, "maxItems": 30, "items": { "$ref": "#/$defs/dungeon" } },
     "itemPools": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/itemPool" } },
     "storyQuests": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/storyQuest" } },
+    "shopStocks": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/shopStock" } },
     "achievements": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/achievement" } },
     "historicalConsequences": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/history" } }
   },
@@ -171,6 +172,25 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "items"],
       "properties": { "id": { "$ref": "#/$defs/id" }, "items": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/itemTemplate" } } }
+    },
+    "shopStockOffer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sku", "itemTemplateId", "cost"],
+      "properties": {
+        "sku": { "$ref": "#/$defs/id" },
+        "itemTemplateId": { "$ref": "#/$defs/id" },
+        "cost": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "shopStock": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "townId", "areaNumber", "offers"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "townId": { "$ref": "#/$defs/id" },
+        "areaNumber": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "offers": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/shopStockOffer" } }
+      }
     },
     "questObjective": {
       "type": "object", "additionalProperties": false,
