@@ -144,7 +144,7 @@ test('Area rich card keeps every previously unlocked Area selectable while revis
   expect(travels).toEqual([1, 2, 3]);
 });
 
-test('Town command renders authoritative current-Area NPCs with generated sprites inside the Adventure Stream', async ({ page, context }) => {
+test('Town command renders authoritative NPCs and Talk creates one shared Adventure Stream receipt', async ({ page, context }) => {
   await login(page);
 
   const areaResponse = await context.request.get('/api/areas');
@@ -163,15 +163,18 @@ test('Town command renders authoritative current-Area NPCs with generated sprite
   await expect(card.getByTestId('town-npcs')).toContainText('Banker');
   await expect(card.getByTestId('town-npcs')).toContainText('Healer');
   await expect(card.locator('[data-testid^="town-npc-sprite-"]')).toHaveCount(4);
+  await expect(card.locator('[data-testid^="town-talk-"]')).toHaveCount(4);
   await expect(card.locator('[data-testid^="town-npc-sprite-"]').first()).toHaveAttribute('data-visual-asset-id', /character\./);
   await expect(card).not.toContainText(/Thread Dust|Relic Pouch|Temper/);
 
   const metrics = await page.evaluate(() => {
     const cardElement = document.querySelector('[data-testid="stream-command-card"]');
     const dismiss = cardElement?.querySelector('[data-rich-card-dismiss="true"]');
+    const talk = cardElement?.querySelector('[data-testid="town-talk-area-1-shopkeeper"]');
     const nav = document.querySelector('.threadbound-topnav');
     const cardRect = cardElement?.getBoundingClientRect();
     const dismissRect = dismiss?.getBoundingClientRect();
+    const talkRect = talk?.getBoundingClientRect();
     const navRect = nav?.getBoundingClientRect();
     return {
       width: cardElement?.scrollWidth || 0,
@@ -179,12 +182,32 @@ test('Town command renders authoritative current-Area NPCs with generated sprite
       navBottom: navRect?.bottom || 0,
       dismissHeight: dismissRect?.height || 0,
       dismissWidth: dismissRect?.width || 0,
+      talkHeight: talkRect?.height || 0,
+      talkWidth: talkRect?.width || 0,
     };
   });
   expect(metrics.width).toBeLessThanOrEqual(390);
   expect(metrics.cardTop).toBeGreaterThanOrEqual(metrics.navBottom);
   expect(metrics.dismissHeight).toBeGreaterThanOrEqual(44);
   expect(metrics.dismissWidth).toBeGreaterThanOrEqual(44);
+  expect(metrics.talkHeight).toBeGreaterThanOrEqual(44);
+  expect(metrics.talkWidth).toBeGreaterThanOrEqual(44);
+
+  const log = page.getByTestId('adventure-stream-log');
+  const entriesBefore = await log.locator('.stream-entry').count();
+  await card.getByTestId('town-talk-area-1-shopkeeper').click();
+  await expect(log).toContainText('spoke with Shopkeeper in Area 1 Town');
+  await expect(log).toContainText('Need supplies? I keep the essentials close and the prices clear.');
+  await expect(log.locator('.stream-entry')).toHaveCount(entriesBefore + 1);
+
+  const rejected = await context.request.post('/api/towns/area-1-town/npcs/not-a-resident/interact');
+  expect(rejected.status()).toBe(409);
+  expect(await rejected.json()).toMatchObject({ error: 'npc_unavailable' });
+
+  await page.getByTestId('stream-message').fill('talk Banker');
+  await page.getByTestId('stream-send').click();
+  await expect(log).toContainText('spoke with Banker in Area 1 Town');
+  await expect(log).toContainText('Gold in the Bank stays safe when an Adventure goes badly.');
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/town-rich-card-mobile.png`, fullPage: true });
