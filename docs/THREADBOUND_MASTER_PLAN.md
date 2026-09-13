@@ -477,7 +477,6 @@ Illustrative structure:
 - one or two useful next actions.
 
 Confirmed damage should be visually distinguishable from healing, rewards, status effects, and projected information. Do not use color alone; retain icons/text semantics.
-
 ### 8.4 Battle details modal
 
 Opening battle details shows the automatic turn-by-turn log without adding dozens of messages to the main stream.
@@ -650,7 +649,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 ### Phase 7 — shop/equipment generation and supporting professions
 
 - [x] **M7-01** Extend Arc Manifest equipment templates with slot, rarity, stats, effects, level/Area budget, visualAssetId.
-- [ ] **M7-02** Extend server-owned Shop catalog to consume validated Arc/Town stock definitions.
+- [x] **M7-02** Extend server-owned Shop catalog to consume validated Arc/Town stock definitions.
 - [ ] **M7-03** Add Sell flow and transaction tests.
 - [ ] **M7-04** Add simple crafting recipe model when item ingredients justify it.
 - [ ] **M7-05** Add cooking recipes with fight-count buffs rather than wall-clock expiration.
