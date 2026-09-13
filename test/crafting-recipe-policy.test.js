@@ -38,6 +38,17 @@ test('crafting recipe is a small immutable item-to-item contract without another
   assert.equal('gold' in normalized, false);
   assert.equal('honey' in normalized, false);
   assert.equal('currency' in normalized, false);
+
+  assert.throws(
+    () => normalizeCraftingRecipe(recipe({ goldCost: 25 })),
+    (error) => error.code === 'unsupported_crafting_recipe_field' && error.path === 'goldCost',
+  );
+  assert.throws(
+    () => normalizeCraftingRecipe(recipe({
+      ingredients: [{ itemDefinitionId: 'wolf-pelt', quantity: 2, currency: 'shards' }],
+    })),
+    (error) => error.code === 'unsupported_crafting_ingredient_field',
+  );
 });
 
 test('crafting recipe rejects duplicate ingredients, invalid quantities, cycles, and excessive ingredient lists', () => {
