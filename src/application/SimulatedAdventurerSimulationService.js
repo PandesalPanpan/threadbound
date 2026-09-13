@@ -1,4 +1,5 @@
 import { planSimulatedAdventurerProgression } from '../domain/SimulatedAdventurerSimulationPolicy.js';
+import { assertSafeSimulatedAdventurerSimulationActions } from '../domain/SimulatedAdventurerSafetyPolicy.js';
 
 export class SimulatedAdventurerSimulationService {
   constructor({ repository }) {
@@ -20,6 +21,7 @@ export class SimulatedAdventurerSimulationService {
         lastSimulatedAt: state.lastSimulatedAt,
         now,
       });
+      assertSafeSimulatedAdventurerSimulationActions(plan.actions);
       const result = this.repository.applySimulationBatch({
         adventurerId,
         expectedLastSimulatedAt: state.lastSimulatedAt,
