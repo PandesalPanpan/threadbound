@@ -1,12 +1,12 @@
 # Simulated Adventurer offline progression (M8-02)
 
-M8-02 adds bounded, retry-safe offline progression for the persistent simulated-adventurer model introduced by M8-01. It deliberately does not populate Guild Halls, create bot equipment, mutate Gold/Honey, build rankings, or resolve Duels; those remain ordered M8-03+ work.
+M8-02 adds bounded, retry-safe offline progression for the persistent simulated-adventurer model introduced by M8-01. It deliberately does not populate Guild Halls, create bot equipment, mutate Gold/Honey, build rankings, or resolve Duels; those remain ordered later work. M8-03 now adds the explicit safety boundary documented in `SIMULATED_ADVENTURER_SAFETY.md`.
 
 ## Fowler-style boundaries
 
 - **Domain Policy — `SimulatedAdventurerSimulationPolicy`** owns cadence, catch-up caps, deterministic activity selection, and the small XP award attached to each simulated activity credit.
-- **Service Layer — `SimulatedAdventurerSimulationService`** loads authoritative bot state, asks the policy for a plan, and coordinates one repository transaction. It does not run a timer itself; a future process/job may call it safely at any reasonable cadence.
-- **Repository — `SQLiteSimulatedAdventurerRepository`** owns durable profile state, the simulation cursor, unique tick claims, and the atomic XP/count mutation.
+- **Service Layer — `SimulatedAdventurerSimulationService`** loads authoritative bot state, asks the policy for a plan, validates that plan against `SimulatedAdventurerSafetyPolicy`, and coordinates one repository transaction. It does not run a timer itself; a future process/job may call it safely at any reasonable cadence.
+- **Repository — `SQLiteSimulatedAdventurerRepository`** owns durable profile state, the simulation cursor, unique tick claims, and the atomic XP/count mutation. It re-validates the narrow safety contract before opening the transaction.
 
 No browser or Adventure Stream code participates in simulation outcomes.
 
@@ -46,4 +46,4 @@ This gives deterministic retry behavior without introducing a distributed schedu
 - stale concurrent batches fail harmlessly through cursor compare-and-swap;
 - invalid backwards clock movement fails closed.
 
-M8-02 has no player-facing UI change, so a mobile screenshot is not applicable. The next ordered milestone is **M8-03 — prevent bots from Honey use, invalid item creation, or direct human-economy mutations**.
+M8-02 and M8-03 have no player-facing UI change, so a mobile screenshot is not applicable. The next ordered milestone is **M8-04 — populate Town/Guild Hall adventurers, including intentionally strong rivals**.
