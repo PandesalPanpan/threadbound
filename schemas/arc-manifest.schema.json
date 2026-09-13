@@ -32,11 +32,13 @@
     "runEvents": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/runEvent" } },
     "dungeons": { "type": "array", "minItems": 1, "maxItems": 30, "items": { "$ref": "#/$defs/dungeon" } },
     "itemPools": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/itemPool" } },
+    "storyQuests": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/storyQuest" } },
     "achievements": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/achievement" } },
     "historicalConsequences": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/history" } }
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$" },
+    "questId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 64 },
     "visualAssetId": { "type": "string", "pattern": "^(mob|boss|item)\\.[a-z0-9][a-z0-9-]*\\.v[1-9][0-9]*$", "maxLength": 120 },
     "nonEmpty": { "type": "string", "minLength": 1, "maxLength": 4000 },
     "tags": { "type": "array", "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 64 } },
@@ -138,6 +140,28 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "items"],
       "properties": { "id": { "$ref": "#/$defs/id" }, "items": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/itemTemplate" } } }
+    },
+    "questObjective": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questId" },
+        "type": { "enum": ["kill", "hunt", "adventure", "collect", "boss", "visit", "speak"] },
+        "targetId": { "$ref": "#/$defs/questId" },
+        "targetLabel": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "count": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "storyQuest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "areaNumber", "objectives"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questId" },
+        "title": { "$ref": "#/$defs/nonEmpty" },
+        "description": { "type": "string", "maxLength": 4000 },
+        "areaNumber": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "objectives": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "#/$defs/questObjective" } }
+      }
     },
     "achievement": {
       "type": "object", "additionalProperties": false,
