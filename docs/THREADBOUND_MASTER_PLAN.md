@@ -653,7 +653,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M7-03** Add Sell flow and transaction tests.
 - [x] **M7-04** Add simple crafting recipe model when item ingredients justify it.
 - [x] **M7-05** Add cooking recipes with fight-count buffs rather than wall-clock expiration.
-- [ ] **M7-06** Show active remaining-fight buffs in Profile / relevant receipts.
+- [x] **M7-06** Show active remaining-fight buffs in Profile / relevant receipts.
 
 ### Phase 8 — simulated adventurers, duels, rankings
 
