@@ -1,6 +1,6 @@
 # Quest foundation
 
-M6-04 introduced the authoritative Quest lifecycle boundary. M6-05 added constrained readable objectives and durable server-owned progress. M6-06 now projects that state into the Adventure Stream without moving Quest rules into browser code.
+M6-04 introduced the authoritative Quest lifecycle boundary. M6-05 added constrained readable objectives and durable server-owned progress. M6-06 projected that state into the Adventure Stream. M6-07 now lets Arc authors compose generated Story Quest definitions from the same constrained objective vocabulary without giving generated content executable gameplay authority.
 
 ## Boundaries
 
@@ -24,7 +24,24 @@ The API projects domain state into four player-facing states:
 
 Accept and Claim are authoritative POST actions. They each create one concise Adventure Stream receipt. Automatic objective progress and the automatic completion transition do not create extra standalone stream messages, avoiding message multiplication when a Hunt or Adventure already owns the command receipt.
 
-M6-06 deliberately does not invent Quest rewards. Claim currently closes the durable lifecycle only; reward transactions belong with a later explicitly specified reward policy rather than browser presentation.
+Quest claim still does not invent rewards. Reward transactions belong with a later explicitly specified reward policy rather than browser presentation or generated manifest data.
+
+## Arc-generated Story Quest composition
+
+Arc Manifest v1 may now optionally include `storyQuests`. This field is optional so existing manifests and bundled content remain migration-compatible.
+
+Each Story Quest definition contains only:
+
+- stable Quest id;
+- title and optional description;
+- an Area number placeholder;
+- one or more constrained objective objects.
+
+Objective mechanics are not duplicated in the Arc Manifest validator. `ArcManifestValidator` imports the domain-owned Quest objective vocabulary and normalizer, so generated definitions can only use `kill`, `hunt`, `adventure`, `collect`, `boss`, `visit`, or `speak` with the same target/count rules as normal Quest definitions.
+
+Generated objective objects may only contain `id`, `type`, `targetId`, `targetLabel`, and `count`. Fields such as `script`, formulas, callbacks, or arbitrary mechanics are rejected rather than ignored. The world-context export exposes the same objective allowlist to AI/human authors, and the JSON Schema mirrors the data-only contract.
+
+M6-07 deliberately stops at authoring/validation composition. Publishing a v1 Arc preserves validated `storyQuests` in the manifest record, but does not dynamically replace the live Quest catalog or invent new Area/Town/NPC bindings. Full generated-world Quest placement belongs to the Arc Manifest vNext work in M10-01, where Areas, Towns, NPCs, Shops, and Quests can be validated as one referential package.
 
 ## Authoritative event mapping
 
@@ -38,11 +55,12 @@ M6-06 deliberately does not invent Quest rewards. Claim currently closes the dur
 
 ## Deliberate deferrals
 
-- **M6-07** owns validation/composition rules for Arc-generated story quests using only the allowlisted objective vocabulary.
-- Quest reward/economy policy remains separate from the presentation milestone.
-- No new Arc content, tactical dashboard, or headline currency is introduced by the Quest card.
+- M10-01 owns full Arc Manifest vNext world binding for generated Areas, Towns, NPCs, Quests, Shops, equipment, and progression challenges.
+- Quest reward/economy policy remains separate from generated Story Quest composition.
+- Generated Story Quest definitions do not gain executable behavior or browser-owned progress rules.
+- No new Arc content, tactical dashboard, or headline currency is introduced by this foundation.
 
-This preserves the modular-monolith split: Domain Model/Policy owns objective semantics and lifecycle invariants, the Service Layer coordinates use cases and event-driven progress, repositories own persistence, and the chat card is a Presentation Model over server-owned facts.
+This preserves the modular-monolith split: Domain Model/Policy owns objective semantics and lifecycle invariants, the Service Layer coordinates use cases and event-driven progress, repositories own persistence, Arc Manifest validation constrains untrusted generated data, and the chat card remains a Presentation Model over server-owned facts.
 
 ## Verification
 
@@ -50,7 +68,8 @@ This preserves the modular-monolith split: Domain Model/Policy owns objective se
 - `test/quest-objectives.test.js` covers the entire objective allowlist, readable labels, authoritative event matching, counter caps, durable reconstruction, completion, and exactly-once completion behavior.
 - `test/quest-rich-card.test.js` covers available -> active -> claimable -> completed projection, authoritative claiming, invalid claims, and concise stream receipt policy.
 - `test/e2e/quest-rich-card.spec.js` covers the real chat command, authoritative Accept/Hunt/Claim journey, duplicate-claim rejection, 390×844 layout width, and 44px mobile actions.
+- `test/arc-manifest.test.js` covers Story Quest persistence, all seven allowlisted objective types, world-context export, legacy manifests without Story Quests, duplicate objective ids, unsupported objective types, and executable-looking field rejection.
 
 ## Handoff
 
-After M6-06 is merged and green on `main`, continue **M6-07** by allowing Arc-generated story quests to compose only these validated objective types. Do not let generated content supply executable Quest behavior.
+After M6-07 is merged and green on `main`, Phase 6 is complete. Continue **M7-01** by extending Arc Manifest equipment templates with familiar slot, rarity, stats, constrained effects, level/Area budget, and `visualAssetId` while preserving the existing Story Quest validation boundary.

@@ -64,6 +64,7 @@ function renderPreview(manifest) {
   const dungeonNames = names(manifest.dungeons);
   const enemyNames = names(manifest.enemies);
   const bossNames = names(manifest.bosses);
+  const questNames = names(manifest.storyQuests, 'title');
   const achievementNames = names(manifest.achievements, 'title');
   previewNode.innerHTML = `
     <h3>${escapeHtml(manifest.arc.title)}</h3>
@@ -73,12 +74,14 @@ function renderPreview(manifest) {
       <div><strong>${manifest.enemies?.length || 0}</strong><span>Enemies</span></div>
       <div><strong>${manifest.bosses?.length || 0}</strong><span>Bosses</span></div>
       <div><strong>${manifest.itemPools?.reduce((total, pool) => total + (pool.items?.length || 0), 0) || 0}</strong><span>Item templates</span></div>
+      <div><strong>${manifest.storyQuests?.length || 0}</strong><span>Story Quests</span></div>
       <div><strong>${manifest.lore?.length || 0}</strong><span>Lore pages</span></div>
       <div><strong>${manifest.achievements?.length || 0}</strong><span>Achievements</span></div>
     </div>
     ${dungeonNames ? `<p><strong>Dungeons:</strong> ${dungeonNames}</p>` : ''}
     ${enemyNames ? `<p><strong>Enemies:</strong> ${enemyNames}</p>` : ''}
     ${bossNames ? `<p><strong>Bosses:</strong> ${bossNames}</p>` : ''}
+    ${questNames ? `<p><strong>Story Quests:</strong> ${questNames}</p>` : ''}
     ${achievementNames ? `<p><strong>Achievements:</strong> ${achievementNames}</p>` : ''}
   `;
 }

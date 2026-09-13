@@ -4,7 +4,7 @@ import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository
 import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
-import { ALLOWED_ENEMY_ABILITIES, ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
+import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
 import { ArcAchievementProjector } from '../src/application/ArcAchievementProjector.js';
 import { DungeonRun } from '../src/domain/DungeonRun.js';
 
@@ -22,6 +22,13 @@ function validManifest() {
     bosses: [{ id: 'test-loomkeeper', name: 'Test Loomkeeper', baseHp: 18, retaliation: 2, abilities: ['basic_retaliation'], visualAssetId: 'boss.lava-titan.v1' }],
     dungeons: [{ id: 'test-cinder-vault', name: 'Test Cinder Vault', recommendedPlayers: 2, encounters: ['test-ashling'], bossId: 'test-loomkeeper', rewardPoolId: 'test-cinder-relics' }],
     itemPools: [{ id: 'test-cinder-relics', items: [{ id: 'test-ember-needle', namePattern: 'Test Ember Needle of {suffix}', rarity: 'rare', attackBonus: 3, effects: ['boss_bane'], visualAssetId: 'item.fire-dagger.v1' }] }],
+    storyQuests: [{
+      id: 'test-cinder-request',
+      title: 'Test Cinder Request',
+      description: 'A generated story-quest definition that remains constrained data.',
+      areaNumber: 1,
+      objectives: [{ id: 'hunt-cinders', type: 'hunt', count: 2 }],
+    }],
     achievements: [{ id: 'test-cinder-cleared', title: 'Test Through the Cinders', description: 'Complete the test vault.', event: 'dungeon_completed', targetId: 'test-cinder-vault', threshold: 1 }],
     historicalConsequences: [{ id: 'test-ashen-begins', trigger: 'arc_started', title: 'Test Ashen Thread begins', body: 'The test arc entered world history.' }],
   };
@@ -53,15 +60,69 @@ test('validator rejects canonical collisions, unsupported mechanics, broken refe
   assert.ok(result.errors.some((error) => error.code === 'unknown_achievement_target'));
 });
 
+test('story quests compose exactly the domain-owned objective vocabulary and reject executable-looking fields', () => {
+  assert.deepEqual(ALLOWED_QUEST_OBJECTIVES, ['kill', 'hunt', 'adventure', 'collect', 'boss', 'visit', 'speak']);
+  const validator = new ArcManifestValidator();
+  const manifest = validManifest();
+  manifest.storyQuests = [{
+    id: 'test-guild-story',
+    title: 'Test Guild Story',
+    description: 'Exercises every data-only objective shape available to generated story quests.',
+    areaNumber: 1,
+    objectives: [
+      { id: 'defeat-ashling', type: 'kill', targetId: 'test-ashling', targetLabel: 'Test Ashling', count: 2 },
+      { id: 'complete-hunts', type: 'hunt', count: 2 },
+      { id: 'complete-adventure', type: 'adventure', count: 1 },
+      { id: 'collect-needle', type: 'collect', targetId: 'test-ember-needle', targetLabel: 'Test Ember Needle', count: 1 },
+      { id: 'defeat-vault-boss', type: 'boss', targetId: 'test-cinder-vault', targetLabel: 'Test Loomkeeper', count: 1 },
+      { id: 'visit-shopkeeper', type: 'visit', targetId: 'area-1-shopkeeper', targetLabel: 'Shopkeeper', count: 1 },
+      { id: 'speak-shopkeeper', type: 'speak', targetId: 'area-1-shopkeeper', targetLabel: 'Shopkeeper', count: 1 },
+    ],
+  }];
+  assert.equal(validator.validate(manifest).valid, true);
+
+  const executable = structuredClone(manifest);
+  executable.storyQuests[0].objectives[0].script = 'player.gold += 999999';
+  let result = validator.validate(executable);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.code === 'unsupported_quest_objective_field' && /script/i.test(error.message)));
+
+  const unknownType = structuredClone(manifest);
+  unknownType.storyQuests[0].objectives[0] = { id: 'custom-rule', type: 'summon', count: 1 };
+  result = validator.validate(unknownType);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.code === 'invalid_quest_objective' && /unsupported quest objective type/i.test(error.message)));
+});
+
+test('story quest definitions require stable composition without changing legacy manifest requirements', () => {
+  const validator = new ArcManifestValidator();
+  const legacyCompatible = validManifest();
+  delete legacyCompatible.storyQuests;
+  assert.equal(validator.validate(legacyCompatible).valid, true);
+
+  const invalid = validManifest();
+  invalid.storyQuests[0].id = 'bad_story_id';
+  invalid.storyQuests[0].objectives = [
+    { id: 'same-objective', type: 'hunt', count: 1 },
+    { id: 'same-objective', type: 'adventure', count: 1 },
+  ];
+  const result = validator.validate(invalid);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.code === 'invalid_quest_id'));
+  assert.ok(result.errors.some((error) => error.code === 'duplicate_quest_objective_id'));
+});
+
 test('valid manifests save as draft, publish explicitly, and supersede old revisions', () => {
   const { gameRepository, manifestRepository, service } = setup();
   const first = service.saveDraft(validManifest(), { source: 'chatgpt-upload' });
   assert.equal(first.status, 'draft');
   assert.equal(first.revision, 1);
+  assert.equal(first.manifest.storyQuests[0].objectives[0].type, 'hunt');
   assert.equal(manifestRepository.listPublished().length, 0);
 
   const published = service.publish(first.id);
   assert.equal(published.status, 'published');
+  assert.equal(published.manifest.storyQuests[0].id, 'test-cinder-request');
   assert.equal(manifestRepository.listPublished().length, 1);
 
   const secondManifest = validManifest();
@@ -146,9 +207,11 @@ test('world context exports supported mechanics and current published arc metada
   assert.equal(context.manifestVersion, 1);
   assert.ok(context.allowedMechanics.itemEffects.some((effect) => effect.code === 'boss_bane'));
   assert.deepEqual(context.allowedMechanics.enemyAbilities, [...ALLOWED_ENEMY_ABILITIES]);
+  assert.deepEqual(context.allowedMechanics.questObjectives, [...ALLOWED_QUEST_OBJECTIVES]);
   assert.equal(context.publishedGeneratedArcs[0].arcId, 'ashen-thread-test');
   assert.equal(context.visualAssetCatalog.selectionMode, 'exact-allowlisted-id');
   assert.ok(context.visualAssetCatalog.shortlist.every((asset) => !Object.hasOwn(asset, 'src')));
+  assert.ok(context.generationRules.some((rule) => /story quest objectives/i.test(rule)));
   assert.ok(context.generationRules.some((rule) => /Return JSON only/i.test(rule)));
   gameRepository.close();
 });

@@ -1,12 +1,14 @@
 import { DUNGEONS } from '../domain/DungeonRun.js';
 import { ENEMY_ABILITY_CATALOG } from '../domain/CombatIntentPolicy.js';
 import { ITEM_EFFECTS } from '../domain/ItemGenerator.js';
+import { QUEST_OBJECTIVE_TYPES, normalizeQuestObjective } from '../domain/QuestObjective.js';
 import { ACHIEVEMENTS } from './AchievementProjector.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { visualAsset } from '../content/VisualAssetCatalog.js';
 
 export const MANIFEST_VERSION = 1;
 export const ALLOWED_ENEMY_ABILITIES = Object.freeze(Object.keys(ENEMY_ABILITY_CATALOG));
+export const ALLOWED_QUEST_OBJECTIVES = Object.freeze([...QUEST_OBJECTIVE_TYPES]);
 export const BALANCE_BUDGETS = Object.freeze({
   enemyBaseHp: Object.freeze({ min: 1, max: 200 }),
   enemyRetaliation: Object.freeze({ min: 0, max: 30 }),
@@ -14,13 +16,17 @@ export const BALANCE_BUDGETS = Object.freeze({
   bossRetaliation: Object.freeze({ min: 0, max: 75 }),
   itemAttackBonus: Object.freeze({ min: 0, max: 10 }),
   maxDungeonEncounters: 12,
+  maxStoryQuestObjectives: 12,
 });
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]{2,63}$/;
+const QUEST_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ACHIEVEMENT_EVENTS = new Set(['enemy_defeated', 'boss_defeated', 'dungeon_completed', 'item_generated', 'player_revived']);
 const HISTORY_TRIGGERS = new Set(['arc_started', 'arc_completed', 'threshold_reached']);
 const PROGRESSION_METRICS = new Set(['dungeon_clears', 'boss_kills', 'enemy_kills']);
 const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legendary']);
+const STORY_QUEST_FIELDS = new Set(['id', 'title', 'description', 'areaNumber', 'objectives']);
+const QUEST_OBJECTIVE_FIELDS = new Set(['id', 'type', 'targetId', 'targetLabel', 'count']);
 
 function canonicalIds() {
   const ids = new Set(allCanonicalNarrativeEntries().map((entry) => entry.id));
@@ -66,6 +72,7 @@ export class ArcManifestValidator {
 
     const requiredArrays = ['lore', 'enemies', 'bosses', 'dungeons', 'itemPools', 'achievements', 'historicalConsequences'];
     for (const key of requiredArrays) if (!Array.isArray(manifest[key])) addError(key, 'array_required', `${key} must be an array.`);
+    if (manifest.storyQuests !== undefined && !Array.isArray(manifest.storyQuests)) addError('storyQuests', 'array_required', 'storyQuests must be an array when supplied.');
     if (errors.some((entry) => entry.code === 'array_required')) return { valid: false, errors, warnings };
     if (manifest.dungeons.length < 1) addError('dungeons', 'dungeon_required', 'An arc must contain at least one dungeon.');
 
@@ -150,6 +157,39 @@ export class ArcManifestValidator {
       }
       if (!bossIds.has(entry.bossId)) addError(`${path}.bossId`, 'unknown_boss_reference', `Unknown boss ID "${entry.bossId}".`);
       if (!poolIds.has(entry.rewardPoolId)) addError(`${path}.rewardPoolId`, 'unknown_reward_pool_reference', `Unknown reward pool ID "${entry.rewardPoolId}".`);
+    });
+
+    (manifest.storyQuests || []).forEach((entry, index) => {
+      const path = `storyQuests[${index}]`;
+      if (!object(entry)) return addError(path, 'invalid_story_quest', 'Story Quest must be an object.');
+      for (const field of Object.keys(entry)) {
+        if (!STORY_QUEST_FIELDS.has(field)) addError(`${path}.${field}`, 'unsupported_story_quest_field', `Unsupported Story Quest field "${field}".`);
+      }
+      registerId(entry.id, `${path}.id`);
+      if (text(entry.id) && !QUEST_ID_PATTERN.test(entry.id)) addError(`${path}.id`, 'invalid_quest_id', 'Story Quest ids must be stable kebab-case ids.');
+      if (!text(entry.title)) addError(`${path}.title`, 'title_required', 'Story Quest title is required.');
+      if (entry.description !== undefined && typeof entry.description !== 'string') addError(`${path}.description`, 'invalid_description', 'Story Quest description must be text when supplied.');
+      if (!integer(entry.areaNumber) || entry.areaNumber < 1) addError(`${path}.areaNumber`, 'invalid_area_number', 'Story Quest areaNumber must be a positive integer.');
+      if (!Array.isArray(entry.objectives) || entry.objectives.length < 1) {
+        addError(`${path}.objectives`, 'quest_objectives_required', 'Story Quest must contain at least one objective.');
+        return;
+      }
+      if (entry.objectives.length > BALANCE_BUDGETS.maxStoryQuestObjectives) addError(`${path}.objectives`, 'too_many_quest_objectives', `Story Quest may contain at most ${BALANCE_BUDGETS.maxStoryQuestObjectives} objectives.`);
+      const objectiveIds = [];
+      entry.objectives.forEach((objective, objectiveIndex) => {
+        const objectivePath = `${path}.objectives[${objectiveIndex}]`;
+        if (!object(objective)) return addError(objectivePath, 'invalid_quest_objective', 'Quest objective must be an object.');
+        for (const field of Object.keys(objective)) {
+          if (!QUEST_OBJECTIVE_FIELDS.has(field)) addError(`${objectivePath}.${field}`, 'unsupported_quest_objective_field', `Unsupported Quest objective field "${field}".`);
+        }
+        try {
+          const normalized = normalizeQuestObjective(objective, objectiveIndex);
+          objectiveIds.push(normalized.id);
+        } catch (error) {
+          addError(objectivePath, 'invalid_quest_objective', error.message);
+        }
+      });
+      if (new Set(objectiveIds).size !== objectiveIds.length) addError(`${path}.objectives`, 'duplicate_quest_objective_id', 'Quest objective ids must be unique within a Story Quest.');
     });
 
     manifest.achievements.forEach((entry, index) => {
