@@ -28,6 +28,25 @@ test('activity cooldown policy applies allowlisted equipment and future buff mod
   ]);
 });
 
+test('activity cooldown policy reads quick_hunt from a validated multi-effect equipment list', () => {
+  const result = resolveActivityCooldown({
+    activity: 'hunt',
+    baseCooldownSeconds: 15,
+    equipment: {
+      accessory: {
+        id: 'multi-effect-accessory',
+        effectCode: 'frost_edge',
+        effectCodes: ['frost_edge', 'quick_hunt'],
+      },
+    },
+  });
+  assert.equal(result.requestedReductionPercent, 20);
+  assert.equal(result.effectiveCooldownSeconds, 12);
+  assert.deepEqual(result.modifiers.map(({ source, code }) => [source, code]), [
+    ['equipment', 'quick_hunt'],
+  ]);
+});
+
 test('activity cooldown policy ignores unrelated equipment and rejects unknown buff mechanics', () => {
   const baseline = resolveActivityCooldown({
     activity: 'hunt',
