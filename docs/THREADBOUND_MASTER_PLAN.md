@@ -669,7 +669,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 - [x] **M9-01** Implement Gold-only Blackjack with authoritative transactions/idempotency.
 - [x] **M9-02** Implement Gold-only Coinflip.
-- [ ] **M9-03** Implement Gold-only Slots.
+- [x] **M9-03** Implement Gold-only Slots.
 - [ ] **M9-04** Present activities as rich chat cards and public receipts; never use Honey.
 - [ ] **M9-05** Add economy/balance caps needed to avoid trivial infinite progression.
 
