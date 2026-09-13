@@ -3,11 +3,12 @@ import './inventory-rich-card.js';
 import './profile-rich-card.js';
 import './bank-rich-card.js';
 import './area-rich-card.js';
+import './town-rich-card.js';
 import './bank-profile-sync.js';
 import './rich-card-visual-polish.js';
 
-const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list';
-const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area']);
+const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list, .thread-town-npcs';
+const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area', 'town']);
 
 function commandFromCard(card) {
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
@@ -22,6 +23,7 @@ function commandFromCard(card) {
   if (card.dataset.profileRichCard === 'true') return 'profile';
   if (card.dataset.bankRichCard === 'true') return 'bank';
   if (card.dataset.areaRichCard === 'true') return 'area';
+  if (card.dataset.townRichCard === 'true') return 'town';
   return card.dataset.richCardKind || 'panel';
 }
 
@@ -61,6 +63,11 @@ function snapshotDetails(card, kind) {
       firstText(card, '[data-testid="area-current"]'),
       firstText(card, '[data-testid="area-highest-unlocked"]'),
     ].filter(Boolean).join(' · ');
+  }
+  if (kind === 'town') {
+    const town = firstText(card, '[data-testid="town-name"]') || firstText(card, '[data-testid="town-empty"]');
+    const residents = card.querySelectorAll('[data-testid^="town-npc-"]:not([data-testid^="town-npc-sprite-"])').length;
+    return [town, residents ? `${residents} resident${residents === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ');
   }
   if (kind === 'shop') {
     const offers = card.querySelectorAll('[data-testid="shop-rich-offer"], .thread-shop-offer').length;
