@@ -658,7 +658,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 ### Phase 8 — simulated adventurers, duels, rankings
 
 - [x] **M8-01** Define simulated Adventurer profile/activity model using the same meaningful progression/stat concepts.
-- [ ] **M8-02** Implement bounded offline/progression simulation with retry-safe/idempotent scheduling semantics.
+- [x] **M8-02** Implement bounded offline/progression simulation with retry-safe/idempotent scheduling semantics.
 - [ ] **M8-03** Prevent bots from Honey use, invalid item creation, or direct human-economy mutations.
 - [ ] **M8-04** Populate Town/Guild Hall adventurers, including intentionally strong rivals.
 - [ ] **M8-05** Build Leaderboard rich card for level, Hunt count, Area reached, gear/power, achievements, duel record as appropriate.
