@@ -643,7 +643,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M6-02** Build Town/NPC rich chat card using generated sprites.
 - [x] **M6-03** Implement NPC dialogue/interaction receipts in the shared stream.
 - [x] **M6-04** Implement Quest domain/service/repository model.
-- [ ] **M6-05** Implement readable objectives: kill, Hunt count, Adventure count, collect, boss, visit/speak.
+- [x] **M6-05** Implement readable objectives: kill, Hunt count, Adventure count, collect, boss, visit/speak.
 - [ ] **M6-06** Implement Quest rich card with available/active/completed/claimable state.
 - [ ] **M6-07** Allow Arc-generated story quests to compose only validated objective types.
 
