@@ -1,4 +1,8 @@
 import { SimulatedAdventurer } from '../domain/SimulatedAdventurer.js';
+import {
+  assertSafeSimulatedAdventurerSimulationActions,
+  assertSimulatedAdventurerMutationTarget,
+} from '../domain/SimulatedAdventurerSafetyPolicy.js';
 
 function decodeRow(row) {
   if (!row) return null;
@@ -102,6 +106,13 @@ export class SQLiteSimulatedAdventurerRepository {
   }
 
   applySimulationBatch({ adventurerId, expectedLastSimulatedAt, cursorAt, actions }) {
+    assertSimulatedAdventurerMutationTarget({
+      adventurerId,
+      targetId: adventurerId,
+      targetKind: 'simulated',
+    });
+    assertSafeSimulatedAdventurerSimulationActions(actions);
+
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const row = this.db.prepare('SELECT last_simulated_at FROM simulated_adventurers WHERE id = ?').get(adventurerId);
