@@ -1,4 +1,4 @@
-import { townsForArea, townById } from '../content/TownCatalog.js';
+import { projectTown, townsForArea, townById } from '../content/TownCatalog.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 
 export class TownService {
@@ -6,7 +6,7 @@ export class TownService {
     if (!repository) throw new Error('TownService requires the game repository.');
     this.repository = repository;
     this.areaRepository = areaRepository || new SQLiteAreaRepository({ database: repository.db });
-    this.townCatalog = townCatalog || { townsForArea, townById };
+    this.townCatalog = townCatalog || { townsForArea, townById, projectTown };
   }
 
   browse(playerId) {
@@ -15,7 +15,7 @@ export class TownService {
 
     const progression = this.areaRepository.get(playerId);
     const towns = this.townCatalog.townsForArea(progression.currentAreaNumber)
-      .map((town) => town.toJSON());
+      .map((town) => this.townCatalog.projectTown ? this.townCatalog.projectTown(town) : town.toJSON());
 
     return Object.freeze({
       currentArea: progression.currentArea,
@@ -35,6 +35,6 @@ export class TownService {
       throw error;
     }
 
-    return town.toJSON();
+    return this.townCatalog.projectTown ? this.townCatalog.projectTown(town) : town.toJSON();
   }
 }
