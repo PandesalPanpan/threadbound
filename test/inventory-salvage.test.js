@@ -56,6 +56,17 @@ test('selling unequipped equipment atomically removes it and credits Gold', () =
   gameRepository.close();
 });
 
+test('Sell repository derives Gold from persisted item state instead of trusting a caller amount', () => {
+  const { gameRepository, player, inventoryRepository } = setup();
+  gameRepository.addItem(player.id, item('authoritative-value', { rarity: 'uncommon', attackBonus: 4 }));
+
+  const sold = inventoryRepository.sellItem({ playerId: player.id, itemId: 'authoritative-value', gold: 999999 });
+  assert.equal(sold.goldEarned, 9);
+  assert.equal(gameRepository.getPlayer(player.id).threadDust, 9);
+  assert.equal(gameRepository.getItem('authoritative-value'), null);
+  gameRepository.close();
+});
+
 test('Sell rejects equipment in any canonical loadout slot and does not credit Gold', () => {
   const { gameRepository, player, equipmentRepository, service } = setup();
   gameRepository.addItem(player.id, item('helmet', { slot: 'helmet', attackBonus: 0 }));
@@ -94,7 +105,7 @@ test('Sell repository rechecks active-run state inside the write transaction', (
     createdAt: '2026-09-13T08:00:00.000Z',
   });
 
-  assert.throws(() => inventoryRepository.sellItem({ playerId: player.id, itemId: 'race-item', gold: 5 }), (error) => error.code === 'item_sell_during_run');
+  assert.throws(() => inventoryRepository.sellItem({ playerId: player.id, itemId: 'race-item' }), (error) => error.code === 'item_sell_during_run');
   assert.ok(gameRepository.getItem('race-item'));
   assert.equal(gameRepository.getPlayer(player.id).threadDust, 0);
   gameRepository.close();
