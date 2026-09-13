@@ -55,7 +55,7 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
 
   // Seed one durable equipment item through the authoritative Honey boundary, then earn
   // Upgrade Gold through normal authoritative Hunts. Honey purchase grants are intentionally
-  // not salvaged: their durable grant record must remain referentially intact.
+  // not sold: their durable grant record must remain referentially intact.
   const keeper = await buyTrainingCache(context, 'inventory-card-seed');
   const before = await earnUpgradeGold(context, 8);
   expect(before.inventory.some((item) => item.id === keeper.item.id)).toBe(true);
@@ -128,4 +128,35 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/inventory-rich-card-mobile.png`, fullPage: true });
+});
+
+test('Inventory Sell confirms, commits Gold atomically, removes the item, and posts one canonical receipt', async ({ page, context }) => {
+  await login(page);
+  await earnUpgradeGold(context, 8);
+
+  const purchaseResponse = await context.request.post('/api/shop/purchases/bronze-sword');
+  expect(purchaseResponse.ok()).toBe(true);
+  const purchase = await purchaseResponse.json();
+  const soldItem = purchase.purchase.item;
+  expect(soldItem.name).toBe('Bronze Sword');
+
+  const before = await dashboard(context);
+  const goldBeforeSell = before.character.gold;
+  expect(before.inventory.some((item) => item.id === soldItem.id)).toBe(true);
+
+  const card = await openInventory(page);
+  const sell = card.getByTestId(`inventory-rich-sell-${soldItem.id}`);
+  await expect(sell).toBeEnabled();
+  const entriesBefore = await page.getByTestId('stream-system-entry').count();
+
+  await sell.click();
+  await expect(sell).toHaveText('Confirm Sell');
+  expect((await dashboard(context)).inventory.some((item) => item.id === soldItem.id)).toBe(true);
+
+  await sell.click();
+  await expect.poll(async () => (await dashboard(context)).inventory.some((item) => item.id === soldItem.id)).toBe(false);
+  await expect.poll(async () => (await dashboard(context)).character.gold).toBe(goldBeforeSell + 4);
+  await expect.poll(async () => page.getByTestId('stream-system-entry').count()).toBe(entriesBefore + 1);
+  await expect(page.getByTestId('stream-system-entry').last()).toContainText('sold Bronze Sword · +4 Gold');
+  await expect(page.getByTestId('stream-system-entry').last()).not.toContainText(/salvage|Thread Dust|Dust/i);
 });
