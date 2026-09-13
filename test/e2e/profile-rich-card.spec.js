@@ -40,6 +40,7 @@ test('Profile rich card summarizes progression, resources, stats, loadout, Area 
   await expect(card.getByTestId('profile-banked-gold')).toHaveText('0');
   await expect(card.getByTestId('profile-area')).toHaveText('Not established');
   await expect(card.getByTestId('profile-achievement-count')).toHaveText(String(state.achievements.length));
+  await expect(card.getByTestId('profile-active-buffs')).toContainText('No active fight buffs.');
 
   await expect(card.getByTestId('profile-stat-attack')).toHaveText(String(state.character.attack));
   await expect(card.getByTestId('profile-stat-defense')).toHaveText(String(state.character.defense));
@@ -77,4 +78,33 @@ test('Profile rich card summarizes progression, resources, stats, loadout, Area 
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/profile-rich-card-mobile.png`, fullPage: true });
+});
+
+test('Profile rich card shows active authoritative buff names and remaining fight counts', async ({ page }) => {
+  await login(page);
+  await page.route('**/api/dashboard', async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...payload,
+        activeFightBuffs: [{
+          code: 'attack_boost_minor',
+          name: 'Attack Boost',
+          description: '+10% Attack while fights remain.',
+          sourceRecipeId: 'spicy-wyvern-stew',
+          remainingFights: 3,
+        }],
+      },
+    });
+  });
+
+  const card = await openProfile(page);
+  await expect(card.getByTestId('profile-buff-attack_boost_minor')).toContainText('Attack Boost');
+  await expect(card.getByTestId('profile-buff-attack_boost_minor')).toContainText('+10% Attack while fights remain.');
+  await expect(card.getByTestId('profile-buff-attack_boost_minor-remaining')).toHaveText('3 fights left');
+
+  const width = await card.evaluate((element) => element.scrollWidth);
+  expect(width).toBeLessThanOrEqual(390);
 });
