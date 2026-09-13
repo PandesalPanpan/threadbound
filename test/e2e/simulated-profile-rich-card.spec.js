@@ -55,8 +55,12 @@ test('simulated Adventurer Profile opens from Leaderboard with authoritative equ
   await expect(card.getByTestId('simulated-profile-slot-weapon')).toContainText('Veteran Blade');
   await expect(card.getByTestId('simulated-profile-slot-armor')).toContainText('Veteran Armor');
   await expect(card.locator('[data-testid^="simulated-profile-slot-"]')).toHaveCount(5);
+  await expect(card.getByRole('heading', { name: 'Achievements' })).toBeVisible();
+  await expect(card.getByTestId('simulated-profile-achievements')).toBeVisible();
   await expect(card.getByTestId('simulated-profile-achievements')).toContainText('First Hunt');
   await expect(card.getByTestId('simulated-profile-achievements')).toContainText('Veteran Rival');
+  await expect(card.getByRole('heading', { name: 'Recent history' })).toBeVisible();
+  await expect(card.getByTestId('simulated-profile-history')).toBeVisible();
   await expect(card.getByTestId('simulated-profile-history')).toContainText(/Duel/);
   await expect(card.getByTestId('simulated-profile-avatar')).toHaveAttribute('data-visual-asset-id', /character\./);
   await expect(card).not.toContainText(/Honey balance|Spend Honey|Thread Dust|Temper|Relic Pouch/);
