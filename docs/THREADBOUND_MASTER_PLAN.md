@@ -537,7 +537,6 @@ Old terminology/storage can be migrated in controlled steps:
 ## 11. Current repo gap assessment
 
 As of the plan's creation, `main` already provides useful foundations:
-
 - server-authoritative modular-monolith boundaries;
 - durable SQLite persistence/sessions;
 - realtime Adventure Stream;
@@ -652,7 +651,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M7-02** Extend server-owned Shop catalog to consume validated Arc/Town stock definitions.
 - [x] **M7-03** Add Sell flow and transaction tests.
 - [x] **M7-04** Add simple crafting recipe model when item ingredients justify it.
-- [ ] **M7-05** Add cooking recipes with fight-count buffs rather than wall-clock expiration.
+- [x] **M7-05** Add cooking recipes with fight-count buffs rather than wall-clock expiration.
 - [ ] **M7-06** Show active remaining-fight buffs in Profile / relevant receipts.
 
 ### Phase 8 — simulated adventurers, duels, rankings
