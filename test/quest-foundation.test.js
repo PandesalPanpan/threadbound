@@ -95,7 +95,13 @@ test('QuestService derives available state from authoritative Area and persists 
     const result = service.accept(player.id, QUEST.id, '2026-09-13T00:00:00.000Z');
     assert.equal(result.progress.status, 'active');
     assert.equal(service.browse(player.id).quests[0].state, 'active');
-    assert.deepEqual(events, [{ type: 'QuestAccepted', playerId: player.id, questId: QUEST.id, areaNumber: 1 }]);
+    assert.deepEqual(events, [{
+      type: 'QuestAccepted',
+      playerId: player.id,
+      questId: QUEST.id,
+      questTitle: QUEST.title,
+      areaNumber: 1,
+    }]);
     assert.throws(() => service.accept(player.id, QUEST.id), (error) => error.code === 'quest_already_accepted');
     assert.equal(events.length, 1);
 
