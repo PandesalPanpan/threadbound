@@ -91,7 +91,7 @@ test('cooking consumes eligible ordinary item instances atomically and activates
   const buffs = new SQLiteFightBuffRepository({ database: repository.db });
 
   const result = service.cook(player.id, 'spicy-wyvern-stew');
-  assert.deepEqual([...result.consumedItemIds], ['herb-1', 'meat-1', 'meat-2'].sort());
+  assert.deepEqual([...result.consumedItemIds], ['meat-1', 'meat-2', 'herb-1']);
   assert.equal(repository.listItems(player.id).length, 0);
   assert.equal(result.buff.code, 'attack_boost_minor');
   assert.equal(result.buff.remainingFights, 2);
