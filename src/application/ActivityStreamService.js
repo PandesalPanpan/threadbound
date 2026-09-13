@@ -293,11 +293,11 @@ export class ActivityStreamService {
       case 'ItemGenerated': {
         if (event.silentStream) return null;
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'a relic'}. Open Gear to equip, Temper, compare, or salvage it.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'equipment'}. Open Inventory to equip, Upgrade, compare, or Sell it.` };
       }
       case 'ItemEquipped': {
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'a relic'}${item ? ` (+${item.attackBonus} Attack)` : ''}.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'equipment'}${item ? ` (+${item.attackBonus} Attack)` : ''}.` };
       }
       case 'ItemUpgraded':
         return {
@@ -305,8 +305,11 @@ export class ActivityStreamService {
           actorName,
           body: `${actorName} Tempered ${event.itemName || 'a relic'} to ${event.level}/${event.maxLevel} with ${event.attunementName} (+${event.attackIncrease} Attack, −${event.threadDustSpent} Dust).`,
         };
-      case 'ItemSalvaged':
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} salvaged ${event.itemName || 'a relic'} into ${event.threadDust} Thread Dust.` };
+      case 'ItemSold':
+      case 'ItemSalvaged': {
+        const gold = Math.max(0, Math.floor(Number(event.gold ?? event.threadDust ?? 0) || 0));
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} sold ${event.itemName || 'equipment'} · +${gold} Gold.` };
+      }
       case 'PartyCreated':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} formed a party.` };
       case 'PartyMemberJoined':
