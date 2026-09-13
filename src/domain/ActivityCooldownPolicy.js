@@ -1,3 +1,5 @@
+import { ACTIVITY_COOLDOWN_FIGHT_BUFF_CODES, fightBuffCooldownModifier } from './FightBuffPolicy.js';
+
 export const ACTIVITY_COOLDOWN_RULES = Object.freeze({
   maxReductionPercent: 50,
   minimumCooldownSeconds: 1,
@@ -5,11 +7,6 @@ export const ACTIVITY_COOLDOWN_RULES = Object.freeze({
 
 const EQUIPMENT_COOLDOWN_EFFECTS = Object.freeze({
   quick_hunt: Object.freeze({ activity: 'hunt', reductionPercent: 20 }),
-});
-
-const BUFF_COOLDOWN_EFFECTS = Object.freeze({
-  hunt_haste_minor: Object.freeze({ activity: 'hunt', reductionPercent: 10 }),
-  hunt_haste_major: Object.freeze({ activity: 'hunt', reductionPercent: 25 }),
 });
 
 function normalizeBaseCooldownSeconds(value) {
@@ -48,20 +45,21 @@ function modifierForEquipmentCode(code, activity) {
   return Object.freeze({ source: 'equipment', code, reductionPercent: definition.reductionPercent });
 }
 
-function modifierForBuffCode(code, activity) {
-  const definition = BUFF_COOLDOWN_EFFECTS[code];
-  if (!definition) throw new Error(`Unsupported activity cooldown buff code: ${code || '(empty)'}.`);
-  if (definition.activity !== activity) return null;
-  return Object.freeze({ source: 'buff', code, reductionPercent: definition.reductionPercent });
+function modifierForBuffCode(rawCode, activity) {
+  const code = String(rawCode || '').trim().toLowerCase();
+  try {
+    return fightBuffCooldownModifier(code, activity);
+  } catch {
+    throw new Error(`Unsupported activity cooldown buff code: ${code || '(empty)'}.`);
+  }
 }
 
 /**
  * Domain policy for bounded activity cooldown reductions.
  *
  * Persisted/generated equipment is trusted only through stable allowlisted
- * effect codes; serialized metadata can carry those codes but never decides
- * cooldown mechanics. Buff codes use the same constrained vocabulary so future
- * fight-count buffs can compose without moving legality into browser/services.
+ * effect codes. Active cooking buffs share the central FightBuffPolicy allowlist,
+ * so a stat-only buff is accepted but simply contributes no cooldown modifier.
  */
 export function resolveActivityCooldown({
   activity,
@@ -80,8 +78,7 @@ export function resolveActivityCooldown({
     if (modifier) modifiers.push(modifier);
   }
   for (const rawCode of buffCodes) {
-    const code = String(rawCode || '').trim().toLowerCase();
-    const modifier = modifierForBuffCode(code, normalizedActivity);
+    const modifier = modifierForBuffCode(rawCode, normalizedActivity);
     if (modifier) modifiers.push(modifier);
   }
 
@@ -106,4 +103,4 @@ export function resolveActivityCooldown({
 }
 
 export const ACTIVITY_COOLDOWN_EQUIPMENT_EFFECT_CODES = Object.freeze(Object.keys(EQUIPMENT_COOLDOWN_EFFECTS));
-export const ACTIVITY_COOLDOWN_BUFF_CODES = Object.freeze(Object.keys(BUFF_COOLDOWN_EFFECTS));
+export const ACTIVITY_COOLDOWN_BUFF_CODES = ACTIVITY_COOLDOWN_FIGHT_BUFF_CODES;
