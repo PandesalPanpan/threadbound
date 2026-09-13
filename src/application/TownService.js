@@ -12,6 +12,7 @@ export class TownService {
     this.townCatalog = townCatalog || { townsForArea, townById, projectTown, npcById };
     this.guildHallService = guildHallService || new GuildHallService({
       repository: new SQLiteSimulatedAdventurerRepository({ database: repository.db }),
+      gameRepository: repository,
     });
   }
 
