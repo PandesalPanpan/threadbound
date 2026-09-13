@@ -21,7 +21,9 @@ import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
 import { AreaService } from './application/AreaService.js';
 import { TownService } from './application/TownService.js';
+import { QuestService } from './application/QuestService.js';
 import { RunCommandIdempotencyService } from './application/RunCommandIdempotencyService.js';
+import { QUEST_CATALOG } from './content/QuestCatalog.js';
 import { VISUAL_ASSETS, VISUAL_ASSET_CATALOG_VERSION } from './content/VisualAssetCatalog.js';
 import { decorateRunUpgradeOffers } from './domain/RunUpgradeOfferPolicy.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
@@ -126,6 +128,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const partyService = new PartyService({ repository, eventBus });
   const areaService = new AreaService({ repository, eventBus });
   const townService = new TownService({ repository, eventBus });
+  const questService = new QuestService({ repository, eventBus, questCatalog: QUEST_CATALOG });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
   const purchaseService = threadedGateway ? new HoneyPurchaseService({ repository, threadedGateway }) : null;
   const runCommandIdempotency = new RunCommandIdempotencyService({ repository: runCommandRepository });
@@ -361,6 +364,20 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const interaction = townService.interact(request.session.threaded.playerId, request.params.townId, request.params.npcId);
     return response.json({ interaction });
   });
+  app.get('/api/quests', requireConnection, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json(questService.browse(request.session.threaded.playerId));
+  });
+  app.post('/api/quests/:questId/accept', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const accepted = questService.accept(playerId, request.params.questId);
+    return response.status(201).json({ accepted, quests: questService.browse(playerId) });
+  });
+  app.post('/api/quests/:questId/claim', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const claimed = questService.claim(playerId, request.params.questId);
+    return response.json({ claimed, quests: questService.browse(playerId) });
+  });
 
   app.post('/api/hunt', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
@@ -466,6 +483,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'area_locked',
       'town_unavailable',
       'npc_unavailable',
+      'quest_unavailable',
+      'quest_already_accepted',
+      'quest_not_accepted',
+      'quest_not_complete',
+      'quest_already_claimed',
     ]);
     const status = conflictCodes.has(error?.code) || /not found|Unknown|active dungeon|active run|party|leader|ready|member|participant|cannot act|Mend|Revive|interrupt|enemy action|only be chosen|not currently in combat|full|state changed|salvag|Focus|cooldown|combat skill|Temper|attunement|Thread Dust|relic|simple combat|hunting/i.test(knownMessage) ? 409 : 500;
     response.status(status).json({ error: error?.code || (status === 409 ? 'game_rule_violation' : 'internal_error'), message: knownMessage });
