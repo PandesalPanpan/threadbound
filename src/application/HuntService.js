@@ -1,6 +1,7 @@
 import { Character } from '../domain/Character.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
 import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
+import { applyFightBuffs } from '../domain/FightBuffPolicy.js';
 import { HEALING_RULES, resolveHealAction } from '../domain/HealingPolicy.js';
 import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
@@ -8,6 +9,7 @@ import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
+import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepository.js';
 import { SQLiteHuntCooldownRepository } from '../infrastructure/SQLiteHuntCooldownRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
@@ -47,11 +49,12 @@ export class HuntService {
     equipmentRepository = null,
     cooldownRepository = null,
     bankRepository = null,
+    fightBuffRepository = null,
     itemGenerator = new ItemGenerator(),
     rng = Math.random,
     now = () => new Date(),
     huntCooldownSeconds = configuredHuntCooldownSeconds(),
-    activityBuffCodes = () => [],
+    activityBuffCodes = null,
   }) {
     this.repository = repository;
     this.eventBus = eventBus;
@@ -59,11 +62,12 @@ export class HuntService {
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.cooldownRepository = cooldownRepository || new SQLiteHuntCooldownRepository({ database: repository.db });
     this.bankRepository = bankRepository || new SQLiteBankRepository({ database: repository.db });
+    this.fightBuffRepository = fightBuffRepository || new SQLiteFightBuffRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.rng = rng;
     this.now = now;
     this.huntCooldownSeconds = huntCooldownSeconds;
-    this.activityBuffCodes = activityBuffCodes;
+    this.activityBuffCodes = activityBuffCodes || ((playerId) => this.fightBuffRepository.activeCodes(playerId));
   }
 
   hunt(playerId) {
@@ -84,11 +88,13 @@ export class HuntService {
       throw error;
     }
 
+    const activeBuffCodes = this.activityBuffCodes(playerId);
+    const fightBuffs = applyFightBuffs(character.stats, activeBuffCodes);
     const cooldownPolicy = resolveActivityCooldown({
       activity: 'hunt',
       baseCooldownSeconds: this.huntCooldownSeconds,
       equipment,
-      buffCodes: this.activityBuffCodes(playerId),
+      buffCodes: activeBuffCodes,
     });
     const now = this.now();
     const cooldown = this.cooldownRepository.claim(playerId, {
@@ -103,7 +109,7 @@ export class HuntService {
       throw error;
     }
 
-    const stats = character.stats;
+    const stats = fightBuffs.stats;
     const result = resolveAutomaticHunt({
       player: {
         id: player.id,
@@ -150,6 +156,7 @@ export class HuntService {
       });
     }
     this.repository.setPlayerHealth(playerId, result.remainingHp);
+    const fightBuffsConsumed = this.fightBuffRepository.consumeFight(playerId);
 
     const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
     const levelsGained = progression.level - progressionBefore.level;
@@ -185,6 +192,7 @@ export class HuntService {
       huntBaseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
       huntCooldownReductionPercent: cooldownPolicy.appliedReductionPercent,
       nextHuntReadyAt: cooldown.nextReadyAt,
+      fightBuffsConsumed,
       // Preserve the old event field until legacy consumers are migrated.
       threadDust: result.gold,
       itemId: item?.id || null,
@@ -206,6 +214,10 @@ export class HuntService {
       levelsGained,
       leveledUp: levelsGained > 0,
       deathPenalty,
+      fightBuffs: {
+        modifiers: fightBuffs.modifiers,
+        consumed: fightBuffsConsumed,
+      },
       cooldown: {
         ready: false,
         remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
