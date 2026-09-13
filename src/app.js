@@ -462,6 +462,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const conflictCodes = new Set([
       'stale_run_version',
       'equipped_item_cannot_be_salvaged',
+      'equipped_item_cannot_be_sold',
+      'item_sell_during_run',
+      'honey_item_cannot_be_sold',
+      'protected_item_cannot_be_sold',
       'stale_relic_upgrade',
       'insufficient_thread_dust',
       'relic_upgrade_during_run',
