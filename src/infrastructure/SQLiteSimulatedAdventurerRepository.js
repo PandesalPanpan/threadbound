@@ -31,6 +31,27 @@ function decodeRow(row) {
   };
 }
 
+function persistenceValues(model, lastSimulatedAt) {
+  return [
+    model.id,
+    model.name,
+    model.experience,
+    model.currentAreaNumber,
+    model.highestUnlockedAreaNumber,
+    model.huntCount,
+    model.adventureCount,
+    JSON.stringify(model.equipment),
+    JSON.stringify(model.achievements),
+    JSON.stringify(model.duelRecord),
+    model.leaderboardPlacement,
+    model.personality,
+    model.activityProfile.id,
+    model.stats.attack - Object.values(model.equipment).reduce((sum, item) => sum + Number(item?.attackBonus || 0), 0),
+    model.stats.maxHp - Object.values(model.equipment).reduce((sum, item) => sum + Number(item?.maxHpBonus || 0), 0),
+    lastSimulatedAt,
+  ];
+}
+
 export class SQLiteSimulatedAdventurerRepository {
   constructor({ database }) {
     if (!database) throw new Error('SQLiteSimulatedAdventurerRepository requires a database.');
@@ -65,24 +86,21 @@ export class SQLiteSimulatedAdventurerRepository {
         max_health = excluded.max_health,
         last_simulated_at = COALESCE(excluded.last_simulated_at, simulated_adventurers.last_simulated_at),
         updated_at = CURRENT_TIMESTAMP
-    `).run(
-      model.id,
-      model.name,
-      model.experience,
-      model.currentAreaNumber,
-      model.highestUnlockedAreaNumber,
-      model.huntCount,
-      model.adventureCount,
-      JSON.stringify(model.equipment),
-      JSON.stringify(model.achievements),
-      JSON.stringify(model.duelRecord),
-      model.leaderboardPlacement,
-      model.personality,
-      model.activityProfile.id,
-      model.stats.attack - Object.values(model.equipment).reduce((sum, item) => sum + Number(item?.attackBonus || 0), 0),
-      model.stats.maxHp - Object.values(model.equipment).reduce((sum, item) => sum + Number(item?.maxHpBonus || 0), 0),
-      lastSimulatedAt,
-    );
+    `).run(...persistenceValues(model, lastSimulatedAt));
+    return this.get(model.id);
+  }
+
+  ensure(adventurer, { lastSimulatedAt = null } = {}) {
+    const model = adventurer instanceof SimulatedAdventurer ? adventurer : new SimulatedAdventurer(adventurer);
+    assertSafeSimulatedAdventurerEquipment(model.equipment);
+    this.db.prepare(`
+      INSERT OR IGNORE INTO simulated_adventurers (
+        id, name, experience, current_area_number, highest_unlocked_area_number,
+        hunt_count, adventure_count, equipment_json, achievements_json,
+        duel_record_json, leaderboard_placement, personality, activity_profile,
+        base_attack, max_health, last_simulated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(...persistenceValues(model, lastSimulatedAt));
     return this.get(model.id);
   }
 
