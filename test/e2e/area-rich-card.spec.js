@@ -23,6 +23,15 @@ async function openArea(page) {
   return card;
 }
 
+async function openTown(page) {
+  await page.getByTestId('stream-message').fill('town');
+  await page.getByTestId('stream-send').click();
+  const card = page.getByTestId('stream-command-card');
+  await expect(card).toHaveAttribute('data-rich-card-kind', 'town');
+  await expect(card).toHaveAttribute('data-town-rich-card', 'true');
+  return card;
+}
+
 function areaProjection(currentAreaNumber) {
   return {
     area: {
@@ -37,6 +46,7 @@ function areaProjection(currentAreaNumber) {
         current: number === currentAreaNumber,
         unlocked: true,
       })),
+      towns: [],
     },
   };
 }
@@ -132,4 +142,50 @@ test('Area rich card keeps every previously unlocked Area selectable while revis
   await card.getByTestId('area-travel-3').click();
   await expect(card.getByTestId('area-current')).toHaveText('Area 3');
   expect(travels).toEqual([1, 2, 3]);
+});
+
+test('Town command renders authoritative current-Area NPCs with generated sprites inside the Adventure Stream', async ({ page, context }) => {
+  await login(page);
+
+  const areaResponse = await context.request.get('/api/areas');
+  expect(areaResponse.ok()).toBe(true);
+  const initial = await areaResponse.json();
+  expect(initial.area.towns).toHaveLength(1);
+  expect(initial.area.towns[0].id).toBe('area-1-town');
+  expect(initial.area.towns[0].npcs).toHaveLength(4);
+
+  const card = await openTown(page);
+  await expect(card.getByTestId('town-name')).toHaveText('Area 1 Town');
+  await expect(card.getByTestId('town-services')).toContainText('shop');
+  await expect(card.getByTestId('town-services')).toContainText('upgrade');
+  await expect(card.getByTestId('town-npcs')).toContainText('Shopkeeper');
+  await expect(card.getByTestId('town-npcs')).toContainText('Blacksmith');
+  await expect(card.getByTestId('town-npcs')).toContainText('Banker');
+  await expect(card.getByTestId('town-npcs')).toContainText('Healer');
+  await expect(card.locator('[data-testid^="town-npc-sprite-"]')).toHaveCount(4);
+  await expect(card.locator('[data-testid^="town-npc-sprite-"]').first()).toHaveAttribute('data-visual-asset-id', /character\./);
+  await expect(card).not.toContainText(/Thread Dust|Relic Pouch|Temper/);
+
+  const metrics = await page.evaluate(() => {
+    const cardElement = document.querySelector('[data-testid="stream-command-card"]');
+    const dismiss = cardElement?.querySelector('[data-rich-card-dismiss="true"]');
+    const nav = document.querySelector('.threadbound-topnav');
+    const cardRect = cardElement?.getBoundingClientRect();
+    const dismissRect = dismiss?.getBoundingClientRect();
+    const navRect = nav?.getBoundingClientRect();
+    return {
+      width: cardElement?.scrollWidth || 0,
+      cardTop: cardRect?.top || 0,
+      navBottom: navRect?.bottom || 0,
+      dismissHeight: dismissRect?.height || 0,
+      dismissWidth: dismissRect?.width || 0,
+    };
+  });
+  expect(metrics.width).toBeLessThanOrEqual(390);
+  expect(metrics.cardTop).toBeGreaterThanOrEqual(metrics.navBottom);
+  expect(metrics.dismissHeight).toBeGreaterThanOrEqual(44);
+  expect(metrics.dismissWidth).toBeGreaterThanOrEqual(44);
+
+  mkdirSync(REVIEW_DIR, { recursive: true });
+  await page.screenshot({ path: `${REVIEW_DIR}/town-rich-card-mobile.png`, fullPage: true });
 });
