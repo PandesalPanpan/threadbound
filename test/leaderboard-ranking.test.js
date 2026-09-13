@@ -83,7 +83,7 @@ test('Guild Hall leaderboard combines humans and simulated adventurers from pers
     assert.equal(rook.kind, 'simulated');
     assert.equal(rook.strongRival, true);
     assert.ok(rook.power.equippedCount > 0);
-    assert.ok(rook.duelRecord.total > 0);
+    assert.deepEqual(rook.duelRecord, { wins: 0, losses: 0, draws: 0, total: 0 }, 'M8-05 must expose existing duel facts without inventing M8-06 outcomes');
     assert.equal(leaderboard[0].id, 'guild-rook', 'the intentionally strong veteran should lead the foundation standings');
   } finally {
     repository.close();
