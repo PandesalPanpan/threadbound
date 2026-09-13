@@ -663,7 +663,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M8-04** Populate Town/Guild Hall adventurers, including intentionally strong rivals.
 - [x] **M8-05** Build Leaderboard rich card for level, Hunt count, Area reached, gear/power, achievements, duel record as appropriate.
 - [x] **M8-06** Implement Duel through the shared automatic battle engine.
-- [ ] **M8-07** Build inspectable bot Profile cards with equipment/stats/history summaries.
+- [x] **M8-07** Build inspectable bot Profile cards with equipment/stats/history summaries.
 
 ### Phase 9 — side activities
 
