@@ -1,4 +1,4 @@
-import { Quest, QuestProgress } from '../domain/Quest.js';
+import { Quest } from '../domain/Quest.js';
 import { advanceQuestObjectives, describeQuestObjective, initialObjectiveProgress } from '../domain/QuestObjective.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { SQLiteQuestRepository } from '../infrastructure/SQLiteQuestRepository.js';
@@ -30,7 +30,9 @@ export class QuestService {
     this.eventBus = eventBus;
     this.questCatalog = normalizeCatalog(questCatalog);
     this.now = now;
-    this.unsubscribe = this.eventBus?.subscribe((event) => this.handleEvent(event)) || null;
+    this.unsubscribe = typeof this.eventBus?.subscribe === 'function'
+      ? this.eventBus.subscribe((event) => this.handleEvent(event))
+      : null;
   }
 
   browse(playerId) {
@@ -70,7 +72,7 @@ export class QuestService {
       throw error;
     }
     const result = Object.freeze({ quest: projectQuest(quest), progress: accepted.progress.toJSON() });
-    this.eventBus?.publish({ type: 'QuestAccepted', playerId, questId: quest.id, areaNumber: quest.areaNumber });
+    this.eventBus?.publish?.({ type: 'QuestAccepted', playerId, questId: quest.id, areaNumber: quest.areaNumber });
     return result;
   }
 
@@ -90,7 +92,7 @@ export class QuestService {
       const saved = this.questRepository.save(playerId, next);
       const update = Object.freeze({ questId: quest.id, status: saved.status, objectiveProgress: saved.objectiveProgress });
       updates.push(update);
-      this.eventBus?.publish({
+      this.eventBus?.publish?.({
         type: completedNow ? 'QuestCompleted' : 'QuestProgressed',
         playerId,
         questId: quest.id,
