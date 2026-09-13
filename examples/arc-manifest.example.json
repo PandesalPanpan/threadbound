@@ -57,6 +57,19 @@
       ]
     }
   ],
+  "storyQuests": [
+    {
+      "id": "cinder-survey",
+      "title": "Cinder Survey",
+      "description": "Record routine field activity before challenging the Cinder Vault.",
+      "areaNumber": 1,
+      "objectives": [
+        { "id": "hunt-twice", "type": "hunt", "count": 2 },
+        { "id": "enter-adventure", "type": "adventure", "count": 1 },
+        { "id": "clear-cinder-vault", "type": "boss", "targetId": "cinder-vault", "targetLabel": "Ember Loomkeeper", "count": 1 }
+      ]
+    }
+  ],
   "achievements": [
     {
       "id": "cinder-vault-cleared",
