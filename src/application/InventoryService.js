@@ -1,4 +1,4 @@
-import { assertEquipmentSellable, equipmentSellValue, SELL_VALUE_BY_RARITY } from '../domain/EquipmentSellPolicy.js';
+import { assertEquipmentSellable, SELL_VALUE_BY_RARITY } from '../domain/EquipmentSellPolicy.js';
 import { planRelicUpgrade } from '../domain/RelicProgressionPolicy.js';
 
 // Migration compatibility for older imports. New code should use EquipmentSellPolicy.
@@ -20,8 +20,8 @@ export class InventoryService {
     const item = this.gameRepository.getItem(itemId);
     if (!item || item.playerId !== playerId) throw new Error('Item not found.');
     assertEquipmentSellable(item);
-    const gold = equipmentSellValue(item);
-    const sold = this.inventoryRepository.sellItem({ playerId, itemId, gold });
+    const sold = this.inventoryRepository.sellItem({ playerId, itemId });
+    const gold = sold.goldEarned;
     this.eventBus.publish({
       type: 'ItemSold',
       playerId,
