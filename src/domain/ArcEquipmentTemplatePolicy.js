@@ -27,6 +27,7 @@ export const ARC_EQUIPMENT_TEMPLATE_RULES = Object.freeze({
   maxRequiredLevel: 100,
   maxAreaNumber: 100,
   maxEffectsPerItem: EQUIPMENT_BATTLE_EFFECT_RULES.maxEffectsPerItem,
+  maxLegacyEffectsPerItem: 6,
   maxCritChanceBonus: 1,
   levelsPerBudgetPoint: 10,
   statWeights: Object.freeze({
@@ -97,18 +98,23 @@ function normalizeStats(template, slot, extended) {
   return stats;
 }
 
-function normalizeEffects(effects) {
+function normalizeEffects(effects, extended) {
   if (!Array.isArray(effects)) throw new Error('Equipment template effects must be an array.');
-  if (effects.length > ARC_EQUIPMENT_TEMPLATE_RULES.maxEffectsPerItem) {
-    throw new Error(`Equipment template may contain at most ${ARC_EQUIPMENT_TEMPLATE_RULES.maxEffectsPerItem} effects.`);
-  }
+  const maximum = extended
+    ? ARC_EQUIPMENT_TEMPLATE_RULES.maxEffectsPerItem
+    : ARC_EQUIPMENT_TEMPLATE_RULES.maxLegacyEffectsPerItem;
+  if (effects.length > maximum) throw new Error(`Equipment template may contain at most ${maximum} effects.`);
   const normalized = effects.map((value) => String(value || '').trim().toLowerCase());
   if (new Set(normalized).size !== normalized.length) throw new Error('Equipment template effects must be unique.');
   for (const effect of normalized) {
     if (!EFFECT_SET.has(effect)) throw new Error(`Unsupported equipment effect code: ${effect || '(empty)'}.`);
   }
-  if (normalized.includes('none') && normalized.length > 1) throw new Error('The none equipment effect cannot be combined with another effect.');
-  return Object.freeze(normalized);
+  if (extended && normalized.includes('none') && normalized.length > 1) {
+    throw new Error('The none equipment effect cannot be combined with another effect.');
+  }
+  // Legacy v1 reward materialization historically used only effects[0]. Preserve
+  // that behavior so old manifests do not gain power merely because M7-01 exists.
+  return Object.freeze(extended ? normalized : normalized.slice(0, 1));
 }
 
 export function arcEquipmentBudgetLimit({ rarity, requiredLevel, areaNumber }) {
@@ -154,7 +160,7 @@ export function normalizeArcEquipmentTemplate(template = {}) {
     ? boundedInteger(template.areaNumber, 'Equipment areaNumber', 1, ARC_EQUIPMENT_TEMPLATE_RULES.maxAreaNumber)
     : 1;
   const stats = normalizeStats(template, slot, extended);
-  const effects = normalizeEffects(template.effects);
+  const effects = normalizeEffects(template.effects, extended);
   const budgetLimit = arcEquipmentBudgetLimit({ rarity, requiredLevel, areaNumber });
   const budgetUsed = arcEquipmentBudgetUsed({ stats, effects });
   if (budgetUsed > budgetLimit) {
