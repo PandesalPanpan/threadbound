@@ -5,7 +5,7 @@ import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
 import { compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
-import { ALLOWED_ENEMY_ABILITIES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
+import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
 
 export class ArcManifestService {
@@ -31,6 +31,7 @@ export class ArcManifestService {
       canonicalDungeons: structuredClone(DUNGEONS),
       allowedMechanics: {
         enemyAbilities: [...ALLOWED_ENEMY_ABILITIES],
+        questObjectives: [...ALLOWED_QUEST_OBJECTIVES],
         itemEffects: Object.values(ITEM_EFFECTS).map((effect) => ({ ...effect })),
         runUpgrades: Object.values(RUN_UPGRADES).map((upgrade) => ({ ...upgrade })),
         replayability: {
@@ -56,6 +57,7 @@ export class ArcManifestService {
       generationRules: [
         'Preserve canonical content; never reuse canonical IDs.',
         'Use only allowed enemy ability IDs and item effect IDs.',
+        'Story Quest objectives may use only the exported quest objective types and data fields; never embed scripts, formulas, or executable behavior.',
         'Do not invent executable code or mechanics outside this context.',
         'Keep all numeric values inside the supplied balance budgets.',
         'Encounter variants must reference enemies from the same manifest.',
