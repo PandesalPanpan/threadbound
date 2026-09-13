@@ -1,16 +1,11 @@
-import { assertEquipmentSellable } from '../domain/EquipmentSellPolicy.js';
-
-function normalizedGold(value) {
-  return Math.max(0, Math.floor(Number(value) || 0));
-}
+import { assertEquipmentSellable, equipmentSellValue } from '../domain/EquipmentSellPolicy.js';
 
 export class SQLiteInventoryRepository {
   constructor({ database }) {
     this.db = database;
   }
 
-  sellItem({ playerId, itemId, gold }) {
-    const saleGold = normalizedGold(gold);
+  sellItem({ playerId, itemId }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
@@ -32,10 +27,14 @@ export class SQLiteInventoryRepository {
         throw error;
       }
 
-      assertEquipmentSellable({
+      const persistedItem = {
+        rarity: item.rarity,
+        attackBonus: item.attack_bonus,
         source: item.source,
         effect: JSON.parse(item.effect_json || '{}'),
-      });
+      };
+      assertEquipmentSellable(persistedItem);
+      const saleGold = equipmentSellValue(persistedItem);
 
       const removed = this.db.prepare('DELETE FROM items WHERE id = ? AND player_id = ?').run(itemId, playerId);
       if (removed.changes !== 1) throw new Error('Item changed before it could be sold.');
@@ -58,8 +57,8 @@ export class SQLiteInventoryRepository {
     }
   }
 
-  salvageItem({ playerId, itemId, threadDust }) {
-    return this.sellItem({ playerId, itemId, gold: threadDust });
+  salvageItem({ playerId, itemId }) {
+    return this.sellItem({ playerId, itemId });
   }
 
   upgradeItem({ playerId, itemId, expectedLevel, cost, attackIncrease, attunementCode }) {
