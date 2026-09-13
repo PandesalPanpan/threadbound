@@ -247,7 +247,6 @@ Rarities:
 - Epic
 - Legendary
 - Mythic
-
 Use strong consistent rarity styling in rich cards and receipts.
 
 Equipment may also provide small special effects such as:
@@ -496,7 +495,6 @@ Example events:
 ## 9. Arc Manifest evolution
 
 Keep the existing validated Arc Manifest pipeline, but evolve its contract toward the new world model.
-
 The schema should eventually cover or reference:
 
 - Arc metadata/tone;
@@ -668,7 +666,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 ### Phase 9 — side activities
 
 - [x] **M9-01** Implement Gold-only Blackjack with authoritative transactions/idempotency.
-- [ ] **M9-02** Implement Gold-only Coinflip.
+- [x] **M9-02** Implement Gold-only Coinflip.
 - [ ] **M9-03** Implement Gold-only Slots.
 - [ ] **M9-04** Present activities as rich chat cards and public receipts; never use Honey.
 - [ ] **M9-05** Add economy/balance caps needed to avoid trivial infinite progression.
