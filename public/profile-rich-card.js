@@ -17,13 +17,17 @@ if (stream) {
     .thread-profile-resource, .thread-profile-stat { display:grid; gap:2px; min-width:0; padding:9px 10px; border:1px solid rgba(255,255,255,.08); border-radius:10px; background:rgba(255,255,255,.03); }
     .thread-profile-resource > span, .thread-profile-stat > span { color:var(--muted); font-size:.68rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
     .thread-profile-resource > strong, .thread-profile-stat > strong { font-size:.92rem; }
-    .thread-profile-equipment { display:grid; gap:7px; }
-    .thread-profile-equipment > h3, .thread-profile-achievements > h3 { margin:0; font-size:.78rem; text-transform:uppercase; letter-spacing:.07em; }
-    .thread-profile-slot { display:flex; align-items:center; gap:8px; min-width:0; padding:7px 8px; border-radius:9px; background:rgba(255,255,255,.025); }
+    .thread-profile-equipment, .thread-profile-buffs { display:grid; gap:7px; }
+    .thread-profile-equipment > h3, .thread-profile-buffs > h3, .thread-profile-achievements > h3 { margin:0; font-size:.78rem; text-transform:uppercase; letter-spacing:.07em; }
+    .thread-profile-slot, .thread-profile-buff { display:flex; align-items:center; gap:8px; min-width:0; padding:7px 8px; border-radius:9px; background:rgba(255,255,255,.025); }
     .thread-profile-slot img { width:36px; height:36px; flex:0 0 36px; }
-    .thread-profile-slot-copy { display:grid; min-width:0; }
-    .thread-profile-slot-copy > span { color:var(--muted); font-size:.62rem; font-weight:800; text-transform:uppercase; }
+    .thread-profile-slot-copy, .thread-profile-buff-copy { display:grid; min-width:0; flex:1; }
+    .thread-profile-slot-copy > span, .thread-profile-buff-copy > span { color:var(--muted); font-size:.62rem; font-weight:800; text-transform:uppercase; }
     .thread-profile-slot-copy > strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.78rem; }
+    .thread-profile-buff-copy > strong { font-size:.78rem; }
+    .thread-profile-buff-copy > small { color:var(--muted); font-size:.68rem; line-height:1.35; }
+    .thread-profile-buff-count { flex:0 0 auto; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:4px 7px; font-size:.68rem; font-weight:800; white-space:nowrap; }
+    .thread-profile-buffs-empty { margin:0; color:var(--muted); font-size:.72rem; line-height:1.4; }
     .thread-profile-achievements { display:grid; gap:6px; }
     .thread-profile-achievements p { margin:0; color:var(--muted); font-size:.72rem; line-height:1.4; }
     @media (max-width:420px) {
@@ -147,6 +151,43 @@ if (stream) {
       statCell('Crit Chance', formatCrit(character), 'profile-stat-crit'),
     );
     card.append(stats);
+
+    const buffs = document.createElement('section');
+    buffs.className = 'thread-profile-buffs';
+    buffs.dataset.testid = 'profile-active-buffs';
+    const buffsTitle = document.createElement('h3');
+    buffsTitle.textContent = 'Active buffs';
+    buffs.append(buffsTitle);
+    const activeBuffs = Array.isArray(data.activeFightBuffs) ? data.activeFightBuffs : [];
+    if (!activeBuffs.length) {
+      const empty = document.createElement('p');
+      empty.className = 'thread-profile-buffs-empty';
+      empty.textContent = 'No active fight buffs.';
+      buffs.append(empty);
+    } else {
+      for (const buff of activeBuffs) {
+        const row = document.createElement('div');
+        row.className = 'thread-profile-buff';
+        row.dataset.testid = `profile-buff-${buff.code}`;
+        const copy = document.createElement('div');
+        copy.className = 'thread-profile-buff-copy';
+        const label = document.createElement('span');
+        label.textContent = 'Fight buff';
+        const buffName = document.createElement('strong');
+        buffName.textContent = buff.name || buff.code;
+        const description = document.createElement('small');
+        description.textContent = buff.description || 'Applies during authoritative fights.';
+        copy.append(label, buffName, description);
+        const count = document.createElement('span');
+        count.className = 'thread-profile-buff-count';
+        const remaining = Math.max(0, Number(buff.remainingFights) || 0);
+        count.textContent = `${remaining} fight${remaining === 1 ? '' : 's'} left`;
+        count.dataset.testid = `profile-buff-${buff.code}-remaining`;
+        row.append(copy, count);
+        buffs.append(row);
+      }
+    }
+    card.append(buffs);
 
     const equipment = document.createElement('section');
     equipment.className = 'thread-profile-equipment';
