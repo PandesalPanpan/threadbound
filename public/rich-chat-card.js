@@ -9,15 +9,15 @@ import './leaderboard-rich-card.js';
 import './bank-profile-sync.js';
 import './rich-card-visual-polish.js';
 
-const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list, .thread-town-npcs, .thread-quest-list';
-const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area', 'town', 'quest', 'leaderboard']);
+const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list, .thread-town-npcs, .thread-quest-list, .thread-leaderboard-actions';
+const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area', 'town', 'quest', 'leaderboard', 'simulated-profile']);
 
 function commandFromCard(card) {
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
   const slashIndex = kicker.lastIndexOf('/');
   if (slashIndex >= 0) {
     const candidate = kicker.slice(slashIndex + 1).trim().split(/\s+/)[0]?.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    if (candidate) return candidate;
+    if (candidate) return candidate === 'adventurer-profile' ? 'simulated-profile' : candidate;
   }
   if (CANONICAL_RICH_CARD_KINDS.has(card.dataset.richCardKind)) return card.dataset.richCardKind;
   for (const kind of CANONICAL_RICH_CARD_KINDS) {
@@ -40,6 +40,7 @@ function snapshotDetails(card, kind) {
   }
   if (kind === 'bank') return [firstText(card, '[data-testid="bank-carried-gold"]'), firstText(card, '[data-testid="bank-banked-gold"]')].filter(Boolean).join(' · ');
   if (kind === 'profile') return [firstText(card, '[data-testid="profile-xp"]'), firstText(card, '[data-testid="profile-gold"]')].filter(Boolean).join(' · ');
+  if (kind === 'simulated-profile') return [firstText(card, '[data-testid="simulated-profile-name"]'), firstText(card, '[data-testid="simulated-profile-level"]') ? `Lv ${firstText(card, '[data-testid="simulated-profile-level"]')}` : '', firstText(card, '[data-testid="simulated-profile-area"]') ? `Area ${firstText(card, '[data-testid="simulated-profile-area"]')}` : '', firstText(card, '[data-testid="simulated-profile-duels"]') ? `Duels ${firstText(card, '[data-testid="simulated-profile-duels"]')}` : ''].filter(Boolean).join(' · ');
   if (kind === 'area') return [firstText(card, '[data-testid="area-current"]'), firstText(card, '[data-testid="area-highest-unlocked"]')].filter(Boolean).join(' · ');
   if (kind === 'town') {
     const town = firstText(card, '[data-testid="town-name"]') || firstText(card, '[data-testid="town-empty"]');
