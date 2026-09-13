@@ -576,6 +576,7 @@ But the current product is **not** the target game yet. Notable gaps include:
 - rich generated sprite coverage exists but is not yet integrated broadly enough throughout the chat experience.
 
 ## 12. Ordered implementation checklist
+
 Agents must work **in this order unless a previous task proves a dependency requires a small prerequisite**. Do not jump ahead to new Arc content while foundation phases are unfinished.
 
 ### Phase 0 — lock the execution contract
@@ -695,6 +696,7 @@ Do not begin this phase until the new foundation is usable end-to-end.
 - [ ] **M11-08 HUMAN** Simulated adventurers make the world feel alive without making progress feel fake.
 - [ ] **M11-09 HUMAN** Death penalties create stakes without making either player want to stop playing.
 - [ ] **M11-10 HUMAN** Main receipts remain readable after long sessions and details are available when desired.
+
 ### Phase 12 — production lifecycle gate
 
 - [ ] **M12-01** Define explicit abandon/expiry semantics for unfinished party/progression activities.
