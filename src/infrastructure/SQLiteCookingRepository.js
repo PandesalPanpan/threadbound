@@ -1,5 +1,5 @@
 import { normalizeCookingRecipe, planCookingConsumption } from '../domain/CookingRecipePolicy.js';
-import { isItemLossProtected } from './SQLiteEquipmentRepository.js';
+import { isItemLossProtected, SQLiteEquipmentRepository } from './SQLiteEquipmentRepository.js';
 import { SQLiteFightBuffRepository } from './SQLiteFightBuffRepository.js';
 
 function ingredientCandidate(row) {
@@ -17,6 +17,10 @@ export class SQLiteCookingRepository {
   constructor({ database } = {}) {
     if (!database) throw new Error('SQLiteCookingRepository requires the shared database.');
     this.db = database;
+    // Cooking must protect every canonical equipped slot even when this repository
+    // is constructed directly in a focused worker/test before another service has
+    // initialized equipment persistence.
+    this.equipmentRepository = new SQLiteEquipmentRepository({ database });
     this.fightBuffRepository = new SQLiteFightBuffRepository({ database });
   }
 
