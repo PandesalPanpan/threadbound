@@ -1,19 +1,44 @@
 import { randomUUID } from 'node:crypto';
 import { DUNGEONS, RUN_UPGRADES } from '../domain/DungeonRun.js';
 import { ITEM_EFFECTS } from '../domain/ItemGenerator.js';
+import { itemRarity } from '../domain/ItemRarityPolicy.js';
+import { normalizeArcEquipmentTemplate, publicArcEquipmentTemplateContract } from '../domain/ArcEquipmentTemplatePolicy.js';
 import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
 import { compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
 import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
+import { ArcEquipmentTemplateValidator } from './ArcEquipmentTemplateValidator.js';
 import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
 
+function serializableEquipmentEffect(definition, equipmentTemplate) {
+  return {
+    code: definition.code,
+    name: definition.name,
+    description: definition.description,
+    mechanics: definition.mechanics.map((mechanic) => ({
+      ...mechanic,
+      ...(mechanic.effect ? { effect: { ...mechanic.effect } } : {}),
+    })),
+    upgradeLevel: 0,
+    attunementCode: null,
+    equipmentTemplate: {
+      effectCodes: [...equipmentTemplate.effects],
+      requiredLevel: equipmentTemplate.requiredLevel,
+      areaNumber: equipmentTemplate.areaNumber,
+      stats: { ...equipmentTemplate.stats },
+      budget: { ...equipmentTemplate.budget },
+    },
+  };
+}
+
 export class ArcManifestService {
-  constructor({ gameRepository, codexRepository, manifestRepository, validator = new ArcManifestValidator(), replayabilityValidator = new ArcManifestReplayabilityValidator(), bundledManifests = BUNDLED_ARC_MANIFESTS, idFactory = randomUUID, rng = Math.random }) {
+  constructor({ gameRepository, codexRepository, manifestRepository, validator = new ArcManifestValidator(), equipmentTemplateValidator = new ArcEquipmentTemplateValidator(), replayabilityValidator = new ArcManifestReplayabilityValidator(), bundledManifests = BUNDLED_ARC_MANIFESTS, idFactory = randomUUID, rng = Math.random }) {
     this.gameRepository = gameRepository;
     this.codexRepository = codexRepository;
     this.manifestRepository = manifestRepository;
     this.validator = validator;
+    this.equipmentTemplateValidator = equipmentTemplateValidator;
     this.replayabilityValidator = replayabilityValidator;
     this.bundledManifests = [...bundledManifests];
     this.idFactory = idFactory;
@@ -22,6 +47,7 @@ export class ArcManifestService {
   }
 
   worldContext() {
+    const equipmentTemplates = publicArcEquipmentTemplateContract();
     return {
       contextVersion: 1,
       manifestVersion: MANIFEST_VERSION,
@@ -33,6 +59,7 @@ export class ArcManifestService {
         enemyAbilities: [...ALLOWED_ENEMY_ABILITIES],
         questObjectives: [...ALLOWED_QUEST_OBJECTIVES],
         itemEffects: Object.values(ITEM_EFFECTS).map((effect) => ({ ...effect })),
+        equipmentTemplates,
         runUpgrades: Object.values(RUN_UPGRADES).map((upgrade) => ({ ...upgrade })),
         replayability: {
           intentCadence: { min: 1, max: 6 },
@@ -40,7 +67,10 @@ export class ArcManifestService {
           manifestRunEvents: true,
         },
       },
-      balanceBudgets: structuredClone(BALANCE_BUDGETS),
+      balanceBudgets: {
+        ...structuredClone(BALANCE_BUDGETS),
+        equipmentTemplates: structuredClone(equipmentTemplates.rules),
+      },
       visualAssetCatalog: {
         version: VISUAL_ASSET_CATALOG_VERSION,
         selectionMode: 'exact-allowlisted-id',
@@ -57,6 +87,8 @@ export class ArcManifestService {
       generationRules: [
         'Preserve canonical content; never reuse canonical IDs.',
         'Use only allowed enemy ability IDs and item effect IDs.',
+        'New equipment templates must use an exported canonical slot, rarity, stat field, effect code, requiredLevel, Area number, and exact item visualAssetId.',
+        'Equipment weighted stats plus non-plain effects must fit the exported rarity/level/Area power budget; do not invent hidden stats or executable item mechanics.',
         'Story Quest objectives may use only the exported quest objective types and data fields; never embed scripts, formulas, or executable behavior.',
         'Do not invent executable code or mechanics outside this context.',
         'Keep all numeric values inside the supplied balance budgets.',
@@ -70,12 +102,14 @@ export class ArcManifestService {
   }
 
   validate(manifest) {
-    const base = this.validator.validate(manifest);
+    const equipmentTemplates = this.equipmentTemplateValidator.validate(manifest);
+    const projected = this.equipmentTemplateValidator.projectForLegacyValidator(manifest);
+    const base = this.validator.validate(projected);
     const replayability = this.replayabilityValidator.validate(manifest);
     return {
-      valid: base.valid && replayability.valid,
-      errors: [...base.errors, ...replayability.errors],
-      warnings: [...base.warnings, ...replayability.warnings],
+      valid: base.valid && equipmentTemplates.valid && replayability.valid,
+      errors: [...base.errors, ...equipmentTemplates.errors, ...replayability.errors],
+      warnings: [...base.warnings, ...equipmentTemplates.warnings, ...replayability.warnings],
     };
   }
 
@@ -213,17 +247,25 @@ export class ArcManifestService {
       const pool = record.manifest.itemPools.find((entry) => entry.id === dungeon.rewardPoolId);
       if (!pool?.items?.length) return null;
       const template = pool.items[Math.floor(this.rng() * pool.items.length) % pool.items.length];
-      const effectCode = template.effects[0] || 'none';
-      const effect = ITEM_EFFECTS[effectCode] || ITEM_EFFECTS.none;
+      const equipmentTemplate = normalizeArcEquipmentTemplate(template);
+      const effectCodes = equipmentTemplate.effects.length > 0 ? [...equipmentTemplate.effects] : ['none'];
+      const effectCode = effectCodes[0] || 'none';
+      const effectDefinition = ITEM_EFFECTS[effectCode] || ITEM_EFFECTS.none;
+      const rarity = itemRarity(equipmentTemplate.rarity);
       return {
         id: this.idFactory(),
         definitionId: template.id,
         name: template.namePattern.replaceAll('{suffix}', 'the Loom').replaceAll('{arc}', record.manifest.arc.title),
-        slot: 'weapon',
-        rarity: template.rarity,
-        attackBonus: template.attackBonus,
+        slot: equipmentTemplate.slot,
+        rarity: equipmentTemplate.rarity,
+        rarityTier: rarity.tier,
+        ...equipmentTemplate.stats,
         effectCode,
-        effect,
+        effectCodes,
+        effect: serializableEquipmentEffect(effectDefinition, equipmentTemplate),
+        requiredLevel: equipmentTemplate.requiredLevel,
+        areaNumber: equipmentTemplate.areaNumber,
+        equipmentBudget: { ...equipmentTemplate.budget },
         ...(template.visualAssetId ? { visualAssetId: template.visualAssetId } : {}),
         source: dungeonId,
       };
