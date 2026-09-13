@@ -6,8 +6,9 @@ test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true
 test('Arc Workshop previews and validates a vNext world package clearly', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
-  await page.getByTestId('nav-workshop').click();
+  await page.goto('/arc-workshop');
   await expect(page).toHaveURL(/\/arc-workshop$/);
+  await expect(page.getByRole('heading', { name: 'Arc Workshop' })).toBeVisible();
 
   await page.getByTestId('manifest-file').setInputFiles('examples/arc-manifest-vnext.example.json');
 
