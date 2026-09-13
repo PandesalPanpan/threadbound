@@ -650,7 +650,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 - [x] **M7-01** Extend Arc Manifest equipment templates with slot, rarity, stats, effects, level/Area budget, visualAssetId.
 - [x] **M7-02** Extend server-owned Shop catalog to consume validated Arc/Town stock definitions.
-- [ ] **M7-03** Add Sell flow and transaction tests.
+- [x] **M7-03** Add Sell flow and transaction tests.
 - [ ] **M7-04** Add simple crafting recipe model when item ingredients justify it.
 - [ ] **M7-05** Add cooking recipes with fight-count buffs rather than wall-clock expiration.
 - [ ] **M7-06** Show active remaining-fight buffs in Profile / relevant receipts.
