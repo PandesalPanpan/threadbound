@@ -46,7 +46,7 @@ test('Leaderboard card ranks human and simulated adventurers inside the mobile A
   await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText('Area 5');
   await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText('Veteran rival');
   await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText(/ATK/);
-  await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText(/Gear/);
+  await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText(/Inventory/);
   await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText(/Duels/);
   await expect(card.getByTestId('leaderboard-place-guild-rook')).toHaveText('#1');
   await expect(card.getByRole('button', { name: /Duel/i })).toHaveCount(0);
