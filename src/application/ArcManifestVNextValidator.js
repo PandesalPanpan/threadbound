@@ -2,13 +2,14 @@ import { normalizeCraftingRecipe } from '../domain/CraftingRecipePolicy.js';
 import { normalizeCookingRecipe } from '../domain/CookingRecipePolicy.js';
 import { AUTOMATIC_BATTLE_EFFECT_TYPES } from '../domain/AutomaticBattleEffectPolicy.js';
 import { normalizeAutomaticBattleResistances } from '../domain/AutomaticBattleResistancePolicy.js';
+import { QUEST_OBJECTIVE_TYPES } from '../domain/QuestObjective.js';
 
 export const ARC_MANIFEST_VNEXT_VERSION = 2;
 export const ARC_MANIFEST_SUPPORTED_VERSIONS = Object.freeze([1, ARC_MANIFEST_VNEXT_VERSION]);
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]{2,63}$/;
 const NPC_ROLES = new Set(['shopkeeper', 'blacksmith', 'banker', 'innkeeper', 'healer', 'quest-giver', 'cook', 'crafter', 'guild-hall', 'special']);
-const QUEST_TYPES = new Set(['kill', 'hunt_count', 'adventure_count', 'collect', 'boss', 'visit', 'speak']);
+const QUEST_TYPES = new Set(QUEST_OBJECTIVE_TYPES);
 const REQUIRED_ARRAYS = ['areas', 'towns', 'npcs', 'quests', 'shops', 'craftingRecipes', 'cookingRecipes', 'progressionChallenges'];
 
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value); }
@@ -88,24 +89,20 @@ export class ArcManifestVNextValidator {
       if (!NPC_ROLES.has(npc.role)) addError(`${path}.role`, 'unsupported_npc_role', `NPC role must be one of: ${[...NPC_ROLES].join(', ')}.`);
     });
 
-    const shopIds = new Set();
     const stockIds = new Set((manifest.shopStocks || []).map((stock) => stock?.id).filter(text));
     manifest.shops.forEach((shop, index) => {
       const path = `shops[${index}]`;
       if (!object(shop)) return addError(path, 'invalid_shop', 'Shop must be an object.');
       register(shop.id, `${path}.id`);
-      if (text(shop.id)) shopIds.add(shop.id);
       if (!townIds.has(shop.townId)) addError(`${path}.townId`, 'unknown_town_reference', `Unknown Town ID "${shop.townId}".`);
       if (!text(shop.name)) addError(`${path}.name`, 'shop_name_required', 'Shop name is required.');
       if (!stockIds.has(shop.stockId)) addError(`${path}.stockId`, 'unknown_shop_stock_reference', `Unknown shopStocks ID "${shop.stockId}".`);
     });
 
-    const questIds = new Set();
     manifest.quests.forEach((quest, index) => {
       const path = `quests[${index}]`;
       if (!object(quest)) return addError(path, 'invalid_quest', 'Quest must be an object.');
       register(quest.id, `${path}.id`);
-      if (text(quest.id)) questIds.add(quest.id);
       if (!areaIds.has(quest.areaId)) addError(`${path}.areaId`, 'unknown_area_reference', `Unknown Area ID "${quest.areaId}".`);
       if (!text(quest.title)) addError(`${path}.title`, 'quest_title_required', 'Quest title is required.');
       if (!Array.isArray(quest.objectives) || quest.objectives.length < 1) addError(`${path}.objectives`, 'quest_objectives_required', 'Quest must contain at least one objective.');
