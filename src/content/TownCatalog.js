@@ -1,10 +1,10 @@
 import { Town } from '../domain/Town.js';
 
 export const FOUNDATION_NPCS = Object.freeze([
-  Object.freeze({ id: 'area-1-shopkeeper', name: 'Shopkeeper', role: 'Shop', service: 'shop', spriteVariant: 'female' }),
-  Object.freeze({ id: 'area-1-blacksmith', name: 'Blacksmith', role: 'Upgrade', service: 'upgrade', spriteVariant: 'male' }),
-  Object.freeze({ id: 'area-1-banker', name: 'Banker', role: 'Bank', service: 'bank', spriteVariant: 'male' }),
-  Object.freeze({ id: 'area-1-healer', name: 'Healer', role: 'Heal', service: 'heal', spriteVariant: 'female' }),
+  Object.freeze({ id: 'area-1-shopkeeper', name: 'Shopkeeper', role: 'Shop', service: 'shop', spriteVariant: 'female', dialogue: 'Need supplies? I keep the essentials close and the prices clear.' }),
+  Object.freeze({ id: 'area-1-blacksmith', name: 'Blacksmith', role: 'Upgrade', service: 'upgrade', spriteVariant: 'male', dialogue: 'Bring me equipment worth keeping, and I will help you make it stronger.' }),
+  Object.freeze({ id: 'area-1-banker', name: 'Banker', role: 'Bank', service: 'bank', spriteVariant: 'male', dialogue: 'Gold in the Bank stays safe when an Adventure goes badly.' }),
+  Object.freeze({ id: 'area-1-healer', name: 'Healer', role: 'Heal', service: 'heal', spriteVariant: 'female', dialogue: 'Take care of your HP before you head back into danger.' }),
 ]);
 
 export const FOUNDATION_TOWNS = Object.freeze([
