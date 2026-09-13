@@ -45,6 +45,15 @@ function modifierForEquipmentCode(code, activity) {
   return Object.freeze({ source: 'equipment', code, reductionPercent: definition.reductionPercent });
 }
 
+function modifierForBuffCode(rawCode, activity) {
+  const code = String(rawCode || '').trim().toLowerCase();
+  try {
+    return fightBuffCooldownModifier(code, activity);
+  } catch {
+    throw new Error(`Unsupported activity cooldown buff code: ${code || '(empty)'}.`);
+  }
+}
+
 /**
  * Domain policy for bounded activity cooldown reductions.
  *
@@ -69,7 +78,7 @@ export function resolveActivityCooldown({
     if (modifier) modifiers.push(modifier);
   }
   for (const rawCode of buffCodes) {
-    const modifier = fightBuffCooldownModifier(rawCode, normalizedActivity);
+    const modifier = modifierForBuffCode(rawCode, normalizedActivity);
     if (modifier) modifiers.push(modifier);
   }
 
