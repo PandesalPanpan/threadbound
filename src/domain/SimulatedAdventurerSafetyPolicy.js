@@ -2,6 +2,7 @@ import { isExtendedArcEquipmentTemplate, normalizeArcEquipmentTemplate } from '.
 
 const SIMULATION_ACTION_FIELDS = Object.freeze([
   'tickKey',
+  'bucket',
   'scheduledAt',
   'actionType',
   'experienceAward',
@@ -45,6 +46,9 @@ export function assertSafeSimulatedAdventurerSimulationActions(actions = []) {
 
     requiredText(action.tickKey, 'Simulation tick key');
     requiredText(action.scheduledAt, 'Simulation scheduled time');
+    if (action.bucket != null && (!Number.isInteger(action.bucket) || action.bucket < 0)) {
+      throw safetyError('simulated_adventurer_unsafe_mutation', 'Simulation bucket must be a non-negative integer when present.');
+    }
     if (!SIMULATION_ACTION_TYPES.has(action.actionType)) {
       throw safetyError('simulated_adventurer_unsafe_mutation', `Unsupported simulated action type: ${action.actionType || '(empty)'}.`);
     }
