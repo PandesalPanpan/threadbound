@@ -25,6 +25,9 @@ The same JSON contract is used whether the manifest came from ChatGPT, Claude, G
 - A manifest can only reference mechanics allowed by the validator.
 - IDs must be unique inside a manifest and may not overwrite protected canonical IDs.
 - Balance budgets, enemy stats, dungeon composition, progression thresholds, and references are validated before publication.
+- New equipment templates use canonical Weapon/Helmet/Armor/Boots/Accessory slots, Common-through-Mythic rarity, the five readable stat bonuses, at most three allowlisted effect codes, required Level, Area number, and an exact allowlisted item `visualAssetId`.
+- Equipment stats/effects must fit the exported rarity + Level + Area power budget. Generated content cannot invent extra stat names, callbacks, formulas, or executable item mechanics. See `docs/ARC_EQUIPMENT_TEMPLATES.md`.
+- Existing weapon-only Arc Manifest v1 item templates remain accepted for migration compatibility; new authored equipment should use the extended template shape.
 - Optional `storyQuests` may compose only the domain-owned Quest objective vocabulary: `kill`, `hunt`, `adventure`, `collect`, `boss`, `visit`, and `speak`.
 - Story Quest objectives are constrained data. Objective fields outside `id`, `type`, `targetId`, `targetLabel`, and `count` are rejected; generated content cannot add scripts, formulas, callbacks, or custom executable mechanics.
 - Existing Arc Manifest v1 files may omit `storyQuests`; the extension is migration-compatible.
@@ -37,6 +40,6 @@ The same JSON contract is used whether the manifest came from ChatGPT, Claude, G
 
 Give the model both the exported world-context JSON and the JSON Schema, then ask:
 
-> Create one Threadbound Arc Manifest that conforms exactly to the supplied JSON Schema. Preserve all existing canon and unresolved hooks in the world context. Use only the allowed mechanic IDs, effect IDs, enemy ability IDs, Quest objective types, reward types, and numeric budgets listed in the context. Story Quest objectives must remain data only; do not invent scripts, formulas, callbacks, or unsupported objective types. Do not invent executable code or unsupported mechanics. Return only valid JSON for the Arc Manifest.
+> Create one Threadbound Arc Manifest that conforms exactly to the supplied JSON Schema. Preserve all existing canon and unresolved hooks in the world context. Use only the allowed mechanic IDs, effect IDs, enemy ability IDs, Quest objective types, equipment slots/stats/rarities, reward types, and numeric budgets listed in the context. Keep generated equipment inside its exported rarity/Level/Area power budget and use only exact allowlisted item visualAssetIds. Story Quest objectives and equipment templates must remain data only; do not invent scripts, formulas, callbacks, unsupported objective types, hidden stats, or executable mechanics. Return only valid JSON for the Arc Manifest.
 
 The validator is still expected to reject mistakes. AI output is treated as untrusted input.
