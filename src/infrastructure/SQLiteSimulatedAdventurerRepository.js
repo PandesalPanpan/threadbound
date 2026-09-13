@@ -1,5 +1,6 @@
 import { SimulatedAdventurer } from '../domain/SimulatedAdventurer.js';
 import {
+  assertSafeSimulatedAdventurerEquipment,
   assertSafeSimulatedAdventurerSimulationActions,
   assertSimulatedAdventurerMutationTarget,
 } from '../domain/SimulatedAdventurerSafetyPolicy.js';
@@ -39,6 +40,7 @@ export class SQLiteSimulatedAdventurerRepository {
 
   save(adventurer, { lastSimulatedAt = null } = {}) {
     const model = adventurer instanceof SimulatedAdventurer ? adventurer : new SimulatedAdventurer(adventurer);
+    assertSafeSimulatedAdventurerEquipment(model.equipment);
     this.db.prepare(`
       INSERT INTO simulated_adventurers (
         id, name, experience, current_area_number, highest_unlocked_area_number,
