@@ -8,8 +8,36 @@ import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepo
 import { SQLiteLeaderboardRepository } from '../infrastructure/SQLiteLeaderboardRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
-function projectEntry(entry, state, duelRecord = null) {
+function timestampValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 0;
+  const normalized = raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`;
+  const parsed = Date.parse(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function projectRecentHistory(repository, duelRepository, adventurerId) {
+  const ticks = repository.listTicks(adventurerId).slice(-5).map((tick) => Object.freeze({
+    type: tick.actionType,
+    occurredAt: tick.scheduledAt,
+    experienceAward: tick.experienceAward,
+  }));
+  const duels = duelRepository ? duelRepository.listRecentFor(adventurerId, 5).map((duel) => Object.freeze({
+    type: 'duel',
+    occurredAt: duel.createdAt,
+    outcome: duel.outcome,
+    opponentId: duel.opponentId,
+    turnCount: duel.turnCount,
+  })) : [];
+
+  return Object.freeze([...ticks, ...duels]
+    .sort((left, right) => timestampValue(right.occurredAt) - timestampValue(left.occurredAt))
+    .slice(0, 5));
+}
+
+function projectEntry(entry, state, duelRecord = null, recentHistory = Object.freeze([])) {
   const adventurer = state.adventurer;
+  const record = duelRecord || adventurer.duelRecord;
   return Object.freeze({
     id: adventurer.id,
     name: adventurer.name,
@@ -17,6 +45,7 @@ function projectEntry(entry, state, duelRecord = null) {
     isSimulated: true,
     level: adventurer.level,
     experience: adventurer.experience,
+    levelProgression: adventurer.levelProgression,
     currentAreaNumber: adventurer.currentAreaNumber,
     highestUnlockedAreaNumber: adventurer.highestUnlockedAreaNumber,
     huntCount: adventurer.huntCount,
@@ -25,11 +54,19 @@ function projectEntry(entry, state, duelRecord = null) {
     stats: adventurer.stats,
     achievements: adventurer.achievements,
     achievementCount: adventurer.achievements.length,
-    duelRecord: duelRecord || adventurer.duelRecord,
+    duelRecord: record,
+    personality: adventurer.personality,
     activityProfile: adventurer.activityProfile,
     strongRival: entry.strongRival,
     note: entry.note,
     spriteVariant: entry.spriteVariant,
+    history: Object.freeze({
+      huntCount: adventurer.huntCount,
+      adventureCount: adventurer.adventureCount,
+      duelCount: record.total,
+      lastSimulatedAt: state.lastSimulatedAt,
+      recent: recentHistory,
+    }),
   });
 }
 
@@ -80,7 +117,8 @@ export class GuildHallService {
     const adventurers = entries.map((entry) => {
       const state = this.repository.ensure(entry.adventurer, { lastSimulatedAt: initializedAt });
       const duelRecord = this.duelRepository ? this.duelRepository.recordFor(state.adventurer.id) : null;
-      return projectEntry(entry, state, duelRecord);
+      const recentHistory = projectRecentHistory(this.repository, this.duelRepository, state.adventurer.id);
+      return projectEntry(entry, state, duelRecord, recentHistory);
     });
     const leaderboard = this.#leaderboard(adventurers);
 

@@ -24,6 +24,13 @@ function rowResult(row) {
   });
 }
 
+function perspectiveOutcome(row, participantId) {
+  if (row.outcome === 'draw') return 'draw';
+  const challengerWon = row.outcome === 'win';
+  const participantWon = row.challenger_id === participantId ? challengerWon : !challengerWon;
+  return participantWon ? 'win' : 'loss';
+}
+
 export class SQLiteDuelRepository {
   constructor({ database }) {
     if (!database) throw new Error('SQLiteDuelRepository requires a database.');
@@ -81,16 +88,30 @@ export class SQLiteDuelRepository {
     let losses = 0;
     let draws = 0;
     for (const row of rows) {
-      if (row.outcome === 'draw') {
-        draws += 1;
-        continue;
-      }
-      const challengerWon = row.outcome === 'win';
-      const participantWon = row.challenger_id === id ? challengerWon : !challengerWon;
-      if (participantWon) wins += 1;
+      const outcome = perspectiveOutcome(row, id);
+      if (outcome === 'draw') draws += 1;
+      else if (outcome === 'win') wins += 1;
       else losses += 1;
     }
     return Object.freeze({ wins, losses, draws, total: wins + losses + draws });
+  }
+
+  listRecentFor(participantId, limit = 5) {
+    const id = requiredId(participantId, 'Duel participant id');
+    const boundedLimit = Math.max(1, Math.min(20, Math.floor(Number(limit)) || 5));
+    return Object.freeze(this.db.prepare(`
+      SELECT duel_id, challenger_id, opponent_id, outcome, winner_id, loser_id, turn_count, created_at
+      FROM duel_results
+      WHERE challenger_id = ? OR opponent_id = ?
+      ORDER BY datetime(created_at) DESC, duel_id DESC
+      LIMIT ?
+    `).all(id, id, boundedLimit).map((row) => Object.freeze({
+      duelId: row.duel_id,
+      outcome: perspectiveOutcome(row, id),
+      opponentId: row.challenger_id === id ? row.opponent_id : row.challenger_id,
+      turnCount: row.turn_count,
+      createdAt: row.created_at,
+    })));
   }
 
   #migrate() {

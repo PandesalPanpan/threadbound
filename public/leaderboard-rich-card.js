@@ -1,4 +1,5 @@
 import { attachBattleDetails } from './battle-details.js';
+import { renderSimulatedAdventurerProfile } from './simulated-profile-rich-card.js';
 import { createSpriteElement, weaverSpriteFrame } from './sprite-catalog.js';
 
 const stream = document.querySelector('#stream');
@@ -20,8 +21,11 @@ if (stream) {
     .thread-leaderboard-badge.rival { color:#ffe097; border-color:rgba(255,209,102,.25); }
     .thread-leaderboard-metrics { display:flex; flex-wrap:wrap; gap:4px 8px; color:var(--muted); font-size:.64rem; line-height:1.35; }
     .thread-leaderboard-metrics strong { color:var(--text); font-weight:850; }
-    .thread-leaderboard-duel { justify-self:start; min-height:44px; min-width:82px; margin-top:4px; padding:8px 13px; border:1px solid rgba(255,209,102,.28); border-radius:10px; background:rgba(255,209,102,.08); color:#ffe097; font-weight:900; cursor:pointer; }
-    .thread-leaderboard-duel:disabled { opacity:.55; cursor:wait; }
+    .thread-leaderboard-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+    .thread-leaderboard-profile, .thread-leaderboard-duel { min-height:44px; min-width:82px; padding:8px 13px; border-radius:10px; font-weight:900; cursor:pointer; }
+    .thread-leaderboard-profile { border:1px solid rgba(85,214,255,.28); background:rgba(85,214,255,.08); color:#8fe9ff; }
+    .thread-leaderboard-duel { border:1px solid rgba(255,209,102,.28); background:rgba(255,209,102,.08); color:#ffe097; }
+    .thread-leaderboard-profile:disabled, .thread-leaderboard-duel:disabled { opacity:.55; cursor:wait; }
     .thread-leaderboard-result { display:grid; gap:6px; padding:10px; border:1px solid rgba(85,214,255,.2); border-radius:11px; background:rgba(85,214,255,.06); }
     .thread-leaderboard-result strong { font-size:.82rem; }
     .thread-leaderboard-result p { margin:0; color:var(--muted); font-size:.68rem; line-height:1.45; }
@@ -31,7 +35,8 @@ if (stream) {
       .thread-leaderboard-place { width:28px; height:28px; }
       .thread-leaderboard-avatar { width:40px; min-width:40px; }
       .thread-leaderboard-metrics { font-size:.61rem; gap:3px 7px; }
-      .thread-leaderboard-duel { width:100%; }
+      .thread-leaderboard-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .thread-leaderboard-profile, .thread-leaderboard-duel { width:100%; min-width:0; padding-inline:8px; }
     }
   `;
   document.head.append(styles);
@@ -193,18 +198,26 @@ if (stream) {
         metric('DEF', entry.power?.defense || 0),
         metric('Inventory', `${entry.power?.equippedCount || 0}/5`),
       );
-      if (entry.duelRecord) {
-        power.append(metric('Duels', `${entry.duelRecord.wins}-${entry.duelRecord.losses}-${entry.duelRecord.draws}`));
-      }
+      if (entry.duelRecord) power.append(metric('Duels', `${entry.duelRecord.wins}-${entry.duelRecord.losses}-${entry.duelRecord.draws}`));
       copy.append(name, progression, power);
       if (entry.isSimulated) {
+        const actions = document.createElement('div');
+        actions.className = 'thread-leaderboard-actions';
+        const profile = document.createElement('button');
+        profile.type = 'button';
+        profile.className = 'thread-leaderboard-profile';
+        profile.dataset.testid = `leaderboard-profile-${entry.id}`;
+        profile.textContent = 'Profile';
+        profile.setAttribute('aria-label', `Inspect ${entry.name} profile`);
+        profile.addEventListener('click', () => renderSimulatedAdventurerProfile(entry));
         const duel = document.createElement('button');
         duel.type = 'button';
         duel.className = 'thread-leaderboard-duel';
         duel.dataset.testid = `leaderboard-duel-${entry.id}`;
         duel.textContent = entry.strongRival ? 'Duel rival' : 'Duel';
         duel.addEventListener('click', () => startDuel(entry, duel));
-        copy.append(duel);
+        actions.append(profile, duel);
+        copy.append(actions);
       }
       row.append(place, sprite, copy);
       list.append(row);
@@ -214,7 +227,7 @@ if (stream) {
 
     const note = document.createElement('p');
     note.className = 'thread-leaderboard-note';
-    note.textContent = 'Placement uses persisted Level/XP, Area, Hunt activity, achievements, canonical equipment stats, and authoritative Duel records. Duels are automatic stat checks and do not spend Gold or Honey.';
+    note.textContent = 'Placement uses persisted Level/XP, Area, Hunt activity, achievements, canonical equipment stats, and authoritative Duel records. Inspect Profile for full bot equipment, stats, and recent history.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }
