@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadbound.local/schemas/arc-manifest-vnext.schema.json",
+  "title": "Threadbound Arc Manifest vNext",
+  "type": "object",
+  "required": [
+    "manifestVersion", "arc", "lore", "enemies", "bosses", "dungeons", "itemPools", "achievements", "historicalConsequences",
+    "areas", "towns", "npcs", "quests", "shops", "craftingRecipes", "cookingRecipes", "progressionChallenges"
+  ],
+  "properties": {
+    "manifestVersion": { "const": 2 },
+    "arc": { "type": "object" },
+    "lore": { "type": "array" },
+    "enemies": { "type": "array", "items": { "$ref": "#/$defs/combatant" } },
+    "bosses": { "type": "array", "items": { "$ref": "#/$defs/combatant" } },
+    "dungeons": { "type": "array" },
+    "itemPools": { "type": "array" },
+    "achievements": { "type": "array" },
+    "historicalConsequences": { "type": "array" },
+    "shopStocks": { "type": "array" },
+    "areas": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/area" } },
+    "towns": { "type": "array", "items": { "$ref": "#/$defs/town" } },
+    "npcs": { "type": "array", "items": { "$ref": "#/$defs/npc" } },
+    "quests": { "type": "array", "items": { "$ref": "#/$defs/quest" } },
+    "shops": { "type": "array", "items": { "$ref": "#/$defs/shop" } },
+    "craftingRecipes": { "type": "array" },
+    "cookingRecipes": { "type": "array" },
+    "progressionChallenges": { "type": "array", "items": { "$ref": "#/$defs/progressionChallenge" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$" },
+    "levelBand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } }
+    },
+    "resistances": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fire": { "enum": ["normal", "resistant", "high-resistant", "immune"] },
+        "poison": { "enum": ["normal", "resistant", "high-resistant", "immune"] },
+        "ice": { "enum": ["normal", "resistant", "high-resistant", "immune"] },
+        "psychic": { "enum": ["normal", "resistant", "high-resistant", "immune"] }
+      }
+    },
+    "combatant": {
+      "type": "object",
+      "properties": { "resistances": { "$ref": "#/$defs/resistances" } }
+    },
+    "area": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "number", "name", "recommendedLevel"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "number": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "name": { "type": "string", "minLength": 1 }, "recommendedLevel": { "$ref": "#/$defs/levelBand" }
+      }
+    },
+    "town": {
+      "type": "object", "additionalProperties": false, "required": ["id", "areaId", "name"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "areaId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 } }
+    },
+    "npc": {
+      "type": "object", "additionalProperties": true, "required": ["id", "townId", "name", "role"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "townId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["shopkeeper", "blacksmith", "banker", "innkeeper", "healer", "quest-giver", "cook", "crafter", "guild-hall", "special"] }
+      }
+    },
+    "quest": {
+      "type": "object", "additionalProperties": true, "required": ["id", "areaId", "title", "objectives"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "areaId": { "$ref": "#/$defs/id" }, "title": { "type": "string", "minLength": 1 },
+        "objectives": { "type": "array", "minItems": 1 }
+      }
+    },
+    "shop": {
+      "type": "object", "additionalProperties": false, "required": ["id", "townId", "name", "stockId"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "townId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 }, "stockId": { "$ref": "#/$defs/id" } }
+    },
+    "progressionChallenge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "areaId", "dungeonId", "requiresBothHumans", "recommendedLevel"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "areaId": { "$ref": "#/$defs/id" }, "unlocksAreaId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "dungeonId": { "$ref": "#/$defs/id" }, "requiresBothHumans": { "const": true }, "recommendedLevel": { "$ref": "#/$defs/levelBand" }
+      }
+    }
+  }
+}

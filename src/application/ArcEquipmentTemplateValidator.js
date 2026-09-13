@@ -1,45 +1,59 @@
 import { visualAsset } from '../content/VisualAssetCatalog.js';
 import { normalizeArcEquipmentTemplate, isExtendedArcEquipmentTemplate } from '../domain/ArcEquipmentTemplatePolicy.js';
+import { ARC_MANIFEST_VNEXT_VERSION, ArcManifestVNextValidator } from './ArcManifestVNextValidator.js';
 
 export class ArcEquipmentTemplateValidator {
+  constructor({ vNextValidator = new ArcManifestVNextValidator() } = {}) {
+    this.vNextValidator = vNextValidator;
+  }
+
   validate(manifest) {
     const errors = [];
     const warnings = [];
-    if (!Array.isArray(manifest?.itemPools)) return { valid: true, errors, warnings };
-
-    manifest.itemPools.forEach((pool, poolIndex) => {
-      if (!Array.isArray(pool?.items)) return;
-      pool.items.forEach((template, itemIndex) => {
-        const path = `itemPools[${poolIndex}].items[${itemIndex}]`;
-        const extended = isExtendedArcEquipmentTemplate(template);
-        try {
-          normalizeArcEquipmentTemplate(template);
-        } catch (error) {
-          errors.push({ path, code: 'invalid_equipment_template', message: error.message });
-        }
-
-        if (extended) {
-          if (!template?.visualAssetId) {
-            errors.push({ path: `${path}.visualAssetId`, code: 'equipment_visual_asset_required', message: 'Extended equipment templates require an allowlisted item visualAssetId.' });
-          } else if (!visualAsset(template.visualAssetId, 'item')) {
-            errors.push({ path: `${path}.visualAssetId`, code: 'unknown_visual_asset', message: 'visualAssetId must reference an allowlisted item asset.' });
+    if (Array.isArray(manifest?.itemPools)) {
+      manifest.itemPools.forEach((pool, poolIndex) => {
+        if (!Array.isArray(pool?.items)) return;
+        pool.items.forEach((template, itemIndex) => {
+          const path = `itemPools[${poolIndex}].items[${itemIndex}]`;
+          const extended = isExtendedArcEquipmentTemplate(template);
+          try {
+            normalizeArcEquipmentTemplate(template);
+          } catch (error) {
+            errors.push({ path, code: 'invalid_equipment_template', message: error.message });
           }
-        } else {
-          warnings.push({ path, code: 'legacy_equipment_template', message: 'Legacy weapon-only equipment template accepted for migration compatibility; new Arc equipment should use slot, stats, requiredLevel, areaNumber, and visualAssetId.' });
-        }
+
+          if (extended) {
+            if (!template?.visualAssetId) {
+              errors.push({ path: `${path}.visualAssetId`, code: 'equipment_visual_asset_required', message: 'Extended equipment templates require an allowlisted item visualAssetId.' });
+            } else if (!visualAsset(template.visualAssetId, 'item')) {
+              errors.push({ path: `${path}.visualAssetId`, code: 'unknown_visual_asset', message: 'visualAssetId must reference an allowlisted item asset.' });
+            }
+          } else {
+            warnings.push({ path, code: 'legacy_equipment_template', message: 'Legacy weapon-only equipment template accepted for migration compatibility; new Arc equipment should use slot, stats, requiredLevel, areaNumber, and visualAssetId.' });
+          }
+        });
       });
-    });
-    return { valid: errors.length === 0, errors, warnings };
+    }
+
+    const vNext = this.vNextValidator.validate(manifest);
+    return {
+      valid: errors.length === 0 && vNext.valid,
+      errors: [...errors, ...vNext.errors],
+      warnings: [...warnings, ...vNext.warnings],
+    };
   }
 
   /**
    * ArcManifestValidator owns the legacy v1 structural/reference checks. Project
    * extended equipment into that older shape so the new domain policy can own
    * slot/stat/rarity/progression budgets without duplicating the entire validator.
+   * vNext deliberately extends the v1 payload, so its structural projection is
+   * validated as v1 while ArcManifestVNextValidator owns the new world contract.
    */
   projectForLegacyValidator(manifest) {
     if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.itemPools)) return manifest;
     const projected = structuredClone(manifest);
+    if (projected.manifestVersion === ARC_MANIFEST_VNEXT_VERSION) projected.manifestVersion = 1;
     projected.itemPools = projected.itemPools.map((pool) => ({
       ...pool,
       items: Array.isArray(pool.items) ? pool.items.map((template) => {
