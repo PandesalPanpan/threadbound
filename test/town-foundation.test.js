@@ -59,16 +59,18 @@ test('foundation Town catalog stays neutral while projecting stable generated-sp
   assert.deepEqual(townsForArea(2), []);
   assert.deepEqual(townsForArea(0), []);
   assert.equal(npcById('area-1-shopkeeper')?.service, 'shop');
+  assert.match(npcById('area-1-shopkeeper')?.dialogue || '', /supplies/i);
   const projected = projectTown(townById('area-1-town'));
   assert.deepEqual(projected.npcs.map((npc) => npc.id), FOUNDATION_NPCS.map((npc) => npc.id));
   assert.ok(projected.npcs.every((npc) => ['male', 'female'].includes(npc.spriteVariant)));
+  assert.ok(projected.npcs.every((npc) => typeof npc.dialogue === 'string' && npc.dialogue.length > 0));
 });
 
-function fixture() {
+function fixture({ eventBus = null } = {}) {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'town-service-player' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'town-service-user', displayName: 'Town Service Adventurer' });
   const areaRepository = new SQLiteAreaRepository({ database: repository.db });
-  const service = new TownService({ repository, areaRepository });
+  const service = new TownService({ repository, eventBus, areaRepository });
   return { repository, player, areaRepository, service };
 }
 
@@ -89,6 +91,41 @@ test('TownService exposes only Town hubs and NPC read models belonging to the au
       () => service.get(player.id, 'area-1-town'),
       (error) => error.code === 'town_unavailable' && /current Area/i.test(error.message),
     );
+  } finally {
+    repository.close();
+  }
+});
+
+test('TownService interaction validates current Town residency and publishes one concise NPC event', () => {
+  const events = [];
+  const { repository, player, areaRepository, service } = fixture({ eventBus: { publish: (event) => events.push(event) } });
+  try {
+    const interaction = service.interact(player.id, 'area-1-town', 'area-1-shopkeeper');
+    assert.deepEqual(interaction, {
+      townId: 'area-1-town',
+      townName: 'Area 1 Town',
+      areaNumber: 1,
+      npcId: 'area-1-shopkeeper',
+      npcName: 'Shopkeeper',
+      role: 'Shop',
+      service: 'shop',
+      dialogue: 'Need supplies? I keep the essentials close and the prices clear.',
+    });
+    assert.equal(events.length, 1);
+    assert.deepEqual(events[0], { type: 'NpcInteracted', playerId: player.id, ...interaction });
+
+    assert.throws(
+      () => service.interact(player.id, 'area-1-town', 'not-a-resident'),
+      (error) => error.code === 'npc_unavailable',
+    );
+    assert.equal(events.length, 1);
+
+    areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(2).withCurrentArea(2));
+    assert.throws(
+      () => service.interact(player.id, 'area-1-town', 'area-1-shopkeeper'),
+      (error) => error.code === 'town_unavailable',
+    );
+    assert.equal(events.length, 1);
   } finally {
     repository.close();
   }
