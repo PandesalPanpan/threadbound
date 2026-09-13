@@ -22,6 +22,15 @@ test('Gold-only gambling activities render as one mobile Adventure Stream card',
   const gambling = await browse.json();
   expect(gambling.blackjack.currency).toBe('Gold');
 
+  const overCap = await context.request.post('/api/gambling/coinflip', {
+    headers: { 'Idempotency-Key': 'playwright-gambling-cap-0001' },
+    data: { wager: 101, choice: 'heads' },
+  });
+  expect(overCap.status()).toBe(422);
+  const overCapPayload = await overCap.json();
+  expect(overCapPayload.error).toBe('invalid_coinflip_wager');
+  expect(overCapPayload.message).toContain('between 1 and 100 Gold');
+
   await page.getByTestId('stream-message').fill('gambling');
   await page.getByTestId('stream-send').click();
 
