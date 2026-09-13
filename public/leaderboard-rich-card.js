@@ -138,7 +138,7 @@ if (stream) {
       power.append(
         metric('ATK', entry.power?.attack || 0),
         metric('DEF', entry.power?.defense || 0),
-        metric('Gear', `${entry.power?.equippedCount || 0}/5`),
+        metric('Inventory', `${entry.power?.equippedCount || 0}/5`),
       );
       if (entry.duelRecord) {
         power.append(metric('Duels', `${entry.duelRecord.wins}-${entry.duelRecord.losses}-${entry.duelRecord.draws}`));
@@ -151,7 +151,7 @@ if (stream) {
 
     const note = document.createElement('p');
     note.className = 'thread-leaderboard-note';
-    note.textContent = 'Placement uses persisted Level/XP, Area, Hunt activity, achievements, and canonical gear stats. Duel records appear only where authoritative data already exists.';
+    note.textContent = 'Placement uses persisted Level/XP, Area, Hunt activity, achievements, and canonical equipment stats. Duel records appear only where authoritative data already exists.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }
