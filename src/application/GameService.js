@@ -7,6 +7,7 @@ import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
+import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 function healthRecovery(row, now = Date.now()) {
@@ -19,12 +20,13 @@ function healthRecovery(row, now = Date.now()) {
 }
 
 export class GameService {
-  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, equipmentRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
+  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, equipmentRepository = null, fightBuffRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.arcManifestService = arcManifestService;
     this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
+    this.fightBuffRepository = fightBuffRepository || new SQLiteFightBuffRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.idFactory = idFactory;
   }
@@ -50,6 +52,13 @@ export class GameService {
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
     const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
     const equipment = Object.fromEntries(Object.entries(loadout).map(([slot, item]) => [slot, decorateItem(item)]));
+    const activeFightBuffs = this.fightBuffRepository.listActive(playerId).map((buff) => ({
+      code: buff.code,
+      name: buff.name,
+      description: buff.description,
+      sourceRecipeId: buff.sourceRecipeId,
+      remainingFights: buff.remainingFights,
+    }));
 
     return {
       character: {
@@ -81,6 +90,7 @@ export class GameService {
         equipment,
         equippedItem: equipment.weapon,
       },
+      activeFightBuffs,
       party: party ? this.#decorateParty(party, playerId) : null,
       inventory: this.repository.listItems(playerId).map(decorateItem),
       activeRun: activeRun ? this.#decorateRun(activeRun, playerId) : null,
