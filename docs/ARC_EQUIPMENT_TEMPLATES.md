@@ -41,7 +41,7 @@ Crit Chance   1 point per +1 percentage point
 special effect 1 point per non-plain allowlisted effect
 ```
 
-An item may carry at most three unique allowlisted effects. `none` cannot be combined with another effect. Templates above their progression budget are rejected before draft save or publication.
+An extended item may carry at most three unique allowlisted effects. `none` cannot be combined with another extended effect. Templates above their progression budget are rejected before draft save or publication. Crit Chance bonus is independently capped at 100% before the budget calculation.
 
 This is an authoring safety budget, not a claim that final balance is complete. Later tuning may change the centralized policy without moving formulas into generated content.
 
@@ -56,7 +56,7 @@ Migration safety is preserved without rewriting the `items` table:
 - `SQLiteEquipmentRepository` hydrates that data back into canonical loadout fields;
 - legacy persisted items without that metadata default to zero extra stats, Level 1, Area 1, and their existing single `effect_code`.
 
-The automatic battle effect policy reads the hydrated `effectCodes` list, so multiple validated effects are executable only through the existing allowlisted domain catalog. Arc content still cannot provide custom code, callbacks, formulas, or arbitrary mechanics.
+The automatic battle and activity-cooldown policies read the hydrated `effectCodes` list, so multiple extended effects are executable only through existing allowlisted domain catalogs. Arc content still cannot provide custom code, callbacks, formulas, or arbitrary mechanics.
 
 ## Legacy compatibility
 
@@ -66,10 +66,10 @@ Existing Arc Manifest v1 weapon templates remain accepted. They continue to mean
 - Level 1;
 - Area 1;
 - legacy `attackBonus`;
-- existing allowlisted effects;
-- Common through Legendary rarity.
+- Common through Legendary rarity;
+- their historical primary effect at `effects[0]`.
 
-Validation emits a migration warning so new authoring can move to the extended shape without invalidating already bundled/published manifests.
+Legacy effect arrays remain structurally accepted up to the prior v1 schema limit, but M7-01 does not activate their additional entries. That prevents publishing this milestone from silently making an old generated item stronger. Validation emits a migration warning so new authoring can move to the extended shape without invalidating already bundled/published manifests.
 
 ## Deliberate deferrals
 
@@ -80,7 +80,7 @@ Validation emits a migration warning so new authoring can move to the extended s
 
 ## Verification
 
-`test/arc-equipment-template.test.js` proves canonical vocabulary, budget enforcement, rejection of partial/executable-looking templates, legacy compatibility, runtime reward materialization, SQLite loadout reconstruction, derived-stat contribution, multiple allowlisted effects, and world-context authoring guidance.
+`test/arc-equipment-template.test.js` proves canonical vocabulary, budget enforcement, rejection of partial/executable-looking templates, legacy compatibility, runtime reward materialization, SQLite loadout reconstruction, derived-stat contribution, multiple allowlisted effects, and world-context authoring guidance. `test/arc-equipment-legacy-compat.test.js` locks the historical first-effect-only behavior for legacy templates, while `test/activity-cooldown-policy.test.js` proves secondary extended effects are visible to authoritative cooldown policy.
 
 The existing Arc Workshop Playwright path uses `examples/arc-manifest.example.json`; that example now uses the extended equipment shape, so the full E2E gate validates, publishes, earns, and inspects an extended Arc-generated item through the real player journey.
 
