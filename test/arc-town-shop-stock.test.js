@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ShopService } from '../src/application/ShopService.js';
+import { ArcManifestService } from '../src/application/ArcManifestService.js';
 import { arcTownShopOffers, validateArcTownShopStocks } from '../src/content/ArcTownShopCatalog.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
@@ -33,6 +34,10 @@ function manifest(overrides = {}) {
   };
 }
 
+function passingValidator() {
+  return { validate: () => ({ valid: true, errors: [], warnings: [] }) };
+}
+
 test('Arc Town Shop stock validates Town, Area, Gold price, and equipment-template references', () => {
   assert.deepEqual(validateArcTownShopStocks(manifest()), { valid: true, errors: [] });
 
@@ -49,6 +54,33 @@ test('Arc Town Shop stock validates Town, Area, Gold price, and equipment-templa
   assert.ok(result.errors.some((error) => error.code === 'town_area_mismatch'));
   assert.ok(result.errors.some((error) => error.code === 'invalid_shop_cost'));
   assert.ok(result.errors.some((error) => error.code === 'unknown_item_template_reference'));
+});
+
+test('ArcManifestService publication validation includes authoritative Town Shop stock validation', () => {
+  const service = new ArcManifestService({
+    gameRepository: {},
+    codexRepository: {},
+    manifestRepository: {},
+    validator: passingValidator(),
+    equipmentTemplateValidator: {
+      ...passingValidator(),
+      projectForLegacyValidator: (candidate) => candidate,
+    },
+    replayabilityValidator: passingValidator(),
+    bundledManifests: [],
+  });
+  const invalid = manifest({
+    shopStocks: [{
+      id: 'market-stock',
+      townId: 'area-1-town',
+      areaNumber: 2,
+      offers: [{ sku: 'ember-needle', itemTemplateId: 'ember-needle-template', cost: 14 }],
+    }],
+  });
+
+  const validation = service.validate(invalid);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.some((error) => error.code === 'town_area_mismatch'));
 });
 
 test('Arc Town Shop projection keeps item construction private until authoritative purchase', () => {
