@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testMatch: '**/arc-workshop.spec.js',
+  testMatch: ['**/arc-workshop.spec.js', '**/arc-workshop-vnext.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,

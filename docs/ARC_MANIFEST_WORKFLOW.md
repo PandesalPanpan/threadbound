@@ -20,7 +20,8 @@ Publication is intentionally separate from upload. An uploaded manifest never ch
 - `schemas/arc-manifest.schema.json` remains the migration-compatible v1 contract used by existing bundled/generated content.
 - `schemas/arc-manifest-vnext.schema.json` defines manifest version `2`, which extends the v1 payload with referential world packaging for Areas, Towns, NPCs, Quests, Shops, crafting/cooking recipes, level bands, progression challenges, and automatic-battle effect resistances.
 - The authoritative validator accepts existing v1 manifests unchanged. A v2 manifest is projected through the existing v1 structural/equipment checks and additionally passes `ArcManifestVNextValidator`; generated Town shop stocks may bind to Towns declared by that same validated v2 package.
-- M10-01 establishes the data/validation boundary only. Arc Workshop vNext preview/presentation remains M10-02, and authoring new Arc content remains later in Phase 10.
+- The Arc Workshop labels the detected manifest version and, for v2, previews the package's Areas, Towns, NPCs, Quests, Shops, recipes, and progression challenges before save/publish. The browser preview is informational only; world references, recipes, progression rules, equipment, and combat resistances are still revalidated server-side.
+- `examples/arc-manifest-vnext.example.json` is a compact valid v2 package used by the Workshop acceptance path and as an authoring reference.
 
 ## Provider independence
 

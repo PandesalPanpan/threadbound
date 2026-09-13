@@ -40,12 +40,18 @@ function readEditor() {
   }
 }
 
-function renderValidation(validation) {
+function manifestVersionLabel(manifest = parsedManifest) {
+  if (manifest?.manifestVersion === 2) return 'v2 · world package';
+  if (manifest?.manifestVersion === 1) return 'v1 · legacy-compatible package';
+  return manifest?.manifestVersion ? `v${escapeHtml(manifest.manifestVersion)}` : 'unknown version';
+}
+
+function renderValidation(validation, manifest = parsedManifest) {
   const errors = validation?.errors || [];
   const warnings = validation?.warnings || [];
   validationNode.innerHTML = `
     <h3>${validation?.valid ? '✓ Manifest is valid' : '✕ Manifest is invalid'}</h3>
-    <p><strong>${errors.length}</strong> errors · <strong>${warnings.length}</strong> warnings</p>
+    <p><span class="pill">${manifestVersionLabel(manifest)}</span> <strong>${errors.length}</strong> errors · <strong>${warnings.length}</strong> warnings</p>
     ${errors.length ? `<h4>Errors</h4><ul>${errors.map((entry) => `<li><code>${escapeHtml(entry.path || '$')}</code> — ${escapeHtml(entry.message)}</li>`).join('')}</ul>` : ''}
     ${warnings.length ? `<h4>Warnings</h4><ul>${warnings.map((entry) => `<li><code>${escapeHtml(entry.path || '$')}</code> — ${escapeHtml(entry.message)}</li>`).join('')}</ul>` : ''}
   `;
@@ -56,33 +62,71 @@ function names(entries, field = 'name') {
   return (entries || []).map((entry) => entry?.[field]).filter(Boolean).map(escapeHtml).join(' · ');
 }
 
+function totalItems(manifest) {
+  return manifest.itemPools?.reduce((total, pool) => total + (pool.items?.length || 0), 0) || 0;
+}
+
+function previewStat(value, label) {
+  return `<div><strong>${value || 0}</strong><span>${escapeHtml(label)}</span></div>`;
+}
+
+function previewNames(label, entries, field = 'name') {
+  const value = names(entries, field);
+  return value ? `<p><strong>${escapeHtml(label)}:</strong> ${value}</p>` : '';
+}
+
+function renderVNextPreview(manifest) {
+  if (manifest.manifestVersion !== 2) return '';
+  const recipeCount = (manifest.craftingRecipes?.length || 0) + (manifest.cookingRecipes?.length || 0);
+  return `
+    <section data-testid="vnext-world-preview">
+      <h4>World package</h4>
+      <div class="preview-grid">
+        ${previewStat(manifest.areas?.length, 'Areas')}
+        ${previewStat(manifest.towns?.length, 'Towns')}
+        ${previewStat(manifest.npcs?.length, 'NPCs')}
+        ${previewStat(manifest.quests?.length, 'Quests')}
+        ${previewStat(manifest.shops?.length, 'Shops')}
+        ${previewStat(recipeCount, 'Recipes')}
+        ${previewStat(manifest.progressionChallenges?.length, 'Progression challenges')}
+      </div>
+      ${previewNames('Areas', manifest.areas)}
+      ${previewNames('Towns', manifest.towns)}
+      ${previewNames('NPCs', manifest.npcs)}
+      ${previewNames('Quests', manifest.quests, 'title')}
+      ${previewNames('Shops', manifest.shops)}
+      ${previewNames('Crafting', manifest.craftingRecipes)}
+      ${previewNames('Cooking', manifest.cookingRecipes)}
+      ${previewNames('Progression', manifest.progressionChallenges, 'id')}
+      <p class="muted">v2 world references, recipes, progression challenges, and combat resistances are revalidated server-side before a draft can be saved or published.</p>
+    </section>
+  `;
+}
+
 function renderPreview(manifest) {
   if (!manifest?.arc) {
     previewNode.innerHTML = '<p class="muted">No manifest loaded.</p>';
     return;
   }
-  const dungeonNames = names(manifest.dungeons);
-  const enemyNames = names(manifest.enemies);
-  const bossNames = names(manifest.bosses);
-  const questNames = names(manifest.storyQuests, 'title');
-  const achievementNames = names(manifest.achievements, 'title');
   previewNode.innerHTML = `
+    <p><span class="pill" data-testid="manifest-version">${manifestVersionLabel(manifest)}</span></p>
     <h3>${escapeHtml(manifest.arc.title)}</h3>
     <p>${escapeHtml(manifest.arc.premise)}</p>
     <div class="preview-grid">
-      <div><strong>${manifest.dungeons?.length || 0}</strong><span>Dungeons</span></div>
-      <div><strong>${manifest.enemies?.length || 0}</strong><span>Enemies</span></div>
-      <div><strong>${manifest.bosses?.length || 0}</strong><span>Bosses</span></div>
-      <div><strong>${manifest.itemPools?.reduce((total, pool) => total + (pool.items?.length || 0), 0) || 0}</strong><span>Item templates</span></div>
-      <div><strong>${manifest.storyQuests?.length || 0}</strong><span>Story Quests</span></div>
-      <div><strong>${manifest.lore?.length || 0}</strong><span>Lore pages</span></div>
-      <div><strong>${manifest.achievements?.length || 0}</strong><span>Achievements</span></div>
+      ${previewStat(manifest.dungeons?.length, 'Dungeons')}
+      ${previewStat(manifest.enemies?.length, 'Enemies')}
+      ${previewStat(manifest.bosses?.length, 'Bosses')}
+      ${previewStat(totalItems(manifest), 'Item templates')}
+      ${previewStat((manifest.storyQuests?.length || 0) + (manifest.quests?.length || 0), 'Quests')}
+      ${previewStat(manifest.lore?.length, 'Lore pages')}
+      ${previewStat(manifest.achievements?.length, 'Achievements')}
     </div>
-    ${dungeonNames ? `<p><strong>Dungeons:</strong> ${dungeonNames}</p>` : ''}
-    ${enemyNames ? `<p><strong>Enemies:</strong> ${enemyNames}</p>` : ''}
-    ${bossNames ? `<p><strong>Bosses:</strong> ${bossNames}</p>` : ''}
-    ${questNames ? `<p><strong>Story Quests:</strong> ${questNames}</p>` : ''}
-    ${achievementNames ? `<p><strong>Achievements:</strong> ${achievementNames}</p>` : ''}
+    ${previewNames('Dungeons', manifest.dungeons)}
+    ${previewNames('Enemies', manifest.enemies)}
+    ${previewNames('Bosses', manifest.bosses)}
+    ${previewNames('Story Quests', manifest.storyQuests, 'title')}
+    ${previewNames('Achievements', manifest.achievements, 'title')}
+    ${renderVNextPreview(manifest)}
   `;
 }
 
@@ -98,7 +142,7 @@ async function loadManifests() {
   }
   draftsNode.innerHTML = manifests.map((entry) => `
     <article class="manifest-row" data-manifest-id="${escapeHtml(entry.id)}">
-      <div><strong>${escapeHtml(entry.manifest.arc.title)}</strong> <span class="pill">${escapeHtml(entry.status)}</span></div>
+      <div><strong>${escapeHtml(entry.manifest.arc.title)}</strong> <span class="pill">${escapeHtml(entry.status)}</span> <span class="pill">${manifestVersionLabel(entry.manifest)}</span></div>
       <small>${escapeHtml(entry.arcId)} · revision ${entry.revision} · ${escapeHtml(entry.source)}</small>
       <div class="actions">
         <button type="button" data-action="load" data-id="${escapeHtml(entry.id)}">Load</button>
@@ -117,10 +161,11 @@ fileInput.addEventListener('change', async () => {
   }
   const text = await file.text();
   editor.value = text;
+  saveButton.disabled = true;
   try {
     parsedManifest = JSON.parse(text);
     renderPreview(parsedManifest);
-    setStatus(`Loaded ${file.name}. Validate it before saving.`);
+    setStatus(`Loaded ${file.name} (${manifestVersionLabel(parsedManifest)}). Validate it before saving.`);
   } catch (error) {
     parsedManifest = null;
     renderPreview(null);
@@ -135,6 +180,7 @@ editor.addEventListener('input', () => {
     renderPreview(parsedManifest);
   } catch {
     parsedManifest = null;
+    renderPreview(null);
   }
 });
 
@@ -143,11 +189,11 @@ validateButton.addEventListener('click', async () => {
     const manifest = readEditor();
     setStatus('Validating…');
     const { validation } = await request('/api/arc-workshop/validate', { method: 'POST', body: JSON.stringify({ manifest }) });
-    renderValidation(validation);
+    renderValidation(validation, manifest);
     renderPreview(manifest);
-    setStatus(validation.valid ? 'Validation passed. You may save this as a draft.' : 'Validation failed. Fix the reported errors before saving.');
+    setStatus(validation.valid ? `Validation passed for ${manifestVersionLabel(manifest)}. You may save this as a draft.` : 'Validation failed. Fix the reported errors before saving.');
   } catch (error) {
-    renderValidation(error.body?.validation || { valid: false, errors: [{ path: '$', message: error.message }], warnings: [] });
+    renderValidation(error.body?.validation || { valid: false, errors: [{ path: '$', message: error.message }], warnings: [] }, parsedManifest);
     setStatus(error.message);
   }
 });
@@ -160,7 +206,7 @@ saveButton.addEventListener('click', async () => {
     setStatus(`Saved ${record.manifest.arc.title} revision ${record.revision} as a draft.`);
     await loadManifests();
   } catch (error) {
-    if (error.body?.validation) renderValidation(error.body.validation);
+    if (error.body?.validation) renderValidation(error.body.validation, parsedManifest);
     setStatus(error.message);
   }
 });
@@ -174,17 +220,17 @@ draftsNode.addEventListener('click', async (event) => {
       editor.value = pretty(record.manifest);
       parsedManifest = record.manifest;
       renderPreview(record.manifest);
-      renderValidation(record.validation);
+      renderValidation(record.validation, record.manifest);
       setStatus(`Loaded ${record.manifest.arc.title} revision ${record.revision}.`);
     }
     if (button.dataset.action === 'publish') {
       setStatus('Revalidating and publishing…');
       const { record } = await request(`/api/arc-workshop/manifests/${encodeURIComponent(button.dataset.id)}/publish`, { method: 'POST', body: '{}' });
-      setStatus(`Published ${record.manifest.arc.title} revision ${record.revision}. Its dungeons and Codex entries are now live.`);
+      setStatus(`Published ${record.manifest.arc.title} revision ${record.revision}. Its validated Arc content is now live.`);
       await loadManifests();
     }
   } catch (error) {
-    if (error.body?.validation) renderValidation(error.body.validation);
+    if (error.body?.validation) renderValidation(error.body.validation, parsedManifest);
     setStatus(error.message);
   }
 });
