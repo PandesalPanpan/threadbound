@@ -2,6 +2,9 @@ import { emptyEquipmentLoadout, normalizeEquipmentSlot } from '../domain/Equipme
 
 function decodeItem(row) {
   if (!row) return null;
+  const effect = JSON.parse(row.effect_json);
+  const template = effect?.equipmentTemplate || {};
+  const stats = template.stats || {};
   return {
     id: row.id,
     playerId: row.player_id,
@@ -10,8 +13,16 @@ function decodeItem(row) {
     slot: row.slot,
     rarity: row.rarity,
     attackBonus: row.attack_bonus,
+    defenseBonus: Number(stats.defenseBonus || 0),
+    maxHpBonus: Number(stats.maxHpBonus || 0),
+    speedBonus: Number(stats.speedBonus || 0),
+    critChanceBonus: Number(stats.critChanceBonus || 0),
     effectCode: row.effect_code,
-    effect: JSON.parse(row.effect_json),
+    effectCodes: Array.isArray(template.effectCodes) ? [...template.effectCodes] : [row.effect_code].filter(Boolean),
+    effect,
+    requiredLevel: Number(template.requiredLevel || 1),
+    areaNumber: Number(template.areaNumber || 1),
+    equipmentBudget: template.budget ? { ...template.budget } : null,
     visualAssetId: row.visual_asset_id || null,
     source: row.source,
     createdAt: row.created_at,
