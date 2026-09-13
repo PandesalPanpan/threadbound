@@ -1,23 +1,44 @@
+import { assertEquipmentSellable, equipmentSellValue } from '../domain/EquipmentSellPolicy.js';
+
 export class SQLiteInventoryRepository {
   constructor({ database }) {
     this.db = database;
   }
 
-  salvageItem({ playerId, itemId, threadDust }) {
+  sellItem({ playerId, itemId }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const item = this.db.prepare('SELECT * FROM items WHERE id = ? AND player_id = ?').get(itemId, playerId);
-      if (!item) throw new Error('Item not found.');
-      const player = this.db.prepare('SELECT equipped_item_id FROM players WHERE id = ?').get(playerId);
-      if (!player) throw new Error('Player not found.');
-      if (player.equipped_item_id === itemId) {
-        const error = new Error('Equipped item cannot be salvaged. Equip another item first.');
-        error.code = 'equipped_item_cannot_be_salvaged';
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      if (activeRun) {
+        const error = new Error('Finish the active dungeon before selling equipment.');
+        error.code = 'item_sell_during_run';
         throw error;
       }
+
+      const item = this.db.prepare('SELECT * FROM items WHERE id = ? AND player_id = ?').get(itemId, playerId);
+      if (!item) throw new Error('Item not found.');
+      const player = this.db.prepare('SELECT equipped_item_id, thread_dust FROM players WHERE id = ?').get(playerId);
+      if (!player) throw new Error('Player not found.');
+
+      const equipped = this.db.prepare('SELECT slot FROM player_equipment WHERE player_id = ? AND item_id = ? LIMIT 1').get(playerId, itemId);
+      if (equipped || player.equipped_item_id === itemId) {
+        const error = new Error('Equipped equipment cannot be sold. Equip another item first.');
+        error.code = 'equipped_item_cannot_be_sold';
+        throw error;
+      }
+
+      const persistedItem = {
+        rarity: item.rarity,
+        attackBonus: item.attack_bonus,
+        source: item.source,
+        effect: JSON.parse(item.effect_json || '{}'),
+      };
+      assertEquipmentSellable(persistedItem);
+      const saleGold = equipmentSellValue(persistedItem);
+
       const removed = this.db.prepare('DELETE FROM items WHERE id = ? AND player_id = ?').run(itemId, playerId);
-      if (removed.changes !== 1) throw new Error('Item changed before it could be salvaged.');
-      this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(threadDust, playerId);
+      if (removed.changes !== 1) throw new Error('Item changed before it could be sold.');
+      this.db.prepare('UPDATE players SET thread_dust = thread_dust + ? WHERE id = ?').run(saleGold, playerId);
       this.db.exec('COMMIT');
       return {
         id: item.id,
@@ -25,13 +46,19 @@ export class SQLiteInventoryRepository {
         name: item.name,
         rarity: item.rarity,
         attackBonus: item.attack_bonus,
-        gold: threadDust,
-        threadDust,
+        goldEarned: saleGold,
+        gold: saleGold,
+        // Compatibility alias for persisted/API consumers while thread_dust storage remains.
+        threadDust: saleGold,
       };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
     }
+  }
+
+  salvageItem({ playerId, itemId }) {
+    return this.sellItem({ playerId, itemId });
   }
 
   upgradeItem({ playerId, itemId, expectedLevel, cost, attackIncrease, attunementCode }) {

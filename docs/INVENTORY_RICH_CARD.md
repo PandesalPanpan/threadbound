@@ -16,7 +16,7 @@ The Inventory card consumes the existing server-authoritative `/api/dashboard` p
 - Equip, Upgrade, and Sell presentation actions;
 - current Gold and health-potion context.
 
-The browser does not calculate authoritative gameplay outcomes. Equip and Upgrade use existing server commands. The M2-02 Sell control is a migration-safe presentation over the existing authoritative salvage transaction; the dedicated canonical Sell transaction remains M7-03 and must not be pulled forward merely to satisfy this card milestone.
+The browser does not calculate authoritative gameplay outcomes. Equip and Upgrade use server commands. **M7-03 now gives Sell its canonical server-authoritative transaction**: domain policy owns value/protection rules, the repository removes the item and credits Gold atomically, and one `ItemSold` event becomes one concise Adventure Stream receipt. The current `/salvage` route/name remains only as a migration transport alias to that Sell use case; it no longer owns separate salvage semantics.
 
 ## Compatibility
 
@@ -24,7 +24,7 @@ The browser does not calculate authoritative gameplay outcomes. Equip and Upgrad
 
 The legacy dashboard Inventory section remains a secondary compatibility surface. M2-02 does not turn it into the primary application shell and does not restore tactical combat controls.
 
-Honey-purchased Training Cache items remain durable purchase grants and are not used as disposable Sell/salvage fixtures. Browser acceptance earns ordinary Upgrade Gold through authoritative Hunts while keeping the purchase grant intact.
+Honey-purchased Training Cache items remain durable purchase grants and cannot be converted into locally minted Gold by Sell. Browser acceptance uses ordinary Shop equipment as the disposable Sell fixture while keeping the Honey grant intact.
 
 ## Browser acceptance
 
@@ -34,13 +34,15 @@ Honey-purchased Training Cache items remain durable purchase grants and are not 
 - exposes all five slots and all five readable character stats;
 - renders generated item art and rarity/slot metadata;
 - exposes functional Equip and Upgrade actions that produce authoritative state changes and stream receipts;
-- exposes the Sell action with confirmation without client-authored pricing;
-- prevents selling the equipped item;
+- exposes Sell with an explicit confirmation step and no client-authored pricing;
+- confirms an ordinary Shop item remains before confirmation, then removes it and credits the exact authoritative Gold value after confirmation;
+- produces exactly one canonical Sell/Gold stream receipt for the committed sale;
+- prevents selling currently equipped gear through presentation state while the server independently enforces all-slot protection;
 - maintains 44px action targets and avoids horizontal overflow;
 - writes `ux-review/inventory-rich-card-mobile.png` for visual inspection.
 
-The green PR gate ran `npm run check`, `npm test`, and the complete active Chromium E2E suite. The representative 390px Inventory screenshot was inspected before merge and retained the chat-first hierarchy without reintroducing the tactical dashboard.
+M7-03 changes Sell behavior and copy but does not introduce a new Inventory layout. The existing mobile hierarchy remains the approved presentation surface; authoritative Sell acceptance is covered by the same mobile journey.
 
 ## Handoff
 
-M2-02 is complete. Continue **M2-03 — Shop rich card**. Build it on the reusable rich-card primitive and the existing server-owned `ShopService`/catalog; keep prices, affordability, purchases, and future equipment stock authoritative on the server, and do not pull the later Arc/Town stock-generation milestone forward.
+M2-02 remains complete, and M7-03 owns the dedicated Sell transaction. After M7-03 is merged and green, continue the master plan at **M7-04 — simple crafting recipe model when item ingredients justify it** without introducing another headline currency.
