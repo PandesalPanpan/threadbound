@@ -69,6 +69,8 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   await page.getByTestId('manifest-file').setInputFiles('examples/arc-manifest.example.json');
   await expect(page.getByTestId('manifest-preview')).toContainText('The Ashen Thread');
   await expect(page.getByTestId('manifest-preview')).toContainText('Cinder Vault');
+  await expect(page.getByTestId('manifest-preview')).toContainText('Story Quests');
+  await expect(page.getByTestId('manifest-preview')).toContainText('Cinder Survey');
 
   await page.getByTestId('validate-manifest').click();
   await expect(page.getByTestId('validation-result')).toContainText('Manifest is valid');
