@@ -1,3 +1,4 @@
+import { projectTown, townsForArea } from '../content/TownCatalog.js';
 import { AreaProgression, projectArea } from '../domain/AreaProgression.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 
@@ -27,6 +28,7 @@ export class AreaService {
       currentAreaNumber: progression.currentAreaNumber,
       highestUnlockedAreaNumber: progression.highestUnlockedAreaNumber,
       areas: unlockedAreas(progression.highestUnlockedAreaNumber, progression.currentAreaNumber),
+      towns: Object.freeze(townsForArea(progression.currentAreaNumber).map(projectTown)),
     });
   }
 
