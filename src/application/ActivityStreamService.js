@@ -163,6 +163,15 @@ export class ActivityStreamService {
           body: `${actorName || 'Adventurer'} Adventured in ${event.areaName || `Area ${event.areaNumber}`} and ${outcome} ${event.enemyName || enemyName || 'an enemy'}. −${event.damageTaken || 0} HP · ${health}${rewards}${levelUp}${loot}${loss}${story}${cooldown}.`,
         };
       }
+      case 'DuelResolved': {
+        const record = event.challengerRecord || {};
+        const recordText = `Record ${Number(record.wins || 0)}-${Number(record.losses || 0)}-${Number(record.draws || 0)}`;
+        return {
+          actorPlayerId: event.playerId,
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'Adventurer'} dueled ${event.opponentName || 'a Guild Hall adventurer'}. ${event.receiptText || titleize(event.outcome)} · ${recordText}.`,
+        };
+      }
       case 'HealthPotionUsed':
         return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
       case 'HealthPotionPurchased':

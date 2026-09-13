@@ -14,6 +14,7 @@ import { CombatPreviewService } from './application/CombatPreviewService.js';
 import { GameService } from './application/GameService.js';
 import { HuntService } from './application/HuntService.js';
 import { AdventureService } from './application/AdventureService.js';
+import { DuelService } from './application/DuelService.js';
 import { ShopService } from './application/ShopService.js';
 import { SimpleDungeonService } from './application/SimpleDungeonService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
@@ -121,6 +122,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const gameService = new GameService({ repository, eventBus, arcManifestService });
   const huntService = new HuntService({ repository, eventBus });
   const adventureService = new AdventureService({ repository, eventBus });
+  const duelService = new DuelService({ repository, eventBus });
   const shopService = new ShopService({ repository, eventBus });
   const simpleDungeonService = new SimpleDungeonService({ repository, eventBus, arcManifestService });
   const combatPreview = new CombatPreviewService({ repository });
@@ -389,6 +391,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const adventure = adventureService.adventure(playerId);
     return response.json({ adventure, dashboard: gameService.dashboard(playerId) });
   });
+  app.post('/api/duels/:opponentId', requireConnection, idempotentRunCommand, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const duel = duelService.duel(playerId, request.params.opponentId);
+    return response.status(201).json({ duel });
+  });
   app.post('/api/recovery/potion', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
     const recovery = huntService.useHealthPotion(playerId);
@@ -477,6 +484,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'adventure_during_dungeon',
       'too_wounded_to_adventure',
       'adventure_unavailable_in_area',
+      'duel_during_dungeon',
+      'duel_opponent_unavailable',
+      'duel_self_target',
+      'duel_replay_mismatch',
       'health_already_full',
       'no_health_potions',
       'potion_during_dungeon',

@@ -1,3 +1,4 @@
+import { attachBattleDetails } from './battle-details.js';
 import { createSpriteElement, weaverSpriteFrame } from './sprite-catalog.js';
 
 const stream = document.querySelector('#stream');
@@ -19,12 +20,18 @@ if (stream) {
     .thread-leaderboard-badge.rival { color:#ffe097; border-color:rgba(255,209,102,.25); }
     .thread-leaderboard-metrics { display:flex; flex-wrap:wrap; gap:4px 8px; color:var(--muted); font-size:.64rem; line-height:1.35; }
     .thread-leaderboard-metrics strong { color:var(--text); font-weight:850; }
+    .thread-leaderboard-duel { justify-self:start; min-height:44px; min-width:82px; margin-top:4px; padding:8px 13px; border:1px solid rgba(255,209,102,.28); border-radius:10px; background:rgba(255,209,102,.08); color:#ffe097; font-weight:900; cursor:pointer; }
+    .thread-leaderboard-duel:disabled { opacity:.55; cursor:wait; }
+    .thread-leaderboard-result { display:grid; gap:6px; padding:10px; border:1px solid rgba(85,214,255,.2); border-radius:11px; background:rgba(85,214,255,.06); }
+    .thread-leaderboard-result strong { font-size:.82rem; }
+    .thread-leaderboard-result p { margin:0; color:var(--muted); font-size:.68rem; line-height:1.45; }
     .thread-leaderboard-note { margin:0; color:var(--muted); font-size:.67rem; line-height:1.45; }
     @media (max-width:420px) {
       .thread-leaderboard-row { grid-template-columns:30px 42px minmax(0,1fr); gap:7px; padding:8px 7px; }
       .thread-leaderboard-place { width:28px; height:28px; }
       .thread-leaderboard-avatar { width:40px; min-width:40px; }
       .thread-leaderboard-metrics { font-size:.61rem; gap:3px 7px; }
+      .thread-leaderboard-duel { width:100%; }
     }
   `;
   document.head.append(styles);
@@ -36,10 +43,22 @@ if (stream) {
     error.hidden = !message;
   }
 
-  async function loadLeaderboard() {
-    const response = await fetch('/api/areas', { headers: { Accept: 'application/json' } });
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+    });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.message || 'Could not load Leaderboard.');
+    if (!response.ok) throw new Error(payload.message || `Request failed (${response.status})`);
+    return payload;
+  }
+
+  async function loadLeaderboard() {
+    const payload = await api('/api/areas');
     const towns = payload.area?.towns || [];
     const guildHall = towns.find((town) => town.guildHall?.leaderboard)?.guildHall || null;
     if (!guildHall) throw new Error('No Guild Hall leaderboard is available in the current Area.');
@@ -78,7 +97,41 @@ if (stream) {
     return span;
   }
 
-  function renderLeaderboard(guildHall) {
+  function resultPanel(duel) {
+    const host = document.createElement('section');
+    host.className = 'thread-leaderboard-result';
+    host.dataset.testid = 'duel-result';
+    const heading = document.createElement('strong');
+    heading.textContent = duel.battle?.receipt?.headline || 'Duel resolved';
+    const copy = document.createElement('p');
+    const record = duel.record || { wins: 0, losses: 0, draws: 0 };
+    copy.textContent = `${duel.opponent?.name || 'Opponent'} · Record ${record.wins}-${record.losses}-${record.draws}`;
+    host.append(heading, copy);
+    if (duel.battle?.receipt?.detailsAvailable) attachBattleDetails(host, duel.battle);
+    return host;
+  }
+
+  async function startDuel(entry, button) {
+    const previousLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Dueling…';
+    try {
+      showError('');
+      const idempotencyKey = `duel-${entry.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const payload = await api(`/api/duels/${encodeURIComponent(entry.id)}`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+      });
+      const guildHall = await loadLeaderboard();
+      renderLeaderboard(guildHall, payload.duel);
+    } catch (error) {
+      showError(error.message);
+      button.disabled = false;
+      button.textContent = previousLabel;
+    }
+  }
+
+  function renderLeaderboard(guildHall, latestDuel = null) {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
     const entries = Array.isArray(guildHall.leaderboard) ? guildHall.leaderboard : [];
@@ -144,14 +197,24 @@ if (stream) {
         power.append(metric('Duels', `${entry.duelRecord.wins}-${entry.duelRecord.losses}-${entry.duelRecord.draws}`));
       }
       copy.append(name, progression, power);
+      if (entry.isSimulated) {
+        const duel = document.createElement('button');
+        duel.type = 'button';
+        duel.className = 'thread-leaderboard-duel';
+        duel.dataset.testid = `leaderboard-duel-${entry.id}`;
+        duel.textContent = entry.strongRival ? 'Duel rival' : 'Duel';
+        duel.addEventListener('click', () => startDuel(entry, duel));
+        copy.append(duel);
+      }
       row.append(place, sprite, copy);
       list.append(row);
     }
     card.append(list);
+    if (latestDuel) card.append(resultPanel(latestDuel));
 
     const note = document.createElement('p');
     note.className = 'thread-leaderboard-note';
-    note.textContent = 'Placement uses persisted Level/XP, Area, Hunt activity, achievements, and canonical equipment stats. Duel records appear only where authoritative data already exists.';
+    note.textContent = 'Placement uses persisted Level/XP, Area, Hunt activity, achievements, canonical equipment stats, and authoritative Duel records. Duels are automatic stat checks and do not spend Gold or Honey.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }

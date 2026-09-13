@@ -49,7 +49,10 @@ test('Leaderboard card ranks human and simulated adventurers inside the mobile A
   await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText(/Inventory/);
   await expect(card.getByTestId('leaderboard-row-guild-rook')).toContainText(/Duels/);
   await expect(card.getByTestId('leaderboard-place-guild-rook')).toHaveText('#1');
-  await expect(card.getByRole('button', { name: /Duel/i })).toHaveCount(0);
+  await expect(card.locator('[data-testid^="leaderboard-duel-"]')).toHaveCount(
+    guildHall.leaderboard.filter((entry) => entry.isSimulated).length,
+  );
+  await expect(card.getByTestId('leaderboard-duel-guild-rook')).toHaveText('Duel rival');
 
   const metrics = await page.evaluate(() => {
     const cardElement = document.querySelector('[data-testid="stream-command-card"]');
@@ -63,11 +66,13 @@ test('Leaderboard card ranks human and simulated adventurers inside the mobile A
       navBottom: navRect?.bottom || 0,
       farthestRight: Math.max(0, ...rows.map((row) => row.getBoundingClientRect().right)),
       viewportWidth: window.innerWidth,
+      shortestDuelButton: Math.min(...[...(cardElement?.querySelectorAll('.thread-leaderboard-duel') || [])].map((button) => button.getBoundingClientRect().height)),
     };
   });
   expect(metrics.width).toBeLessThanOrEqual(390);
   expect(metrics.cardTop).toBeGreaterThanOrEqual(metrics.navBottom);
   expect(metrics.farthestRight).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.shortestDuelButton).toBeGreaterThanOrEqual(44);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/leaderboard-mobile.png`, fullPage: true });
