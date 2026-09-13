@@ -5,11 +5,12 @@ import './bank-rich-card.js';
 import './area-rich-card.js';
 import './town-rich-card.js';
 import './quest-rich-card.js';
+import './leaderboard-rich-card.js';
 import './bank-profile-sync.js';
 import './rich-card-visual-polish.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list, .thread-town-npcs, .thread-quest-list';
-const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area', 'town', 'quest']);
+const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area', 'town', 'quest', 'leaderboard']);
 
 function commandFromCard(card) {
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
@@ -49,6 +50,11 @@ function snapshotDetails(card, kind) {
     const quests = card.querySelectorAll('[data-testid^="quest-row-"]').length;
     const claimable = card.querySelectorAll('[data-testid^="quest-state-"][data-state="claimable"]').length;
     return [quests ? `${quests} quest${quests === 1 ? '' : 's'}` : 'No quests', claimable ? `${claimable} claimable` : ''].filter(Boolean).join(' · ');
+  }
+  if (kind === 'leaderboard') {
+    const rows = card.querySelectorAll('[data-testid^="leaderboard-row-"]').length;
+    const leader = card.querySelector('[data-place="1"] .thread-leaderboard-name strong')?.textContent?.trim() || '';
+    return [rows ? `${rows} ranked` : 'No standings', leader ? `#1 ${leader}` : ''].filter(Boolean).join(' · ');
   }
   if (kind === 'shop') {
     const offers = card.querySelectorAll('[data-testid="shop-rich-offer"], .thread-shop-offer').length;
