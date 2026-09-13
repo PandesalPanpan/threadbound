@@ -18,6 +18,16 @@ function normalizeBaseCooldownSeconds(value) {
   return Math.floor(number);
 }
 
+function effectCodesForItem(item) {
+  if (!item || typeof item !== 'object') return [];
+  const values = Array.isArray(item.effectCodes)
+    ? item.effectCodes
+    : Array.isArray(item.effect?.equipmentTemplate?.effectCodes)
+      ? item.effect.equipmentTemplate.effectCodes
+      : [item.effectCode];
+  return values.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+}
+
 function equippedEffectCodes(equipment = {}) {
   if (!equipment || typeof equipment !== 'object' || Array.isArray(equipment)) return [];
   const codes = [];
@@ -27,8 +37,7 @@ function equippedEffectCodes(equipment = {}) {
     const identity = item.id || item;
     if (seenItems.has(identity)) continue;
     seenItems.add(identity);
-    const code = String(item.effectCode || '').trim().toLowerCase();
-    if (code) codes.push(code);
+    codes.push(...effectCodesForItem(item));
   }
   return codes;
 }
@@ -50,9 +59,9 @@ function modifierForBuffCode(code, activity) {
  * Domain policy for bounded activity cooldown reductions.
  *
  * Persisted/generated equipment is trusted only through stable allowlisted
- * effectCode values; serialized effect JSON never decides cooldown rules.
- * Buff codes use the same constrained vocabulary so future fight-count buffs
- * can compose without moving legality into the browser or service layer.
+ * effect codes; serialized metadata can carry those codes but never decides
+ * cooldown mechanics. Buff codes use the same constrained vocabulary so future
+ * fight-count buffs can compose without moving legality into browser/services.
  */
 export function resolveActivityCooldown({
   activity,

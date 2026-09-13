@@ -156,7 +156,12 @@ export function equipmentEffectCodesFromCombatant(combatant = {}) {
     const identity = item.id || item;
     if (seenItems.has(identity)) return;
     seenItems.add(identity);
-    codes.push(String(item.effectCode || 'none').trim().toLowerCase());
+    const itemCodes = Array.isArray(item.effectCodes)
+      ? item.effectCodes
+      : Array.isArray(item.effect?.equipmentTemplate?.effectCodes)
+        ? item.effect.equipmentTemplate.effectCodes
+        : [item.effectCode || 'none'];
+    for (const code of itemCodes) codes.push(String(code || 'none').trim().toLowerCase());
   };
 
   if (combatant.equipment && typeof combatant.equipment === 'object') {

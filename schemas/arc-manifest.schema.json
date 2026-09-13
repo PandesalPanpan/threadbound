@@ -125,7 +125,17 @@
         "bossId": { "$ref": "#/$defs/id" }, "rewardPoolId": { "$ref": "#/$defs/id" }
       }
     },
-    "itemTemplate": {
+    "equipmentStats": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "attackBonus": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "defenseBonus": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "maxHpBonus": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "speedBonus": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "critChanceBonus": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "legacyItemTemplate": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "namePattern", "rarity", "attackBonus", "effects"],
       "properties": {
@@ -135,6 +145,27 @@
         "effects": { "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string" } },
         "visualAssetId": { "$ref": "#/$defs/visualAssetId" }
       }
+    },
+    "extendedItemTemplate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "namePattern", "slot", "rarity", "attackBonus", "stats", "effects", "requiredLevel", "areaNumber", "visualAssetId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "namePattern": { "$ref": "#/$defs/nonEmpty" },
+        "slot": { "enum": ["weapon", "helmet", "armor", "boots", "accessory"] },
+        "rarity": { "enum": ["common", "uncommon", "rare", "epic", "legendary", "mythic"] },
+        "attackBonus": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "stats": { "$ref": "#/$defs/equipmentStats" },
+        "effects": { "type": "array", "maxItems": 3, "uniqueItems": true, "items": { "type": "string" } },
+        "requiredLevel": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "areaNumber": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "visualAssetId": { "$ref": "#/$defs/visualAssetId" }
+      }
+    },
+    "itemTemplate": {
+      "oneOf": [
+        { "$ref": "#/$defs/legacyItemTemplate" },
+        { "$ref": "#/$defs/extendedItemTemplate" }
+      ]
     },
     "itemPool": {
       "type": "object", "additionalProperties": false,

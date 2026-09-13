@@ -50,9 +50,20 @@
         {
           "id": "ember-needle-template",
           "namePattern": "Ember Needle of {suffix}",
+          "slot": "weapon",
           "rarity": "rare",
           "attackBonus": 3,
-          "effects": ["boss_bane"]
+          "stats": {
+            "attackBonus": 3,
+            "defenseBonus": 0,
+            "maxHpBonus": 0,
+            "speedBonus": 0,
+            "critChanceBonus": 0
+          },
+          "effects": ["boss_bane"],
+          "requiredLevel": 1,
+          "areaNumber": 1,
+          "visualAssetId": "item.fire-dagger.v1"
         }
       ]
     }
