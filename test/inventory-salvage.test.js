@@ -80,6 +80,26 @@ test('Sell refuses Honey-purchased and protected equipment without mutating inve
   gameRepository.close();
 });
 
+test('Sell repository rechecks active-run state inside the write transaction', () => {
+  const { gameRepository, player, inventoryRepository } = setup();
+  gameRepository.addItem(player.id, item('race-item', { rarity: 'common', attackBonus: 2 }));
+  gameRepository.createRun({
+    id: 'sell-race-run',
+    ownerType: 'player',
+    ownerId: player.id,
+    startedByPlayerId: player.id,
+    participants: [{ playerId: player.id }],
+    dungeonId: 'sell-race-dungeon',
+    phase: 'combat',
+    createdAt: '2026-09-13T08:00:00.000Z',
+  });
+
+  assert.throws(() => inventoryRepository.sellItem({ playerId: player.id, itemId: 'race-item', gold: 5 }), (error) => error.code === 'item_sell_during_run');
+  assert.ok(gameRepository.getItem('race-item'));
+  assert.equal(gameRepository.getPlayer(player.id).threadDust, 0);
+  gameRepository.close();
+});
+
 test('legacy salvage entry point delegates to canonical Sell behavior and response aliases', () => {
   const { gameRepository, player, events, service } = setup();
   gameRepository.addItem(player.id, item('legacy', { rarity: 'uncommon', attackBonus: 2 }));
