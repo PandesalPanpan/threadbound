@@ -1,5 +1,8 @@
-import { assertEquipmentSellable, equipmentSellValue } from '../domain/EquipmentSellPolicy.js';
+import { assertEquipmentSellable, equipmentSellValue, SELL_VALUE_BY_RARITY } from '../domain/EquipmentSellPolicy.js';
 import { planRelicUpgrade } from '../domain/RelicProgressionPolicy.js';
+
+// Migration compatibility for older imports. New code should use EquipmentSellPolicy.
+export const SALVAGE_BY_RARITY = SELL_VALUE_BY_RARITY;
 
 export class InventoryService {
   constructor({ inventoryRepository, gameRepository, eventBus }) {
