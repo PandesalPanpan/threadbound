@@ -1,3 +1,5 @@
+import { normalizeGamblingWager } from './GamblingBalancePolicy.js';
+
 const SUITS = Object.freeze(['C', 'D', 'H', 'S']);
 const RANKS = Object.freeze(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']);
 const CARD_VALUES = Object.freeze({ A: 11, J: 10, Q: 10, K: 10 });
@@ -9,13 +11,7 @@ function integer(value, label) {
 }
 
 export function normalizeBlackjackWager(value) {
-  const wager = integer(value, 'Blackjack wager');
-  if (wager <= 0) {
-    const error = new Error('Blackjack wager must be a positive whole number of Gold.');
-    error.code = 'invalid_blackjack_wager';
-    throw error;
-  }
-  return wager;
+  return normalizeGamblingWager(value, { game: 'Blackjack', code: 'invalid_blackjack_wager' });
 }
 
 export function createBlackjackDeck() {
