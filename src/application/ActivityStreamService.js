@@ -275,6 +275,21 @@ export class ActivityStreamService {
           actorName: event.npcName || 'Town NPC',
           body: `${actorName || 'Adventurer'} spoke with ${event.npcName || 'a Town resident'} in ${event.townName || 'Town'}. “${event.dialogue || 'Hello, adventurer.'}”`,
         };
+      case 'QuestAccepted':
+        return {
+          actorPlayerId: event.playerId,
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'Adventurer'} accepted Quest: ${event.questTitle || titleize(event.questId)}.`,
+        };
+      case 'QuestClaimed':
+        return {
+          actorPlayerId: event.playerId,
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'Adventurer'} completed Quest: ${event.questTitle || titleize(event.questId)}.`,
+        };
+      case 'QuestProgressed':
+      case 'QuestCompleted':
+        return null;
       case 'ItemGenerated': {
         if (event.silentStream) return null;
         const item = this.gameRepository.getItem(event.itemId);
