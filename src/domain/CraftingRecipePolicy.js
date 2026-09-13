@@ -1,5 +1,8 @@
 const RECIPE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{2,63}$/;
 const ITEM_DEFINITION_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{2,63}$/;
+const RECIPE_FIELDS = new Set(['id', 'name', 'areaNumber', 'ingredients', 'output']);
+const INGREDIENT_FIELDS = new Set(['itemDefinitionId', 'quantity']);
+const OUTPUT_FIELDS = new Set(['itemDefinitionId', 'quantity']);
 
 export const CRAFTING_RECIPE_LIMITS = Object.freeze({
   maxIngredients: 8,
@@ -16,6 +19,12 @@ function craftingError(code, message, path) {
 
 function nonEmptyText(value) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function rejectUnknownFields(value, allowed, { code, label, path = '' }) {
+  for (const field of Object.keys(value)) {
+    if (!allowed.has(field)) throw craftingError(code, `${label} does not support field "${field}".`, path ? `${path}.${field}` : field);
+  }
 }
 
 function stableId(value, { code, label, path, pattern = ITEM_DEFINITION_ID_PATTERN }) {
@@ -36,6 +45,11 @@ function normalizeIngredient(entry, index) {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
     throw craftingError('invalid_crafting_ingredient', 'Crafting ingredients must be objects.', path);
   }
+  rejectUnknownFields(entry, INGREDIENT_FIELDS, {
+    code: 'unsupported_crafting_ingredient_field',
+    label: 'Crafting ingredient',
+    path,
+  });
   return Object.freeze({
     itemDefinitionId: stableId(entry.itemDefinitionId, {
       code: 'invalid_crafting_ingredient_item',
@@ -55,6 +69,11 @@ function normalizeOutput(entry) {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
     throw craftingError('invalid_crafting_output', 'Crafting output must be an object.', 'output');
   }
+  rejectUnknownFields(entry, OUTPUT_FIELDS, {
+    code: 'unsupported_crafting_output_field',
+    label: 'Crafting output',
+    path: 'output',
+  });
   return Object.freeze({
     itemDefinitionId: stableId(entry.itemDefinitionId, {
       code: 'invalid_crafting_output_item',
@@ -74,6 +93,10 @@ export function normalizeCraftingRecipe(recipe) {
   if (!recipe || typeof recipe !== 'object' || Array.isArray(recipe)) {
     throw craftingError('invalid_crafting_recipe', 'Crafting recipe must be an object.');
   }
+  rejectUnknownFields(recipe, RECIPE_FIELDS, {
+    code: 'unsupported_crafting_recipe_field',
+    label: 'Crafting recipe',
+  });
 
   const id = stableId(recipe.id, {
     code: 'invalid_crafting_recipe_id',
