@@ -14,6 +14,7 @@ import {
 function validAction(overrides = {}) {
   return {
     tickKey: 'dedicated:42',
+    bucket: 42,
     scheduledAt: '2026-09-13T12:00:00.000Z',
     actionType: 'hunt',
     experienceAward: 12,
@@ -45,7 +46,7 @@ function validTemplate(overrides = {}) {
 
 test('simulated adventurer safety contract exposes no Honey or human-economy mutation path', () => {
   assert.deepEqual(publicSimulatedAdventurerSafetyContract(), {
-    simulationActionFields: ['tickKey', 'scheduledAt', 'actionType', 'experienceAward'],
+    simulationActionFields: ['tickKey', 'bucket', 'scheduledAt', 'actionType', 'experienceAward'],
     simulationActionTypes: ['hunt', 'adventure'],
     honey: 'forbidden',
     mutationTarget: 'self-simulated-only',
