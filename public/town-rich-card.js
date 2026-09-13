@@ -20,9 +20,27 @@ if (stream) {
     .thread-town-npc-copy small { color:var(--muted); font-size:.68rem; line-height:1.4; }
     .thread-town-talk { min-width:62px; min-height:44px; padding:8px 10px; border-radius:10px; font-weight:800; }
     .thread-town-talk:disabled { opacity:.55; }
+    .thread-town-guild-hall { display:grid; gap:8px; padding-top:4px; }
+    .thread-town-guild-heading { display:grid; gap:2px; }
+    .thread-town-guild-heading strong { font-size:.88rem; }
+    .thread-town-guild-heading small { color:var(--muted); font-size:.67rem; line-height:1.4; }
+    .thread-town-adventurers { display:grid; gap:8px; }
+    .thread-town-adventurer { display:grid; grid-template-columns:50px minmax(0,1fr) auto; gap:9px; align-items:center; padding:9px; border:1px solid rgba(255,255,255,.08); border-radius:11px; background:rgba(12,18,34,.72); }
+    .thread-town-adventurer-sprite { width:50px; min-width:50px; border-radius:10px; background-color:rgba(255,255,255,.035); }
+    .thread-town-adventurer-copy { display:grid; gap:2px; min-width:0; }
+    .thread-town-adventurer-copy strong { font-size:.82rem; }
+    .thread-town-adventurer-copy small { color:var(--muted); font-size:.65rem; line-height:1.35; }
+    .thread-town-rival-badge { align-self:start; white-space:nowrap; padding:5px 7px; border:1px solid rgba(255,255,255,.12); border-radius:999px; font-size:.59rem; font-weight:900; letter-spacing:.03em; text-transform:uppercase; }
     .thread-town-empty { margin:0; padding:12px; border:1px dashed rgba(255,255,255,.11); border-radius:11px; color:var(--muted); font-size:.72rem; line-height:1.45; }
     .thread-town-note { margin:0; color:var(--muted); font-size:.68rem; line-height:1.45; }
-    @media (max-width:420px) { .thread-town-npc { grid-template-columns:52px minmax(0,1fr); } .thread-town-npc-sprite { width:52px; min-width:52px; } .thread-town-talk { grid-column:2; justify-self:start; } }
+    @media (max-width:420px) {
+      .thread-town-npc { grid-template-columns:52px minmax(0,1fr); }
+      .thread-town-npc-sprite { width:52px; min-width:52px; }
+      .thread-town-talk { grid-column:2; justify-self:start; }
+      .thread-town-adventurer { grid-template-columns:46px minmax(0,1fr); }
+      .thread-town-adventurer-sprite { width:46px; min-width:46px; }
+      .thread-town-rival-badge { grid-column:2; justify-self:start; }
+    }
   `;
   document.head.append(styles);
 
@@ -74,6 +92,58 @@ if (stream) {
     } finally {
       if (button?.isConnected) button.disabled = false;
     }
+  }
+
+  function renderGuildHall(card, town) {
+    const guildHall = town.guildHall;
+    if (!guildHall) return;
+
+    const section = document.createElement('section');
+    section.className = 'thread-town-guild-hall';
+    section.dataset.testid = 'town-guild-hall';
+
+    const heading = document.createElement('div');
+    heading.className = 'thread-town-guild-heading';
+    const title = document.createElement('strong');
+    title.textContent = guildHall.name || 'Guild Hall';
+    const detail = document.createElement('small');
+    const count = guildHall.adventurers?.length || 0;
+    detail.textContent = `${count} persistent adventurer${count === 1 ? '' : 's'} in town`;
+    heading.append(title, detail);
+    section.append(heading);
+
+    const roster = document.createElement('div');
+    roster.className = 'thread-town-adventurers';
+    roster.dataset.testid = 'town-guild-adventurers';
+    for (const adventurer of guildHall.adventurers || []) {
+      const row = document.createElement('article');
+      row.className = 'thread-town-adventurer';
+      row.dataset.testid = `town-guild-adventurer-${adventurer.id}`;
+      const sprite = createSpriteElement(
+        weaverSpriteFrame(adventurer.id, { variant: adventurer.spriteVariant === 'female' ? 'female' : 'male' }),
+        { className: 'thread-town-adventurer-sprite', testId: `town-guild-sprite-${adventurer.id}`, label: `${adventurer.name} portrait` },
+      );
+      const copy = document.createElement('div');
+      copy.className = 'thread-town-adventurer-copy';
+      const name = document.createElement('strong');
+      name.textContent = adventurer.name;
+      const progression = document.createElement('small');
+      progression.textContent = `Lv ${adventurer.level} · Reached Area ${adventurer.highestUnlockedAreaNumber} · ${adventurer.activityProfile?.label || 'Steady'}`;
+      const note = document.createElement('small');
+      note.textContent = adventurer.note;
+      copy.append(name, progression, note);
+      row.append(sprite, copy);
+      if (adventurer.strongRival) {
+        const badge = document.createElement('span');
+        badge.className = 'thread-town-rival-badge';
+        badge.dataset.testid = `town-guild-rival-${adventurer.id}`;
+        badge.textContent = 'Veteran rival';
+        row.append(badge);
+      }
+      roster.append(row);
+    }
+    section.append(roster);
+    card.append(section);
   }
 
   function renderTown(area) {
@@ -146,10 +216,11 @@ if (stream) {
       npcs.append(row);
     }
     card.append(npcs);
+    renderGuildHall(card, town);
 
     const note = document.createElement('p');
     note.className = 'thread-town-note';
-    note.textContent = 'Talk creates a shared stream receipt. Shop, Upgrade, Bank, and Heal mutations remain in their existing authoritative services.';
+    note.textContent = 'Talk creates a shared stream receipt. Shop, Upgrade, Bank, Heal, and Guild Hall progression remain server-authoritative.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }
