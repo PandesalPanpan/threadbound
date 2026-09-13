@@ -91,8 +91,8 @@ test('Profile rich card shows active authoritative buff names and remaining figh
         ...payload,
         activeFightBuffs: [{
           code: 'attack_boost_minor',
-          name: 'Attack Boost',
-          description: '+10% Attack while fights remain.',
+          name: 'Attack Up',
+          description: '+10% Attack while the buff has fights remaining.',
           sourceRecipeId: 'spicy-wyvern-stew',
           remainingFights: 3,
         }],
@@ -101,8 +101,8 @@ test('Profile rich card shows active authoritative buff names and remaining figh
   });
 
   const card = await openProfile(page);
-  await expect(card.getByTestId('profile-buff-attack_boost_minor')).toContainText('Attack Boost');
-  await expect(card.getByTestId('profile-buff-attack_boost_minor')).toContainText('+10% Attack while fights remain.');
+  await expect(card.getByTestId('profile-buff-attack_boost_minor')).toContainText('Attack Up');
+  await expect(card.getByTestId('profile-buff-attack_boost_minor')).toContainText('+10% Attack while the buff has fights remaining.');
   await expect(card.getByTestId('profile-buff-attack_boost_minor-remaining')).toHaveText('3 fights left');
 
   const width = await card.evaluate((element) => element.scrollWidth);
