@@ -27,6 +27,18 @@ function normalizeQuestProgress(entries) {
     });
 }
 
+function normalizeFightBuffs(entries) {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .filter((entry) => entry && typeof entry === 'object' && (entry.code || entry.name))
+    .map((entry) => Object.freeze({
+      code: entry.code ? String(entry.code) : null,
+      name: String(entry.name || titleize(entry.code)),
+      remainingFights: nonNegativeNumber(entry.remainingFights),
+      expired: Boolean(entry.expired),
+    }));
+}
+
 function normalizeCooldown(event) {
   if (!event.nextHuntReadyAt) return null;
   const readyAt = new Date(event.nextHuntReadyAt);
@@ -39,7 +51,7 @@ function normalizeCooldown(event) {
 
 /**
  * Projects already-authoritative HuntResolved facts into one concise stream receipt.
- * It never calculates combat, rewards, loot, death penalties, level, quest completion, or cooldown legality.
+ * It never calculates combat, rewards, loot, death penalties, level, quest completion, buff consumption, or cooldown legality.
  */
 export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEnemyName = 'enemy' } = {}) {
   if (!event || event.type !== 'HuntResolved') throw new Error('Hunt receipt requires a HuntResolved event.');
@@ -56,6 +68,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
   const xp = victory ? nonNegativeNumber(event.experienceGained ?? event.xp) : 0;
   const healthPotionsFound = victory ? nonNegativeNumber(event.healthPotionsFound) : 0;
   const questProgress = normalizeQuestProgress(event.questProgress);
+  const fightBuffs = normalizeFightBuffs(event.fightBuffsConsumed);
   const cooldown = normalizeCooldown(event);
   const loot = victory && event.itemName ? Object.freeze({
     id: event.itemId || null,
@@ -86,6 +99,9 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
       ? ` Quest — ${progress.questName} ${progress.current}/${progress.required}.`
       : ` Quest — ${progress.questName}.`;
   }).join('');
+  const buffText = fightBuffs.map((buff) => buff.expired
+    ? ` ${buff.name} expired.`
+    : ` ${buff.name} — ${buff.remainingFights} fight${buff.remainingFights === 1 ? '' : 's'} left.`).join('');
   const cooldownText = cooldown ? ` Next Hunt — ${cooldown.nextReadyAt}.` : '';
 
   return Object.freeze({
@@ -103,7 +119,8 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     loot,
     healthPotionsFound,
     questProgress: Object.freeze(questProgress),
+    fightBuffs: Object.freeze(fightBuffs),
     cooldown,
-    text: `${resultText}${hpText}${rewardText}${levelText}${lootText}${potionText}${questText}${cooldownText}`,
+    text: `${resultText}${hpText}${rewardText}${levelText}${lootText}${potionText}${questText}${buffText}${cooldownText}`,
   });
 }
