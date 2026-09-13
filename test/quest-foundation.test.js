@@ -22,7 +22,7 @@ const AREA_TWO_QUEST = new Quest({
   areaNumber: 2,
 });
 
-test('Quest definitions are immutable world references without objective behavior', () => {
+test('Quest definitions are immutable world references with constrained objective data', () => {
   assert.deepEqual(QUEST.toJSON(), {
     id: 'first-errand',
     title: 'First Errand',
@@ -31,6 +31,7 @@ test('Quest definitions are immutable world references without objective behavio
     areaNumber: 1,
     townId: 'area-1-town',
     npcId: 'area-1-shopkeeper',
+    objectives: [],
   });
   assert.equal(Object.isFrozen(QUEST), true);
   assert.deepEqual(QUEST_PROGRESS_STATUSES, ['active', 'completed', 'claimed']);
@@ -46,6 +47,7 @@ test('QuestProgress owns durable lifecycle transitions and rejects invalid state
   assert.equal(completed.status, 'completed');
   assert.equal(claimed.status, 'claimed');
   assert.equal(claimed.claimedAt, '2026-09-13T00:06:00.000Z');
+  assert.deepEqual(active.objectiveProgress, []);
   assert.equal(claimed.claim(), claimed);
   assert.throws(() => active.claim(), /Only a completed Quest/i);
   assert.throws(() => new QuestProgress({ questId: QUEST.id, status: 'completed' }), /requires completedAt/i);
@@ -101,6 +103,7 @@ test('QuestService derives available state from authoritative Area and persists 
     assert.deepEqual(service.browse(player.id).quests.map((quest) => quest.id), ['second-errand']);
     assert.throws(() => service.accept(player.id, QUEST.id), (error) => error.code === 'quest_unavailable');
   } finally {
+    service.dispose();
     repository.close();
   }
 });

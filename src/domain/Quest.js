@@ -1,4 +1,5 @@
 import { projectArea } from './AreaProgression.js';
+import { initialObjectiveProgress, normalizeQuestObjectives } from './QuestObjective.js';
 
 export const QUEST_PROGRESS_STATUSES = Object.freeze(['active', 'completed', 'claimed']);
 const QUEST_STATUS_SET = new Set(QUEST_PROGRESS_STATUSES);
@@ -21,12 +22,25 @@ function optionalStableId(value, label) {
   return requireStableId(value, label);
 }
 
-/**
- * Immutable Quest definition. Objective mechanics deliberately arrive in M6-05;
- * this model owns stable identity and world placement only.
- */
+function normalizeObjectiveProgress(rows = []) {
+  if (!Array.isArray(rows)) throw new Error('Quest objective progress must be an array.');
+  const normalized = rows.map((row) => {
+    const objectiveId = requireStableId(row?.objectiveId, 'Quest objective id');
+    const current = Number(row?.current ?? 0);
+    const target = Number(row?.target ?? 1);
+    if (!Number.isSafeInteger(current) || current < 0) throw new Error('Quest objective current progress must be a non-negative integer.');
+    if (!Number.isSafeInteger(target) || target < 1) throw new Error('Quest objective target must be a positive integer.');
+    return Object.freeze({ objectiveId, current: Math.min(current, target), target, complete: current >= target });
+  });
+  if (new Set(normalized.map((row) => row.objectiveId)).size !== normalized.length) {
+    throw new Error('Quest objective progress ids must be unique.');
+  }
+  return Object.freeze(normalized);
+}
+
+/** Immutable Quest definition with a constrained, data-only objective vocabulary. */
 export class Quest {
-  constructor({ id, title, description = '', areaNumber, townId = null, npcId = null } = {}) {
+  constructor({ id, title, description = '', areaNumber, townId = null, npcId = null, objectives = [] } = {}) {
     this.id = requireStableId(id, 'Quest id');
     this.title = requireText(title, 'Quest title');
     this.description = String(description || '').trim();
@@ -35,6 +49,7 @@ export class Quest {
     this.townId = optionalStableId(townId, 'Quest Town id');
     this.npcId = optionalStableId(npcId, 'Quest NPC id');
     if (this.npcId && !this.townId) throw new Error('Quest NPC id requires a Town id.');
+    this.objectives = normalizeQuestObjectives(objectives);
     Object.freeze(this);
   }
 
@@ -47,23 +62,35 @@ export class Quest {
       areaNumber: this.areaNumber,
       townId: this.townId,
       npcId: this.npcId,
+      objectives: this.objectives,
     });
   }
 }
 
-/** Durable per-player lifecycle for a Quest definition. */
+/** Durable per-player lifecycle and objective counters for a Quest definition. */
 export class QuestProgress {
-  constructor({ questId, status = 'active', acceptedAt = null, completedAt = null, claimedAt = null } = {}) {
+  constructor({ questId, status = 'active', acceptedAt = null, completedAt = null, claimedAt = null, objectiveProgress = [] } = {}) {
     this.questId = requireStableId(questId, 'Quest id');
     this.status = String(status || '').trim().toLowerCase();
     if (!QUEST_STATUS_SET.has(this.status)) throw new Error(`Unsupported Quest status: ${this.status || '(empty)'}.`);
     this.acceptedAt = acceptedAt;
     this.completedAt = completedAt;
     this.claimedAt = claimedAt;
+    this.objectiveProgress = normalizeObjectiveProgress(objectiveProgress);
     if (this.status === 'active' && (completedAt || claimedAt)) throw new Error('Active Quest progress cannot have completion timestamps.');
     if (this.status === 'completed' && !completedAt) throw new Error('Completed Quest progress requires completedAt.');
     if (this.status === 'claimed' && (!completedAt || !claimedAt)) throw new Error('Claimed Quest progress requires completion and claim timestamps.');
     Object.freeze(this);
+  }
+
+  static acceptedFor(quest, acceptedAt = new Date().toISOString()) {
+    const model = quest instanceof Quest ? quest : new Quest(quest);
+    return new QuestProgress({ questId: model.id, acceptedAt, objectiveProgress: initialObjectiveProgress(model.objectives) });
+  }
+
+  withObjectiveProgress(objectiveProgress) {
+    if (this.status !== 'active') return this;
+    return new QuestProgress({ ...this.toJSON(), objectiveProgress });
   }
 
   complete(at = new Date().toISOString()) {
@@ -84,6 +111,7 @@ export class QuestProgress {
       acceptedAt: this.acceptedAt,
       completedAt: this.completedAt,
       claimedAt: this.claimedAt,
+      objectiveProgress: this.objectiveProgress,
     });
   }
 }
