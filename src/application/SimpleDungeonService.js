@@ -9,19 +9,30 @@ import { SQLiteProgressionBossEnrageRepository } from '../infrastructure/SQLiteP
 
 export const AREA_ONE_PROGRESSION_DUNGEON_ID = 'progression-area-1';
 
+const FIRST_GUILD_TRIAL = Object.freeze({
+  id: AREA_ONE_PROGRESSION_DUNGEON_ID,
+  name: 'Sunpetal Guild Trial',
+  recommendedPlayers: 2,
+  minPlayers: 1,
+  maxPlayers: 4,
+  recommendedAttack: 9,
+  encounters: Object.freeze([
+    Object.freeze({ id: 'sunpetal-sprout', name: 'Sunpetal Sprout', hp: 12, retaliation: 2, abilities: Object.freeze(['self_mend']), intentCadence: 1 }),
+    Object.freeze({ id: 'ribbon-fox', name: 'Ribbon Fox', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure']), intentCadence: 1 }),
+    Object.freeze({ id: 'guild-training-golem', name: 'Guild Training Golem', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure', 'self_mend', 'ally_hunter']), intentCadence: 1 }),
+  ]),
+  boss: Object.freeze({ id: 'sunpetal-captain', name: 'Captain Bramble', hp: 24, retaliation: 4, abilities: Object.freeze(['basic_retaliation']), intentCadence: 3 }),
+  progressionAdventure: true,
+  requiredHumanPlayers: 2,
+  unlocksAreaNumber: 2,
+});
+
 function builtInProgressionDefinition(dungeonId) {
   if (dungeonId !== AREA_ONE_PROGRESSION_DUNGEON_ID) return null;
-  // The first progression challenge deliberately reuses the migration-safe
-  // Frayed Hollow encounter instead of authoring new Arc content before Phase 10.
-  // Unlock metadata is server-owned content data; completion persistence decides
-  // whether the first valid clear actually advances either participant.
-  return Object.freeze({
-    ...DUNGEONS['frayed-hollow'],
-    id: AREA_ONE_PROGRESSION_DUNGEON_ID,
-    progressionAdventure: true,
-    requiredHumanPlayers: 2,
-    unlocksAreaNumber: 2,
-  });
+  // The Area-1 progression challenge is small foundation content rather than a
+  // full Arc. Frayed Hollow remains loadable only through its legacy dungeon id
+  // for persisted-run compatibility and focused migration/regression coverage.
+  return FIRST_GUILD_TRIAL;
 }
 
 /**
