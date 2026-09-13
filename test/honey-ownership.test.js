@@ -5,6 +5,9 @@ import { HoneyPurchaseService } from '../src/application/HoneyPurchaseService.js
 test('Honey purchases delegate the wallet mutation to Threaded and persist only the resulting grant', async () => {
   const calls = [];
   const repository = {
+    getPlayer(playerId) {
+      return { id: playerId, threadedUserId: 'threaded-user-1', displayName: 'Human Adventurer' };
+    },
     getPurchaseGrant() { return null; },
     addItem(playerId, item) { calls.push({ type: 'item', playerId, item }); },
     recordPurchaseGrant(grant) {
@@ -56,4 +59,31 @@ test('Honey purchases delegate the wallet mutation to Threaded and persist only 
   // Threadbound records the externally-authorized transaction and awarded item only.
   // There is deliberately no repository Honey balance read/write in this use case.
   assert.deepEqual(calls.map((call) => call.type), ['threaded-spend', 'item', 'grant']);
+});
+
+test('Honey purchase fails before Threaded spend when authenticated identity does not match the persisted human', async () => {
+  let gatewayCalls = 0;
+  const repository = {
+    getPlayer() {
+      return { id: 'player-1', threadedUserId: 'threaded-user-1', displayName: 'Human Adventurer' };
+    },
+  };
+  const threadedGateway = {
+    async spendPoints() {
+      gatewayCalls += 1;
+      return { transaction_id: 'must-not-happen' };
+    },
+  };
+  const service = new HoneyPurchaseService({ repository, threadedGateway });
+
+  await assert.rejects(
+    service.purchaseTrainingCache({
+      playerId: 'player-1',
+      threadedUserId: 'another-threaded-user',
+      accessToken: 'threaded-token',
+      idempotencyKey: 'identity-mismatch',
+    }),
+    (error) => error.code === 'honey_identity_mismatch',
+  );
+  assert.equal(gatewayCalls, 0);
 });
