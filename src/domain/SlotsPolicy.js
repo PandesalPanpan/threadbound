@@ -1,3 +1,5 @@
+import { normalizeGamblingWager } from './GamblingBalancePolicy.js';
+
 const SLOT_SYMBOLS = Object.freeze(['coin', 'sword', 'shield', 'crown']);
 const TRIPLE_PAYOUT_MULTIPLIER = Object.freeze({
   coin: 2,
@@ -13,13 +15,7 @@ function integer(value, label) {
 }
 
 export function normalizeSlotsWager(value) {
-  const wager = integer(value, 'Slots wager');
-  if (wager <= 0) {
-    const error = new Error('Slots wager must be a positive whole number of Gold.');
-    error.code = 'invalid_slots_wager';
-    throw error;
-  }
-  return wager;
+  return normalizeGamblingWager(value, { game: 'Slots', code: 'invalid_slots_wager' });
 }
 
 function normalizeSymbol(value) {
