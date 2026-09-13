@@ -13,18 +13,21 @@ if (stream) {
     .thread-town-services { display:flex; flex-wrap:wrap; gap:6px; }
     .thread-town-service { padding:5px 8px; border:1px solid rgba(255,255,255,.09); border-radius:999px; background:rgba(255,255,255,.04); color:var(--muted); font-size:.66rem; font-weight:800; text-transform:capitalize; }
     .thread-town-npcs { display:grid; gap:8px; }
-    .thread-town-npc { display:grid; grid-template-columns:58px minmax(0,1fr); gap:10px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.08); border-radius:11px; background:rgba(4,10,21,.48); }
+    .thread-town-npc { display:grid; grid-template-columns:58px minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.08); border-radius:11px; background:rgba(4,10,21,.48); }
     .thread-town-npc-sprite { width:58px; min-width:58px; border-radius:10px; background-color:rgba(255,255,255,.035); }
     .thread-town-npc-copy { display:grid; gap:2px; min-width:0; }
     .thread-town-npc-copy strong { font-size:.86rem; }
     .thread-town-npc-copy small { color:var(--muted); font-size:.68rem; line-height:1.4; }
+    .thread-town-talk { min-width:62px; min-height:44px; padding:8px 10px; border-radius:10px; font-weight:800; }
+    .thread-town-talk:disabled { opacity:.55; }
     .thread-town-empty { margin:0; padding:12px; border:1px dashed rgba(255,255,255,.11); border-radius:11px; color:var(--muted); font-size:.72rem; line-height:1.45; }
     .thread-town-note { margin:0; color:var(--muted); font-size:.68rem; line-height:1.45; }
+    @media (max-width:420px) { .thread-town-npc { grid-template-columns:52px minmax(0,1fr); } .thread-town-npc-sprite { width:52px; min-width:52px; } .thread-town-talk { grid-column:2; justify-self:start; } }
   `;
   document.head.append(styles);
 
-  async function api(path) {
-    const response = await fetch(path, { headers: { Accept: 'application/json' } });
+  async function api(path, options = {}) {
+    const response = await fetch(path, { headers: { Accept: 'application/json', ...(options.headers || {}) }, ...options });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.message || `Request failed (${response.status})`);
     return payload;
@@ -59,6 +62,18 @@ if (stream) {
     });
     wrap.append(copy, close);
     return wrap;
+  }
+
+  async function interactWithNpc(town, npc, button = null) {
+    if (button) button.disabled = true;
+    try {
+      showError('');
+      await api(`/api/towns/${encodeURIComponent(town.id)}/npcs/${encodeURIComponent(npc.id)}/interact`, { method: 'POST' });
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      if (button?.isConnected) button.disabled = false;
+    }
   }
 
   function renderTown(area) {
@@ -118,24 +133,50 @@ if (stream) {
       const npcName = document.createElement('strong');
       npcName.textContent = npc.name;
       const role = document.createElement('small');
-      role.textContent = `${npc.role} service · interaction arrives with NPC dialogue`;
+      role.textContent = `${npc.role} service · talk in the shared Adventure Stream`;
       copy.append(npcName, role);
-      row.append(sprite, copy);
+      const talk = document.createElement('button');
+      talk.type = 'button';
+      talk.className = 'thread-town-talk';
+      talk.dataset.testid = `town-talk-${npc.id}`;
+      talk.textContent = 'Talk';
+      talk.setAttribute('aria-label', `Talk to ${npc.name}`);
+      talk.addEventListener('click', () => interactWithNpc(town, npc, talk));
+      row.append(sprite, copy, talk);
       npcs.append(row);
     }
     card.append(npcs);
 
     const note = document.createElement('p');
     note.className = 'thread-town-note';
-    note.textContent = 'Town availability and residents come from Threadbound. NPC interactions remain read-only until the dialogue milestone.';
+    note.textContent = 'Talk creates a shared stream receipt. Shop, Upgrade, Bank, and Heal mutations remain in their existing authoritative services.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }
 
+  async function loadTownArea() {
+    const payload = await api('/api/areas');
+    return payload.area;
+  }
+
   async function openTown() {
     try {
-      const payload = await api('/api/areas');
-      renderTown(payload.area);
+      renderTown(await loadTownArea());
+    } catch (error) {
+      showError(error.message);
+    }
+  }
+
+  async function talkByQuery(query) {
+    try {
+      const area = await loadTownArea();
+      const town = area.towns?.[0] || null;
+      if (!town) throw new Error(`No Town is available in ${area.currentArea.name} yet.`);
+      const normalized = String(query || '').trim().toLowerCase();
+      const npc = town.npcs.find((candidate) => [candidate.id, candidate.name, candidate.role, candidate.service]
+        .some((value) => String(value || '').trim().toLowerCase() === normalized));
+      if (!npc) throw new Error(`No Town resident matches “${query}”. Open town to see available NPCs.`);
+      await interactWithNpc(town, npc);
     } catch (error) {
       showError(error.message);
     }
@@ -147,13 +188,23 @@ if (stream) {
     if (!form || !input || form.dataset.townCommandInstalled === 'true') return false;
     form.dataset.townCommandInstalled = 'true';
     form.addEventListener('submit', (event) => {
-      const value = String(input.value || '').trim().toLowerCase();
-      if (!['town', '/town'].includes(value)) return;
+      const raw = String(input.value || '').trim();
+      const value = raw.toLowerCase();
+      if (['town', '/town'].includes(value)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        input.value = '';
+        showError('');
+        openTown();
+        return;
+      }
+      const match = raw.match(/^\/?(?:talk|speak)\s+(.+)$/i);
+      if (!match) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       input.value = '';
       showError('');
-      openTown();
+      talkByQuery(match[1]);
     }, true);
     return true;
   }
