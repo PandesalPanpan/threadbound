@@ -69,6 +69,24 @@ export function forbidSimulatedAdventurerHoneyMutation() {
 }
 
 /**
+ * Honey purchases are a human-only gateway boundary. Validate the persisted
+ * human identity before any external Threaded spend can occur.
+ */
+export function assertHumanHoneyPurchaseActor({ player, threadedUserId }) {
+  if (!player || player.isSimulated || player.simulated || player.kind === 'simulated' || player.playerType === 'simulated') {
+    forbidSimulatedAdventurerHoneyMutation();
+  }
+  const expectedThreadedUserId = String(threadedUserId ?? '').trim();
+  if (!expectedThreadedUserId || String(player.threadedUserId ?? '') !== expectedThreadedUserId) {
+    throw safetyError(
+      'honey_identity_mismatch',
+      'Honey purchases require the persisted human player to match the authenticated Threaded identity.',
+    );
+  }
+  return true;
+}
+
+/**
  * Bot-owned mutations may only target that same simulated adventurer. This is
  * intentionally separate from human player/economy repositories.
  */
@@ -126,11 +144,59 @@ export function materializeValidatedSimulatedAdventurerEquipment({ template, ite
   });
 }
 
+/**
+ * Persistence also fails closed on arbitrary equipment-shaped snapshots. A
+ * stored bot item must be reconstructable as the same extended Arc equipment
+ * contract used by the materializer, including its power budget.
+ */
+export function assertSafeSimulatedAdventurerEquipment(equipment = {}) {
+  if (!equipment || typeof equipment !== 'object' || Array.isArray(equipment)) {
+    throw safetyError('simulated_adventurer_invalid_item', 'Simulated adventurer equipment must be a loadout object.');
+  }
+
+  for (const item of Object.values(equipment)) {
+    if (item == null) continue;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw safetyError('simulated_adventurer_invalid_item', 'Simulated adventurer equipment entries must be item objects or null.');
+    }
+
+    try {
+      const templateId = requiredText(item.templateId, 'Equipment template id');
+      const name = requiredText(item.name, 'Equipment item name');
+      normalizeArcEquipmentTemplate({
+        id: templateId,
+        namePattern: name,
+        slot: item.slot,
+        rarity: item.rarity,
+        attackBonus: item.attackBonus ?? 0,
+        stats: {
+          attackBonus: item.attackBonus ?? 0,
+          defenseBonus: item.defenseBonus ?? 0,
+          maxHpBonus: item.maxHpBonus ?? 0,
+          speedBonus: item.speedBonus ?? 0,
+          critChanceBonus: item.critChanceBonus ?? 0,
+        },
+        effects: item.effects,
+        requiredLevel: item.requiredLevel,
+        areaNumber: item.areaNumber,
+        visualAssetId: item.visualAssetId ?? null,
+      });
+    } catch (error) {
+      if (error?.code === 'simulated_adventurer_unsafe_mutation') {
+        throw safetyError('simulated_adventurer_invalid_item', error.message);
+      }
+      if (error?.code === 'simulated_adventurer_invalid_item') throw error;
+      throw safetyError('simulated_adventurer_invalid_item', `Invalid simulated adventurer equipment snapshot: ${error.message}`);
+    }
+  }
+  return equipment;
+}
+
 export function publicSimulatedAdventurerSafetyContract() {
   return Object.freeze({
     simulationActionFields: SIMULATION_ACTION_FIELDS,
     simulationActionTypes: Object.freeze([...SIMULATION_ACTION_TYPES]),
-    honey: 'forbidden',
+    honey: 'human-only-external-threaded-wallet',
     mutationTarget: 'self-simulated-only',
     equipmentSource: 'extended-validated-arc-equipment-template',
   });

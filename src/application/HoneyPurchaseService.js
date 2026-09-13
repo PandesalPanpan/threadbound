@@ -1,3 +1,5 @@
+import { assertHumanHoneyPurchaseActor } from '../domain/SimulatedAdventurerSafetyPolicy.js';
+
 export class HoneyPurchaseService {
   constructor({ repository, threadedGateway }) {
     this.repository = repository;
@@ -5,6 +7,9 @@ export class HoneyPurchaseService {
   }
 
   async purchaseTrainingCache({ playerId, threadedUserId, accessToken, idempotencyKey }) {
+    const player = this.repository.getPlayer(playerId);
+    assertHumanHoneyPurchaseActor({ player, threadedUserId });
+
     const definition = { id: 'training-cache', itemDefinitionId: 'demo-training-sword', name: 'Demo Training Sword', price: 25 };
     const existing = this.repository.getPurchaseGrant(playerId, idempotencyKey);
     const externalReference = `threadbound:${definition.id}:${idempotencyKey}`;
