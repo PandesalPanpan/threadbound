@@ -83,11 +83,15 @@ test('external Arc Manifest can be uploaded, validated, published, played, and d
   const revisionMatch = (await savedStatus.textContent())?.match(/revision (\d+)/);
   expect(revisionMatch).not.toBeNull();
   const revision = revisionMatch[1];
-  await expect(page.getByTestId('manifest-list')).toContainText('draft');
+  const savedDraft = page.getByTestId('manifest-list').locator('.manifest-row')
+    .filter({ hasText: 'The Ashen Thread' })
+    .filter({ hasText: `revision ${revision}` })
+    .first();
+  await expect(savedDraft).toContainText('draft');
 
-  await page.getByTestId('manifest-list').getByRole('button', { name: 'Publish' }).click();
+  await savedDraft.getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByTestId('workshop-status')).toContainText(`Published The Ashen Thread revision ${revision}`);
-  await expect(page.getByTestId('manifest-list')).toContainText('published');
+  await expect(savedDraft).toContainText('published');
 
   await page.getByTestId('nav-game').click();
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
