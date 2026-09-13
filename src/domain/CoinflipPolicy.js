@@ -1,3 +1,5 @@
+import { normalizeGamblingWager } from './GamblingBalancePolicy.js';
+
 function integer(value, label) {
   const number = Number(value);
   if (!Number.isInteger(number)) throw new Error(`${label} must be a whole number.`);
@@ -5,13 +7,7 @@ function integer(value, label) {
 }
 
 export function normalizeCoinflipWager(value) {
-  const wager = integer(value, 'Coinflip wager');
-  if (wager <= 0) {
-    const error = new Error('Coinflip wager must be a positive whole number of Gold.');
-    error.code = 'invalid_coinflip_wager';
-    throw error;
-  }
-  return wager;
+  return normalizeGamblingWager(value, { game: 'Coinflip', code: 'invalid_coinflip_wager' });
 }
 
 export function normalizeCoinflipChoice(value) {
