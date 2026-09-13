@@ -88,6 +88,29 @@ test('failed Hunt receipt reports HP and no rewards without inventing progress',
   assert.doesNotMatch(receipt.body, /\+0 Gold|\+0 XP/);
 });
 
+test('NPC interaction becomes one concise shared stream receipt', () => {
+  const { service, a } = setup();
+  const receipt = service.recordDomainEvent({
+    type: 'NpcInteracted',
+    playerId: a.id,
+    townId: 'area-1-town',
+    townName: 'Area 1 Town',
+    areaNumber: 1,
+    npcId: 'area-1-shopkeeper',
+    npcName: 'Shopkeeper',
+    role: 'Shop',
+    service: 'shop',
+    dialogue: 'Need supplies? I keep the essentials close and the prices clear.',
+  });
+
+  assert.equal(receipt.kind, 'system');
+  assert.equal(receipt.actorName, 'Shopkeeper');
+  assert.equal(receipt.actorPlayerId, a.id);
+  assert.equal(receipt.body, 'Local Weaver A spoke with Shopkeeper in Area 1 Town. “Need supplies? I keep the essentials close and the prices clear.”');
+  assert.equal(receipt.metadata.npcId, 'area-1-shopkeeper');
+  assert.equal(service.recent().length, 1);
+});
+
 test('one explicit combat command becomes one useful system result message', () => {
   const { service, a } = setup();
   const started = service.recordDomainEvent({
