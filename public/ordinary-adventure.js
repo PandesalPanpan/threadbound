@@ -1,3 +1,5 @@
+import './gambling-rich-card.js';
+
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
 if (stream) {
