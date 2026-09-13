@@ -4,9 +4,9 @@ M7-03 replaces the legacy player-facing salvage transaction with a canonical **S
 
 ## Authoritative boundary
 
-`EquipmentSellPolicy` owns whether an item may be sold and the Gold value of a sale. `InventoryService.sell()` coordinates the use case. `SQLiteInventoryRepository.sellItem()` owns the destructive transaction that removes the item and credits carried Gold.
+`EquipmentSellPolicy` owns whether an item may be sold and the Gold value of a sale. `InventoryService.sell()` coordinates the use case. `SQLiteInventoryRepository.sellItem()` owns the destructive transaction that reads the persisted item, derives its policy-owned Sell value, removes the item, and credits carried Gold.
 
-The browser does not calculate Sell value or decide whether an item is eligible. The existing Inventory rich card remains the chat-first presentation surface and keeps its explicit confirmation step.
+The browser does not calculate Sell value or decide whether an item is eligible. The existing Inventory rich card remains the chat-first presentation surface and keeps its explicit confirmation step. The repository does not accept a caller-authored payout amount, so an internal or stale caller cannot mint extra Gold or underpay a sale.
 
 ## Sell value
 
@@ -32,7 +32,7 @@ A Sell is rejected when:
 - the item is bound or otherwise protected;
 - the item is not owned by the player or no longer exists.
 
-The repository repeats the active-run, ownership, equipped-slot, Honey-source, and protection checks inside `BEGIN IMMEDIATE`. Item deletion and Gold credit occur in that same transaction, so a failed or raced Sell cannot delete gear without payment or pay without deleting the gear.
+The repository repeats the active-run, ownership, equipped-slot, Honey-source, and protection checks inside `BEGIN IMMEDIATE`. It also derives the payout from that same persisted item snapshot. Item deletion and Gold credit occur in the same transaction, so a failed or raced Sell cannot delete gear without payment, pay without deleting the gear, or substitute a caller-chosen price.
 
 Honey-purchased Training Cache gear is deliberately non-sellable. Threadbound must not convert Threaded-owned premium spending into locally minted Gold.
 
@@ -49,15 +49,16 @@ Historical `ItemSalvaged` events remain readable but are projected with canonica
 The old names remain only as temporary transport/code aliases:
 
 - `InventoryService.salvage()` delegates to `sell()`;
-- `SQLiteInventoryRepository.salvageItem()` delegates to `sellItem()`;
+- `SQLiteInventoryRepository.salvageItem()` delegates to `sellItem()` and ignores the retired caller-authored salvage payout;
 - the existing `/api/items/:itemId/salvage` route therefore executes the canonical Sell transaction until the HTTP transport is retired or renamed safely;
-- response fields `salvaged` and `threadDust` remain compatibility aliases alongside canonical `sold`, `gold`, and `goldEarned`.
+- response fields `salvaged` and `threadDust` remain compatibility aliases alongside canonical `sold`, `gold`, and `goldEarned`;
+- `SALVAGE_BY_RARITY` remains a read-only compatibility export pointing at the domain-owned Sell value table.
 
 New gameplay code should call the Sell API at the Service Layer and use Gold terminology.
 
 ## Verification
 
-`test/inventory-salvage.test.js` now proves the canonical transaction: successful atomic sale, all-slot equipped protection, Honey/protected-item rejection, active-run recheck inside the write transaction, and compatibility delegation.
+`test/inventory-salvage.test.js` now proves the canonical transaction: successful atomic sale, transaction-owned valuation that ignores a caller-supplied payout, all-slot equipped protection, Honey/protected-item rejection, active-run recheck inside the write transaction, and compatibility delegation.
 
 `test/inventory-sell-stream.test.js` proves one canonical `ItemSold` receipt and canonical projection of old `ItemSalvaged` history.
 
