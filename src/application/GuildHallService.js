@@ -3,11 +3,12 @@ import { Character } from '../domain/Character.js';
 import { rankLeaderboardEntries } from '../domain/LeaderboardRankingPolicy.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
+import { SQLiteDuelRepository } from '../infrastructure/SQLiteDuelRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteLeaderboardRepository } from '../infrastructure/SQLiteLeaderboardRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
-function projectEntry(entry, state) {
+function projectEntry(entry, state, duelRecord = null) {
   const adventurer = state.adventurer;
   return Object.freeze({
     id: adventurer.id,
@@ -24,7 +25,7 @@ function projectEntry(entry, state) {
     stats: adventurer.stats,
     achievements: adventurer.achievements,
     achievementCount: adventurer.achievements.length,
-    duelRecord: adventurer.duelRecord,
+    duelRecord: duelRecord || adventurer.duelRecord,
     activityProfile: adventurer.activityProfile,
     strongRival: entry.strongRival,
     note: entry.note,
@@ -49,6 +50,7 @@ export class GuildHallService {
     equipmentRepository = null,
     progressionRepository = null,
     areaRepository = null,
+    duelRepository = null,
     nowFactory = () => new Date(),
   } = {}) {
     if (!repository) throw new Error('GuildHallService requires a simulated-adventurer repository.');
@@ -61,11 +63,13 @@ export class GuildHallService {
       this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: gameRepository.db });
       this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: gameRepository.db });
       this.areaRepository = areaRepository || new SQLiteAreaRepository({ database: gameRepository.db });
+      this.duelRepository = duelRepository || new SQLiteDuelRepository({ database: gameRepository.db });
     } else {
       this.leaderboardRepository = leaderboardRepository;
       this.equipmentRepository = equipmentRepository;
       this.progressionRepository = progressionRepository;
       this.areaRepository = areaRepository;
+      this.duelRepository = duelRepository;
     }
   }
 
@@ -75,7 +79,8 @@ export class GuildHallService {
     const initializedAt = this.nowFactory().toISOString();
     const adventurers = entries.map((entry) => {
       const state = this.repository.ensure(entry.adventurer, { lastSimulatedAt: initializedAt });
-      return projectEntry(entry, state);
+      const duelRecord = this.duelRepository ? this.duelRepository.recordFor(state.adventurer.id) : null;
+      return projectEntry(entry, state, duelRecord);
     });
     const leaderboard = this.#leaderboard(adventurers);
 
@@ -116,7 +121,7 @@ export class GuildHallService {
         stats: character.stats,
         achievements,
         achievementCount: achievements.length,
-        duelRecord: null,
+        duelRecord: this.duelRepository ? this.duelRepository.recordFor(playerId) : null,
         strongRival: false,
         note: null,
         spriteVariant: null,
