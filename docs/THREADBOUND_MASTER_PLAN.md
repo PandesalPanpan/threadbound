@@ -640,7 +640,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 ### Phase 6 — Towns, NPCs, Quests
 
 - [x] **M6-01** Introduce Town model as an Area hub.
-- [ ] **M6-02** Build Town/NPC rich chat card using generated sprites.
+- [x] **M6-02** Build Town/NPC rich chat card using generated sprites.
 - [ ] **M6-03** Implement NPC dialogue/interaction receipts in the shared stream.
 - [ ] **M6-04** Implement Quest domain/service/repository model.
 - [ ] **M6-05** Implement readable objectives: kill, Hunt count, Adventure count, collect, boss, visit/speak.
