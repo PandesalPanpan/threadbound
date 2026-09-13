@@ -1,4 +1,5 @@
-import { Quest } from '../domain/Quest.js';
+import { Quest, QuestProgress } from '../domain/Quest.js';
+import { advanceQuestObjectives, describeQuestObjective, initialObjectiveProgress } from '../domain/QuestObjective.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { SQLiteQuestRepository } from '../infrastructure/SQLiteQuestRepository.js';
 
@@ -10,14 +11,26 @@ function normalizeCatalog(quests) {
   return Object.freeze(models);
 }
 
+function projectQuest(quest) {
+  return Object.freeze({
+    ...quest.toJSON(),
+    objectives: Object.freeze(quest.objectives.map((objective) => Object.freeze({
+      ...objective,
+      label: describeQuestObjective(objective),
+    }))),
+  });
+}
+
 export class QuestService {
-  constructor({ repository, questRepository = null, areaRepository = null, eventBus = null, questCatalog = [] } = {}) {
+  constructor({ repository, questRepository = null, areaRepository = null, eventBus = null, questCatalog = [], now = () => new Date() } = {}) {
     if (!repository) throw new Error('QuestService requires the game repository.');
     this.repository = repository;
     this.questRepository = questRepository || new SQLiteQuestRepository({ database: repository.db });
     this.areaRepository = areaRepository || new SQLiteAreaRepository({ database: repository.db });
     this.eventBus = eventBus;
     this.questCatalog = normalizeCatalog(questCatalog);
+    this.now = now;
+    this.unsubscribe = this.eventBus?.subscribe((event) => this.handleEvent(event)) || null;
   }
 
   browse(playerId) {
@@ -28,7 +41,7 @@ export class QuestService {
     const quests = this.questCatalog
       .filter((quest) => quest.areaNumber === progression.currentAreaNumber)
       .map((quest) => Object.freeze({
-        ...quest.toJSON(),
+        ...projectQuest(quest),
         state: progressByQuestId.get(quest.id)?.status || 'available',
         progress: progressByQuestId.get(quest.id)?.toJSON() || null,
       }));
@@ -50,14 +63,46 @@ export class QuestService {
       error.code = 'quest_unavailable';
       throw error;
     }
-    const accepted = this.questRepository.accept(playerId, quest.id, acceptedAt);
+    const accepted = this.questRepository.accept(playerId, quest.id, acceptedAt, initialObjectiveProgress(quest.objectives));
     if (!accepted.created) {
       const error = new Error('That Quest has already been accepted.');
       error.code = 'quest_already_accepted';
       throw error;
     }
-    const result = Object.freeze({ quest: quest.toJSON(), progress: accepted.progress.toJSON() });
+    const result = Object.freeze({ quest: projectQuest(quest), progress: accepted.progress.toJSON() });
     this.eventBus?.publish({ type: 'QuestAccepted', playerId, questId: quest.id, areaNumber: quest.areaNumber });
     return result;
+  }
+
+  handleEvent(event) {
+    const playerId = String(event?.playerId || '').trim();
+    if (!playerId) return Object.freeze([]);
+    const updates = [];
+    for (const progress of this.questRepository.list(playerId)) {
+      if (progress.status !== 'active') continue;
+      const quest = this.questCatalog.find((candidate) => candidate.id === progress.questId);
+      if (!quest || quest.objectives.length === 0) continue;
+      const advanced = advanceQuestObjectives(quest.objectives, progress.objectiveProgress, event);
+      if (!advanced.changed) continue;
+      let next = progress.withObjectiveProgress(advanced.progress);
+      const completedNow = advanced.complete;
+      if (completedNow) next = next.complete(event.occurredAt || this.now().toISOString());
+      const saved = this.questRepository.save(playerId, next);
+      const update = Object.freeze({ questId: quest.id, status: saved.status, objectiveProgress: saved.objectiveProgress });
+      updates.push(update);
+      this.eventBus?.publish({
+        type: completedNow ? 'QuestCompleted' : 'QuestProgressed',
+        playerId,
+        questId: quest.id,
+        areaNumber: quest.areaNumber,
+        objectiveProgress: saved.objectiveProgress,
+      });
+    }
+    return Object.freeze(updates);
+  }
+
+  dispose() {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
   }
 }
