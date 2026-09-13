@@ -677,7 +677,7 @@ Agents must work **in this order unless a previous task proves a dependency requ
 
 Do not begin this phase until the new foundation is usable end-to-end.
 
-- [ ] **M10-01** Extend Arc Manifest schema/validator for Areas, Towns, NPCs, Quests, Shops, equipment slots/stats/effects, recipes, level bands, progression challenges, and new effect vocabulary.
+- [x] **M10-01** Extend Arc Manifest schema/validator for Areas, Towns, NPCs, Quests, Shops, equipment slots/stats/effects, recipes, level bands, progression challenges, and new effect vocabulary.
 - [ ] **M10-02** Extend Arc Workshop to preview/validate the vNext package clearly.
 - [ ] **M10-03** Define generation guidance for the 70/20/10 colorful guild-anime tone without copying existing copyrighted characters/storylines.
 - [ ] **M10-04** Retire Frayed Hollow as the default first impression or relegate it to legacy/test content.
