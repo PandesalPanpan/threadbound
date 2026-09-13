@@ -88,8 +88,16 @@ function cloneEquipmentItem(item, slot) {
   if (!item || typeof item !== 'object' || Array.isArray(item)) {
     throw modelError('simulated_adventurer_invalid_equipment', `${slot} equipment must be an item object or null.`);
   }
-  if (item.slot != null && normalizeEquipmentSlot(item.slot) !== slot) {
-    throw modelError('simulated_adventurer_invalid_equipment', `${slot} equipment cannot contain an item for ${item.slot}.`);
+  if (item.slot != null) {
+    let itemSlot;
+    try {
+      itemSlot = normalizeEquipmentSlot(item.slot);
+    } catch {
+      throw modelError('simulated_adventurer_invalid_equipment', `${slot} equipment has an invalid item slot.`);
+    }
+    if (itemSlot !== slot) {
+      throw modelError('simulated_adventurer_invalid_equipment', `${slot} equipment cannot contain an item for ${item.slot}.`);
+    }
   }
   return Object.freeze({ ...item, slot });
 }
@@ -99,7 +107,7 @@ function normalizeEquipment(equipment = {}) {
     throw modelError('simulated_adventurer_invalid_equipment', 'equipment must be a canonical five-slot loadout object.');
   }
 
-  const unknownSlots = Object.keys(equipment).filter((slot) => !EQUIPMENT_SLOTS.includes(String(slot).toLowerCase()));
+  const unknownSlots = Object.keys(equipment).filter((slot) => !EQUIPMENT_SLOTS.includes(slot));
   if (unknownSlots.length) {
     throw modelError('simulated_adventurer_invalid_equipment', `Unknown equipment slot: ${unknownSlots[0]}.`);
   }
