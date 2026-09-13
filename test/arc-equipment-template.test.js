@@ -111,6 +111,16 @@ test('Arc Manifest service rejects over-budget, partial, executable-looking, and
   assert.equal(validation.valid, false);
   assert.ok(validation.errors.some((error) => error.code === 'invalid_equipment_template' && /only Weapon templates/i.test(error.message)));
 
+  const excessiveCrit = extendedTemplate({
+    requiredLevel: 100,
+    areaNumber: 100,
+    stats: { attackBonus: 0, defenseBonus: 0, maxHpBonus: 0, speedBonus: 0, critChanceBonus: 1.01 },
+    effects: [],
+  });
+  validation = service.validate(manifestWithTemplate(excessiveCrit));
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.some((error) => error.code === 'invalid_equipment_template' && /Crit Chance bonus.*between 0 and 1/i.test(error.message)));
+
   gameRepository.close();
 });
 
@@ -193,6 +203,7 @@ test('world context publishes the equipment authoring contract and budget rules'
   assert.deepEqual(context.allowedMechanics.equipmentTemplates.statKeys, ['attackBonus', 'defenseBonus', 'maxHpBonus', 'speedBonus', 'critChanceBonus']);
   assert.ok(context.allowedMechanics.equipmentTemplates.effectCodes.includes('frost_edge'));
   assert.equal(context.balanceBudgets.equipmentTemplates.maxEffectsPerItem, 3);
+  assert.equal(context.balanceBudgets.equipmentTemplates.maxCritChanceBonus, 1);
   assert.ok(context.generationRules.some((rule) => /rarity\/level\/Area power budget/i.test(rule)));
   gameRepository.close();
 });
