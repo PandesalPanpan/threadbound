@@ -54,3 +54,48 @@ test('Arc Workshop previews and validates a vNext world package clearly', async 
   await expect(list).toContainText('draft');
   await expect(list).toContainText('v2 · world package');
 });
+
+test('Brightbell Bloom full Arc stays readable and saves only as a validated draft on mobile', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('local-login-a').click();
+  await page.goto('/arc-workshop');
+
+  await page.getByTestId('manifest-file').setInputFiles('content/arcs/brightbell-bloom.arc-manifest.json');
+
+  const preview = page.getByTestId('manifest-preview');
+  const world = page.getByTestId('vnext-world-preview');
+  await expect(page.getByTestId('manifest-version')).toHaveText('v2 · world package');
+  await expect(preview).toContainText('The Brightbell Bloom');
+  await expect(world).toContainText('3Areas');
+  await expect(world).toContainText('2Towns');
+  await expect(world).toContainText('10NPCs');
+  await expect(world).toContainText('12Quests');
+  await expect(world).toContainText('2Shops');
+  await expect(world).toContainText('6Recipes');
+  await expect(world).toContainText('3Progression challenges');
+  await expect(world).toContainText('Bellbloom Meadows');
+  await expect(world).toContainText('Emberglass Orchard');
+  await expect(world).toContainText('Kitewind Heights');
+  await expect(world).toContainText('Bellbloom');
+  await expect(world).toContainText('Kitewatch');
+  await expect(world).toContainText('Mae Bramble');
+  await expect(world).toContainText('Restore the Duet');
+
+  await page.getByTestId('validate-manifest').click();
+  const validation = page.getByTestId('validation-result');
+  await expect(validation).toContainText('Manifest is valid');
+  await expect(validation).toContainText('0 errors');
+  await expect(page.getByTestId('save-manifest')).toBeEnabled();
+
+  const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(bodyWidth).toBeLessThanOrEqual(390);
+  await mkdir('ux-review', { recursive: true });
+  await page.screenshot({ path: 'ux-review/brightbell-bloom-workshop-mobile.png', fullPage: true });
+
+  await page.getByTestId('save-manifest').click();
+  await expect(page.getByTestId('workshop-status')).toContainText(/Saved The Brightbell Bloom revision \d+ as a draft/);
+  const list = page.getByTestId('manifest-list');
+  await expect(list).toContainText('The Brightbell Bloom');
+  await expect(list).toContainText('draft');
+  await expect(list).toContainText('v2 · world package');
+});
