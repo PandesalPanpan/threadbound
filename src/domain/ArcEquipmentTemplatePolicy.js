@@ -27,6 +27,7 @@ export const ARC_EQUIPMENT_TEMPLATE_RULES = Object.freeze({
   maxRequiredLevel: 100,
   maxAreaNumber: 100,
   maxEffectsPerItem: EQUIPMENT_BATTLE_EFFECT_RULES.maxEffectsPerItem,
+  maxCritChanceBonus: 1,
   levelsPerBudgetPoint: 10,
   statWeights: Object.freeze({
     attackBonus: 1,
@@ -60,9 +61,11 @@ function nonNegativeInteger(value, label) {
   return number;
 }
 
-function nonNegativeNumber(value, label) {
+function boundedNumber(value, label, minimum, maximum) {
   const number = Number(value ?? 0);
-  if (!Number.isFinite(number) || number < 0) throw new Error(`${label} must be a non-negative number.`);
+  if (!Number.isFinite(number) || number < minimum || number > maximum) {
+    throw new Error(`${label} must be a number between ${minimum} and ${maximum}.`);
+  }
   return number;
 }
 
@@ -82,7 +85,7 @@ function normalizeStats(template, slot, extended) {
     defenseBonus: nonNegativeInteger(raw.defenseBonus, 'Equipment Defense bonus'),
     maxHpBonus: nonNegativeInteger(raw.maxHpBonus, 'Equipment Max HP bonus'),
     speedBonus: nonNegativeInteger(raw.speedBonus, 'Equipment Speed bonus'),
-    critChanceBonus: nonNegativeNumber(raw.critChanceBonus, 'Equipment Crit Chance bonus'),
+    critChanceBonus: boundedNumber(raw.critChanceBonus, 'Equipment Crit Chance bonus', 0, ARC_EQUIPMENT_TEMPLATE_RULES.maxCritChanceBonus),
   });
 
   if (slot !== 'weapon' && stats.attackBonus > 0) {
