@@ -21,6 +21,13 @@ function projectQuest(quest) {
   });
 }
 
+function presentationState(progress) {
+  if (!progress) return 'available';
+  if (progress.status === 'completed') return 'claimable';
+  if (progress.status === 'claimed') return 'completed';
+  return progress.status;
+}
+
 export class QuestService {
   constructor({ repository, questRepository = null, areaRepository = null, eventBus = null, questCatalog = [], now = () => new Date() } = {}) {
     if (!repository) throw new Error('QuestService requires the game repository.');
@@ -42,11 +49,14 @@ export class QuestService {
     const progressByQuestId = new Map(this.questRepository.list(playerId).map((entry) => [entry.questId, entry]));
     const quests = this.questCatalog
       .filter((quest) => quest.areaNumber === progression.currentAreaNumber)
-      .map((quest) => Object.freeze({
-        ...projectQuest(quest),
-        state: progressByQuestId.get(quest.id)?.status || 'available',
-        progress: progressByQuestId.get(quest.id)?.toJSON() || null,
-      }));
+      .map((quest) => {
+        const progress = progressByQuestId.get(quest.id) || null;
+        return Object.freeze({
+          ...projectQuest(quest),
+          state: presentationState(progress),
+          progress: progress?.toJSON() || null,
+        });
+      });
     return Object.freeze({ currentArea: progression.currentArea, quests: Object.freeze(quests) });
   }
 
@@ -72,7 +82,39 @@ export class QuestService {
       throw error;
     }
     const result = Object.freeze({ quest: projectQuest(quest), progress: accepted.progress.toJSON() });
-    this.eventBus?.publish?.({ type: 'QuestAccepted', playerId, questId: quest.id, areaNumber: quest.areaNumber });
+    this.eventBus?.publish?.({ type: 'QuestAccepted', playerId, questId: quest.id, questTitle: quest.title, areaNumber: quest.areaNumber });
+    return result;
+  }
+
+  claim(playerId, questId, claimedAt = this.now().toISOString()) {
+    const player = this.repository.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    const normalizedQuestId = String(questId || '').trim().toLowerCase();
+    const quest = this.questCatalog.find((candidate) => candidate.id === normalizedQuestId);
+    if (!quest) {
+      const error = new Error('That Quest is not available.');
+      error.code = 'quest_unavailable';
+      throw error;
+    }
+    const progress = this.questRepository.get(playerId, quest.id);
+    if (!progress) {
+      const error = new Error('Accept that Quest before claiming it.');
+      error.code = 'quest_not_accepted';
+      throw error;
+    }
+    if (progress.status === 'claimed') {
+      const error = new Error('That Quest has already been claimed.');
+      error.code = 'quest_already_claimed';
+      throw error;
+    }
+    if (progress.status !== 'completed') {
+      const error = new Error('Complete every Quest objective before claiming it.');
+      error.code = 'quest_not_complete';
+      throw error;
+    }
+    const saved = this.questRepository.save(playerId, progress.claim(claimedAt));
+    const result = Object.freeze({ quest: projectQuest(quest), progress: saved.toJSON() });
+    this.eventBus?.publish?.({ type: 'QuestClaimed', playerId, questId: quest.id, questTitle: quest.title, areaNumber: quest.areaNumber });
     return result;
   }
 
@@ -96,6 +138,7 @@ export class QuestService {
         type: completedNow ? 'QuestCompleted' : 'QuestProgressed',
         playerId,
         questId: quest.id,
+        questTitle: quest.title,
         areaNumber: quest.areaNumber,
         objectiveProgress: saved.objectiveProgress,
       });
