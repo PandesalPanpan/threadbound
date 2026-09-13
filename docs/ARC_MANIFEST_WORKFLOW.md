@@ -5,13 +5,14 @@ Threadbound treats an Arc Manifest as a portable content contract. The manifest 
 ## Intended workflow
 
 1. Export or copy the current world context from Threadbound.
-2. Give that context plus the appropriate JSON Schema to the AI or human author.
+2. Give that context plus the appropriate JSON Schema and `docs/ARC_GENERATION_GUIDANCE.md` to the AI or human author.
 3. Produce an `arc-manifest.json` file.
 4. Upload the file in the Arc Workshop.
 5. Review validation errors and warnings.
-6. Save the valid manifest as a draft.
-7. Preview its content impact.
-8. Publish explicitly.
+6. Review the package against the tone/originality checklist in `docs/ARC_GENERATION_GUIDANCE.md`.
+7. Save the valid manifest as a draft.
+8. Preview its content impact.
+9. Publish explicitly.
 
 Publication is intentionally separate from upload. An uploaded manifest never changes live gameplay merely because it parsed successfully.
 
@@ -26,6 +27,14 @@ Publication is intentionally separate from upload. An uploaded manifest never ch
 ## Provider independence
 
 The same JSON contract is used whether the manifest came from ChatGPT, Claude, Gemini, a local model, a handwritten file, or a future Threadbound generation adapter. This keeps generation outside the core domain and makes paid AI APIs optional.
+
+## Generation/editorial guidance
+
+`docs/ARC_GENERATION_GUIDANCE.md` is the canonical authoring guidance for generated Arc concepts and prose. New Arc generation should aim across the package for the master plan's approximate **70% lighthearted/colorful guild adventure, 20% exciting danger, and 10% serious/emotional weight** while remaining original to Threadbound.
+
+The guidance requires references to be translated into abstract traits instead of copied expression. It rejects renamed or closely imitated copyrighted characters, distinctive designs, storylines, locations, factions, artifacts, dialogue, boss packages, and other recognizable recreations. It also gives Threadbound-first guidance for NPCs, Areas/Towns, Quests, enemies/bosses, equipment/food/rewards, and visual prompts, plus a pre-publish review checklist.
+
+These editorial rules complement rather than replace schema validation. The validator proves structural/mechanical constraints; human review is still responsible for tone, originality, coherence, and whether generated content belongs in Threadbound.
 
 ## Authority rules
 
@@ -47,8 +56,8 @@ The same JSON contract is used whether the manifest came from ChatGPT, Claude, G
 
 ## Suggested AI prompt
 
-Give the model both the exported world-context JSON and the selected JSON Schema, then ask:
+Give the model the exported world-context JSON, the selected JSON Schema, and `docs/ARC_GENERATION_GUIDANCE.md`, then ask:
 
-> Create one Threadbound Arc Manifest that conforms exactly to the supplied JSON Schema. Preserve all existing canon and unresolved hooks in the world context. Use only the allowed mechanic IDs, effect IDs, enemy ability IDs, Quest objective types, equipment slots/stats/rarities, reward types, and numeric budgets listed in the context. Keep generated equipment inside its exported rarity/Level/Area power budget and use only exact allowlisted item visualAssetIds. Story Quest objectives, world references, recipes, progression challenges, combat resistances, and equipment templates must remain constrained data only; do not invent scripts, formulas, callbacks, unsupported objective types, hidden stats, currencies, or executable mechanics. Return only valid JSON for the Arc Manifest.
+> Create one original Threadbound Arc Manifest that conforms exactly to the supplied JSON Schema. Preserve all existing canon and unresolved hooks in the world context. Across the package, aim for roughly 70% lighthearted/colorful guild adventure, 20% exciting danger, and 10% serious/emotional weight. Use broad fantasy/anime-adventure conventions only as ingredients; do not copy, rename, closely imitate, or continue characters, designs, dialogue, locations, factions, quests, magic systems, scenes, bosses, artifacts, or storylines from existing copyrighted works. Translate any references into abstract traits and invent a distinct Threadbound identity. Use only the allowed mechanic IDs, effect IDs, enemy ability IDs, Quest objective types, equipment slots/stats/rarities, reward types, and numeric budgets listed in the context. Keep generated equipment inside its exported rarity/Level/Area power budget and use only exact allowlisted item visualAssetIds. Story Quest objectives, world references, recipes, progression challenges, combat resistances, and equipment templates must remain constrained data only; do not invent scripts, formulas, callbacks, unsupported objective types, hidden stats, currencies, or executable mechanics. Do not introduce a headline currency beyond Gold and Honey. Return only valid JSON for the Arc Manifest.
 
-The validator is still expected to reject mistakes. AI output is treated as untrusted input.
+The validator is still expected to reject mistakes. AI output is treated as untrusted input, and valid JSON still requires tone/originality review before publication.
