@@ -1,0 +1,159 @@
+{
+  "manifestVersion": 2,
+  "arc": {
+    "id": "vnext-workshop-arc",
+    "title": "Sunpetal Crossing",
+    "premise": "A bright guild-road Arc used to verify the vNext world-package authoring contract.",
+    "progression": { "metric": "dungeon_clears", "target": 1 }
+  },
+  "lore": [],
+  "enemies": [
+    {
+      "id": "petal-wisp",
+      "name": "Petal Wisp",
+      "baseHp": 8,
+      "retaliation": 1,
+      "abilities": ["basic_retaliation"],
+      "resistances": { "fire": "resistant", "psychic": "immune" }
+    }
+  ],
+  "bosses": [
+    {
+      "id": "thorn-captain",
+      "name": "Thorn Captain",
+      "baseHp": 16,
+      "retaliation": 2,
+      "abilities": ["basic_retaliation"],
+      "resistances": { "poison": "high-resistant" }
+    }
+  ],
+  "dungeons": [
+    {
+      "id": "sunpetal-trial",
+      "name": "Sunpetal Trial",
+      "recommendedPlayers": 2,
+      "encounters": ["petal-wisp"],
+      "bossId": "thorn-captain",
+      "rewardPoolId": "sunpetal-gear"
+    }
+  ],
+  "itemPools": [
+    {
+      "id": "sunpetal-gear",
+      "items": [
+        {
+          "id": "sunpetal-blade",
+          "namePattern": "Sunpetal Blade of {suffix}",
+          "slot": "weapon",
+          "rarity": "common",
+          "attackBonus": 1,
+          "stats": {
+            "attackBonus": 1,
+            "defenseBonus": 0,
+            "maxHpBonus": 0,
+            "speedBonus": 0,
+            "critChanceBonus": 0
+          },
+          "effects": [],
+          "requiredLevel": 1,
+          "areaNumber": 1,
+          "visualAssetId": "item.fire-dagger.v1"
+        },
+        {
+          "id": "sunpetal-helm",
+          "namePattern": "Sunpetal Helm of {suffix}",
+          "slot": "helmet",
+          "rarity": "common",
+          "attackBonus": 0,
+          "stats": {
+            "attackBonus": 0,
+            "defenseBonus": 1,
+            "maxHpBonus": 0,
+            "speedBonus": 0,
+            "critChanceBonus": 0
+          },
+          "effects": [],
+          "requiredLevel": 1,
+          "areaNumber": 1,
+          "visualAssetId": "item.fire-dagger.v1"
+        }
+      ]
+    }
+  ],
+  "achievements": [],
+  "historicalConsequences": [],
+  "areas": [
+    {
+      "id": "sunpetal-road",
+      "number": 1,
+      "name": "Sunpetal Road",
+      "recommendedLevel": { "min": 1, "max": 8 }
+    }
+  ],
+  "towns": [
+    { "id": "petalrest", "areaId": "sunpetal-road", "name": "Petalrest" }
+  ],
+  "npcs": [
+    { "id": "mina-smith", "townId": "petalrest", "name": "Mina", "role": "blacksmith" }
+  ],
+  "quests": [
+    {
+      "id": "meet-mina",
+      "areaId": "sunpetal-road",
+      "title": "Meet the Smith",
+      "objectives": [
+        { "type": "speak", "targetId": "mina-smith", "count": 1 }
+      ]
+    }
+  ],
+  "shopStocks": [
+    {
+      "id": "petalrest-stock",
+      "townId": "petalrest",
+      "areaNumber": 1,
+      "offers": [
+        { "sku": "sunpetal-blade", "itemTemplateId": "sunpetal-blade", "cost": 20 }
+      ]
+    }
+  ],
+  "shops": [
+    {
+      "id": "petalrest-outfitters",
+      "townId": "petalrest",
+      "name": "Petalrest Outfitters",
+      "stockId": "petalrest-stock"
+    }
+  ],
+  "craftingRecipes": [
+    {
+      "id": "helm-forging",
+      "name": "Helm Forging",
+      "areaNumber": 1,
+      "ingredients": [
+        { "itemDefinitionId": "sunpetal-blade", "quantity": 1 }
+      ],
+      "output": { "itemDefinitionId": "sunpetal-helm", "quantity": 1 }
+    }
+  ],
+  "cookingRecipes": [
+    {
+      "id": "petal-stew",
+      "name": "Petal Stew",
+      "areaNumber": 1,
+      "ingredients": [
+        { "itemDefinitionId": "sunpetal-blade", "quantity": 1 }
+      ],
+      "buff": { "code": "attack_boost_minor", "fights": 3 }
+    }
+  ],
+  "progressionChallenges": [
+    {
+      "id": "sunpetal-gate",
+      "areaId": "sunpetal-road",
+      "unlocksAreaId": null,
+      "dungeonId": "sunpetal-trial",
+      "requiresBothHumans": true,
+      "recommendedLevel": { "min": 5, "max": 8 }
+    }
+  ]
+}
