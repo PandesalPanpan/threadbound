@@ -7,6 +7,7 @@ import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
 import { compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
+import { validateArcTownShopStocks } from '../content/ArcTownShopCatalog.js';
 import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 import { ArcEquipmentTemplateValidator } from './ArcEquipmentTemplateValidator.js';
 import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
@@ -90,6 +91,7 @@ export class ArcManifestService {
         'New equipment templates must use an exported canonical slot, rarity, stat field, effect code, requiredLevel, Area number, and exact item visualAssetId.',
         'Equipment weighted stats plus non-plain effects must fit the exported rarity/level/Area power budget; do not invent hidden stats or executable item mechanics.',
         'Story Quest objectives may use only the exported quest objective types and data fields; never embed scripts, formulas, or executable behavior.',
+        'Optional Town Shop stock may reference only an established Town and equipment template from the same manifest, with a fixed positive Gold price.',
         'Do not invent executable code or mechanics outside this context.',
         'Keep all numeric values inside the supplied balance budgets.',
         'Encounter variants must reference enemies from the same manifest.',
@@ -106,9 +108,10 @@ export class ArcManifestService {
     const projected = this.equipmentTemplateValidator.projectForLegacyValidator(manifest);
     const base = this.validator.validate(projected);
     const replayability = this.replayabilityValidator.validate(manifest);
+    const shopStocks = validateArcTownShopStocks(manifest);
     return {
-      valid: base.valid && equipmentTemplates.valid && replayability.valid,
-      errors: [...base.errors, ...equipmentTemplates.errors, ...replayability.errors],
+      valid: base.valid && equipmentTemplates.valid && replayability.valid && shopStocks.valid,
+      errors: [...base.errors, ...equipmentTemplates.errors, ...replayability.errors, ...shopStocks.errors],
       warnings: [...base.warnings, ...equipmentTemplates.warnings, ...replayability.warnings],
     };
   }
