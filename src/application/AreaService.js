@@ -1,6 +1,6 @@
-import { projectTown, townsForArea } from '../content/TownCatalog.js';
 import { AreaProgression, projectArea } from '../domain/AreaProgression.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
+import { TownService } from './TownService.js';
 
 function unlockedAreas(highestUnlockedAreaNumber, currentAreaNumber) {
   return Object.freeze(Array.from({ length: highestUnlockedAreaNumber }, (_unused, index) => {
@@ -10,12 +10,13 @@ function unlockedAreas(highestUnlockedAreaNumber, currentAreaNumber) {
 }
 
 export class AreaService {
-  constructor({ repository, eventBus, areaRepository = null } = {}) {
+  constructor({ repository, eventBus, areaRepository = null, townService = null } = {}) {
     if (!repository) throw new Error('AreaService requires the game repository.');
     if (!eventBus) throw new Error('AreaService requires the event bus.');
     this.repository = repository;
     this.eventBus = eventBus;
     this.areaRepository = areaRepository || new SQLiteAreaRepository({ database: repository.db });
+    this.townService = townService || new TownService({ repository, eventBus, areaRepository: this.areaRepository });
   }
 
   browse(playerId) {
@@ -28,7 +29,7 @@ export class AreaService {
       currentAreaNumber: progression.currentAreaNumber,
       highestUnlockedAreaNumber: progression.highestUnlockedAreaNumber,
       areas: unlockedAreas(progression.highestUnlockedAreaNumber, progression.currentAreaNumber),
-      towns: Object.freeze(townsForArea(progression.currentAreaNumber).map(projectTown)),
+      towns: this.townService.browse(playerId).towns,
     });
   }
 
