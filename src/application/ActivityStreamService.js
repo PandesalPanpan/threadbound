@@ -269,6 +269,12 @@ export class ActivityStreamService {
           actorName: 'THREADBOUND',
           body: `${actorName} traveled from ${event.fromArea?.name || 'an Area'} to ${event.toArea?.name || 'an Area'}.`,
         };
+      case 'NpcInteracted':
+        return {
+          actorPlayerId: event.playerId,
+          actorName: event.npcName || 'Town NPC',
+          body: `${actorName || 'Adventurer'} spoke with ${event.npcName || 'a Town resident'} in ${event.townName || 'Town'}. “${event.dialogue || 'Hello, adventurer.'}”`,
+        };
       case 'ItemGenerated': {
         if (event.silentStream) return null;
         const item = this.gameRepository.getItem(event.itemId);
