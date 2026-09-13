@@ -26,8 +26,8 @@ test('dashboard exposes authoritative active fight buffs with remaining fight co
 
   assert.deepEqual(service.dashboard(player.id).activeFightBuffs, [{
     code: 'attack_boost_minor',
-    name: 'Attack Boost',
-    description: '+10% Attack while fights remain.',
+    name: 'Attack Up',
+    description: '+10% Attack while the buff has fights remaining.',
     sourceRecipeId: 'spicy-wyvern-stew',
     remainingFights: 3,
   }]);
@@ -48,15 +48,15 @@ test('Hunt receipt reports authoritative remaining-fight buff consumption withou
     experienceGained: 5,
     level: 1,
     fightBuffsConsumed: [
-      { code: 'attack_boost_minor', name: 'Attack Boost', beforeFights: 3, remainingFights: 2, expired: false },
+      { code: 'attack_boost_minor', name: 'Attack Up', beforeFights: 3, remainingFights: 2, expired: false },
       { code: 'hunt_haste_minor', name: 'Hunt Haste', beforeFights: 1, remainingFights: 0, expired: true },
     ],
   });
 
   assert.deepEqual(receipt.fightBuffs, [
-    { code: 'attack_boost_minor', name: 'Attack Boost', remainingFights: 2, expired: false },
+    { code: 'attack_boost_minor', name: 'Attack Up', remainingFights: 2, expired: false },
     { code: 'hunt_haste_minor', name: 'Hunt Haste', remainingFights: 0, expired: true },
   ]);
-  assert.match(receipt.text, /Attack Boost — 2 fights left\./);
+  assert.match(receipt.text, /Attack Up — 2 fights left\./);
   assert.match(receipt.text, /Hunt Haste expired\./);
 });
