@@ -537,6 +537,7 @@ Old terminology/storage can be migrated in controlled steps:
 ## 11. Current repo gap assessment
 
 As of the plan's creation, `main` already provides useful foundations:
+
 - server-authoritative modular-monolith boundaries;
 - durable SQLite persistence/sessions;
 - realtime Adventure Stream;
