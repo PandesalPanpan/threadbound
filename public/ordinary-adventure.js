@@ -21,25 +21,27 @@ if (stream) {
   const commandCard = stream.querySelector('[data-testid="stream-command-card"]');
   let acting = false;
   let ordering = false;
+  let revealScheduled = false;
 
   function revealActiveCommand() {
-    if (!commandCard || commandCard.hidden) return;
+    if (!commandCard || commandCard.hidden || revealScheduled) return;
+    revealScheduled = true;
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      commandCard.scrollIntoView({ block: 'end', inline: 'nearest' });
+      revealScheduled = false;
+      if (commandCard.hidden) return;
+      commandCard.scrollIntoView({ block: 'start', inline: 'nearest' });
     }));
   }
 
   function keepActiveCommandAtTail() {
     if (!log || !commandCard || commandCard.hidden || ordering) return;
-    if (commandCard.parentElement === log && commandCard === log.lastElementChild) {
-      revealActiveCommand();
-      return;
+    if (commandCard.parentElement !== log || commandCard !== log.lastElementChild) {
+      ordering = true;
+      log.append(commandCard);
+      log.scrollTop = log.scrollHeight;
+      queueMicrotask(() => { ordering = false; });
     }
-    ordering = true;
-    log.append(commandCard);
-    log.scrollTop = log.scrollHeight;
     revealActiveCommand();
-    queueMicrotask(() => { ordering = false; });
   }
 
   // Rich command modules all reuse one card node. Stream receipts/messages are
@@ -50,6 +52,20 @@ if (stream) {
     queueMicrotask(keepActiveCommandAtTail);
   }) : null;
   streamOrderObserver?.observe(log, { childList: true });
+
+  // Most command renderers mutate the existing shared card rather than insert a
+  // new log child. Watch that card too so a freshly rendered Town/Profile/etc.
+  // response is aligned by its header below the sticky navigation, even when it
+  // is taller than the mobile viewport.
+  const commandCardObserver = commandCard ? new MutationObserver(() => {
+    queueMicrotask(keepActiveCommandAtTail);
+  }) : null;
+  commandCardObserver?.observe(commandCard, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['hidden', 'data-rich-card-kind'],
+  });
 
   function showError(message = '') {
     if (!error) return;
@@ -86,5 +102,8 @@ if (stream) {
     }
   }, { capture: true });
 
-  window.addEventListener('beforeunload', () => streamOrderObserver?.disconnect(), { once: true });
+  window.addEventListener('beforeunload', () => {
+    streamOrderObserver?.disconnect();
+    commandCardObserver?.disconnect();
+  }, { once: true });
 }
