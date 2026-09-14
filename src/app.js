@@ -42,7 +42,7 @@ const LOCAL_PROFILES = Object.freeze({
 const INITIAL_STREAM_LIMIT = 30;
 
 function sharedHead(title) {
-  return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1020"><title>${title}</title><link rel="stylesheet" href="/threadbound-theme.css">`;
+  return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1e1f22"><title>${title}</title><link rel="stylesheet" href="/threadbound-theme.css"><link rel="stylesheet" href="/ui-v2/index.css"><script>document.documentElement.classList.add('threadbound-v2', 'threadbound-v2-' + (location.pathname.split('/')[1] || 'home'))</script>`;
 }
 
 function topNav(active, authMode = 'threaded') {

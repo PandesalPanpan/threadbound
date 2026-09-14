@@ -1,0 +1,141 @@
+.threadbound-v2 :where(button, .tb-v2-button, .primary-link) {
+  min-height: var(--tb-v2-control-min);
+  padding: .625rem .875rem;
+  border: 1px solid var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-md);
+  background: var(--tb-v2-surface-raised);
+  color: var(--tb-v2-text);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.threadbound-v2 :where(button, .tb-v2-button, .primary-link):not(:disabled) {
+  cursor: pointer;
+}
+
+.threadbound-v2 :where(button, .tb-v2-button, .primary-link):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--tb-v2-purple) 62%, var(--tb-v2-border));
+  background: color-mix(in srgb, var(--tb-v2-purple) 10%, var(--tb-v2-surface-raised));
+}
+
+.threadbound-v2 :where(button, .tb-v2-button).is-primary,
+.threadbound-v2 :where(.primary-link) {
+  border-color: var(--tb-v2-purple);
+  background: var(--tb-v2-purple);
+  color: var(--tb-v2-text);
+}
+
+.threadbound-v2 :where(button, .tb-v2-button):disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.threadbound-v2 :where(input, select, textarea) {
+  min-width: 0;
+  min-height: var(--tb-v2-control-min);
+  border: 1px solid var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-md);
+  background: var(--tb-v2-inset);
+  color: var(--tb-v2-text);
+}
+
+.threadbound-v2 :where(input, textarea)::placeholder {
+  color: var(--tb-v2-muted);
+  opacity: 1;
+}
+
+.threadbound-v2 :where(.panel, .notice, .tb-v2-card) {
+  min-width: 0;
+  border: 1px solid var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-lg);
+  background: var(--tb-v2-surface);
+  color: var(--tb-v2-text);
+  box-shadow: none;
+}
+
+.tb-v2-chip {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: .3rem .65rem;
+  border: 1px solid var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-pill);
+  background: var(--tb-v2-surface-raised);
+  color: var(--tb-v2-muted);
+  font-size: var(--tb-v2-text-xs);
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+.tb-v2-chip[data-tone='live'] { border-color: var(--tb-v2-green-inset); background: var(--tb-v2-green-inset); color: var(--tb-v2-green); }
+.tb-v2-chip[data-tone='info'] { border-color: var(--tb-v2-blue-inset); background: var(--tb-v2-blue-inset); color: var(--tb-v2-blue); }
+.tb-v2-chip[data-tone='warning'] { color: var(--tb-v2-gold); }
+.tb-v2-chip[data-tone='danger'] { border-color: var(--tb-v2-red-inset); background: var(--tb-v2-red-inset); color: var(--tb-v2-red); }
+
+.tb-v2-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+  gap: var(--tb-v2-space-2);
+}
+
+.tb-v2-stat {
+  min-width: 0;
+  padding: var(--tb-v2-space-2);
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-surface-raised);
+}
+
+.tb-v2-stat > span {
+  display: block;
+  color: var(--tb-v2-muted);
+  font-size: var(--tb-v2-text-2xs);
+  font-weight: 600;
+}
+
+.tb-v2-stat > strong {
+  display: block;
+  margin-top: .125rem;
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-md);
+}
+
+.tb-v2-sprite-frame {
+  display: grid;
+  width: 2.625rem;
+  height: 2.625rem;
+  flex: 0 0 2.625rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--tb-v2-radius-md);
+  background: var(--tb-v2-inset);
+}
+
+.tb-v2-sprite-frame > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.tb-v2-state {
+  display: grid;
+  min-height: 7rem;
+  place-content: center;
+  gap: var(--tb-v2-space-1);
+  padding: var(--tb-v2-space-4);
+  border: 1px dashed var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-lg);
+  color: var(--tb-v2-muted);
+  text-align: center;
+}
+
+.tb-v2-state strong { color: var(--tb-v2-text); }
+.tb-v2-state[data-state='error'] { border-style: solid; border-color: color-mix(in srgb, var(--tb-v2-red) 50%, var(--tb-v2-border)); color: var(--tb-v2-red); }
+.tb-v2-state[data-state='loading']::before { content: ''; width: 1rem; height: 1rem; margin: 0 auto .25rem; border: 2px solid var(--tb-v2-border); border-top-color: var(--tb-v2-purple); border-radius: 50%; animation: tb-v2-spin .8s linear infinite; }
+
+@keyframes tb-v2-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-v2-state[data-state='loading']::before { animation: none; }
+}

@@ -1,0 +1,60 @@
+html.threadbound-v2 {
+  min-width: 20rem;
+  min-height: 100%;
+  background: var(--tb-v2-canvas);
+  font-size: 16px;
+  overflow-x: clip;
+}
+
+html.threadbound-v2 body {
+  min-width: 20rem;
+  margin: 0;
+  background: var(--tb-v2-canvas);
+  color: var(--tb-v2-text);
+  font-family: var(--tb-v2-font);
+  font-size: var(--tb-v2-text-md);
+  line-height: var(--tb-v2-leading-copy);
+  overflow-x: clip;
+}
+
+.threadbound-v2 *,
+.threadbound-v2 *::before,
+.threadbound-v2 *::after {
+  box-sizing: border-box;
+}
+
+.threadbound-v2 :where(h1, h2, h3, p) {
+  overflow-wrap: anywhere;
+}
+
+.threadbound-v2 :where(button, input, select, textarea) {
+  color: inherit;
+  font: inherit;
+}
+
+.threadbound-v2 :where(a) {
+  color: var(--tb-v2-blue);
+  text-underline-offset: .18em;
+}
+
+.threadbound-v2 :where(button, a, input, select, textarea):focus-visible {
+  outline: 0;
+  box-shadow: var(--tb-v2-focus);
+}
+
+.threadbound-v2 ::selection {
+  background: color-mix(in srgb, var(--tb-v2-purple) 44%, transparent);
+  color: var(--tb-v2-text);
+}
+
+.threadbound-v2 .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,33 @@
+@media (max-width: 42rem) {
+  html.threadbound-v2 .threadbound-topnav {
+    height: 3.875rem;
+    min-height: 3.875rem;
+    padding-inline: 1rem;
+  }
+
+  .threadbound-v2 .threadbound-topnav .brand {
+    font-size: 1rem;
+  }
+
+  .threadbound-v2 .threadbound-topnav .nav-links {
+    gap: .75rem;
+  }
+
+  .threadbound-v2 .threadbound-topnav .nav-links a {
+    font-size: var(--tb-v2-text-sm);
+  }
+
+  .threadbound-v2 .threadbound-page {
+    padding: 1rem;
+  }
+
+  .threadbound-v2 .page-hero {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .threadbound-v2 .threadbound-page {
+    padding-top: 1.75rem;
+  }
+}
