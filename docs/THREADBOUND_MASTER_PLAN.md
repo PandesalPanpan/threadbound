@@ -72,7 +72,7 @@ The Adventure Stream is the primary application surface. Every command, button p
 
 **There are no player-facing “private screens” for Inventory, Shop, Bank, Profile, Quests, gambling, or similar routine systems.** Those systems render as rich inline chat entries/cards inside the same stream. They must not navigate away, replace the stream, open a separate app shell, or otherwise break conversational continuity.
 
-Rich commands such as `inventory`, `shop`, `bank`, `profile`, `leaderboard`, `quest`, `town`, `blackjack`, `slots`, and `coinflip` should open **interactive chat cards** that can become visually rich on mobile while remaining visibly part of the conversation. They should be concise by default, expand only when needed, and must not consume most of the viewport merely because they contain many items.
+Information-dense commands such as `inventory`, `shop`, `bank`, `profile`, `leaderboard`, `quest`, and `town` should open **interactive chat cards** that can become visually rich on mobile while remaining visibly part of the conversation. They should be concise by default, expand only when needed, and must not consume most of the viewport merely because they contain many items. Simple activities such as Blackjack, Slots, and Coinflip should default to the message-first **player command -> Threadbound receipt** rhythm unless a tiny contextual action materially reduces friction; they should not get a persistent dashboard/card merely because buttons are possible.
 
 Only the newest relevant card should remain fully interactive. Old large interactive cards should collapse into concise historical snapshots to prevent chat-history clutter.
 
@@ -117,7 +117,6 @@ Use Fowler-style patterns where they solve a real boundary:
 Do not introduce microservices, CQRS infrastructure, or event sourcing merely for ceremony. Threadbound remains a modular monolith until measured constraints justify otherwise.
 
 ### 2.5 Do not make the player think about interface bookkeeping
-
 Player-facing controls must use plain-language labels and immediately understandable state. Apply the spirit of Steve Krug's “Don't Make Me Think”: a player should not need developer knowledge, mental arithmetic, or memory of hidden rules to understand a button.
 
 - Never surface unexplained ratios/counters such as `Dungeon 14/9`.
@@ -237,7 +236,6 @@ Gold must be visually prominent wherever spending/equipment decisions occur. In 
 ### 4.3 Bank
 
 The Bank is intentionally simple at first:
-
 - deposit Gold;
 - withdraw Gold;
 - banked Gold is protected from ordinary death loss;
@@ -357,7 +355,6 @@ Primary rewards:
 - Gold;
 - common/rare drops;
 - quest progress.
-
 Hunt has a short cooldown so one afternoon cannot become hundreds of progression actions. Cooldowns should be materially shorter/friendlier than large-public-bot pacing, because Threadbound only needs to serve the two humans well.
 
 Equipment attributes or selected buffs may reduce Hunt cooldown within capped limits.
@@ -499,7 +496,8 @@ Required rich command-card families:
 - Leaderboard
 - Achievements
 - Duel target/profile
-- Gambling activities
+
+Simple gambling activities are intentionally **message-first** rather than required rich cards: player command/action first, then a compact Threadbound state/result receipt. A tiny contextual action such as `Hit` or `Stand` may exist when useful, but it must not become a persistent mini-dashboard.
 
 Cards should use project-owned sprites/icons wherever appropriate and follow the approved mobile Figma hierarchy/style rather than reverting to generic browser forms.
 
@@ -753,7 +751,7 @@ Do not begin this phase until the new foundation is usable end-to-end.
 
 This phase is mandatory before HUMAN playtest acceptance. It exists because the first live impression exposed UX regressions despite earlier implementation checkboxes being green.
 
-- [ ] **M10F-01** Remove route/private-screen behavior for Inventory, Shop, Bank, gambling, and other routine systems. Render them as inline Adventure Stream cards without replacing/hiding the chat shell.
+- [x] **M10F-01** Remove route/private-screen behavior for Inventory, Shop, Bank, gambling, and other routine systems. Render them as inline Adventure Stream cards without replacing/hiding the chat shell.
 - [ ] **M10F-02** Redesign Inventory for compact inline use: carried Gold must stand out, equipped slots and key stats must be immediately visible, long item collections must use progressive disclosure/bounded height rather than consuming the whole viewport.
 - [ ] **M10F-03** Make typed commands and button-triggered commands appear as visible player chat/action entries, followed by Threadbound receipts, preserving conversation continuity and realtime partner visibility.
 - [ ] **M10F-04** Replace the stale `Simple loop` command/help copy with a concise grouped command guide that reflects the actually implemented systems, including Area/Town/Quest/Bank/Duel/Profile/Leaderboard/Achievements and Blackjack/Slots/Coinflip.
