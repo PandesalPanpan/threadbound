@@ -23,13 +23,29 @@ if (stream) {
   let ordering = false;
   let revealScheduled = false;
 
+  function alignActiveCommand() {
+    if (!log || !commandCard || commandCard.hidden) return;
+    // First position the active response at the top of the chat scroller. This is
+    // deterministic even for cards taller than the viewport, unlike bottom-aligning.
+    log.scrollTop = Math.max(0, commandCard.offsetTop - 8);
+
+    // Then make sure the nested chat scroller itself is not sitting above the
+    // browser viewport beneath the sticky navigation.
+    const navBottom = document.querySelector('.threadbound-topnav')?.getBoundingClientRect().bottom || 0;
+    const desiredTop = navBottom + 8;
+    const rect = commandCard.getBoundingClientRect();
+    if (rect.top < desiredTop || rect.top > window.innerHeight - 80) {
+      window.scrollBy({ top: rect.top - desiredTop, left: 0, behavior: 'auto' });
+    }
+  }
+
   function revealActiveCommand() {
     if (!commandCard || commandCard.hidden || revealScheduled) return;
+    alignActiveCommand();
     revealScheduled = true;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       revealScheduled = false;
-      if (commandCard.hidden) return;
-      commandCard.scrollIntoView({ block: 'start', inline: 'nearest' });
+      alignActiveCommand();
     }));
   }
 
@@ -38,7 +54,6 @@ if (stream) {
     if (commandCard.parentElement !== log || commandCard !== log.lastElementChild) {
       ordering = true;
       log.append(commandCard);
-      log.scrollTop = log.scrollHeight;
       queueMicrotask(() => { ordering = false; });
     }
     revealActiveCommand();
