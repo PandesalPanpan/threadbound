@@ -1,0 +1,263 @@
+/* Phase F: Blackjack surfaces translated from Figma nodes 44:507 and 44:619. */
+html.threadbound-v2 body.threadbound-player #stream .stream-command-card[data-rich-card-kind='blackjack'] {
+  flex: 0 0 auto;
+  max-height: none;
+  margin: .1875rem .875rem .375rem 3.5rem;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-surface {
+  display: grid;
+  gap: .5625rem;
+  min-width: 0;
+  padding: .6875rem .75rem .75rem;
+  border: 1px solid #305c4a;
+  border-radius: .625rem;
+  background: #17352b;
+  color: var(--tb-v2-text);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-table-header,
+html.threadbound-v2 body.threadbound-player #stream .blackjack-hand-header,
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-table-copy {
+  display: grid;
+  min-width: 0;
+  gap: .0625rem;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-table-copy strong {
+  overflow: hidden;
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-sm);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-table-copy small {
+  color: #aecdbc;
+  font-size: var(--tb-v2-text-2xs);
+  line-height: 1.35;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-wager-pill,
+html.threadbound-v2 body.threadbound-player #stream .blackjack-score-pill {
+  flex: 0 0 auto;
+  padding: .1875rem .4375rem;
+  border-radius: var(--tb-v2-radius-pill);
+  font-size: .5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-wager-pill {
+  background: #372c1a;
+  color: var(--tb-v2-gold);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-hand-area {
+  display: grid;
+  gap: .3125rem;
+  min-width: 0;
+  padding: .4375rem .5rem;
+  border-radius: .4375rem;
+  background: #132d24;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-hand-header strong {
+  color: #aecdbc;
+  font-size: var(--tb-v2-text-2xs);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-score-pill {
+  background: #362d4e;
+  color: var(--tb-v2-purple);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-score-pill.is-loss {
+  background: #391f23;
+  color: var(--tb-v2-red);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-score-pill.is-turn {
+  padding-inline: .4375rem;
+  color: var(--tb-v2-purple);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-row {
+  display: flex;
+  gap: .4375rem;
+  min-height: 3.875rem;
+  align-items: flex-start;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-playing-card {
+  display: flex;
+  width: 2.875rem;
+  height: 3.875rem;
+  flex: 0 0 2.875rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  padding: .375rem .4375rem;
+  overflow: hidden;
+  border-radius: .4375rem;
+  background: #eeeeea;
+  color: #202126;
+  font-family: var(--tb-v2-font);
+  font-weight: 700;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-playing-card.is-red { color: var(--tb-v2-red); }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-rank { font-size: 1rem; line-height: 1.125rem; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-suit { font-size: .9375rem; line-height: 1.0625rem; }
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back {
+  align-items: center;
+  justify-content: center;
+  gap: .0625rem;
+  padding: .375rem;
+  background: #372d4e;
+  color: var(--tb-v2-text);
+  text-align: center;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back strong { color: var(--tb-v2-purple); font-size: 1.125rem; line-height: 1.1; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back small { font-size: .4375rem; line-height: 1; }
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .5rem;
+  padding: .4375rem .5rem;
+  border-radius: .4375rem;
+  background: #1f3a30;
+  color: #aecdbc;
+  font-size: var(--tb-v2-text-xs);
+  line-height: 1.35;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll > strong { color: var(--tb-v2-gold); font-size: var(--tb-v2-text-xs); white-space: nowrap; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll > span:not(.blackjack-bankroll-dot):not(.blackjack-bankroll-divider) { white-space: nowrap; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll-divider { color: #aecdbc; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll-dot,
+html.threadbound-v2 body.threadbound-player #stream .blackjack-hint-dot { color: var(--tb-v2-gold); font-size: .45rem; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll .blackjack-score-pill { margin-left: auto; }
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-decision-hint,
+html.threadbound-v2 body.threadbound-player #stream .blackjack-history-note {
+  display: flex;
+  gap: .375rem;
+  min-width: 0;
+  align-items: flex-start;
+  color: #d3dad6;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-decision-hint small,
+html.threadbound-v2 body.threadbound-player #stream .blackjack-history-note small {
+  color: #d3dad6;
+  font-size: var(--tb-v2-text-2xs);
+  line-height: 1.45;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout {
+  display: grid;
+  gap: .25rem;
+  padding: .5rem .5625rem;
+  border-radius: .4375rem;
+  background: #1f3a30;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row { align-items: center; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row strong { color: var(--tb-v2-text); font-size: var(--tb-v2-text-xs); font-weight: 600; white-space: nowrap; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row strong:last-child { margin-left: auto; color: var(--tb-v2-green); }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row strong.is-loss:last-child { color: var(--tb-v2-red); }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row strong.is-push:last-child { color: #aecdbc; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-label { color: #aecdbc; font-size: var(--tb-v2-text-2xs); }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-bankroll { color: var(--tb-v2-gold) !important; font-size: var(--tb-v2-text-sm) !important; }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .375rem;
+  padding: .625rem .75rem .5rem;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream > .stream-suggestions[data-gambling-suggestions='blackjack'] {
+  display: grid !important;
+}
+
+html.threadbound-v2 body.threadbound-player #stream:has(.stream-command-card[data-gambling-rich-card='true']:not([hidden])) .simple-loop-actions {
+  display: none !important;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
+  padding: .625rem .35rem;
+  border-radius: .4375rem;
+  background: var(--tb-v2-surface-raised);
+  color: #e0e3e8;
+  font-size: var(--tb-v2-text-xs);
+  font-weight: 600;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button {
+  display: inline-flex !important;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button:not([data-blackjack-action='true']) {
+  display: none !important;
+}
+
+/* The Blackjack surface owns the short mobile viewport once it is open. Let the
+   history log yield space so the complete table and action dock stay together. */
+@media (max-width: 45rem) {
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream:has(.stream-command-card[data-gambling-rich-card='true']:not([hidden])) .adventure-stream-log {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button::before {
+  width: .5rem;
+  height: .5rem;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--tb-v2-blue);
+  content: '';
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button[data-testid='blackjack-action-hit']::before,
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button[data-testid='blackjack-action-play']::before { background: var(--tb-v2-red); }
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button[data-testid='blackjack-action-double']::before,
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button[data-testid='blackjack-action-leave']::before { background: var(--tb-v2-gold); }
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions[data-gambling-suggestions='blackjack'] button:disabled { cursor: not-allowed; opacity: .48; }
+
+@media (max-width: 520px) {
+  html.threadbound-v2 body.threadbound-player #stream .blackjack-surface { padding-inline: .75rem; }
+  html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll { gap: .35rem; }
+  html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll > strong { font-size: .5625rem; }
+  html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll > span:not(.blackjack-bankroll-dot):not(.blackjack-bankroll-divider) { font-size: .5625rem; }
+  html.threadbound-v2 body.threadbound-player #stream .blackjack-payout-row strong { font-size: .5625rem; }
+}

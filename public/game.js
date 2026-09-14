@@ -3,7 +3,7 @@ import './relic-progression.js';
 
 document.documentElement.classList.add('threadbound-player-root');
 document.body.classList.add('threadbound-player');
-for (const href of ['/game.css', '/game-feel.css', '/ui-v2/stream.css', '/ui-v2/core-cards.css', '/ui-v2/world-social.css', '/ui-v2/dungeon.css']) {
+for (const href of ['/game.css', '/game-feel.css', '/ui-v2/stream.css', '/ui-v2/core-cards.css', '/ui-v2/world-social.css', '/ui-v2/dungeon.css', '/ui-v2/gambling.css']) {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = href;

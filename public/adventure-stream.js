@@ -173,6 +173,9 @@ if (streamEl) {
     commandCardEl.innerHTML = '';
     delete commandCardEl.dataset.simpleDungeonSurface;
     delete commandCardEl.dataset.dungeonState;
+    delete commandCardEl.dataset.gamblingRichCard;
+    delete commandCardEl.dataset.gamblingView;
+    delete commandCardEl.dataset.gamblingRoundId;
   }
 
   function durationLabel(seconds) {
@@ -287,6 +290,9 @@ if (streamEl) {
     commandCardEl.innerHTML = '';
     delete commandCardEl.dataset.simpleDungeonSurface;
     delete commandCardEl.dataset.dungeonState;
+    delete commandCardEl.dataset.gamblingRichCard;
+    delete commandCardEl.dataset.gamblingView;
+    delete commandCardEl.dataset.gamblingRoundId;
     const header = document.createElement('div');
     header.className = 'thread-reply-header';
     const copy = document.createElement('div');

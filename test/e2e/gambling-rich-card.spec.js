@@ -60,7 +60,39 @@ test.describe('mobile gambling chat flow', () => {
     await expect(dealCommand).toBeVisible();
     await expect(dealReceipt).toContainText('You');
     await expect(dealReceipt).toContainText('Dealer');
-    await expect(card).toBeHidden();
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute('data-rich-card-kind', 'blackjack');
+    mkdirSync(REVIEW_DIR, { recursive: true });
+    const activeSurface = card.getByTestId('blackjack-surface');
+    if (await activeSurface.isVisible()) {
+      await expect(card.locator('[data-testid^="blackjack-player-card-"]')).toHaveCount(2);
+      await expect(card.locator('[data-testid^="blackjack-dealer-card-"]')).toHaveCount(2);
+      await expect(page.getByTestId('blackjack-action-hit')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-stand')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-double')).toBeDisabled();
+      // Keep this capture viewport-sized so it can be compared directly with the 390x844 Figma frame.
+      await page.screenshot({ path: `${REVIEW_DIR}/gambling-blackjack-active-mobile.png` });
+    } else {
+      await expect(card.getByTestId('blackjack-result-surface')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-play')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-change-bet')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-leave')).toBeVisible();
+      await page.screenshot({ path: `${REVIEW_DIR}/gambling-blackjack-result-mobile.png` });
+    }
+
+    const roundAfterDeal = await context.request.get('/api/gambling');
+    expect(roundAfterDeal.ok()).toBe(true);
+    const activeRound = (await roundAfterDeal.json()).blackjack.round;
+    if (activeRound?.status === 'active') {
+      await typeCommand(page, 'stand');
+      await expect(page.getByTestId('blackjack-result-surface')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-play')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-change-bet')).toBeVisible();
+      await expect(page.getByTestId('blackjack-action-leave')).toBeVisible();
+      await page.screenshot({ path: `${REVIEW_DIR}/gambling-blackjack-result-mobile.png` });
+    } else {
+      await expect(page.getByTestId('blackjack-result-surface')).toBeVisible();
+    }
 
     const chronology = await page.evaluate(() => {
       const entries = [...document.querySelectorAll('[data-testid="adventure-stream-log"] .stream-entry')];
@@ -112,7 +144,6 @@ test.describe('mobile gambling chat flow', () => {
     expect(metrics.tallestRecentEntry).toBeLessThan(150);
     expect(metrics.hasGamblingCard).toBe(false);
 
-    mkdirSync(REVIEW_DIR, { recursive: true });
     await page.screenshot({ path: `${REVIEW_DIR}/gambling-mobile.png`, fullPage: true });
   });
 });
