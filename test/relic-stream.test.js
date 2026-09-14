@@ -12,7 +12,7 @@ function setup() {
   return { gameRepository, service, player };
 }
 
-test('Tempering creates one readable social progression entry', () => {
+test('Upgrade creates one readable social progression entry', () => {
   const { gameRepository, service, player } = setup();
   const entry = service.recordDomainEvent({
     type: 'ItemUpgraded',
@@ -27,10 +27,10 @@ test('Tempering creates one readable social progression entry', () => {
     attunementName: 'Bulwark Weave',
   });
 
-  assert.match(entry.body, /Tempered Frayed Needle to 1\/3/);
+  assert.match(entry.body, /Upgrade complete — Frayed Needle/);
+  assert.match(entry.body, /\+1 Attack · −8 Gold · Level 1\/3/);
+  assert.doesNotMatch(entry.body, /null|Temper|Dust/);
   assert.match(entry.body, /Bulwark Weave/);
-  assert.match(entry.body, /\+1 Attack/);
-  assert.match(entry.body, /−8 Dust/);
   assert.equal(service.recent().length, 1);
   gameRepository.close();
 });

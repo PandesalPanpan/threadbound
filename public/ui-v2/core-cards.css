@@ -1,0 +1,87 @@
+/* Phase C: Figma-aligned core-loop cards. Scoped so legacy surfaces remain intact. */
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-visual,
+html.threadbound-v2 body.threadbound-player #stream .stream-command-card[data-rich-card-kind='inventory'],
+html.threadbound-v2 body.threadbound-player #stream .stream-command-card[data-rich-card-kind='shop'],
+html.threadbound-v2 body.threadbound-player #stream .stream-command-card[data-rich-card-kind='bank'],
+html.threadbound-v2 body.threadbound-player #stream .stream-command-card[data-rich-card-kind='recovery'] {
+  border-color: var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-lg);
+  background: var(--tb-v2-surface);
+  box-shadow: none;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-visual {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: var(--tb-v2-space-3);
+  margin-top: var(--tb-v2-space-2);
+  padding: var(--tb-v2-space-3);
+  border: 1px solid var(--tb-v2-border);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-sprite {
+  width: 4.25rem;
+  min-width: 4.25rem;
+  height: 4.25rem;
+  border-radius: var(--tb-v2-radius-md);
+  background: var(--tb-v2-inset);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-copy { display: grid; gap: .375rem; min-width: 0; }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-copy > span:first-child { color: var(--tb-v2-green); font-size: var(--tb-v2-text-2xs); font-weight: 700; letter-spacing: .08em; }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-copy > strong { font-size: var(--tb-v2-text-lg); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-ledger { display: flex; flex-wrap: wrap; gap: .3rem; }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-chip { padding: .25rem .45rem; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-inset); color: var(--tb-v2-muted); font: 600 var(--tb-v2-text-xs)/1.2 var(--tb-v2-font-mono); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-chip.loss { color: var(--tb-v2-red); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-chip.health { color: var(--tb-v2-blue); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-chip.reward,
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-chip.level { color: var(--tb-v2-gold); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-chip.progress { color: var(--tb-v2-purple); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-loot { display: grid; grid-template-columns: 2rem minmax(0, 1fr); align-items: center; gap: .5rem; padding-top: .375rem; border-top: 1px solid var(--tb-v2-border); color: var(--tb-v2-text); font-size: var(--tb-v2-text-xs); }
+html.threadbound-v2 body.threadbound-player #stream .stream-hunt-loot .thread-generated-sprite { width: 2rem; min-width: 2rem; height: 2rem; }
+
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-layout { gap: var(--tb-v2-space-3); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .375rem; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-stat,
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-slot,
+html.threadbound-v2 body.threadbound-player #stream .thread-bank-balance { border-color: var(--tb-v2-border); border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-surface-raised); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-stat span,
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-slot span,
+html.threadbound-v2 body.threadbound-player #stream .thread-bank-balance span { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); letter-spacing: .04em; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-loadout { display: flex; gap: .375rem; overflow-x: auto; scrollbar-width: thin; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-slot { min-width: 6.25rem; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-utility { border-color: var(--tb-v2-border); border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-inset); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-list { max-height: 24rem; gap: .375rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-item { grid-template-columns: 3rem minmax(0, 1fr); padding: .625rem; border-color: var(--tb-v2-border); border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-surface-raised); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-item[hidden] { display: none; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-item[data-expanded='true'] { border-color: color-mix(in srgb, var(--tb-v2-purple) 55%, var(--tb-v2-border)); background: color-mix(in srgb, var(--tb-v2-purple) 7%, var(--tb-v2-surface-raised)); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-meta { color: var(--tb-v2-purple); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-detail { grid-column: 1 / -1; display: grid; gap: .5rem; padding-top: .5rem; border-top: 1px solid var(--tb-v2-border); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .375rem; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-compare > div { padding: .5rem; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-inset); }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-compare span { display: block; color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); text-transform: uppercase; }
+html.threadbound-v2 body.threadbound-player #stream .inventory-rich-compare strong { display: block; margin-top: .125rem; font: 600 var(--tb-v2-text-xs)/1.3 var(--tb-v2-font-mono); }
+
+html.threadbound-v2 body.threadbound-player #stream [data-shop-rich-card='true'] .thread-shop-vendor { padding: .625rem; border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-inset); }
+html.threadbound-v2 body.threadbound-player #stream [data-shop-rich-card='true'] .thread-shop-shelf { gap: .375rem; }
+html.threadbound-v2 body.threadbound-player #stream [data-shop-rich-card='true'] .thread-shop-offer { grid-template-columns: 3rem minmax(0, 1fr) auto; padding: .625rem; border-color: var(--tb-v2-border); border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-surface-raised); }
+html.threadbound-v2 body.threadbound-player #stream [data-shop-rich-card='true'] .thread-shop-offer:first-child { border-color: color-mix(in srgb, var(--tb-v2-purple) 55%, var(--tb-v2-border)); }
+html.threadbound-v2 body.threadbound-player #stream [data-shop-rich-card='true'] .thread-shop-buy { grid-column: 1 / -1; }
+html.threadbound-v2 body.threadbound-player #stream .shop-offer-detail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .375rem; }
+html.threadbound-v2 body.threadbound-player #stream .shop-offer-detail span { padding: .4rem .5rem; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-inset); color: var(--tb-v2-muted); font-size: var(--tb-v2-text-xs); }
+
+html.threadbound-v2 body.threadbound-player #stream .thread-bank-quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .375rem; }
+html.threadbound-v2 body.threadbound-player #stream .thread-bank-quick button { min-width: 0; min-height: 2.75rem; padding-inline: .35rem; font-size: var(--tb-v2-text-xs); }
+html.threadbound-v2 body.threadbound-player #stream .thread-bank-note { padding: .625rem; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-inset); }
+
+html.threadbound-v2 body.threadbound-player #stream .tb-v2-state { min-height: 7rem; }
+
+@media (max-width: 520px) {
+  html.threadbound-v2 body.threadbound-player #stream .stream-hunt-visual { grid-template-columns: 3.5rem minmax(0, 1fr); }
+  html.threadbound-v2 body.threadbound-player #stream .stream-hunt-sprite { width: 3.5rem; min-width: 3.5rem; height: 3.5rem; }
+  html.threadbound-v2 body.threadbound-player #stream .inventory-rich-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.threadbound-v2 body.threadbound-player #stream .inventory-rich-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.threadbound-v2 body.threadbound-player #stream .inventory-rich-actions button { min-width: 0; padding-inline: .35rem; font-size: var(--tb-v2-text-xs); }
+  html.threadbound-v2 body.threadbound-player #stream [data-shop-rich-card='true'] .thread-shop-offer { grid-template-columns: 3rem minmax(0, 1fr); }
+  html.threadbound-v2 body.threadbound-player #stream .thread-bank-quick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -311,10 +311,42 @@ if (stream) {
     const character = dashboard.character;
     commandCard.hidden = false;
     commandCard.innerHTML = '';
+    delete commandCard.dataset.bankRichCard;
+    delete commandCard.dataset.inventoryRichCard;
+    delete commandCard.dataset.shopRichCard;
+    commandCard.dataset.richCardKind = 'recovery';
+    commandCard.setAttribute('aria-label', 'Heal panel');
     const recovery = document.createElement('div');
-    recovery.className = 'simple-loop-help';
-    recovery.innerHTML = `<strong>Heal · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : 'Natural healing: next HP in <span data-simple-recovery-next></span> · full in <span data-simple-recovery-full></span>.'}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} · type <strong>heal</strong> to use one or <strong>shop</strong> for supplies.`;
-    commandCard.append(recovery);
+    recovery.className = 'simple-loop-help tb-v2-recovery-card';
+    recovery.innerHTML = `<strong>Heal · ${character.currentHealth}/${character.maxHealth} HP</strong><br>${character.currentHealth >= character.maxHealth ? 'Fully healed.' : 'Natural healing: next HP in <span data-simple-recovery-next></span> · full in <span data-simple-recovery-full></span>.'}<br>${character.healthPotions} potion${character.healthPotions === 1 ? '' : 's'} available.`;
+    const actions = document.createElement('div');
+    actions.className = 'thread-card-actions rich-chat-card-actions';
+    const potion = document.createElement('button');
+    potion.type = 'button';
+    potion.className = 'primary-action rich-chat-card-action';
+    potion.dataset.testid = 'simple-recovery-use-potion';
+    potion.dataset.richCardAction = 'true';
+    potion.textContent = 'Use potion · +12 HP';
+    potion.disabled = character.currentHealth >= character.maxHealth || character.healthPotions <= 0;
+    potion.addEventListener('click', async () => {
+      potion.disabled = true;
+      try {
+        await heal();
+        await sync({ force: true });
+        renderRecovery();
+      } catch (error) {
+        showError(error.message);
+      }
+    });
+    const shop = document.createElement('button');
+    shop.type = 'button';
+    shop.className = 'rich-chat-card-action';
+    shop.dataset.testid = 'simple-recovery-open-shop';
+    shop.dataset.richCardAction = 'true';
+    shop.textContent = 'Open shop';
+    shop.addEventListener('click', openShop);
+    actions.append(potion, shop);
+    commandCard.append(recovery, actions);
     updateRecoveryClock();
     decorateFigmaSurface();
   }

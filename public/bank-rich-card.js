@@ -114,6 +114,27 @@ if (stream) {
     input.dataset.testid = 'bank-amount';
     label.append(input);
 
+    const quick = document.createElement('div');
+    quick.className = 'thread-bank-quick';
+    quick.setAttribute('aria-label', 'Quick Gold amounts');
+    const quickAmount = (text, value, testId) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = text;
+      button.dataset.testid = testId;
+      button.addEventListener('click', () => {
+        input.value = String(Math.max(0, value));
+        input.focus();
+      });
+      return button;
+    };
+    quick.append(
+      quickAmount('Deposit 100', Math.min(100, balance.carriedGold), 'bank-quick-deposit-100'),
+      quickAmount('Deposit all', balance.carriedGold, 'bank-quick-deposit-all'),
+      quickAmount('Withdraw 100', Math.min(100, balance.bankedGold), 'bank-quick-withdraw-100'),
+      quickAmount('Withdraw all', balance.bankedGold, 'bank-quick-withdraw-all'),
+    );
+
     const run = async (action) => {
       const amount = Math.floor(Number(input.value));
       if (!Number.isInteger(amount) || amount <= 0) throw new Error('Enter a positive whole number of Gold.');
@@ -136,11 +157,11 @@ if (stream) {
       return button;
     };
     transfer.append(label, actionButton('Deposit', 'deposit', 'bank-deposit'), actionButton('Withdraw', 'withdraw', 'bank-withdraw'));
-    card.append(transfer);
+    card.append(quick, transfer);
 
     const note = document.createElement('p');
     note.className = 'thread-bank-note';
-    note.textContent = 'Banked Gold is stored separately from carried Gold and is reserved for the protected balance used by later death rules.';
+    note.textContent = 'Carried Gold may be at risk on defeat. Banked Gold stays protected.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }

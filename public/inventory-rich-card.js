@@ -93,6 +93,36 @@ function itemStats(item) {
   return parts.length ? parts.join(' · ') : 'No stat bonus';
 }
 
+function itemAttack(item) {
+  return Number(item?.attackBonus || 0);
+}
+
+function upgradeComparison(documentRef, data, item) {
+  const progression = item.progression || {};
+  const comparison = documentRef.createElement('div');
+  comparison.className = 'inventory-rich-compare';
+  comparison.dataset.testid = `inventory-rich-upgrade-comparison-${item.id}`;
+  const current = documentRef.createElement('div');
+  const currentLabel = documentRef.createElement('span');
+  currentLabel.textContent = 'Current';
+  const currentValue = documentRef.createElement('strong');
+  currentValue.textContent = `+${itemAttack(item)} Attack`;
+  current.append(currentLabel, currentValue);
+  const next = documentRef.createElement('div');
+  const nextLabel = documentRef.createElement('span');
+  nextLabel.textContent = progression.canUpgrade ? 'After upgrade' : 'Upgrade';
+  const nextValue = documentRef.createElement('strong');
+  nextValue.textContent = progression.canUpgrade
+    ? `+${itemAttack(item) + 1} Attack · ${progression.nextCost} Gold`
+    : 'Maximum level';
+  next.append(nextLabel, nextValue);
+  comparison.append(current, next);
+  comparison.setAttribute('aria-label', progression.canUpgrade
+    ? `Upgrade comparison. Current plus ${itemAttack(item)} Attack. After upgrade plus ${itemAttack(item) + 1} Attack for ${progression.nextCost} Gold. Wallet ${data.character?.gold || 0} Gold.`
+    : 'This item is at maximum upgrade level.');
+  return comparison;
+}
+
 function characterStats(documentRef, data) {
   const stats = data.character?.stats || {};
   const values = [
@@ -199,6 +229,10 @@ function itemRow(documentRef, data, item, rerender) {
   }
   row.append(copy);
 
+  const detail = documentRef.createElement('div');
+  detail.className = 'inventory-rich-detail';
+  detail.append(upgradeComparison(documentRef, data, item));
+
   const actions = documentRef.createElement('div');
   actions.className = 'inventory-rich-actions rich-chat-card-actions';
   const equipmentLocked = Boolean(data.activeRun);
@@ -229,8 +263,22 @@ function itemRow(documentRef, data, item, rerender) {
     await rerender();
   }, { disabled: equipped || equipmentLocked });
   actions.append(sell);
-  row.append(actions);
+  detail.append(actions);
+  row.append(detail);
   return row;
+}
+
+function statePanel(documentRef, state, title, detail, testId) {
+  const panel = documentRef.createElement('div');
+  panel.className = 'tb-v2-state';
+  panel.dataset.state = state;
+  if (testId) panel.dataset.testid = testId;
+  const heading = documentRef.createElement('strong');
+  heading.textContent = title;
+  const copy = documentRef.createElement('span');
+  copy.textContent = detail;
+  panel.append(heading, copy);
+  return panel;
 }
 
 async function renderInventoryCard(card, { documentRef = document } = {}) {
@@ -239,6 +287,9 @@ async function renderInventoryCard(card, { documentRef = document } = {}) {
   card.dataset.inventoryRichCard = 'true';
   card.dataset.richCardKind = 'inventory';
   card.dataset.inventoryRichRendering = 'true';
+  if (!card.querySelector('.inventory-rich-layout')) {
+    card.append(statePanel(documentRef, 'loading', 'Loading Inventory', 'Checking your equipment and Gold.', 'inventory-rich-loading'));
+  }
   try {
     const data = await api('/api/dashboard');
     if (card.hidden || !inventoryCommand(card)) return;
@@ -284,27 +335,28 @@ async function renderInventoryCard(card, { documentRef = document } = {}) {
     list.className = 'inventory-rich-list';
     list.dataset.testid = 'inventory-rich-items';
     if (!data.inventory.length) {
-      const empty = documentRef.createElement('p');
-      empty.className = 'inventory-rich-empty';
-      empty.textContent = 'No equipment yet. Hunt or clear an Adventure to find gear.';
+      const empty = statePanel(documentRef, 'empty', 'No equipment yet', 'Hunt or clear an Adventure to find your first item.', 'inventory-rich-empty');
+      empty.classList.add('inventory-rich-empty');
       list.append(empty);
     } else {
       const rerender = async () => {
         card.querySelector('.inventory-rich-layout')?.remove();
         await renderInventoryCard(card, { documentRef });
       };
-      for (const item of data.inventory) list.append(itemRow(documentRef, data, item, rerender));
+      data.inventory.forEach((item, index) => {
+        const row = itemRow(documentRef, data, item, rerender);
+        if (index === 0) row.dataset.expanded = 'true';
+        list.append(row);
+      });
     }
     layout.append(list);
     card.append(layout);
   } catch (error) {
+    card.querySelector('[data-testid="inventory-rich-loading"]')?.remove();
     const existing = card.querySelector('[data-testid="inventory-rich-error"]');
     if (existing) existing.textContent = error.message;
     else {
-      const message = documentRef.createElement('p');
-      message.dataset.testid = 'inventory-rich-error';
-      message.className = 'stream-error';
-      message.textContent = error.message;
+      const message = statePanel(documentRef, 'error', 'Inventory unavailable', error.message, 'inventory-rich-error');
       card.append(message);
     }
   } finally {

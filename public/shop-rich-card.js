@@ -85,6 +85,17 @@ function enhanceShopCard(card, { documentRef = document } = {}) {
     offer.dataset.affordable = String(!buy.disabled);
     buy.dataset.shopBuy = 'true';
     if (/\bDust\b/.test(buy.textContent)) buy.textContent = buy.textContent.replace(/\bDust\b/g, 'Gold');
+    if (!offer.querySelector('.shop-offer-detail')) {
+      const detail = documentRef.createElement('div');
+      detail.className = 'shop-offer-detail';
+      detail.dataset.testid = 'shop-offer-detail';
+      const stock = documentRef.createElement('span');
+      stock.textContent = `Owned · ${offer.dataset.quantity || 0}`;
+      const availability = documentRef.createElement('span');
+      availability.textContent = buy.disabled ? 'Not affordable' : 'Ready to buy';
+      detail.append(stock, availability);
+      offer.insertBefore(detail, buy);
+    }
   }
 
   if (!card.querySelector('[data-testid="stream-shop-sell-equipment"]')) {
