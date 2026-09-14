@@ -53,7 +53,7 @@ test('Brightbell Bloom is a full original vNext Arc package with the planned wor
   assert.equal(new ArcManifestVNextValidator().validate(manifest).valid, true);
 });
 
-test('Brightbell Bloom passes the complete authoritative Arc pipeline and remains an explicit draft for M10-05', async () => {
+test('Brightbell Bloom passes the complete authoritative Arc pipeline and saveDraft remains non-publishing', async () => {
   const manifest = await brightbellManifest();
   const { manifestRepository, service } = setup();
   const validation = service.validate(manifest);
@@ -61,11 +61,11 @@ test('Brightbell Bloom passes the complete authoritative Arc pipeline and remain
   assert.equal(validation.valid, true, JSON.stringify(validation.errors));
   assert.equal(validation.errors.length, 0);
 
-  const saved = service.saveDraft(manifest, { source: 'm10-05-authored' });
+  const saved = service.saveDraft(manifest, { source: 'authored-upload' });
   assert.equal(saved.status, 'draft');
   assert.equal(saved.arcId, 'brightbell-bloom');
   assert.equal(saved.manifest.areas.length, 3);
-  assert.equal(manifestRepository.listPublished().length, 0, 'M10-05 authors the Arc; explicit publication/revisit verification remains M10-06.');
+  assert.equal(manifestRepository.listPublished().length, 0, 'saveDraft must remain explicit even when the same source-controlled Arc is also bundled for runtime publication.');
 });
 
 test('Brightbell progression challenges form the ordered three-Area path and keep both-human gates', async () => {

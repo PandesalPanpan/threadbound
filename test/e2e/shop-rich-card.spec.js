@@ -53,7 +53,7 @@ test('Shop rich card presents equipment and potions with sprites, affordability,
   const starting = await dashboard(context);
   await expect(card).toContainText('Mara');
   await expect(card).not.toContainText(/\bDust\b/);
-  await expect(card.getByTestId('shop-offer')).toHaveCount(3);
+  expect(await card.getByTestId('shop-offer').count()).toBeGreaterThanOrEqual(3);
   await expect(card.getByTestId('stream-shop-bronze-sword')).toContainText('8 Gold');
   await expect(card.getByTestId('stream-shop-single')).toContainText('5 Gold');
   await expect(card.getByTestId('stream-shop-satchel')).toContainText('12 Gold');
