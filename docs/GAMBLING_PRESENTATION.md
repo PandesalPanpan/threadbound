@@ -1,15 +1,15 @@
 # Gambling Adventure Stream presentation (M9-04 / M9-05 / M10F-01)
 
-M9-04 exposes the Gold-only Blackjack, Coinflip, and Slots foundations from M9-01 through M9-03 without moving economy rules into browser code. M9-05 adds one shared server-authoritative wager cap so side activities cannot turn a large carried-Gold balance into unbounded all-in compounding. M10F-01 corrects the first-impression presentation so these games behave like compact chat commands rather than a separate mini-dashboard.
+M9-04 exposed the Gold-only Blackjack, Coinflip, and Slots foundations from M9-01 through M9-03 without moving economy rules into browser code. M9-05 added one shared server-authoritative wager cap. M10F-01 corrects the first-impression presentation so simple side games behave like EPIC-RPG-style chat commands rather than mini-app dashboards.
 
 ## Boundaries
 
 - `BlackjackService`, `CoinflipService`, and `SlotsService` remain the authoritative game/economy use-case boundaries.
-- `GamblingBalancePolicy` owns the shared legal wager range: **1-100 carried Gold per play**. Each game-specific policy delegates wager normalization to that shared rule while preserving its existing error code.
-- Their SQLite repositories continue to own wager debit, payout credit, resolved-game persistence, and idempotent replay protection in the same transaction.
-- `src/gambling-routes.js` is presentation orchestration: it authenticates the current player, invokes those existing services, projects one concise public Adventure Stream receipt for each non-replayed explicit play/action, and broadcasts the committed projection.
-- `public/gambling-rich-card.js` is a Presentation Model only. It sends wagers/choices/actions, displays authoritative responses, and never computes outcomes, payouts, or wager legality.
-- The shared `stream-command-card` remains inside the **Adventure Stream shell**, immediately after durable chat history and before the composer. It is not a route/private screen and does not replace or hide the conversation. Durable player commands and authoritative receipts remain in the history itself.
+- `GamblingBalancePolicy` owns the shared legal wager range: **1-100 carried Gold per play**.
+- SQLite repositories continue to own wager debit, payout credit, resolved-game persistence, and idempotent replay protection in the same transaction.
+- `src/gambling-routes.js` authenticates the player, invokes those services, and persists one concise Threadbound Adventure Stream receipt for each explicit command/result.
+- `public/gambling-rich-card.js` is now only a lightweight chat-command adapter despite its legacy filename. It records the player's visible command, invokes the server boundary, and waits for the authoritative stream receipt. It does not render a gambling card or compute outcomes, payouts, or wager legality.
+- Information-dense systems such as Inventory/Shop/Quest may still use the shared inline `stream-command-card`; simple gambling does not.
 
 ## Balance contract
 
@@ -17,31 +17,32 @@ M9-04 exposes the Gold-only Blackjack, Coinflip, and Slots foundations from M9-0
 - Maximum wager: **100 Gold** for Blackjack, Coinflip, and Slots.
 - Only carried Gold can be wagered. Banked Gold remains protected and Honey is never accepted.
 - The cap is enforced before any repository mutation, so rejected wagers cannot debit or credit Gold.
-- Existing payout tables and odds are unchanged. The cap limits per-play economic exposure without adding a new currency, timer, or browser-owned balance rule.
-- Idempotency and transaction guarantees remain unchanged: a retry cannot duplicate either the wager debit or payout.
+- Existing payout tables, odds, idempotency, and transaction guarantees are unchanged.
 
 ## Player contract
 
-The gambling UX follows the same minimal command rhythm as the rest of the Adventure Stream:
+Gambling follows one visible player command -> one concise Threadbound receipt:
 
-- typing `blackjack` opens **only Blackjack**, with carried Gold, the current hand, and the one or two actions that matter now;
-- typing `coinflip` opens only Coinflip;
-- typing `slots` opens only Slots;
-- typing `gambling` or `casino` opens a compact three-choice launcher rather than rendering all three games at once;
-- command text is first recorded as a normal player stream message, then Threadbound responds inline in the Adventure Stream shell;
-- button actions such as `Blackjack 10`, `Hit`, `Stand`, Coinflip choices, and Slots spins also create visible player actions before the authoritative Threadbound result receipt;
-- no gambling command may introduce a route-level/private-screen transition or hide/replace the conversation shell.
+- `gambling` or `casino` -> a short command guide for Blackjack, Coinflip, and Slots;
+- `blackjack` -> current Blackjack state/help without starting a wager;
+- `blackjack <wager>` -> deal a hand;
+- `hit` / `stand` -> act on the active Blackjack hand;
+- `coinflip` -> Coinflip syntax/help;
+- `coinflip <wager> heads|tails` -> resolve one flip;
+- `slots` -> Slots syntax/help;
+- `slots <wager>` -> resolve one spin.
 
-Blackjack intentionally avoids a card-table/dashboard treatment. While a round is active, it shows only the player's hand/score, the visible dealer information, Gold, and `Hit` / `Stand`. When no round is active, it shows a wager field and `Deal`. This keeps the side activity closer to EPIC-RPG-style command simplicity while retaining Threadbound's standalone interactive affordances.
+Every command is first persisted as the player's ordinary chat entry. Threadbound then persists the authoritative system receipt, so both players see chronological command/result flow and reload/reconnect does not erase the interaction.
 
-Every successful explicit play still creates the concise public server receipt from the gambling route. Service-level idempotency prevents a retried command from creating another payout or another receipt. An over-cap wager is rejected authoritatively with the same game-specific invalid-wager error family and does not create a successful-play receipt.
+Blackjack receipts carry the information that matters now: wager, player cards/score, visible dealer cards/score, outcome/Gold delta when resolved, carried Gold, and `hit` / `stand` guidance while active. There is no persistent card table, launcher dashboard, unrelated game grid, or route-level/private gambling screen.
 
 ## Verification
 
-Domain/service coverage continues to prove all three games reject 101 Gold without changing the player's balance while the 1-100 shared range remains valid. The mobile Playwright journey now also proves that:
+Domain/service coverage proves all three games reject 101 Gold without changing balance and that help/state receipts do not mutate Gold. Browser coverage proves:
 
-- the response remains in the Adventure Stream shell between visible history and the composer rather than navigating to or replacing another screen;
-- typing `blackjack` leaves a visible player `blackjack` message in the conversation;
-- the Blackjack view does not simultaneously render Coinflip or Slots;
-- the generic `gambling` command renders only the compact launcher;
-- controls retain mobile-sized touch targets and the active gambling response remains bounded rather than consuming most of the viewport.
+- `blackjack` appears as a visible player entry followed by a compact Threadbound help/state receipt;
+- `blackjack 10` appears after that receipt and is followed by the authoritative hand/result receipt;
+- `gambling` returns a concise command guide rather than a launcher card;
+- Coinflip and Slots also produce visible player action -> Threadbound result pairs;
+- no visible gambling rich card exists;
+- recent gambling entries remain bounded and mobile-readable.
