@@ -14,7 +14,7 @@ async function login(page) {
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
-test('Gold-only gambling activities render as one mobile Adventure Stream card', async ({ page, context }) => {
+test('gambling stays minimal and inline in the Adventure Stream', async ({ page, context }) => {
   await login(page);
 
   const browse = await context.request.get('/api/gambling');
@@ -31,43 +31,57 @@ test('Gold-only gambling activities render as one mobile Adventure Stream card',
   expect(overCapPayload.error).toBe('invalid_coinflip_wager');
   expect(overCapPayload.message).toContain('between 1 and 100 Gold');
 
-  await page.getByTestId('stream-message').fill('gambling');
+  const card = page.getByTestId('stream-command-card');
+  const log = page.getByTestId('adventure-stream-log');
+  await expect.poll(async () => card.evaluate((element, logElement) => element.parentElement === logElement, await log.elementHandle())).toBe(true);
+
+  await page.getByTestId('stream-message').fill('blackjack');
   await page.getByTestId('stream-send').click();
 
-  const card = page.getByTestId('stream-command-card');
+  await expect(page.getByTestId('stream-chat-entry').filter({ hasText: 'blackjack' }).last()).toBeVisible();
   await expect(card).toHaveAttribute('data-rich-card-kind', 'gambling');
   await expect(card).toHaveAttribute('data-gambling-rich-card', 'true');
-  await expect(card.getByTestId('gambling-carried-gold')).toContainText('Carried Gold');
+  await expect(card).toHaveAttribute('data-gambling-view', 'blackjack');
+  await expect(card.getByTestId('gambling-carried-gold')).toContainText('Gold');
   await expect(card.getByTestId('gambling-blackjack')).toContainText('Blackjack');
-  await expect(card.getByTestId('gambling-coinflip')).toContainText('Coinflip');
-  await expect(card.getByTestId('gambling-slots')).toContainText('Slots');
-  await expect(card).toContainText('Banked Gold and Honey are never wagered');
   await expect(card.getByTestId('blackjack-deal')).toBeVisible();
-  await expect(card.getByTestId('coinflip-heads')).toBeVisible();
-  await expect(card.getByTestId('coinflip-tails')).toBeVisible();
-  await expect(card.getByTestId('slots-spin')).toBeVisible();
+  await expect(card.getByTestId('gambling-coinflip')).toHaveCount(0);
+  await expect(card.getByTestId('gambling-slots')).toHaveCount(0);
+  await expect(card).not.toContainText('PRIVATE THREAD REPLY');
 
-  const metrics = await page.evaluate(() => {
+  const blackjackMetrics = await page.evaluate(() => {
     const cardElement = document.querySelector('[data-testid="stream-command-card"]');
-    const buttons = [...(cardElement?.querySelectorAll('.thread-gambling-button') || [])];
-    const fields = [...(cardElement?.querySelectorAll('.thread-gambling-field input') || [])];
-    const cardRect = cardElement?.getBoundingClientRect();
-    const navRect = document.querySelector('.threadbound-topnav')?.getBoundingClientRect();
+    const logElement = document.querySelector('[data-testid="adventure-stream-log"]');
+    const button = cardElement?.querySelector('.thread-gambling-button');
+    const field = cardElement?.querySelector('.thread-gambling-input');
+    const rect = cardElement?.getBoundingClientRect();
     return {
+      inline: cardElement?.parentElement === logElement,
       width: cardElement?.scrollWidth || 0,
-      right: cardRect?.right || 0,
+      height: rect?.height || 0,
+      right: rect?.right || 0,
       viewportWidth: window.innerWidth,
-      cardTop: cardRect?.top || 0,
-      navBottom: navRect?.bottom || 0,
-      shortestButton: Math.min(...buttons.map((button) => button.getBoundingClientRect().height)),
-      shortestField: Math.min(...fields.map((field) => field.getBoundingClientRect().height)),
+      buttonHeight: button?.getBoundingClientRect().height || 0,
+      fieldHeight: field?.getBoundingClientRect().height || 0,
     };
   });
-  expect(metrics.width).toBeLessThanOrEqual(390);
-  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth);
-  expect(metrics.cardTop).toBeGreaterThanOrEqual(metrics.navBottom);
-  expect(metrics.shortestButton).toBeGreaterThanOrEqual(44);
-  expect(metrics.shortestField).toBeGreaterThanOrEqual(44);
+  expect(blackjackMetrics.inline).toBe(true);
+  expect(blackjackMetrics.width).toBeLessThanOrEqual(390);
+  expect(blackjackMetrics.right).toBeLessThanOrEqual(blackjackMetrics.viewportWidth);
+  expect(blackjackMetrics.height).toBeLessThan(330);
+  expect(blackjackMetrics.buttonHeight).toBeGreaterThanOrEqual(44);
+  expect(blackjackMetrics.fieldHeight).toBeGreaterThanOrEqual(44);
+
+  await page.getByTestId('stream-message').fill('gambling');
+  await page.getByTestId('stream-send').click();
+  await expect(page.getByTestId('stream-chat-entry').filter({ hasText: 'gambling' }).last()).toBeVisible();
+  await expect(card).toHaveAttribute('data-gambling-view', 'menu');
+  await expect(card.getByTestId('gambling-open-blackjack')).toBeVisible();
+  await expect(card.getByTestId('gambling-open-coinflip')).toBeVisible();
+  await expect(card.getByTestId('gambling-open-slots')).toBeVisible();
+  await expect(card.getByTestId('gambling-blackjack')).toHaveCount(0);
+  await expect(card.getByTestId('gambling-coinflip')).toHaveCount(0);
+  await expect(card.getByTestId('gambling-slots')).toHaveCount(0);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/gambling-mobile.png`, fullPage: true });
