@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 export const GLASSWAKE_ARC_MANIFEST = Object.freeze({
   manifestVersion: 1,
   arc: Object.freeze({
@@ -84,4 +86,12 @@ export const GLASSWAKE_ARC_MANIFEST = Object.freeze({
   ]),
 });
 
-export const BUNDLED_ARC_MANIFESTS = Object.freeze([GLASSWAKE_ARC_MANIFEST]);
+export const BRIGHTBELL_BLOOM_ARC_MANIFEST = Object.freeze(JSON.parse(readFileSync(
+  new URL('../../content/arcs/brightbell-bloom.arc-manifest.json', import.meta.url),
+  'utf8',
+)));
+
+export const BUNDLED_ARC_MANIFESTS = Object.freeze([
+  GLASSWAKE_ARC_MANIFEST,
+  BRIGHTBELL_BLOOM_ARC_MANIFEST,
+]);
