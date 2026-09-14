@@ -17,7 +17,28 @@ if (stream) {
   const composer = stream.querySelector('[data-testid="stream-composer"]');
   const input = stream.querySelector('[data-testid="stream-message"]');
   const error = stream.querySelector('[data-testid="stream-error"]');
+  const log = stream.querySelector('[data-testid="adventure-stream-log"]');
+  const commandCard = stream.querySelector('[data-testid="stream-command-card"]');
   let acting = false;
+  let ordering = false;
+
+  function keepActiveCommandAtTail() {
+    if (!log || !commandCard || commandCard.hidden || ordering) return;
+    if (commandCard.parentElement === log && commandCard === log.lastElementChild) return;
+    ordering = true;
+    log.append(commandCard);
+    log.scrollTop = log.scrollHeight;
+    queueMicrotask(() => { ordering = false; });
+  }
+
+  // Rich command modules all reuse one card node. Stream receipts/messages are
+  // appended independently, so preserve chronological chat flow by keeping the
+  // active Threadbound response after the newest durable entry instead of letting
+  // it become an off-screen pseudo-private panel.
+  const streamOrderObserver = log ? new MutationObserver(() => {
+    queueMicrotask(keepActiveCommandAtTail);
+  }) : null;
+  streamOrderObserver?.observe(log, { childList: true });
 
   function showError(message = '') {
     if (!error) return;
@@ -53,4 +74,6 @@ if (stream) {
       input?.focus();
     }
   }, { capture: true });
+
+  window.addEventListener('beforeunload', () => streamOrderObserver?.disconnect(), { once: true });
 }
