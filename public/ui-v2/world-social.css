@@ -1,0 +1,63 @@
+/* Phase D: world and social cards translated from the 390px Figma flows. */
+html.threadbound-v2 body.threadbound-player #stream :where(
+  [data-rich-card-kind='town'], [data-rich-card-kind='area'], [data-rich-card-kind='quest'],
+  [data-rich-card-kind='profile'], [data-rich-card-kind='simulated-profile'], [data-rich-card-kind='leaderboard']
+) { color: var(--tb-v2-text); }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-heading, .thread-town-guild-heading, .thread-profile-hero,
+  .thread-sim-profile-hero, .thread-leaderboard-result
+) { padding: .625rem; border: 1px solid var(--tb-v2-border); border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-inset); }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-services, .thread-profile-resource-grid, .thread-profile-stat-grid,
+  .thread-sim-profile-grid, .thread-area-summary
+) { gap: .375rem; }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-service, .thread-profile-resource, .thread-profile-stat,
+  .thread-sim-profile-cell, .thread-area-summary-cell
+) { min-width: 0; padding: .5rem; border: 1px solid var(--tb-v2-border); border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-surface-raised); }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-npc, .thread-town-adventurer, .thread-leaderboard-row,
+  .thread-profile-slot, .thread-sim-profile-slot, .thread-quest-row, .thread-area-row
+) { border-color: var(--tb-v2-border); border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-surface-raised); box-shadow: none; }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-npcs, .thread-town-adventurers, .thread-leaderboard-list,
+  .thread-profile-equipment, .thread-sim-profile-history, .thread-quest-list, .thread-area-list
+) { display: grid; gap: .375rem; }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-note, .thread-leaderboard-note, .thread-area-note,
+  .thread-profile-buffs-empty, .thread-quest-description
+) { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-xs); line-height: var(--tb-v2-leading-copy); }
+
+html.threadbound-v2 body.threadbound-player #stream :where(
+  .thread-town-rival-badge, .thread-leaderboard-badge.rival, .thread-sim-profile-badge.rival
+) { border-radius: var(--tb-v2-radius-pill); background: color-mix(in srgb, var(--tb-v2-gold) 14%, transparent); color: var(--tb-v2-gold); }
+
+html.threadbound-v2 body.threadbound-player #stream .thread-town-talk,
+html.threadbound-v2 body.threadbound-player #stream .thread-leaderboard-profile,
+html.threadbound-v2 body.threadbound-player #stream .thread-leaderboard-duel,
+html.threadbound-v2 body.threadbound-player #stream .thread-quest-action,
+html.threadbound-v2 body.threadbound-player #stream .thread-area-row button { min-height: var(--tb-v2-control-min); }
+
+html.threadbound-v2 body.threadbound-player #stream .thread-quest-state[data-state='active'] { color: var(--tb-v2-blue); }
+html.threadbound-v2 body.threadbound-player #stream .thread-quest-state[data-state='claimable'],
+html.threadbound-v2 body.threadbound-player #stream .thread-area-row.is-current { color: var(--tb-v2-green); }
+html.threadbound-v2 body.threadbound-player #stream .thread-leaderboard-place { color: var(--tb-v2-purple); font-family: var(--tb-v2-font-mono); }
+html.threadbound-v2 body.threadbound-player #stream .thread-profile-avatar,
+html.threadbound-v2 body.threadbound-player #stream .thread-sim-profile-avatar { border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-inset); image-rendering: pixelated; }
+
+html.threadbound-v2 body.threadbound-player #stream .thread-quest-objective { padding: .5rem; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-inset); }
+html.threadbound-v2 body.threadbound-player #stream .thread-quest-objective progress { accent-color: var(--tb-v2-blue); }
+html.threadbound-v2 body.threadbound-player #stream :where(.thread-town-empty, .thread-quest-empty) { min-height: 7rem; padding: 1rem; border: 1px dashed var(--tb-v2-border); border-radius: var(--tb-v2-radius-lg); color: var(--tb-v2-muted); text-align: center; }
+
+@media (max-width: 520px) {
+  html.threadbound-v2 body.threadbound-player #stream .thread-town-services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.threadbound-v2 body.threadbound-player #stream :where(.thread-profile-resource-grid, .thread-profile-stat-grid, .thread-sim-profile-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.threadbound-v2 body.threadbound-player #stream .thread-leaderboard-row { grid-template-columns: 1.5rem 2.5rem minmax(0, 1fr); }
+  html.threadbound-v2 body.threadbound-player #stream .thread-leaderboard-actions { grid-column: 1 / -1; }
+}
