@@ -1,4 +1,5 @@
 import { createSpriteElement, enemySprite, itemSpriteFrame, weaverSprite, weaverSpriteFrame } from './sprite-catalog.js';
+import { decorateStreamEntry, enforceBoundedStreamHistory, refreshStreamEntryRoles } from './ui-v2/stream.js';
 
 const streamEl = document.querySelector('#stream');
 
@@ -7,6 +8,12 @@ if (streamEl) {
     <div class="section-heading stream-heading">
       <div><span>LIVE THREAD</span><h2>Adventure Stream</h2></div>
       <small data-testid="stream-connection">Connecting…</small>
+    </div>
+    <div class="stream-player-status" data-testid="stream-player-status" aria-label="Current player status">
+      <span class="stream-player-status-avatar" aria-hidden="true">?</span>
+      <span class="stream-player-status-copy"><strong>Loading</strong><span>HP</span></span>
+      <span class="stream-player-health-track" aria-hidden="true"><span></span></span>
+      <span class="stream-player-party-count">1/2</span>
     </div>
     <p class="stream-hint">Message your party or use the suggested actions. Type <strong>help</strong> or <strong>/help</strong> to play entirely through the thread.</p>
     <section class="stream-combat-dock" data-testid="stream-combat-dock" aria-label="Live combat controls" hidden></section>
@@ -29,6 +36,7 @@ if (streamEl) {
   const inputEl = streamEl.querySelector('[data-testid="stream-message"]');
   const sendEl = streamEl.querySelector('[data-testid="stream-send"]');
   const connectionEl = streamEl.querySelector('[data-testid="stream-connection"]');
+  const playerStatusEl = streamEl.querySelector('[data-testid="stream-player-status"]');
   const errorEl = streamEl.querySelector('[data-testid="stream-error"]');
   const seen = new Set();
   const bufferedEntries = [];
@@ -130,7 +138,9 @@ if (streamEl) {
       content.append(tag);
     }
     row.append(avatar, content);
+    decorateStreamEntry(row, entry, { viewerPlayerId: dashboard?.character?.id || null });
     logEl.append(row);
+    enforceBoundedStreamHistory(logEl);
     if (!initial || logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 180) pinLogToBottom();
   }
 
@@ -627,6 +637,17 @@ if (streamEl) {
   async function refreshContext({ rerenderCommand = false } = {}) {
     dashboard = await api('/api/dashboard');
     recoveryFetchedAt = Date.now();
+    refreshStreamEntryRoles(logEl, dashboard.character?.id || null);
+    const currentHealth = Math.max(0, Number(dashboard.character?.currentHealth ?? dashboard.character?.maxHealth ?? 0));
+    const maxHealth = Math.max(1, Number(dashboard.character?.maxHealth || 1));
+    const partySize = Math.max(1, dashboard.party?.members?.length || 1);
+    const name = dashboard.character?.displayName || 'Adventurer';
+    playerStatusEl.querySelector('.stream-player-status-avatar').textContent = name.slice(0, 1).toUpperCase();
+    playerStatusEl.querySelector('.stream-player-status-copy strong').textContent = name;
+    playerStatusEl.querySelector('.stream-player-status-copy span').textContent = `${currentHealth} / ${maxHealth} HP`;
+    playerStatusEl.querySelector('.stream-player-health-track').style.setProperty('--stream-player-health', `${Math.min(100, (currentHealth / maxHealth) * 100)}%`);
+    playerStatusEl.querySelector('.stream-player-party-count').textContent = `${partySize}/2`;
+    playerStatusEl.setAttribute('aria-label', `${name}, ${currentHealth} of ${maxHealth} HP, party ${partySize} of 2`);
     renderSuggestions();
     renderCombatDock();
     if (rerenderCommand && activeLocalCommand === 'gear') renderGearCard();

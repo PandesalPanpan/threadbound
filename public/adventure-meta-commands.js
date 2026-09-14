@@ -323,6 +323,7 @@ if (stream) {
   }
 
   function genericEventIcon(eventType) {
+    if (eventType === 'NpcInteracted') return null;
     if (eventType === 'ItemGenerated') return '🎁';
     if (eventType === 'ItemEquipped') return '◈';
     if (eventType === 'ItemSalvaged') return '♻';
@@ -365,7 +366,8 @@ if (stream) {
     }
 
     row.classList.add('stream-entry-event-generic');
-    if (avatar) avatar.textContent = genericEventIcon(entry.eventType);
+    const eventIcon = genericEventIcon(entry.eventType);
+    if (avatar && eventIcon) avatar.textContent = eventIcon;
     row.dataset.richFormatted = 'true';
   }
 

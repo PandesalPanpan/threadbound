@@ -11,6 +11,7 @@ import './rich-card-visual-polish.js';
 
 const DEFAULT_ACTION_GROUP_SELECTOR = '.thread-card-actions, .thread-gear-actions, .thread-party-join, .thread-shop-shelf, .thread-codex-search, .thread-bank-transfer, .thread-area-list, .thread-town-npcs, .thread-quest-list, .thread-leaderboard-actions';
 const CANONICAL_RICH_CARD_KINDS = new Set(['shop', 'inventory', 'profile', 'bank', 'area', 'town', 'quest', 'leaderboard', 'simulated-profile']);
+const MAX_HISTORICAL_RICH_CARDS = 12;
 
 function commandFromCard(card) {
   const kicker = card.querySelector('.thread-reply-header > div > span')?.textContent || '';
@@ -80,11 +81,14 @@ export function createHistoricalRichCardSnapshot(model, { documentRef = document
   row.setAttribute('aria-label', `${model.title} historical snapshot`);
   const avatar = documentRef.createElement('span');
   avatar.className = 'stream-avatar'; avatar.setAttribute('aria-hidden', 'true'); avatar.textContent = '✦';
-  const content = documentRef.createElement('div'); content.className = 'stream-entry-content';
-  const summary = documentRef.createElement('p'); summary.className = 'rich-card-history-summary';
-  const title = documentRef.createElement('strong'); title.textContent = `${model.title} viewed`; summary.append(title);
-  if (model.details) summary.append(documentRef.createTextNode(` · ${model.details}`));
-  content.append(summary); row.append(avatar, content); return row;
+  const disclosure = documentRef.createElement('details'); disclosure.className = 'rich-card-history-disclosure';
+  const summary = documentRef.createElement('summary');
+  const copy = documentRef.createElement('span'); copy.className = 'rich-card-history-copy';
+  const title = documentRef.createElement('strong'); title.className = 'rich-card-history-summary'; title.textContent = `${model.title} viewed`;
+  const details = documentRef.createElement('span'); details.className = 'rich-card-history-details'; details.textContent = model.details || 'Previous interaction';
+  const label = documentRef.createElement('span'); label.className = 'rich-card-history-label'; label.textContent = 'HISTORY';
+  const note = documentRef.createElement('p'); note.className = 'rich-card-history-note'; note.textContent = 'Historical snapshot. Open the latest card to take actions.';
+  copy.append(title, details); summary.append(copy, label); disclosure.append(summary, note); row.append(avatar, disclosure); return row;
 }
 
 export function decorateRichChatCard(card, { command = null } = {}) {
@@ -120,14 +124,14 @@ export function createRichChatCardAction({ documentRef = document, label, onActi
 function installStyles(documentRef) {
   if (documentRef.querySelector('[data-rich-chat-card-styles]')) return;
   const style = documentRef.createElement('style'); style.dataset.richChatCardStyles = 'true';
-  style.textContent = `.rich-chat-card{display:grid;gap:10px}.rich-chat-card>.rich-chat-card-header{margin-bottom:0}.rich-chat-card-actions{min-width:0}.rich-chat-card-action{min-height:44px}.rich-card-history-snapshot{min-height:0;opacity:.82}.rich-card-history-snapshot .stream-avatar{width:30px;height:30px;min-width:30px;font-size:.78rem}.rich-card-history-summary{margin:0;color:var(--muted);font-size:.72rem;line-height:1.4}.rich-card-history-summary strong{color:var(--text);font-weight:800}.threadbound-player #stream .rich-chat-card .rich-chat-card-dismiss{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;flex:0 0 44px}@media(max-width:720px){.rich-chat-card{gap:9px}.rich-chat-card-action{min-height:44px}.rich-card-history-snapshot{padding-block:7px}.rich-card-history-summary{font-size:.68rem}}`;
+  style.textContent = `.rich-chat-card{display:grid;gap:10px}.rich-chat-card>.rich-chat-card-header{margin-bottom:0}.rich-chat-card-actions{min-width:0}.rich-chat-card-action{min-height:44px}.rich-card-history-snapshot{min-height:0;opacity:.82}.rich-card-history-snapshot .stream-avatar{width:30px;height:30px;min-width:30px;font-size:.78rem}.threadbound-player #stream .rich-chat-card .rich-chat-card-dismiss{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;flex:0 0 44px}@media(max-width:720px){.rich-chat-card{gap:9px}.rich-chat-card-action{min-height:44px}.rich-card-history-snapshot{padding-block:7px}}`;
   documentRef.head.append(style);
 }
 
 export function installRichChatCardCompatibility({ documentRef = document } = {}) {
   const stream = documentRef.querySelector('#stream'); if (!stream) return () => {}; installStyles(documentRef);
   let activeSnapshot = null; let scheduled = false;
-  const decorateCurrent = () => { scheduled = false; const card = stream.querySelector('[data-testid="stream-command-card"]'); if (!card || card.hidden || card.childElementCount === 0) return; decorateRichChatCard(card); const nextSnapshot = snapshotModel(card); if (!nextSnapshot) return; const log = stream.querySelector('[data-testid="adventure-stream-log"]'); if (activeSnapshot && activeSnapshot.signature !== nextSnapshot.signature && log) { const historical = createHistoricalRichCardSnapshot(activeSnapshot, { documentRef }); if (historical) { log.querySelector('[data-testid="stream-empty"]')?.remove(); log.classList.remove('is-empty'); log.append(historical); log.scrollTop = log.scrollHeight; } } activeSnapshot = nextSnapshot; };
+  const decorateCurrent = () => { scheduled = false; const card = stream.querySelector('[data-testid="stream-command-card"]'); if (!card || card.hidden || card.childElementCount === 0) return; decorateRichChatCard(card); const nextSnapshot = snapshotModel(card); if (!nextSnapshot) return; const log = stream.querySelector('[data-testid="adventure-stream-log"]'); if (activeSnapshot && activeSnapshot.signature !== nextSnapshot.signature && log) { const historical = createHistoricalRichCardSnapshot(activeSnapshot, { documentRef }); if (historical) { log.querySelector('[data-testid="stream-empty"]')?.remove(); log.classList.remove('is-empty'); log.append(historical); const snapshots = [...log.querySelectorAll(':scope > [data-testid="rich-card-history-snapshot"]')]; for (const stale of snapshots.slice(0, Math.max(0, snapshots.length - MAX_HISTORICAL_RICH_CARDS))) stale.remove(); log.scrollTop = log.scrollHeight; } } activeSnapshot = nextSnapshot; };
   const scheduleDecoration = () => { if (scheduled) return; scheduled = true; queueMicrotask(decorateCurrent); };
   const observer = new MutationObserver(scheduleDecoration); observer.observe(stream, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] }); scheduleDecoration(); return () => observer.disconnect();
 }

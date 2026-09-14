@@ -1,0 +1,258 @@
+/* Presentation-v2 Adventure Stream. The extra root scope intentionally wins over
+   legacy compatibility styles that are loaded later by game.js. */
+html.threadbound-v2 body.threadbound-player .threadbound-game-page #stream {
+  display: flex !important;
+  min-width: 0;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--tb-v2-canvas);
+  box-shadow: none;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-heading {
+  min-height: 2.25rem;
+  align-items: center;
+  padding: .35rem .875rem;
+  border: 0;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-heading h2 {
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-sm);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-heading h2::before { color: var(--tb-v2-purple); }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-heading small {
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  padding: .25rem .5rem;
+  border-radius: var(--tb-v2-radius-pill);
+  background: var(--tb-v2-green-inset);
+  color: var(--tb-v2-muted);
+  font-size: var(--tb-v2-text-xs);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-heading small.is-live { color: var(--tb-v2-green); }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-player-status {
+  display: grid;
+  grid-template-columns: 1.5rem max-content minmax(3rem, 1fr) max-content;
+  gap: .5rem;
+  align-items: center;
+  min-height: 2.55rem;
+  padding: .25rem 1rem .45rem;
+  background: var(--tb-v2-inset);
+}
+
+.stream-player-status-avatar {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tb-v2-blue);
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-xs);
+  font-weight: 700;
+}
+
+.stream-player-status-copy { display: grid; line-height: 1.15; }
+.stream-player-status-copy strong { font-size: .6875rem; font-weight: 600; }
+.stream-player-status-copy span { color: var(--tb-v2-muted-secondary); font-size: var(--tb-v2-text-xs); }
+.stream-player-health-track { height: .375rem; overflow: hidden; border-radius: var(--tb-v2-radius-pill); background: #24262e; }
+.stream-player-health-track > span { display: block; width: var(--stream-player-health, 100%); height: 100%; border-radius: inherit; background: var(--tb-v2-green); }
+.stream-player-party-count { color: var(--tb-v2-muted-secondary); font-size: .6875rem; font-weight: 600; }
+
+html.threadbound-v2 body.threadbound-player #stream .adventure-stream-log {
+  min-width: 0;
+  padding: .5rem 0 1rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--tb-v2-canvas);
+  scrollbar-color: var(--tb-v2-border) transparent;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-entry {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: .625rem;
+  align-items: start;
+  min-width: 0;
+  margin: 0;
+  padding: .3125rem .875rem .375rem;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-entry + .stream-entry { margin-top: 0; }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-avatar {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tb-v2-purple);
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-sm);
+  font-weight: 700;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-player .stream-avatar { background: var(--tb-v2-blue); }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-partner .stream-avatar { background: var(--tb-v2-purple); }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-npc .stream-avatar { background: #d29146; color: #1f140d; }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-threadbound .stream-avatar { background: var(--tb-v2-purple); }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-content { min-width: 0; }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-meta { display: flex; justify-content: flex-start; gap: .375rem; align-items: center; min-height: .875rem; }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-meta strong { color: var(--tb-v2-purple); font-size: var(--tb-v2-text-sm); font-weight: 600; }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-player .stream-entry-meta strong { color: var(--tb-v2-blue); }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-npc .stream-entry-meta strong { color: #d29146; }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry-meta time { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); }
+html.threadbound-v2 body.threadbound-player #stream .stream-entry p { max-width: 48rem; margin: .125rem 0 0; color: var(--tb-v2-text); font-size: var(--tb-v2-text-sm); font-weight: 400; line-height: 1.42; }
+
+.stream-role-badge {
+  display: inline-flex;
+  min-height: .75rem;
+  align-items: center;
+  padding: .0625rem .3125rem;
+  border-radius: .1875rem;
+  background: var(--tb-v2-purple);
+  color: white;
+  font-size: .5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stream-entry-npc .stream-role-badge { background: #d29146; }
+.stream-entry-npc .stream-app-badge { display: none !important; }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-command-card {
+  width: auto;
+  min-width: 0;
+  max-height: min(50dvh, 31rem);
+  margin: .375rem .875rem .375rem 3.5rem;
+  padding: .75rem;
+  overflow: auto;
+  border: 1px solid #4a4d57;
+  border-radius: var(--tb-v2-radius-md);
+  background: var(--tb-v2-surface);
+  box-shadow: none;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header { margin: 0; }
+html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header span { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); letter-spacing: 0; }
+html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header strong { color: var(--tb-v2-text); font-size: var(--tb-v2-text-sm); }
+html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header small { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-xs); }
+
+html.threadbound-v2 body.threadbound-player #stream .rich-card-history-snapshot { grid-template-columns: 2rem minmax(0, 1fr); opacity: 1; }
+
+.rich-card-history-disclosure {
+  min-width: 0;
+  border: 1px solid var(--tb-v2-border);
+  border-radius: .4375rem;
+  background: var(--tb-v2-surface-raised);
+}
+
+.rich-card-history-disclosure > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: .5rem;
+  align-items: center;
+  min-height: 3rem;
+  padding: .5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rich-card-history-disclosure > summary::-webkit-details-marker { display: none; }
+.rich-card-history-copy { display: grid; min-width: 0; gap: .0625rem; }
+.rich-card-history-summary { margin: 0 !important; color: var(--tb-v2-text) !important; font-size: var(--tb-v2-text-xs) !important; font-weight: 600 !important; }
+.rich-card-history-details { overflow: hidden; color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); text-overflow: ellipsis; white-space: nowrap; }
+.rich-card-history-label { padding: .1875rem .4375rem; border-radius: var(--tb-v2-radius-pill); background: var(--tb-v2-surface); color: var(--tb-v2-muted); font-size: .5rem; font-weight: 700; }
+.rich-card-history-note { margin: 0; padding: 0 .5rem .5rem; color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); }
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions {
+  position: relative;
+  bottom: auto;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .375rem;
+  margin: 0;
+  padding: .625rem .75rem .5rem;
+  overflow: visible;
+  background: var(--tb-v2-canvas);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions button {
+  min-height: var(--tb-v2-control-min);
+  padding: .625rem .75rem;
+  border: 0;
+  border-radius: .4375rem;
+  background: var(--tb-v2-surface-raised);
+  color: #e0e3e8;
+  font-size: .6875rem;
+  font-weight: 600;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions button::before { content: ''; width: .5rem; height: .5rem; margin-right: .4375rem; border-radius: 50%; background: var(--tb-v2-blue); }
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions button.is-primary::before { background: var(--tb-v2-red); }
+html.threadbound-v2 body.threadbound-player #stream .stream-suggestions button::after { content: none !important; }
+
+html.threadbound-v2 body.threadbound-player #stream .adventure-stream-composer {
+  position: relative;
+  bottom: auto;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  gap: .5rem;
+  margin: 0;
+  padding: 0 .75rem .75rem;
+  background: var(--tb-v2-canvas);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .adventure-stream-composer input {
+  min-height: 2.875rem;
+  padding-inline: .75rem;
+  border: 0;
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-surface);
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-sm);
+}
+
+html.threadbound-v2 body.threadbound-player #stream .adventure-stream-composer button {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tb-v2-purple);
+  color: white;
+  font-size: 0;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .adventure-stream-composer button::after { content: '\203A'; font-size: 1.125rem; }
+html.threadbound-v2 body.threadbound-player #stream .stream-error { margin: 0; padding: .25rem .875rem .625rem 3.5rem; color: var(--tb-v2-red); font-size: var(--tb-v2-text-xs); }
+
+@media (max-width: 45rem) {
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page { width: 100%; padding-inline: 0; }
+  html.threadbound-v2 body.threadbound-player[data-game-view='play'] #stream { height: calc(100dvh - 7.5rem - env(safe-area-inset-bottom)); margin: 0; }
+  html.threadbound-v2 body.threadbound-player #stream .adventure-stream-log { height: auto; min-height: 0; flex: 1 1 auto; }
+  html.threadbound-v2 body.threadbound-player #stream .stream-command-card { flex: 0 1 auto; }
+  html.threadbound-v2 body.threadbound-player #stream .stream-suggestions { position: sticky; bottom: calc(6.875rem + env(safe-area-inset-bottom)); z-index: 25; }
+  html.threadbound-v2 body.threadbound-player #stream .adventure-stream-composer { position: sticky; bottom: calc(3.375rem + env(safe-area-inset-bottom)); z-index: 26; }
+}
+
+@media (min-width: 45.0625rem) {
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page #stream { width: min(47.5rem, 100%); margin-inline: auto; }
+  html.threadbound-v2 body.threadbound-player #stream .adventure-stream-log { height: min(58vh, 35rem); }
+}

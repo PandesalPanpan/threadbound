@@ -190,6 +190,10 @@ if (stream) {
   function decorateFigmaSurface() {
     if (log) {
       for (const meta of log.querySelectorAll('.stream-entry-system .stream-entry-meta')) {
+        if (meta.closest('[data-message-role="npc"]')) {
+          meta.querySelector('.stream-app-badge')?.remove();
+          continue;
+        }
         if (meta.querySelector('.stream-app-badge')) continue;
         const author = meta.querySelector('strong');
         if (!author) continue;
