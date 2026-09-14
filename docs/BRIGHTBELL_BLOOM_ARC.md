@@ -23,10 +23,17 @@ The package introduces no headline wallet beyond Gold/Honey and contains no exec
 
 ## Validation and publication boundary
 
-M10-05 is an **authoring/generation milestone**, not an implicit world-replacement step. The package must pass the same authoritative `ArcManifestService.validate()` composition used by uploads, and the Arc Workshop mobile acceptance path proves it can be reviewed and saved as a **draft**.
+M10-05 established Brightbell Bloom as source-controlled authored content that passes the same authoritative `ArcManifestService.validate()` composition used by uploads. `saveDraft()` remains non-publishing: Workshop/upload flows can still review and save a draft without making it live.
 
-The package is intentionally **not** added to `BUNDLED_ARC_MANIFESTS` in M10-05. Bundled manifests are auto-published by the current runtime content bootstrap, which would skip the next ordered acceptance question.
+M10-06 adds the exact same source-controlled manifest to `BUNDLED_ARC_MANIFESTS`. The existing runtime bootstrap remains additive: it recognizes an already-published bundled manifest by Arc ID plus exact manifest payload, leaves that record intact, and publishes only the missing bundled content. Brightbell therefore enters the runtime catalog without superseding Glasswake.
 
-**M10-06 owns explicit publication plus regression proof that previously available Arcs/Areas remain revisit-able after the new Arc enters the world.** Until that milestone is green, Brightbell Bloom remains source-controlled, fully validated content that requires an explicit publication action.
+The M10-06 regression simulates an older release where Glasswake is already published and a player has unlocked through Area 3, then starts the new bundled catalog. It proves that:
 
-HUMAN playtest gates remain manual; schema validation, CI, and Workshop automation do not claim that the Arc is fun or balanced in real play.
+- the original Glasswake published record and revision remain unchanged;
+- Glasswake and Brightbell are both present in the published Arc catalog and runtime dungeon catalog;
+- Glasswake's existing dungeon still resolves after Brightbell publication;
+- Areas 1, 2, and 3 remain selectable, and traveling back through each Area never lowers the player's highest-unlocked frontier.
+
+This milestone deliberately preserves the migration-safe Area runtime established in Phase 5. Arc Manifest v2 Area/Town collections remain validated content data at this boundary; M10-06 does not replace existing persisted Area identity or retroactively rewrite player position while proving additive publication safety.
+
+HUMAN playtest gates remain manual; schema validation, CI, and automated revisit regression do not claim that the Arc is fun or balanced in real play.
