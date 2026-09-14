@@ -171,6 +171,8 @@ if (streamEl) {
     activeLocalCommand = null;
     commandCardEl.hidden = true;
     commandCardEl.innerHTML = '';
+    delete commandCardEl.dataset.simpleDungeonSurface;
+    delete commandCardEl.dataset.dungeonState;
   }
 
   function durationLabel(seconds) {
@@ -283,6 +285,8 @@ if (streamEl) {
     activeLocalCommand = command;
     commandCardEl.hidden = false;
     commandCardEl.innerHTML = '';
+    delete commandCardEl.dataset.simpleDungeonSurface;
+    delete commandCardEl.dataset.dungeonState;
     const header = document.createElement('div');
     header.className = 'thread-reply-header';
     const copy = document.createElement('div');
@@ -608,7 +612,7 @@ if (streamEl) {
     const hp = document.createElement('small');
     hp.dataset.testid = 'stream-combat-status';
     hp.textContent = run.viewer?.hp > 0
-      ? `You ${run.viewer.hp}/${run.viewer.maxHp} HP · ${run.enemy?.hp ?? 0}/${run.enemy?.maxHp ?? 0} enemy HP · Auto Strike ON`
+      ? `You ${run.viewer.hp}/${run.viewer.maxHp} HP · ${run.enemy?.hp ?? 0}/${run.enemy?.maxHp ?? 0} enemy HP · Choose an action`
       : 'Waiting for an ally to revive you.';
     title.append(kicker, name, hp);
     header.append(visual, title);

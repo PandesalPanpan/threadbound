@@ -1,3 +1,5 @@
+import { createSpriteElement, enemySpriteFrame, weaverSpriteFrame } from './sprite-catalog.js';
+
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
 if (stream) {
@@ -153,6 +155,8 @@ if (stream) {
   let acting = false;
   let lastSignature = '';
   let recoveryFetchedAt = Date.now();
+  let hasRenderedInitialDungeonSurface = false;
+  let previousSimpleRunId = null;
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -204,7 +208,7 @@ if (stream) {
       }
     }
 
-    if (commandCard) {
+    if (commandCard && commandCard.dataset.simpleDungeonSurface !== 'true') {
       const kicker = commandCard.querySelector('.thread-reply-header span');
       if (kicker) {
         if (kicker.textContent !== 'THREADBOUND') kicker.textContent = 'THREADBOUND';
@@ -260,6 +264,14 @@ if (stream) {
     await api(`/api/dungeons/${encodeURIComponent(dungeon.id)}/start-simple`, { method: 'POST' });
   }
 
+  async function setPartyReady(ready) {
+    await api('/api/party/ready', { method: 'POST', body: JSON.stringify({ ready }) });
+  }
+
+  async function leaveParty() {
+    await api('/api/party/leave', { method: 'POST' });
+  }
+
   async function attack() {
     const run = dashboard?.activeRun;
     if (!run) throw new Error('No active dungeon.');
@@ -270,6 +282,8 @@ if (stream) {
     if (!commandCard) return;
     commandCard.hidden = false;
     commandCard.innerHTML = '';
+    delete commandCard.dataset.simpleDungeonSurface;
+    delete commandCard.dataset.richCardKind;
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
     help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>inventory</strong> — inspect, equip, Temper, or salvage permanent gear<br><strong>shop</strong> — buy healing supplies from Mara<br><strong>heal</strong> — use a health potion now; HP also returns naturally over time<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Only the two most relevant actions stay beside the composer; every command remains available by typing it.';
@@ -311,6 +325,7 @@ if (stream) {
     const character = dashboard.character;
     commandCard.hidden = false;
     commandCard.innerHTML = '';
+    delete commandCard.dataset.simpleDungeonSurface;
     delete commandCard.dataset.bankRichCard;
     delete commandCard.dataset.inventoryRichCard;
     delete commandCard.dataset.shopRichCard;
@@ -349,6 +364,200 @@ if (stream) {
     commandCard.append(recovery, actions);
     updateRecoveryClock();
     decorateFigmaSurface();
+  }
+
+  function textElement(tagName, className, text) {
+    const element = document.createElement(tagName);
+    if (className) element.className = className;
+    if (text !== undefined) element.textContent = String(text);
+    return element;
+  }
+
+  function hpText(current, maximum) {
+    return `${Math.max(0, Number(current) || 0)} / ${Math.max(1, Number(maximum) || 1)} HP`;
+  }
+
+  function hpPercent(current, maximum) {
+    const max = Math.max(1, Number(maximum) || 1);
+    return Math.max(0, Math.min(100, (Math.max(0, Number(current) || 0) / max) * 100));
+  }
+
+  function appendHealthBar(parent, current, maximum, className, label) {
+    const bar = textElement('div', className);
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-label', label);
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', String(Math.max(1, Number(maximum) || 1)));
+    bar.setAttribute('aria-valuenow', String(Math.max(0, Number(current) || 0)));
+    bar.style.setProperty('--progress', `${hpPercent(current, maximum)}%`);
+    bar.append(textElement('span'));
+    parent.append(bar);
+    return bar;
+  }
+
+  function appendKeyValue(parent, label, value, { testId = null, tone = '' } = {}) {
+    const row = textElement('div', `simple-dungeon-stat${tone ? ` is-${tone}` : ''}`);
+    row.append(textElement('span', '', label), textElement('strong', '', value));
+    if (testId) row.dataset.testid = testId;
+    parent.append(row);
+    return row;
+  }
+
+  function dungeonHeader({ dungeonName, state, roomLabel = '' }) {
+    const header = textElement('div', 'thread-reply-header simple-dungeon-card-header');
+    const copy = textElement('div', 'simple-dungeon-card-title');
+    const kicker = textElement('span', 'simple-dungeon-kicker', state === 'boss' ? 'BOSS ROOM' : 'DUNGEON');
+    const title = textElement('strong', '', dungeonName || 'Dungeon');
+    copy.append(kicker, title);
+    if (roomLabel) copy.append(textElement('small', '', roomLabel));
+    header.append(copy);
+    return header;
+  }
+
+  function dungeonCardShell(state, dungeonName) {
+    commandCard.hidden = false;
+    commandCard.innerHTML = '';
+    commandCard.dataset.simpleDungeonSurface = 'true';
+    commandCard.dataset.richCardKind = 'dungeon';
+    commandCard.dataset.dungeonState = state;
+    commandCard.setAttribute('aria-label', `${dungeonName || 'Dungeon'} ${state} panel`);
+    const card = textElement('section', `simple-dungeon-card is-${state}`);
+    card.dataset.testid = 'simple-dungeon-card';
+    card.dataset.state = state;
+    commandCard.append(card);
+    return card;
+  }
+
+  function renderDungeonEntryCard() {
+    const { dungeon, readiness } = firstDungeon();
+    if (!dungeon || !readiness) return;
+    const card = dungeonCardShell('entry', dungeon.name);
+    card.append(dungeonHeader({ dungeonName: dungeon.name, state: 'entry', roomLabel: 'Entry' }));
+
+    card.append(textElement('p', 'simple-dungeon-intro', 'A server-backed dungeon run. Your run HP stays with you between rooms.'));
+
+    const summary = textElement('div', 'simple-dungeon-entry-summary');
+    const name = textElement('strong', '', dungeon.name);
+    name.dataset.testid = 'dungeon-name';
+    const details = textElement('small', '', `Recommended Attack ${readiness.recommendedAttack}+ · ${dungeon.recommendedPlayers || 1} player${dungeon.recommendedPlayers === 1 ? '' : 's'} recommended`);
+    details.dataset.testid = 'dungeon-entry-recommendation';
+    summary.append(name, details);
+    card.append(summary);
+
+    const rules = textElement('div', 'simple-dungeon-stat-list');
+    appendKeyValue(rules, 'Combat', 'Attack only', { testId: 'dungeon-entry-combat-rule' });
+    appendKeyValue(rules, 'HP', 'Persists between rooms', { testId: 'dungeon-entry-hp-rule', tone: 'gold' });
+    appendKeyValue(rules, 'Healing', 'Explicit when the run permits it', { testId: 'dungeon-entry-healing-rule', tone: 'green' });
+    card.append(rules);
+
+    if (dashboard.party) {
+      const party = textElement('div', 'simple-dungeon-readiness');
+      party.append(textElement('span', 'simple-dungeon-section-label', `PARTY · ${dashboard.party.members.length}/2`));
+      const readinessByPlayer = new Map((readiness.members || []).map((member) => [member.playerId, member]));
+      for (const member of dashboard.party.members) {
+        const row = textElement('div', 'simple-dungeon-ready-row');
+        row.dataset.testid = 'dungeon-readiness-member';
+        const memberCheck = readinessByPlayer.get(member.playerId);
+        const stateLabel = member.ready ? 'READY' : 'WAITING';
+        row.append(
+          createSpriteElement(weaverSpriteFrame(member.playerId), { className: 'simple-dungeon-party-sprite', label: member.displayName }),
+          textElement('span', 'simple-dungeon-ready-copy', `${member.displayName} · ${memberCheck ? hpText(memberCheck.maxHealth, memberCheck.maxHealth) : 'Readiness unavailable'}`),
+          textElement('strong', `simple-dungeon-ready-state is-${member.ready ? 'ready' : 'waiting'}`, stateLabel),
+        );
+        party.append(row);
+      }
+      party.append(textElement('small', 'simple-dungeon-note', dashboard.party.allReady ? 'Everyone is ready. The leader can enter.' : 'Ready up here, then wait for the rest of the party.'));
+      card.append(party);
+    } else {
+      card.append(textElement('p', 'simple-dungeon-note', 'Solo entry is available. Party runs snapshot their members when they start.'));
+    }
+  }
+
+  function renderActiveDungeonCard(run) {
+    const definition = run.dungeonDefinition || {};
+    const dungeonName = definition.name || run.dungeonId || 'Dungeon';
+    const encounterCount = Array.isArray(definition.encounters) ? definition.encounters.length : 0;
+    const totalRooms = Math.max(1, encounterCount + (definition.boss ? 1 : 0));
+    const roomNumber = run.phase === 'boss'
+      ? totalRooms
+      : Math.min(totalRooms, Math.max(1, Number(run.encounterIndex || 0) + 1));
+    const roomLabel = `Room ${roomNumber} of ${totalRooms}`;
+    const state = run.phase === 'boss' || run.enemy?.isBoss ? 'boss' : 'combat';
+    const card = dungeonCardShell(state, dungeonName);
+    card.classList.toggle('is-party', run.participants.length > 1);
+    card.append(dungeonHeader({ dungeonName, state, roomLabel }));
+
+    const room = textElement('div', 'simple-dungeon-room-meta');
+    room.dataset.testid = 'dungeon-room';
+    room.append(textElement('span', 'simple-dungeon-section-label', state === 'boss' ? 'BOSS ENCOUNTER' : 'ACTIVE ROOM'), textElement('strong', '', roomLabel));
+    card.append(room);
+
+    if (run.enemy) {
+      const enemy = textElement('article', 'simple-dungeon-enemy');
+      enemy.dataset.testid = 'dungeon-enemy';
+      const sprite = createSpriteElement(enemySpriteFrame(run.enemy), {
+        className: 'simple-dungeon-enemy-sprite',
+        testId: 'simple-dungeon-enemy-sprite',
+        label: run.enemy.name || 'Enemy',
+      });
+      const enemyCopy = textElement('div', 'simple-dungeon-enemy-copy');
+      const enemyKicker = textElement('span', 'simple-dungeon-enemy-kicker', state === 'boss' ? `BOSS · ${run.enemy.name}` : run.enemy.name);
+      const enemyName = textElement('strong', '', run.enemy.name || 'Enemy');
+      enemyName.dataset.testid = 'dungeon-enemy-name';
+      const enemyHp = textElement('span', 'simple-dungeon-enemy-hp', hpText(run.enemy.hp, run.enemy.maxHp));
+      enemyHp.dataset.testid = 'dungeon-enemy-hp';
+      enemyCopy.append(enemyKicker, enemyName, enemyHp);
+      enemy.append(sprite, enemyCopy);
+      appendHealthBar(enemy, run.enemy.hp, run.enemy.maxHp, 'simple-dungeon-enemy-bar', `${run.enemy.name || 'Enemy'} HP`);
+      card.append(enemy);
+    }
+
+    const party = textElement('div', 'simple-dungeon-party');
+    party.append(textElement('span', 'simple-dungeon-section-label', run.participants.length > 1 ? 'PARTY HP' : 'YOUR HP'));
+    for (const participant of run.participants) {
+      const isViewer = participant.playerId === run.viewer?.playerId;
+      const row = textElement('div', `simple-dungeon-party-row${isViewer ? ' is-you' : ''}`);
+      row.dataset.testid = 'dungeon-party-member';
+      row.dataset.playerId = participant.playerId;
+      if (isViewer) row.dataset.currentPlayer = 'true';
+      const copy = textElement('div', 'simple-dungeon-party-copy');
+      copy.append(textElement('strong', '', isViewer ? `${participant.displayName} · You` : participant.displayName));
+      const hp = textElement('span', '', hpText(participant.hp, participant.maxHp));
+      if (isViewer) hp.dataset.testid = 'dungeon-player-hp';
+      copy.append(hp);
+      row.append(createSpriteElement(weaverSpriteFrame(participant.playerId), { className: 'simple-dungeon-party-sprite', label: participant.displayName }), copy);
+      appendHealthBar(row, participant.hp, participant.maxHp, 'simple-dungeon-party-bar', `${participant.displayName} HP`);
+      party.append(row);
+    }
+    card.append(party);
+    card.append(textElement('p', 'simple-dungeon-note', state === 'boss'
+      ? 'Boss turns remain automatic unless authoritative state supplies a sparse decision.'
+      : 'Attack resolves against the current enemy. HP carries into the next room.'));
+  }
+
+  function renderDungeonSurface({ initial = false } = {}) {
+    if (!commandCard || !dashboard) return;
+    const run = dashboard.activeRun?.simpleCombat ? dashboard.activeRun : null;
+    if (run) {
+      hasRenderedInitialDungeonSurface = true;
+      previousSimpleRunId = run.id;
+      renderActiveDungeonCard(run);
+      return;
+    }
+    if (previousSimpleRunId) {
+      previousSimpleRunId = null;
+      if (commandCard.dataset.simpleDungeonSurface === 'true') {
+        commandCard.hidden = true;
+        commandCard.innerHTML = '';
+        delete commandCard.dataset.simpleDungeonSurface;
+        delete commandCard.dataset.richCardKind;
+      }
+      return;
+    }
+    if (initial && !hasRenderedInitialDungeonSurface) {
+      hasRenderedInitialDungeonSurface = true;
+      if (commandCard.hidden || commandCard.childElementCount === 0) renderDungeonEntryCard();
+    }
   }
 
   function updateRecoveryClock() {
@@ -396,6 +605,12 @@ if (stream) {
       }
 
       const { dungeon, readiness } = firstDungeon();
+      if (dashboard.party && !dashboard.party.canStart) {
+        const partyMember = dashboard.party.members.find((member) => member.playerId === dashboard.character.id);
+        addButton(partyMember?.ready ? 'Unready' : 'Ready up', async () => setPartyReady(!partyMember?.ready), 'party-ready');
+        addButton('Leave party', leaveParty, 'party-leave');
+        return;
+      }
       const viewer = readiness?.members?.find((member) => member.playerId === dashboard.character.id) || readiness?.members?.[0];
       const current = Number(viewer?.attackPower ?? dashboard.character.attackPower ?? 0);
       const recommended = Number(readiness?.recommendedAttack ?? 9);
@@ -440,6 +655,9 @@ if (stream) {
         dashboard.activeRun?.version ?? null,
         dashboard.activeRun?.phase || null,
         dashboard.activeRun?.simpleCombat || false,
+        dashboard.activeRun?.encounterIndex ?? null,
+        dashboard.activeRun?.enemy?.hp ?? null,
+        ...(dashboard.activeRun?.participants || []).map((participant) => `${participant.playerId}:${participant.hp}`),
         dashboard.character?.attackPower || 0,
         dashboard.inventory?.length || 0,
         dashboard.party?.id || null,
@@ -451,6 +669,7 @@ if (stream) {
       }
       if (input) input.placeholder = dashboard.activeRun?.simpleCombat ? 'Message party or type attack…' : 'Message party or type hunt…';
       document.body.classList.toggle('simple-gameplay-loop', isSimpleSurface());
+      renderDungeonSurface({ initial: !hasRenderedInitialDungeonSurface });
       restorePresentationAfterExternalRender();
     } finally {
       syncing = false;

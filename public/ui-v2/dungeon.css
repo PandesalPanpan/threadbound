@@ -1,0 +1,265 @@
+/* Phase E: simple dungeon state lives in the Adventure Stream. */
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card {
+  display: grid;
+  gap: .75rem;
+  min-width: 0;
+  color: var(--tb-v2-text);
+}
+
+/* Rich cards default to a compact internal scroller. The live dungeon surface
+   must keep enemy and party HP in the same scan, with the composer following it. */
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .stream-command-card[data-simple-dungeon-surface='true'] {
+  flex: 0 0 auto;
+  max-height: min(55dvh, 31rem);
+  overflow: auto;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card .thread-reply-header {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card-title,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-copy,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-copy {
+  display: grid;
+  min-width: 0;
+  gap: .125rem;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card-title {
+  flex: 1 1 auto;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card-title strong {
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-lg);
+  line-height: 1.2;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card-title small,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-intro,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-note,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-entry-summary small {
+  color: var(--tb-v2-muted);
+  font-size: var(--tb-v2-text-xs);
+  line-height: 1.4;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-kicker,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-section-label {
+  color: var(--tb-v2-purple);
+  font-size: var(--tb-v2-text-2xs);
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.3;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card.is-boss .simple-dungeon-kicker,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card.is-boss .simple-dungeon-enemy-kicker {
+  color: var(--tb-v2-red);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-intro {
+  margin: 0;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-entry-summary,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta {
+  display: grid;
+  gap: .125rem;
+  padding: .625rem;
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-surface-raised);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-entry-summary strong,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta strong {
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-sm);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-stat-list,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-readiness,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party {
+  display: grid;
+  gap: .375rem;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-stat {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .5rem;
+  align-items: center;
+  padding: .4375rem .5rem;
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-inset);
+  font-size: var(--tb-v2-text-xs);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-stat span { color: var(--tb-v2-muted); }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-stat strong { justify-self: end; color: var(--tb-v2-text); text-align: right; }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-stat.is-gold strong { color: var(--tb-v2-gold); }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-stat.is-green strong { color: var(--tb-v2-green); }
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-ready-row,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) max-content;
+  gap: .5rem;
+  align-items: center;
+  min-width: 0;
+  padding: .5rem;
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-surface-raised);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-row { grid-template-columns: 2rem minmax(0, 1fr); }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-row.is-you { border: 1px solid color-mix(in srgb, var(--tb-v2-blue) 42%, var(--tb-v2-border)); }
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-sprite {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  overflow: hidden;
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-inset);
+  image-rendering: pixelated;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-ready-copy,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-copy strong,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-copy span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-ready-copy,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-copy strong {
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-xs);
+  font-weight: 600;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-copy span { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-xs); }
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-ready-state {
+  padding: .25rem .4375rem;
+  border-radius: var(--tb-v2-radius-pill);
+  background: var(--tb-v2-inset);
+  color: var(--tb-v2-muted);
+  font-size: var(--tb-v2-text-2xs);
+  font-weight: 700;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-ready-state.is-ready { background: var(--tb-v2-green-inset); color: var(--tb-v2-green); }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-ready-state.is-waiting { background: #302a1d; color: var(--tb-v2-gold); }
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: .625rem;
+  align-items: center;
+  min-width: 0;
+  padding: .625rem;
+  border-radius: var(--tb-v2-radius-md);
+  background: var(--tb-v2-surface-raised);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card.is-boss .simple-dungeon-enemy {
+  border: 1px solid color-mix(in srgb, var(--tb-v2-red) 48%, var(--tb-v2-border));
+  background: color-mix(in srgb, var(--tb-v2-red) 7%, var(--tb-v2-surface-raised));
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-sprite {
+  display: block;
+  width: 4.75rem;
+  height: 4.75rem;
+  overflow: hidden;
+  border-radius: var(--tb-v2-radius-md);
+  background: #211f24;
+  image-rendering: pixelated;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-copy { align-content: center; }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-kicker { color: var(--tb-v2-red); font-size: var(--tb-v2-text-2xs); font-weight: 700; }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-copy strong { color: var(--tb-v2-text); font-size: var(--tb-v2-text-md); }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-hp { color: var(--tb-v2-muted); font: 600 var(--tb-v2-text-xs)/1.3 var(--tb-v2-font-mono); }
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-bar,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-bar {
+  grid-column: 1 / -1;
+  height: .375rem;
+  overflow: hidden;
+  border-radius: var(--tb-v2-radius-pill);
+  background: #24262e;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-bar span,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-bar span {
+  display: block;
+  width: var(--progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tb-v2-red);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-bar span { background: var(--tb-v2-green); }
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta { grid-template-columns: minmax(0, 1fr) max-content; align-items: center; }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta strong { color: var(--tb-v2-muted-secondary); font: 600 var(--tb-v2-text-xs)/1.3 var(--tb-v2-font-mono); }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta .simple-dungeon-section-label { grid-column: 1 / -1; }
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-note { margin: 0; }
+
+@media (max-width: 520px) {
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card { gap: .5rem; }
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta,
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy { padding: .4rem; }
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy { grid-template-columns: 3.5rem minmax(0, 1fr); }
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-enemy-sprite { width: 3.5rem; height: 3.5rem; }
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-party-row { padding-block: .3rem; }
+}
+
+@media (max-width: 45rem) {
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream:has(.simple-dungeon-card) .adventure-stream-log {
+    height: min(38dvh, 20rem) !important;
+    min-height: 13.75rem !important;
+    flex: 0 1 auto !important;
+  }
+
+  html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-loop-actions:not([hidden]) {
+    position: sticky;
+    bottom: calc(6.875rem + env(safe-area-inset-bottom));
+    z-index: 27;
+    margin-top: 0;
+    padding-bottom: .5rem;
+    background: linear-gradient(180deg, transparent, var(--tb-v2-canvas) 24%);
+  }
+}
+
+/* Persisted tactical runs keep their compatibility projection. These controls are
+   never mounted on the simple-gameplay-loop surface above. */
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-dock {
+  display: grid;
+  gap: .625rem;
+  margin: .375rem .875rem;
+  padding: .75rem;
+  border: 1px solid var(--tb-v2-border);
+  border-radius: var(--tb-v2-radius-lg);
+  background: var(--tb-v2-surface);
+  box-shadow: none;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-dock[hidden] { display: none; }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-header { display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: .625rem; align-items: center; }
+html.threadbound-v2 body.threadbound-player #stream .stream-enemy-sprite { width: 4rem; height: 4rem; border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-inset); image-rendering: pixelated; }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-header > div { display: grid; min-width: 0; gap: .125rem; }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-header span { color: var(--tb-v2-red); font-size: var(--tb-v2-text-2xs); font-weight: 700; letter-spacing: .07em; }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-header strong { color: var(--tb-v2-text); font-size: var(--tb-v2-text-lg); }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-header small { color: var(--tb-v2-muted); font: 500 var(--tb-v2-text-xs)/1.35 var(--tb-v2-font-mono); }
+html.threadbound-v2 body.threadbound-player #stream .stream-intent { padding: .625rem; border: 0; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-red-inset); color: var(--tb-v2-red); font-size: var(--tb-v2-text-xs); font-weight: 600; }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: .375rem; }
+html.threadbound-v2 body.threadbound-player #stream .stream-combat-actions button { min-height: var(--tb-v2-control-min); margin: 0; }
