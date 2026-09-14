@@ -25,17 +25,19 @@ if (stream) {
 
   function alignActiveCommand() {
     if (!log || !commandCard || commandCard.hidden) return;
-    // First position the active response at the top of the chat scroller. This is
-    // deterministic even for cards taller than the viewport, unlike bottom-aligning.
-    log.scrollTop = Math.max(0, commandCard.offsetTop - 8);
 
-    // Then make sure the nested chat scroller itself is not sitting above the
-    // browser viewport beneath the sticky navigation.
+    // Position the card relative to the actual scroll container instead of using
+    // offsetTop (whose offset parent is not guaranteed to be the Adventure Stream).
+    const logRectBefore = log.getBoundingClientRect();
+    const cardRectBefore = commandCard.getBoundingClientRect();
+    log.scrollTop = Math.max(0, log.scrollTop + cardRectBefore.top - logRectBefore.top - 8);
+
+    // Then make sure the chat scroller itself is visible below the sticky nav.
     const navBottom = document.querySelector('.threadbound-topnav')?.getBoundingClientRect().bottom || 0;
     const desiredTop = navBottom + 8;
-    const rect = commandCard.getBoundingClientRect();
-    if (rect.top < desiredTop || rect.top > window.innerHeight - 80) {
-      window.scrollBy({ top: rect.top - desiredTop, left: 0, behavior: 'auto' });
+    const cardRect = commandCard.getBoundingClientRect();
+    if (cardRect.top < desiredTop || cardRect.top > window.innerHeight - 80) {
+      window.scrollBy({ top: cardRect.top - desiredTop, left: 0, behavior: 'auto' });
     }
   }
 
