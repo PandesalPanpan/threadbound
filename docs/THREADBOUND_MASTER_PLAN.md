@@ -48,6 +48,9 @@ Common player-facing concepts should use obvious words:
 - Profile
 - Achievements
 - Leaderboard
+- Blackjack
+- Slots
+- Coinflip
 
 Lore-heavy names belong in content, NPCs, places, item names, enemies, bosses, stories, and Arc identity—not in basic controls.
 
@@ -65,9 +68,11 @@ Internal migration names may remain temporarily in persistence/code when changin
 
 Do not turn Threadbound into a conventional dashboard with separate pages for every system.
 
-The Adventure Stream is the primary application surface. Every command, button press, interaction, NPC conversation, reward, purchase, duel, quest update, party event, and game action should create a coherent stream entry.
+The Adventure Stream is the primary application surface. Every command, button press, interaction, NPC conversation, reward, purchase, duel, quest update, party event, gambling action, and game action should create a coherent stream entry.
 
-Rich commands such as `inventory`, `shop`, `bank`, `profile`, `leaderboard`, `quest`, and `town` should open **large interactive chat cards** that can look almost like modal screens on mobile while remaining part of the stream.
+**There are no player-facing “private screens” for Inventory, Shop, Bank, Profile, Quests, gambling, or similar routine systems.** Those systems render as rich inline chat entries/cards inside the same stream. They must not navigate away, replace the stream, open a separate app shell, or otherwise break conversational continuity.
+
+Rich commands such as `inventory`, `shop`, `bank`, `profile`, `leaderboard`, `quest`, `town`, `blackjack`, `slots`, and `coinflip` should open **interactive chat cards** that can become visually rich on mobile while remaining visibly part of the conversation. They should be concise by default, expand only when needed, and must not consume most of the viewport merely because they contain many items.
 
 Only the newest relevant card should remain fully interactive. Old large interactive cards should collapse into concise historical snapshots to prevent chat-history clutter.
 
@@ -75,7 +80,9 @@ Example historical collapse:
 
 `🎒 Inventory viewed · 18 items · Attack 74 · Defense 52`
 
-Tapping a Hunt button is equivalent to entering `hunt`: it must still produce the same public game receipt.
+A command submitted by typing is itself a visible player chat entry before/alongside its resulting system receipt. If the player types `hunt`, the conversation must still visibly show that the player said `hunt`; the game result does not silently replace the user's message.
+
+Tapping a button is equivalent to entering its command: it must still produce the same public player-action entry and game receipt.
 
 ### 2.3 Result first, detail on demand
 
@@ -92,7 +99,7 @@ A Hunt receipt should immediately communicate:
 - level-up or quest progress;
 - next useful actions.
 
-Full automatic turn history should not flood the main stream. Provide a `Battle details` / `View turns` control that opens a modal or expanded detail view containing the turn-by-turn simulation.
+Full automatic turn history should not flood the main stream. Provide a `Battle details` / `View turns` control that opens an inline expansion or lightweight detail surface without replacing the chat shell.
 
 ### 2.4 Server-authoritative rules
 
@@ -101,13 +108,30 @@ Browser/chat presentation never decides authoritative outcomes.
 Use Fowler-style patterns where they solve a real boundary:
 
 - **Domain Model / Policy** owns combat, stats, effects, progression, death penalties, loot, Area unlock rules, bot simulation constraints, and quest completion rules.
-- **Service Layer** coordinates use cases such as Hunt, Adventure, Shop, Bank, Duel, Quest, Area travel, NPC interaction, and bot progression ticks.
+- **Service Layer** coordinates use cases such as Hunt, Adventure, Shop, Bank, Duel, Quest, Area travel, NPC interaction, gambling, and bot progression ticks.
 - **Repositories** own persistence and transaction boundaries.
 - **Read Models / Projection** provide chat-card data and leaderboards.
 - **Gateway** remains the boundary to external Threaded/Honey ownership.
 - **Presentation Model** renders rich chat cards and receipts without reimplementing game rules.
 
 Do not introduce microservices, CQRS infrastructure, or event sourcing merely for ceremony. Threadbound remains a modular monolith until measured constraints justify otherwise.
+
+### 2.5 Do not make the player think about interface bookkeeping
+
+Player-facing controls must use plain-language labels and immediately understandable state. Apply the spirit of Steve Krug's “Don't Make Me Think”: a player should not need developer knowledge, mental arithmetic, or memory of hidden rules to understand a button.
+
+- Never surface unexplained ratios/counters such as `Dungeon 14/9`.
+- If a number matters, label what it represents (`Dungeon · Room 3/9`, `HP 14/30`, `Ready in 14s`).
+- Quick-action buttons are contextual shortcuts, not a second navigation system.
+- The default composer should normally keep **Hunt** available and show at most one additional most-relevant contextual shortcut.
+- Do not pin `Dungeon` merely because a dungeon exists; surface it when it is genuinely the next useful action.
+- Commands remain discoverable by typing/help even when they are not one of the two shortcuts.
+
+### 2.6 Sprites support the world, not UI chrome
+
+Remove the player's decorative display sprite/portrait from the persistent application shell. It costs space without improving command clarity.
+
+Reserve character sprites primarily for NPCs, enemies, bosses, simulated adventurers, and meaningful world/content moments. Item/equipment sprites remain useful inside rewards and rich cards.
 
 ## 3. Core world model
 
@@ -207,6 +231,8 @@ Use exactly two headline currencies:
 - **Honey** — premium currency owned authoritatively by Threaded.
 
 Remove Thread Dust/material currencies from the default economy. Crafting ingredients may exist as ordinary items, but they are not additional headline wallets.
+
+Gold must be visually prominent wherever spending/equipment decisions occur. In Inventory, Shop, Bank, gambling cards, and reward receipts, the player's relevant Gold balance should be immediately scannable rather than buried in secondary copy.
 
 ### 4.3 Bank
 
@@ -357,7 +383,15 @@ Major progression challenges require both human players unless a specific conten
 
 Defeating the challenge unlocks the next Area.
 
-### 6.4 Quest
+### 6.4 Dungeon / multi-encounter endurance
+
+When a dungeon or Adventure contains multiple sequential enemies, **player HP persists between encounters by default**. Do not silently restore the player to full HP after each mob.
+
+Healing, consumables, defense, and attrition must therefore matter during a multi-encounter run. Any healing between encounters must come from an explicit, understandable rule (item, reward, camp/rest choice, NPC effect, perk, etc.) and be shown in the stream.
+
+The run should show enough persistent state to answer “how healthy are we, what room/encounter are we on, and what is the next decision?” without a separate tactical dashboard.
+
+### 6.5 Quest
 
 Support simple readable quest objectives plus occasional richer generated story quests.
 
@@ -371,7 +405,7 @@ Examples:
 
 Quest tracking and claim/progress should be available directly through a rich `quest` card.
 
-### 6.5 Gambling
+### 6.6 Gambling
 
 Desired side activities:
 
@@ -383,7 +417,9 @@ They use Gold only—never Honey.
 
 They must be bounded game-economy activities, not real-money gambling, and should reuse the same authoritative transaction/idempotency practices as other Gold mutations.
 
-### 6.6 Crafting and cooking
+These activities must be discoverable from chat/help/town context and not exist only as hidden backend commands.
+
+### 6.7 Crafting and cooking
 
 Crafting is optional early but part of the target architecture.
 
@@ -396,7 +432,9 @@ Example:
 `Spicy Wyvern Stew · +10% Attack for next 8 fights`
 
 Players should not lose buff value merely because they go AFK.
+
 ## 7. Death and failure
+
 ### 7.1 Normal death
 
 Default consequence:
@@ -425,11 +463,13 @@ The purpose is memorable consequence, not an unwinnable spiral.
 
 Buttons are command conveniences, not silent UI mutations.
 
-Examples that must create receipts/events:
+Examples that must create player-action entries plus receipts/events:
 
 - Hunt
-- Adventure
+- Adventure / Dungeon
 - Heal
+- Inventory
+- Shop
 - Buy
 - Sell
 - Equip
@@ -442,7 +482,9 @@ Examples that must create receipts/events:
 - NPC interaction
 - Party readiness / progression start
 
-### 8.2 Rich cards
+Typed commands must remain visible as the player's own chat message. Do not consume a command invisibly and show only the Threadbound response.
+
+### 8.2 Rich cards stay inline and concise
 
 Required rich command-card families:
 
@@ -461,6 +503,15 @@ Required rich command-card families:
 
 Cards should use project-owned sprites/icons wherever appropriate and follow the approved mobile Figma hierarchy/style rather than reverting to generic browser forms.
 
+Inventory, Shop, and other utility cards must **not** become route-level pages or full-screen private surfaces. Keep the chat above and below them visible/continuous. Prefer compact summaries, progressive disclosure, tabs/filters inside the card when necessary, and bounded internal height rather than an enormous card that consumes the whole screen.
+
+Inventory specifically should make these visible without searching:
+
+- carried Gold;
+- equipped items/slots;
+- key stats;
+- concise item list with rarity and useful actions.
+
 ### 8.3 Battle receipt
 
 Main battle receipt should be extremely scannable.
@@ -477,9 +528,10 @@ Illustrative structure:
 - one or two useful next actions.
 
 Confirmed damage should be visually distinguishable from healing, rewards, status effects, and projected information. Do not use color alone; retain icons/text semantics.
-### 8.4 Battle details modal
 
-Opening battle details shows the automatic turn-by-turn log without adding dozens of messages to the main stream.
+### 8.4 Battle details
+
+Opening battle details shows the automatic turn-by-turn log without adding dozens of messages to the main stream or navigating away from the Adventure Stream.
 
 Example events:
 
@@ -492,6 +544,24 @@ Example events:
 - extra action caused by Speed;
 - healing/item use;
 - defeat.
+
+### 8.5 Composer and quick actions
+
+The composer remains the center of control. The two shortcut buttons are suggestions, not the command list.
+
+- Keep shortcuts to at most two.
+- `Hunt` should normally be the stable default quick action when available.
+- The second action should be the most contextually relevant next step (Inventory, Heal, Adventure/Dungeon, Town, Blackjack, etc.).
+- Do not show opaque counters or raw internal state in button labels.
+- When a state number is genuinely helpful, label it semantically (`Room 3/9`, `HP 14/30`, `Ready in 14s`).
+- The help/command summary must reflect the actual implemented command set; it must not remain stuck on an obsolete “Simple loop” that omits completed systems such as Areas, Towns, Quests, Bank, Blackjack, Slots, Coinflip, Duels, Profile, Leaderboard, and Achievements.
+- Help should still be concise: group commands by purpose instead of dumping every implementation detail.
+
+### 8.6 Layout must fit the viewport
+
+The Adventure Stream should not create a giant empty scroll region below the actual content. Fix flex/min-height/overflow behavior so the composer and chat occupy the available viewport naturally on desktop and mobile.
+
+Acceptance is visual as well as technical: representative screenshots must not show a long mostly-empty page beneath the conversation, horizontal overflow, or rich cards that unnecessarily dominate the viewport.
 
 ## 9. Arc Manifest evolution
 
@@ -553,27 +623,20 @@ As of the plan's creation, `main` already provides useful foundations:
 - Playwright/mobile/regression gates;
 - Threaded-owned Honey boundary.
 
-But the current product is **not** the target game yet. Notable gaps include:
+But the current product is **not** the target game yet. The September 14, 2026 first-impression playtest also proved that checked implementation boxes do not guarantee the intended experience. Notable gaps/regressions include:
 
-- Thread Dust instead of Gold;
-- Relic/Temper terminology instead of normal equipment/Upgrade;
-- no complete level+XP progression loop surfaced as the primary game;
-- no familiar five-slot equipment foundation;
-- no Bank;
-- no Areas and persistent revisit/travel progression;
-- no Town model / rich NPC interaction loop;
-- no full Quest loop;
-- no general Adventure activity matching this plan;
-- no generated per-Arc shop/equipment breadth;
-- no simulated guild adventurers;
-- no Duel loop against those adventurers;
-- no Leaderboard built around meaningful persistent adventurer stats;
-- no Blackjack / Slots / Coinflip;
-- no fight-count cooking buffs;
-- no target automatic combat engine with Speed action frequency + effect resistance/immunity;
-- no polished battle-details modal contract;
-- first Arc/tone does not match the desired colorful guild-anime direction;
-- rich generated sprite coverage exists but is not yet integrated broadly enough throughout the chat experience.
+- private/route-like Inventory/Shop presentation still breaking the chat flow;
+- Inventory occupying too much of the viewport and failing to emphasize Gold strongly enough;
+- typed commands being consumed without remaining visible as player chat entries;
+- stale `Simple loop` help text that omits already-implemented systems;
+- contextual shortcut buttons selecting poor actions and exposing unclear state such as `Dungeon 14/9`;
+- Blackjack and other side activities not discoverable enough despite backend implementation;
+- dungeon encounters restoring health so aggressively that Heal/attrition have little value;
+- persistent player display sprite consuming shell space without adding gameplay clarity;
+- viewport/layout behavior creating a large mostly-empty scroll region;
+- several rich systems technically implemented but not integrated into the natural chat-first first impression.
+
+Earlier foundational gaps have been implemented through Phases 1-10 below, but the above regressions are reopened as a required correction phase before further human validation.
 
 ## 12. Ordered implementation checklist
 
@@ -594,7 +657,9 @@ Agents must work **in this order unless a previous task proves a dependency requ
 - [x] **M1-05** Establish readable derived stats: Attack, Defense, Max HP, Speed, Crit Chance.
 - [x] **M1-06** Establish rarity contract: Common -> Mythic and consistent rich-card styling.
 - [x] **M1-07** Preserve Honey as external Threaded-owned premium currency; prove local mode cannot mutate it.
+
 ### Phase 2 — chat shell and rich cards
+
 - [x] **M2-01** Define a reusable rich chat-card/panel presentation primitive for app-like cards inside the stream.
 - [x] **M2-02** Inventory rich card: all items, equipment slots, stats, rarity, sprites, Equip/Sell/Upgrade actions.
 - [x] **M2-03** Shop rich card: generated/catalog stock, sprites, prices, Buy/Sell, affordability, normal equipment/potions.
@@ -684,6 +749,21 @@ Do not begin this phase until the new foundation is usable end-to-end.
 - [x] **M10-05** Author/generate the first new Arc under the new contract: 3-6 Areas, towns, NPCs, quests, enemies, bosses, items, shops, visuals, achievements, lore.
 - [x] **M10-06** Verify all old Arcs/Areas remain revisit-able after publishing a new Arc.
 
+### Phase 10F — first-impression chat UX correction (reopened 2026-09-14)
+
+This phase is mandatory before HUMAN playtest acceptance. It exists because the first live impression exposed UX regressions despite earlier implementation checkboxes being green.
+
+- [ ] **M10F-01** Remove route/private-screen behavior for Inventory, Shop, Bank, gambling, and other routine systems. Render them as inline Adventure Stream cards without replacing/hiding the chat shell.
+- [ ] **M10F-02** Redesign Inventory for compact inline use: carried Gold must stand out, equipped slots and key stats must be immediately visible, long item collections must use progressive disclosure/bounded height rather than consuming the whole viewport.
+- [ ] **M10F-03** Make typed commands and button-triggered commands appear as visible player chat/action entries, followed by Threadbound receipts, preserving conversation continuity and realtime partner visibility.
+- [ ] **M10F-04** Replace the stale `Simple loop` command/help copy with a concise grouped command guide that reflects the actually implemented systems, including Area/Town/Quest/Bank/Duel/Profile/Leaderboard/Achievements and Blackjack/Slots/Coinflip.
+- [ ] **M10F-05** Rework the two composer quick actions: normally keep `Hunt` available, choose only one contextually relevant second action, and remove opaque labels/raw counters such as `Dungeon 14/9`. Add semantic labels when state is useful.
+- [ ] **M10F-06** Make Blackjack/Slots/Coinflip discoverable through the chat-first flow (help plus appropriate Town/context cards) and verify each creates a visible public player action and result receipt.
+- [ ] **M10F-07** Fix dungeon/multi-encounter attrition: player HP persists between mobs by default; remove automatic full-heal between encounters unless an explicit surfaced mechanic grants it; verify Heal/consumables have meaningful use during a run.
+- [ ] **M10F-08** Remove the persistent player display sprite/portrait from the shell; reserve character sprites for NPCs, enemies, bosses, simulated adventurers, and meaningful content cards.
+- [ ] **M10F-09** Fix desktop/mobile viewport sizing and overflow so the page does not have a huge mostly-empty scroll tail below the chat. Add screenshot/regression coverage for representative viewport sizes.
+- [ ] **M10F-10** Perform a cohesive first-impression pass after M10F-01..09: start from a fresh/representative player state and verify the first several minutes feel like one continuous EPIC-RPG-inspired chat game rather than a collection of separate panels. Capture representative mobile and desktop screenshots and keep objective automated gates green.
+
 ### Phase 11 — human playtest and balance gate
 
 - [ ] **M11-01 HUMAN** Two humans can understand the first hour without reading developer docs.
@@ -712,12 +792,12 @@ Every agent run must:
 1. Read `AGENTS.md`, `CONTEXT.md`, this document, and relevant architecture docs.
 2. Inspect `main`, open PRs/branches, latest CI, and this checklist before coding.
 3. Determine whether another agent already completed the next unchecked task.
-4. Choose the **earliest unchecked task whose dependencies are satisfied**.
+4. Choose the **earliest unchecked non-HUMAN task whose dependencies are satisfied**. HUMAN gates must never be auto-checked or skipped as if an agent performed the human playtest.
 5. If a previous task is partially implemented, finish/repair that task instead of skipping forward.
 6. Work on one coherent milestone/task at a time. A small prerequisite may be included when necessary.
 7. Preserve server-authoritative/Fowler-style boundaries and existing migration compatibility.
 8. Add/adjust unit/domain/repository tests for rule changes and Playwright coverage for changed player journeys.
-9. For substantial UI changes, inspect a representative mobile screenshot/artifact.
+9. For substantial UI changes, inspect representative mobile **and desktop** screenshots/artifacts and explicitly check chat continuity, card height, viewport overflow, composer visibility, and label clarity.
 10. Run the complete required gates (`npm run check`, `npm test`, relevant Playwright; full E2E before merge).
 11. Update the checkbox/status in this document only when objective acceptance criteria are actually proven.
 12. Update relevant docs when architecture/product behavior changed.
@@ -749,6 +829,9 @@ It is complete only when:
 - Do not add new currencies because a mechanic needs a resource sink; use Gold/items unless product direction explicitly changes.
 - Do not reintroduce permanent tactical Attack/Guard/Interrupt/Focus dashboards into the default loop.
 - Do not create separate screens merely because a rich chat card is harder to implement.
+- Do not consume typed commands invisibly; keep player action/command entries visible in the shared stream.
+- Do not put unexplained ratios/raw counters into player-facing button labels.
+- Do not silently restore full HP between sequential dungeon encounters.
 - Do not let browser code own prices, loot, combat formulas, cooldown legality, XP, progression, or death penalties.
 - Do not allow generated content to execute arbitrary mechanics/code.
 - Do not make simulated adventurers grind continuously or use Honey.
