@@ -22,12 +22,23 @@ if (stream) {
   let acting = false;
   let ordering = false;
 
+  function revealActiveCommand() {
+    if (!commandCard || commandCard.hidden) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      commandCard.scrollIntoView({ block: 'end', inline: 'nearest' });
+    }));
+  }
+
   function keepActiveCommandAtTail() {
     if (!log || !commandCard || commandCard.hidden || ordering) return;
-    if (commandCard.parentElement === log && commandCard === log.lastElementChild) return;
+    if (commandCard.parentElement === log && commandCard === log.lastElementChild) {
+      revealActiveCommand();
+      return;
+    }
     ordering = true;
     log.append(commandCard);
     log.scrollTop = log.scrollHeight;
+    revealActiveCommand();
     queueMicrotask(() => { ordering = false; });
   }
 
