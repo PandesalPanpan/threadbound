@@ -117,6 +117,7 @@ Use Fowler-style patterns where they solve a real boundary:
 Do not introduce microservices, CQRS infrastructure, or event sourcing merely for ceremony. Threadbound remains a modular monolith until measured constraints justify otherwise.
 
 ### 2.5 Do not make the player think about interface bookkeeping
+
 Player-facing controls must use plain-language labels and immediately understandable state. Apply the spirit of Steve Krug's “Don't Make Me Think”: a player should not need developer knowledge, mental arithmetic, or memory of hidden rules to understand a button.
 
 - Never surface unexplained ratios/counters such as `Dungeon 14/9`.
@@ -231,11 +232,12 @@ Use exactly two headline currencies:
 
 Remove Thread Dust/material currencies from the default economy. Crafting ingredients may exist as ordinary items, but they are not additional headline wallets.
 
-Gold must be visually prominent wherever spending/equipment decisions occur. In Inventory, Shop, Bank, gambling cards, and reward receipts, the player's relevant Gold balance should be immediately scannable rather than buried in secondary copy.
+Gold must be visually prominent wherever spending/equipment decisions occur. In Inventory, Shop, Bank, gambling and reward receipts, the player's relevant Gold balance should be immediately scannable rather than buried in secondary copy.
 
 ### 4.3 Bank
 
 The Bank is intentionally simple at first:
+
 - deposit Gold;
 - withdraw Gold;
 - banked Gold is protected from ordinary death loss;
@@ -355,6 +357,7 @@ Primary rewards:
 - Gold;
 - common/rare drops;
 - quest progress.
+
 Hunt has a short cooldown so one afternoon cannot become hundreds of progression actions. Cooldowns should be materially shorter/friendlier than large-public-bot pacing, because Threadbound only needs to serve the two humans well.
 
 Equipment attributes or selected buffs may reduce Hunt cooldown within capped limits.
@@ -751,7 +754,7 @@ Do not begin this phase until the new foundation is usable end-to-end.
 
 This phase is mandatory before HUMAN playtest acceptance. It exists because the first live impression exposed UX regressions despite earlier implementation checkboxes being green.
 
-- [x] **M10F-01** Remove route/private-screen behavior for Inventory, Shop, Bank, gambling, and other routine systems. Render them as inline Adventure Stream cards without replacing/hiding the chat shell.
+- [x] **M10F-01** Remove route/private-screen behavior for Inventory, Shop, Bank, gambling, and other routine systems. Keep information-dense systems as inline Adventure Stream cards and simple gambling as message-first receipts without replacing/hiding the chat shell.
 - [ ] **M10F-02** Redesign Inventory for compact inline use: carried Gold must stand out, equipped slots and key stats must be immediately visible, long item collections must use progressive disclosure/bounded height rather than consuming the whole viewport.
 - [ ] **M10F-03** Make typed commands and button-triggered commands appear as visible player chat/action entries, followed by Threadbound receipts, preserving conversation continuity and realtime partner visibility.
 - [ ] **M10F-04** Replace the stale `Simple loop` command/help copy with a concise grouped command guide that reflects the actually implemented systems, including Area/Town/Quest/Bank/Duel/Profile/Leaderboard/Achievements and Blackjack/Slots/Coinflip.
