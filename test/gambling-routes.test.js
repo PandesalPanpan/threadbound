@@ -38,10 +38,31 @@ async function fixture() {
 function jsonPost(body, key) {
   return {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+    headers: { 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
     body: JSON.stringify(body),
   };
 }
+
+test('gambling help writes a concise authoritative stream receipt without mutating Gold', async () => {
+  const f = await fixture();
+  try {
+    const before = f.repository.getPlayer(f.player.id).threadDust;
+    const response = await f.request('/api/gambling/help', jsonPost({ game: 'blackjack' }));
+    assert.equal(response.status, 201);
+    const payload = await response.json();
+    assert.equal(payload.game, 'blackjack');
+    assert.equal(payload.blackjack.currency, 'Gold');
+    assert.equal(f.repository.getPlayer(f.player.id).threadDust, before);
+
+    const entries = f.stream.listRecent({ limit: 10 }).filter((entry) => entry.eventType === 'GamblingHelp');
+    assert.equal(entries.length, 1);
+    assert.match(entries[0].body, /^Blackjack · /);
+    assert.match(entries[0].body, /type blackjack <wager> to deal/);
+    assert.match(entries[0].body, /Gold carried/);
+  } finally {
+    await f.close();
+  }
+});
 
 test('Coinflip route settles carried Gold and writes one public receipt across retries', async () => {
   const f = await fixture();
@@ -56,8 +77,8 @@ test('Coinflip route settles carried Gold and writes one public receipt across r
 
     const entries = f.stream.listRecent({ limit: 10 }).filter((entry) => entry.eventType === 'CoinflipPlayed');
     assert.equal(entries.length, 1);
-    assert.match(entries[0].body, /Route Gambler played Coinflip/);
-    assert.match(entries[0].body, /carried Gold/);
+    assert.match(entries[0].body, /Route Gambler · Coinflip/);
+    assert.match(entries[0].body, /Gold carried/);
     assert.equal(entries[0].metadata.game, 'coinflip');
 
     const replay = await f.request('/api/gambling/coinflip', jsonPost({ wager: 10, choice: 'heads' }, 'coinflip-route-0001'));
@@ -71,7 +92,7 @@ test('Coinflip route settles carried Gold and writes one public receipt across r
   }
 });
 
-test('Slots and Blackjack routes expose Gold-only projections and stream receipts', async () => {
+test('Slots and Blackjack routes expose Gold-only compact stream receipts', async () => {
   const f = await fixture();
   try {
     const slots = await f.request('/api/gambling/slots', jsonPost({ wager: 1 }, 'slots-route-0001'));
@@ -88,10 +109,16 @@ test('Slots and Blackjack routes expose Gold-only projections and stream receipt
     assert.equal(blackjackPayload.blackjack.round.currency, 'Gold');
     assert.equal(blackjackPayload.blackjack.round.wager, 1);
 
-    const eventTypes = f.stream.listRecent({ limit: 10 }).map((entry) => entry.eventType);
+    const entries = f.stream.listRecent({ limit: 10 });
+    const eventTypes = entries.map((entry) => entry.eventType);
     assert.ok(eventTypes.includes('SlotsPlayed'));
     assert.ok(eventTypes.includes('BlackjackPlayed'));
     assert.equal(eventTypes.some((type) => /Honey/i.test(String(type))), false);
+
+    const blackjackEntry = entries.find((entry) => entry.eventType === 'BlackjackPlayed');
+    assert.match(blackjackEntry.body, /You .* = \d+/);
+    assert.match(blackjackEntry.body, /Dealer /);
+    assert.equal(/PRIVATE THREAD REPLY/i.test(blackjackEntry.body), false);
   } finally {
     await f.close();
   }

@@ -22,27 +22,51 @@ function deltaText(delta) {
   return '±0 Gold';
 }
 
+function handText(cards = [], score = 0) {
+  return `${cards.join(' ')} = ${score}`;
+}
+
 function blackjackReceipt(playerName, result, action) {
   const round = result.round;
-  const dealer = `${round.dealerScore}${round.dealerHiddenCardCount ? ' + hidden' : ''}`;
+  const dealerCards = `${round.dealerHand.join(' ')}${round.dealerHiddenCardCount ? ' ?' : ''}`;
+  const dealerScore = `${round.dealerScore}${round.dealerHiddenCardCount ? '+' : ''}`;
   if (round.status === 'active') {
-    return `${playerName} played Blackjack · ${titleize(action)} · ${round.wager} Gold wager · Hand ${round.playerScore} · Dealer ${dealer}.`;
+    return `${playerName} · Blackjack · ${titleize(action)} · You ${handText(round.playerHand, round.playerScore)} · Dealer ${dealerCards} = ${dealerScore} · ${round.wager} Gold wager · type hit or stand.`;
   }
   const delta = goldDelta(round);
-  return `${playerName} played Blackjack · ${titleize(round.outcome)} · Hand ${round.playerScore} vs Dealer ${round.dealerScore} · ${deltaText(delta)} · ${result.carriedGold} carried Gold.`;
+  return `${playerName} · Blackjack · ${titleize(round.outcome)} · You ${handText(round.playerHand, round.playerScore)} · Dealer ${handText(round.dealerHand, round.dealerScore)} · ${deltaText(delta)} · ${result.carriedGold} Gold carried.`;
 }
 
 function coinflipReceipt(playerName, result) {
   const flip = result.flip;
   const delta = goldDelta(flip);
-  return `${playerName} played Coinflip · Called ${titleize(flip.choice)} · ${titleize(flip.result)} · ${titleize(flip.outcome)} · ${deltaText(delta)} · ${result.carriedGold} carried Gold.`;
+  return `${playerName} · Coinflip · called ${titleize(flip.choice)} · ${titleize(flip.result)} · ${titleize(flip.outcome)} · ${deltaText(delta)} · ${result.carriedGold} Gold carried.`;
 }
 
 function slotsReceipt(playerName, result) {
   const spin = result.spin;
   const delta = goldDelta(spin);
   const reels = spin.reels.map(titleize).join(' · ');
-  return `${playerName} played Slots · ${reels} · ${titleize(spin.outcome)} · ${deltaText(delta)} · ${result.carriedGold} carried Gold.`;
+  return `${playerName} · Slots · ${reels} · ${titleize(spin.outcome)} · ${deltaText(delta)} · ${result.carriedGold} Gold carried.`;
+}
+
+function gamblingHelpReceipt(game, state) {
+  const carriedGold = Number(state?.carriedGold || 0);
+  if (game === 'blackjack') {
+    const round = state?.round;
+    if (round?.status === 'active') {
+      const dealerCards = `${round.dealerHand.join(' ')}${round.dealerHiddenCardCount ? ' ?' : ''}`;
+      return `Blackjack · You ${handText(round.playerHand, round.playerScore)} · Dealer ${dealerCards} = ${round.dealerScore}${round.dealerHiddenCardCount ? '+' : ''} · ${round.wager} Gold wager · type hit or stand · ${carriedGold} Gold carried.`;
+    }
+    return `Blackjack · ${carriedGold} Gold carried · type blackjack <wager> to deal · wager 1–100 Gold.`;
+  }
+  if (game === 'coinflip') {
+    return `Coinflip · ${carriedGold} Gold carried · type coinflip <wager> heads or coinflip <wager> tails · wager 1–100 Gold.`;
+  }
+  if (game === 'slots') {
+    return `Slots · ${carriedGold} Gold carried · type slots <wager> · wager 1–100 Gold.`;
+  }
+  return `Games · blackjack <wager> · coinflip <wager> heads|tails · slots <wager> · wagers use 1–100 carried Gold only.`;
 }
 
 function statusFor(error) {
@@ -99,6 +123,19 @@ export function installGamblingRoutes(app, { repository }) {
   app.get('/api/gambling', requireConnection, respond((request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     return response.json({ blackjack: blackjack.browse(request.session.threaded.playerId) });
+  }));
+
+  app.post('/api/gambling/help', requireConnection, respond((request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const requestedGame = String(request.body?.game || 'games').trim().toLowerCase();
+    const game = ['blackjack', 'coinflip', 'slots'].includes(requestedGame) ? requestedGame : 'games';
+    const state = blackjack.browse(playerId);
+    const entry = record(request, 'GamblingHelp', gamblingHelpReceipt(game, state), {
+      game,
+      carriedGold: state.carriedGold,
+      round: game === 'blackjack' ? state.round : null,
+    });
+    return response.status(201).json({ game, blackjack: state, entry });
   }));
 
   app.post('/api/gambling/blackjack', requireConnection, respond((request, response) => {
