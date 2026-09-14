@@ -18,30 +18,6 @@ if (stream) {
   const input = stream.querySelector('[data-testid="stream-message"]');
   const error = stream.querySelector('[data-testid="stream-error"]');
 
-  // M10F-01: command surfaces are part of the Adventure Stream, not a private
-  // panel below it. All existing rich-card modules share this stable node.
-  if (log && card && card.parentElement !== log) log.append(card);
-
-  function keepCommandCardAtStreamEnd() {
-    if (!log || !card || card.hidden) return;
-    if (card.parentElement !== log || card !== log.lastElementChild) log.append(card);
-  }
-
-  // Other rich-card presentation modules reuse the same command-card node. They
-  // may render after initial stream history has loaded, so keep the active bot
-  // reply at the chronological end of the conversation whenever its contents or
-  // visible state changes. Moving the node mutates the log, not the card itself,
-  // so this observer does not loop.
-  const commandCardObserver = card ? new MutationObserver(() => {
-    queueMicrotask(keepCommandCardAtStreamEnd);
-  }) : null;
-  commandCardObserver?.observe(card, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['hidden', 'data-rich-card-kind'],
-  });
-
   const styles = document.createElement('style');
   styles.dataset.gamblingRichCardStyles = 'true';
   styles.textContent = `
@@ -205,7 +181,6 @@ if (stream) {
 
   function beginRender(kind, titleText) {
     if (!card) return null;
-    if (log && card.parentElement !== log) log.append(card);
     card.hidden = false;
     card.innerHTML = '';
     card.dataset.richCardKind = 'gambling';
@@ -215,7 +190,6 @@ if (stream) {
     const shell = document.createElement('div');
     shell.className = 'thread-gambling-shell';
     card.append(shell);
-    keepCommandCardAtStreamEnd();
     return shell;
   }
 
@@ -421,8 +395,7 @@ if (stream) {
     else if (view === 'coinflip') renderCoinflip();
     else if (view === 'slots') renderSlots();
     else renderMenu();
-    keepCommandCardAtStreamEnd();
-    requestAnimationFrame(() => requestAnimationFrame(() => card?.scrollIntoView({ block: 'nearest', inline: 'nearest' })));
+    requestAnimationFrame(() => requestAnimationFrame(() => card?.scrollIntoView({ block: 'start', inline: 'nearest' })));
   }
 
   async function open(command, rawText) {
@@ -457,5 +430,4 @@ if (stream) {
   }
 
   installComposerIntercept();
-  window.addEventListener('beforeunload', () => commandCardObserver?.disconnect(), { once: true });
 }
