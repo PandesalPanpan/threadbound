@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
-import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
-import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
+import { AreaService } from '../src/application/AreaService.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
-import { GLASSWAKE_ARC_MANIFEST } from '../src/content/BundledArcManifests.js';
+import { BUNDLED_ARC_MANIFESTS, GLASSWAKE_ARC_MANIFEST } from '../src/content/BundledArcManifests.js';
 import { AdventureRun } from '../src/domain/AdventureRun.js';
+import { AreaProgression } from '../src/domain/AreaProgression.js';
 import { nextEnemyIntent } from '../src/domain/CombatIntentPolicy.js';
+import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
+import { SQLiteAreaRepository } from '../src/infrastructure/SQLiteAreaRepository.js';
+import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
+import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
 function setup(rolls = [0]) {
   let playerId = 0;
@@ -41,6 +44,66 @@ test('bundled Glasswake manifest publishes through the same repository and hydra
   assert.equal(published?.status, 'published');
   assert.equal(service.validate(GLASSWAKE_ARC_MANIFEST).valid, true);
   assert.equal(codexRepository.getContentEntry('generated-arc:glasswake')?.status, 'published');
+  gameRepository.close();
+});
+
+test('publishing Brightbell additively preserves Glasswake and every previously unlocked Area', () => {
+  let manifestId = 0;
+  const gameRepository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'm10-06-player' });
+  const codexRepository = new SQLiteCodexRepository({ database: gameRepository.db });
+  const manifestRepository = new SQLiteArcManifestRepository({ database: gameRepository.db });
+  const idFactory = () => `m10-06-manifest-${++manifestId}`;
+
+  const oldRelease = new ArcManifestService({
+    gameRepository,
+    codexRepository,
+    manifestRepository,
+    bundledManifests: [GLASSWAKE_ARC_MANIFEST],
+    idFactory,
+    rng: () => 0,
+  });
+  oldRelease.runtimeDungeons();
+  const glasswakeBefore = manifestRepository.listPublished().find((record) => record.arcId === 'glasswake');
+  assert.ok(glasswakeBefore);
+
+  const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'm10-06-user', displayName: 'Revisit Adventurer' });
+  const areaRepository = new SQLiteAreaRepository({ database: gameRepository.db });
+  areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(3).withCurrentArea(3));
+  const travelEvents = [];
+  const areaService = new AreaService({
+    repository: gameRepository,
+    areaRepository,
+    eventBus: { publish: (event) => travelEvents.push(event) },
+  });
+
+  assert.deepEqual(BUNDLED_ARC_MANIFESTS.map((manifest) => manifest.arc.id), ['glasswake', 'brightbell-bloom']);
+  const newRelease = new ArcManifestService({
+    gameRepository,
+    codexRepository,
+    manifestRepository,
+    idFactory,
+    rng: () => 0,
+  });
+  const runtimeDungeons = newRelease.runtimeDungeons();
+  const published = manifestRepository.listPublished();
+  const glasswakeAfter = published.find((record) => record.arcId === 'glasswake');
+
+  assert.deepEqual(new Set(published.map((record) => record.arcId)), new Set(['glasswake', 'brightbell-bloom']));
+  assert.equal(glasswakeAfter.id, glasswakeBefore.id, 'publishing a new Arc must not replace the prior Arc record');
+  assert.equal(glasswakeAfter.revision, glasswakeBefore.revision);
+  assert.ok(runtimeDungeons.some((dungeon) => dungeon.arcId === 'glasswake'));
+  assert.ok(runtimeDungeons.some((dungeon) => dungeon.arcId === 'brightbell-bloom'));
+  assert.equal(newRelease.resolveDungeon('mirrorfen-descent')?.arcId, 'glasswake');
+
+  assert.deepEqual(areaService.browse(player.id).areas.map((area) => area.number), [1, 2, 3]);
+  for (const areaNumber of [1, 2, 3]) {
+    const traveled = areaService.travel(player.id, areaNumber);
+    assert.equal(traveled.currentAreaNumber, areaNumber);
+    assert.equal(traveled.highestUnlockedAreaNumber, 3, 'revisiting an old Area must never lower the unlock frontier');
+    assert.deepEqual(traveled.areas.map((area) => area.number), [1, 2, 3]);
+  }
+  assert.equal(areaRepository.get(player.id).highestUnlockedAreaNumber, 3);
+  assert.equal(travelEvents.length, 3);
   gameRepository.close();
 });
 
