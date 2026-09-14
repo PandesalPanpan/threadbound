@@ -31,9 +31,10 @@ test('gambling stays minimal and inline in the Adventure Stream', async ({ page,
   expect(overCapPayload.error).toBe('invalid_coinflip_wager');
   expect(overCapPayload.message).toContain('between 1 and 100 Gold');
 
+  const stream = page.getByTestId('adventure-stream');
   const card = page.getByTestId('stream-command-card');
   const log = page.getByTestId('adventure-stream-log');
-  await expect.poll(async () => card.evaluate((element, logElement) => element.parentElement === logElement, await log.elementHandle())).toBe(true);
+  const composer = page.getByTestId('stream-composer');
 
   await page.getByTestId('stream-message').fill('blackjack');
   await page.getByTestId('stream-send').click();
@@ -50,13 +51,20 @@ test('gambling stays minimal and inline in the Adventure Stream', async ({ page,
   await expect(card).not.toContainText('PRIVATE THREAD REPLY');
 
   const blackjackMetrics = await page.evaluate(() => {
+    const streamElement = document.querySelector('[data-testid="adventure-stream"]');
     const cardElement = document.querySelector('[data-testid="stream-command-card"]');
     const logElement = document.querySelector('[data-testid="adventure-stream-log"]');
+    const composerElement = document.querySelector('[data-testid="stream-composer"]');
     const button = cardElement?.querySelector('.thread-gambling-button');
     const field = cardElement?.querySelector('.thread-gambling-input');
     const rect = cardElement?.getBoundingClientRect();
+    const logRect = logElement?.getBoundingClientRect();
+    const composerRect = composerElement?.getBoundingClientRect();
     return {
-      inline: cardElement?.parentElement === logElement,
+      sameShell: cardElement?.parentElement === streamElement,
+      afterHistory: Boolean(logRect && rect && rect.top >= logRect.bottom - 1),
+      beforeComposer: Boolean(composerRect && rect && rect.bottom <= composerRect.top + 1),
+      historyVisible: Boolean(logRect && logRect.bottom > 0 && logRect.top < window.innerHeight),
       width: cardElement?.scrollWidth || 0,
       height: rect?.height || 0,
       right: rect?.right || 0,
@@ -65,7 +73,10 @@ test('gambling stays minimal and inline in the Adventure Stream', async ({ page,
       fieldHeight: field?.getBoundingClientRect().height || 0,
     };
   });
-  expect(blackjackMetrics.inline).toBe(true);
+  expect(blackjackMetrics.sameShell).toBe(true);
+  expect(blackjackMetrics.afterHistory).toBe(true);
+  expect(blackjackMetrics.beforeComposer).toBe(true);
+  expect(blackjackMetrics.historyVisible).toBe(true);
   expect(blackjackMetrics.width).toBeLessThanOrEqual(390);
   expect(blackjackMetrics.right).toBeLessThanOrEqual(blackjackMetrics.viewportWidth);
   expect(blackjackMetrics.height).toBeLessThan(330);
@@ -82,6 +93,9 @@ test('gambling stays minimal and inline in the Adventure Stream', async ({ page,
   await expect(card.getByTestId('gambling-blackjack')).toHaveCount(0);
   await expect(card.getByTestId('gambling-coinflip')).toHaveCount(0);
   await expect(card.getByTestId('gambling-slots')).toHaveCount(0);
+  await expect(stream).toBeVisible();
+  await expect(log).toBeVisible();
+  await expect(composer).toBeVisible();
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/gambling-mobile.png`, fullPage: true });
