@@ -9,7 +9,7 @@ M9-04 exposes the Gold-only Blackjack, Coinflip, and Slots foundations from M9-0
 - Their SQLite repositories continue to own wager debit, payout credit, resolved-game persistence, and idempotent replay protection in the same transaction.
 - `src/gambling-routes.js` is presentation orchestration: it authenticates the current player, invokes those existing services, projects one concise public Adventure Stream receipt for each non-replayed explicit play/action, and broadcasts the committed projection.
 - `public/gambling-rich-card.js` is a Presentation Model only. It sends wagers/choices/actions, displays authoritative responses, and never computes outcomes, payouts, or wager legality.
-- The shared `stream-command-card` node lives **inside the Adventure Stream log**. Inventory, Shop, Bank, gambling, and other rich command surfaces therefore remain in the conversation flow instead of appearing as a detached/private screen beneath it.
+- The shared `stream-command-card` remains inside the **Adventure Stream shell**, immediately after durable chat history and before the composer. It is not a route/private screen and does not replace or hide the conversation. Durable player commands and authoritative receipts remain in the history itself.
 
 ## Balance contract
 
@@ -28,7 +28,7 @@ The gambling UX follows the same minimal command rhythm as the rest of the Adven
 - typing `coinflip` opens only Coinflip;
 - typing `slots` opens only Slots;
 - typing `gambling` or `casino` opens a compact three-choice launcher rather than rendering all three games at once;
-- command text is first recorded as a normal player stream message, then Threadbound responds in the same stream;
+- command text is first recorded as a normal player stream message, then Threadbound responds inline in the Adventure Stream shell;
 - button actions such as `Blackjack 10`, `Hit`, `Stand`, Coinflip choices, and Slots spins also create visible player actions before the authoritative Threadbound result receipt;
 - no gambling command may introduce a route-level/private-screen transition or hide/replace the conversation shell.
 
@@ -40,7 +40,7 @@ Every successful explicit play still creates the concise public server receipt f
 
 Domain/service coverage continues to prove all three games reject 101 Gold without changing the player's balance while the 1-100 shared range remains valid. The mobile Playwright journey now also proves that:
 
-- the shared command card is a child of the Adventure Stream log;
+- the response remains in the Adventure Stream shell between visible history and the composer rather than navigating to or replacing another screen;
 - typing `blackjack` leaves a visible player `blackjack` message in the conversation;
 - the Blackjack view does not simultaneously render Coinflip or Slots;
 - the generic `gambling` command renders only the compact launcher;
