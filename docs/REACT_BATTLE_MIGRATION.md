@@ -88,8 +88,9 @@ semantic runtime asset catalog until those Figma nodes are supplied.
 
 The focused Playwright suite (`npm run test:e2e:react-local`, isolated by
 `playwright.react.local.config.js`) captures all five battle states, the core
-chat-shell command-card journey, Guild Hall profile/Duel, and Gold games at
-390×844, then verifies the shell at 1440×960 on the canonical `/game` route.
+chat-shell command-card journey, two-browser party state propagation, Guild
+Hall profile/Duel, and Gold games at 390×844, then verifies the shell at
+1440×960 on the canonical `/game` route.
 The retained legacy suites run only with the explicit compatibility flag.
 `npm run check`, the 379-test unit suite, and the full E2E matrix are green for
 this increment. The next increment is to compare the shell and battle
