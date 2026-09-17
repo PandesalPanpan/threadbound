@@ -54,4 +54,34 @@ test.describe('presentation v2 desktop player shell', () => {
     await mkdir('test-results/presentation-v2', { recursive: true });
     await page.screenshot({ path: 'test-results/presentation-v2/desktop-player-1440x960.png', fullPage: true });
   });
+
+  test('keeps rail commands on the shared stream path and keeps Live Context read-only', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await login(page, 'c');
+
+    const apiMutations = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/api/') && request.method() !== 'GET') apiMutations.push(new URL(request.url()).pathname);
+    });
+
+    const railContract = await page.locator('[data-testid="desktop-command-rail"] button').evaluateAll((buttons) => buttons.map((button) => ({
+      type: button.type,
+      command: button.dataset.command || '',
+    })));
+    expect(railContract).toHaveLength(7);
+    expect(railContract.every(({ type, command }) => type === 'button' && command)).toBe(true);
+    await expect(page.getByTestId('desktop-live-context').locator('form')).toHaveCount(0);
+
+    await page.getByTestId('desktop-open-guild').click();
+    await expect(page.getByTestId('stream-command-card')).toHaveAttribute('data-rich-card-kind', 'leaderboard');
+    expect(apiMutations).toEqual([]);
+
+    const [huntResponse] = await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith('/api/hunt') && response.request().method() === 'POST'),
+      page.getByTestId('desktop-command-hunt').click(),
+    ]);
+    expect(huntResponse.ok()).toBe(true);
+    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /Victory|Defeat|fell to/i }).last()).toBeVisible();
+    expect(apiMutations).toEqual(['/api/hunt']);
+  });
 });

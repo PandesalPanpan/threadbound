@@ -18,4 +18,5 @@ The shell is hidden below the desktop breakpoint and the stream remains in its e
 ## Verification
 
 - `test/e2e/presentation-v2-desktop.local.spec.js` checks the 1440px shell geometry, read-only copy, authoritative Area/Quest/Guild projections, and command routing through Town and Guild Hall.
+- The same suite proves command buttons remain `type="button"` conveniences routed through the shared composer, that opening Guild Hall performs no mutation, and that Hunt produces its normal stream receipt through the existing server command.
 - `test-results/presentation-v2/desktop-player-1440x960.png` is the representative desktop review capture.
