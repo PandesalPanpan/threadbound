@@ -55,6 +55,10 @@ export function getShop() {
   return api('/api/shop');
 }
 
+export function getGambling() {
+  return api('/api/gambling');
+}
+
 export async function connectRealtime(onMessage) {
   if (!('WebSocket' in globalThis)) return () => {};
   try {

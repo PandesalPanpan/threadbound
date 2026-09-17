@@ -4,7 +4,10 @@ const COMMAND_ALIASES = Object.freeze({
   '/profile': 'status',
   '/hunt': 'hunt',
   '/dungeon': 'dungeon',
+  '/dungeons': 'dungeon',
+  '/adventures': 'dungeon',
   '/run': 'dungeon',
+  '/adventure': 'adventure',
   '/attack': 'attack',
   '/guard': 'guard',
   '/interrupt': 'interrupt',
@@ -23,6 +26,18 @@ const COMMAND_ALIASES = Object.freeze({
   '/town': 'area',
   '/quest': 'quest',
   '/quests': 'quest',
+  '/gambling': 'gambling',
+  '/casino': 'gambling',
+  '/blackjack': 'blackjack',
+  '/hit': 'hit',
+  '/stand': 'stand',
+  '/coinflip': 'coinflip',
+  '/slots': 'slots',
+  '/leaderboard': 'leaderboard',
+  '/world': 'world',
+  '/achievements': 'world',
+  '/honey': 'honey',
+  '/wallet': 'honey',
   '/codex': 'codex',
 });
 
@@ -38,7 +53,7 @@ export const QUICK_COMMANDS = Object.freeze([
 ]);
 
 export const COMMAND_SUGGESTIONS = Object.freeze([
-  'help', 'status', 'hunt', 'dungeon', 'inventory', 'shop', 'bank', 'party', 'area', 'quest', 'codex',
+  'help', 'status', 'hunt', 'adventure', 'dungeon', 'inventory', 'shop', 'bank', 'party', 'area', 'quest', 'leaderboard', 'gambling', 'world', 'honey', 'codex',
 ]);
 
 function stableIndex(value, length) {
@@ -56,7 +71,9 @@ export function normalizeCommand(value) {
   if (!raw) return { raw: '', name: '', args: [] };
   const tokens = raw.split(/\s+/g);
   const token = tokens.shift().toLowerCase();
-  const canonical = COMMAND_ALIASES[token] || token.replace(/^\//, '');
+  const canonical = (token.replace(/^\//, '') === 'profile' && tokens.length > 0)
+    ? 'profile'
+    : COMMAND_ALIASES[token] || token.replace(/^\//, '');
   return { raw, name: canonical, args: tokens, token };
 }
 

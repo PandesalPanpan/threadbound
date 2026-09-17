@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, connectRealtime, getAreas, getDashboard, getQuests, getShop, getStream, getVisualAssets, postStreamMessage } from './api/client.js';
+import { api, commandKey, connectRealtime, getAreas, getDashboard, getGambling, getQuests, getShop, getStream, getVisualAssets, postStreamMessage } from './api/client.js';
 import { AdventureStream } from './components/chat/AdventureStream.jsx';
 import { CommandComposer } from './components/chat/CommandComposer.jsx';
 import { renderGameplayPanel } from './components/panels/GameplayPanels.jsx';
@@ -153,10 +153,65 @@ export function GameShellApp() {
       case 'inventory':
       case 'party':
       case 'dungeon':
+      case 'world':
+      case 'honey':
       case 'codex':
         await recordCommand(parsed.raw);
         setPanel({ kind: parsed.name });
         break;
+      case 'gambling':
+      case 'casino':
+      case 'blackjack':
+      case 'hit':
+      case 'stand':
+      case 'coinflip':
+      case 'slots': {
+        const game = ['blackjack', 'coinflip', 'slots'].includes(parsed.name) ? parsed.name : 'games';
+        if ((parsed.name === 'blackjack' && parsed.args.length === 0) || (parsed.name === 'coinflip' && parsed.args.length < 2) || (parsed.name === 'slots' && parsed.args.length === 0) || parsed.name === 'gambling' || parsed.name === 'casino') {
+          const payload = await request(parsed.raw, '/api/gambling/help', { method: 'POST', body: JSON.stringify({ game }) });
+          if (payload) setPanel({ kind: 'gambling', data: { game: payload.game || game, blackjack: payload.blackjack, entry: payload.entry } });
+          break;
+        }
+        if (parsed.name === 'hit' || parsed.name === 'stand') {
+          let round = panel.kind === 'gambling' ? panel.data?.blackjack?.round : null;
+          if (!round || round.status !== 'active') {
+            try { round = (await getGambling()).blackjack?.round || null; } catch (caught) { setError(caught.message); break; }
+          }
+          if (!round) {
+            await recordCommand(parsed.raw);
+            setPanel({ kind: 'gambling', data: { game: 'blackjack', blackjack: { round: null, carriedGold: dashboard?.character?.gold ?? 0 } } });
+            setError('No active Blackjack hand. Type blackjack <wager> to deal.');
+            break;
+          }
+          const payload = await request(parsed.raw, `/api/gambling/blackjack/${encodeURIComponent(round.id)}/${parsed.name}`, { method: 'POST', headers: { 'Idempotency-Key': commandKey(`shell-blackjack-${parsed.name}`) } });
+          if (payload) setPanel({ kind: 'gambling', data: { game: 'blackjack', blackjack: payload.blackjack, entry: payload.entry } });
+          break;
+        }
+        if (parsed.name === 'blackjack') {
+          const payload = await request(parsed.raw, '/api/gambling/blackjack', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-blackjack-deal') }, body: JSON.stringify({ wager: Number(parsed.args[0]) }) });
+          if (payload) setPanel({ kind: 'gambling', data: { game: 'blackjack', blackjack: payload.blackjack, entry: payload.entry } });
+          break;
+        }
+        if (parsed.name === 'coinflip') {
+          const payload = await request(parsed.raw, '/api/gambling/coinflip', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-coinflip') }, body: JSON.stringify({ wager: Number(parsed.args[0]), choice: parsed.args[1] }) });
+          if (payload) setPanel({ kind: 'gambling', data: { game: 'coinflip', coinflip: payload.coinflip, entry: payload.entry } });
+          break;
+        }
+        const payload = await request(parsed.raw, '/api/gambling/slots', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-slots') }, body: JSON.stringify({ wager: Number(parsed.args[0]) }) });
+        if (payload) setPanel({ kind: 'gambling', data: { game: 'slots', slots: payload.slots, entry: payload.entry } });
+        break;
+      }
+      case 'leaderboard':
+        await openResource('leaderboard', parsed.raw, getAreas, setAreas);
+        break;
+      case 'profile': {
+        const payload = await request(parsed.raw, '/api/areas');
+        if (payload) {
+          setAreas(payload.area || payload);
+          setPanel({ kind: 'leaderboard', data: { profileQuery: parsed.args.join(' ') } });
+        }
+        break;
+      }
       case 'shop':
         await openResource('shop', parsed.raw, getShop, setShop);
         break;
@@ -172,6 +227,11 @@ export function GameShellApp() {
       case 'hunt': {
         const payload = await request(parsed.raw, '/api/hunt', { method: 'POST' });
         if (payload) setPanel({ kind: 'hunt', data: payload.hunt });
+        break;
+      }
+      case 'adventure': {
+        const payload = await request(parsed.raw, '/api/adventure', { method: 'POST' });
+        if (payload) setPanel({ kind: 'adventure', data: payload.adventure });
         break;
       }
       case 'heal': {
@@ -203,7 +263,7 @@ export function GameShellApp() {
         setError(`Unknown command “${parsed.name}”. Try help.`);
         break;
     }
-  }, [dashboard, openResource, recordCommand, request]);
+  }, [dashboard, openResource, panel, recordCommand, request]);
 
   const loadEarlier = useCallback(async () => {
     const before = entries[0]?.id;

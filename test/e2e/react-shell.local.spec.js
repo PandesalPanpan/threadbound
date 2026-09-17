@@ -41,6 +41,12 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await composer.press('Enter');
   await expect(page.getByTestId('quest-rich-card')).toBeVisible();
   await expect(page.getByTestId('stream-chat-entry').last()).toContainText('quest');
+  await composer.fill('world');
+  await composer.press('Enter');
+  await expect(page.getByTestId('world-rich-card')).toBeVisible();
+  await composer.fill('honey');
+  await composer.press('Enter');
+  await expect(page.getByTestId('honey-rich-card')).toBeVisible();
   await page.screenshot({ path: 'ux-review/react-shell-mobile.png', fullPage: true });
 
   await composer.fill('party');
