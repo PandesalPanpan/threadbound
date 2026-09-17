@@ -3,6 +3,11 @@ minimalUi.rel = 'stylesheet';
 minimalUi.href = '/minimal-ui.css';
 document.head.append(minimalUi);
 
+const codexV2 = document.createElement('link');
+codexV2.rel = 'stylesheet';
+codexV2.href = '/ui-v2/codex.css';
+document.head.append(codexV2);
+
 const statusEl = document.querySelector('#codex-status');
 const searchEl = document.querySelector('#codex-search');
 const tabsEl = document.querySelector('#codex-tabs');
@@ -50,6 +55,17 @@ function categoryLabel(category) {
   return CATEGORIES.find(([key]) => key === category)?.[1] || titleize(category);
 }
 
+function singularCategory(category) {
+  return {
+    items: 'Item',
+    enemies: 'Enemy',
+    bosses: 'Boss',
+    lore: 'Lore',
+    achievements: 'Achievement',
+    history: 'History',
+  }[category] || categoryLabel(category);
+}
+
 function entryIcon(entry) {
   if (entry.category === 'items') return '↗';
   if (entry.category === 'enemies') return '◎';
@@ -71,6 +87,42 @@ function parseHash() {
 function setHash(category, id) {
   const next = `#${category}/${encodeURIComponent(id)}`;
   if (location.hash !== next) history.replaceState(null, '', next);
+}
+
+function setCodexView(view) {
+  document.body.dataset.codexView = view;
+}
+
+function sourceLabel(source) {
+  return titleize(source).replace(/Arc Manifest/g, 'Arc Manifest');
+}
+
+function entryMeta(entry) {
+  const category = singularCategory(entry.category).toUpperCase();
+  if (entry.category === 'items') {
+    const rarity = entry.mechanics?.rarity || entry.tags?.[0];
+    return rarity ? `${category} · ${String(rarity).toUpperCase()}` : category;
+  }
+  if (entry.category === 'achievements') return `${category} · ${entry.unlocked ? 'UNLOCKED' : 'LOCKED'}`;
+  const area = entry.tags?.find((tag) => String(tag).includes('area'));
+  return area ? `${category} · ${String(area).replace(/[-_]/g, ' ').toUpperCase()}` : category;
+}
+
+function entrySummary(entry) {
+  if (entry.category === 'items' && Number.isFinite(Number(entry.mechanics?.attackBonus))) {
+    const attack = `+${entry.mechanics.attackBonus} ATK`;
+    const source = entry.source ? `discovered in ${sourceLabel(entry.source)}` : '';
+    return [attack, source].filter(Boolean).join(' · ');
+  }
+  return entry.summary || entry.body || 'No summary recorded.';
+}
+
+function entrySubtitle(entry) {
+  if (entry.category === 'achievements') return entryMeta(entry);
+  const tags = (entry.tags || [])
+    .filter((tag) => !['achievement', 'unlocked', 'locked'].includes(String(tag).toLowerCase()))
+    .slice(0, 2);
+  return `${singularCategory(entry.category)}${tags.length ? ` · ${tags.join(' · ')}` : ''}`;
 }
 
 function mergeDirectory(entries = []) {
@@ -96,18 +148,19 @@ async function openEntry(entry) {
   if (!entry) return;
   clearTimeout(timer);
   timer = null;
+  setCodexView('article');
   activeCategory = entry.category;
   activeId = entry.id;
   searchEl.value = '';
   setHash(entry.category, entry.id);
   renderTabs();
   await load();
-  detailEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
 function openCategory(category) {
   clearTimeout(timer);
   timer = null;
+  setCodexView('directory');
   activeCategory = category;
   activeId = null;
   searchEl.value = '';
@@ -152,13 +205,27 @@ function appendLinkedText(container, text, currentEntry) {
 
 function renderTabs() {
   tabsEl.innerHTML = '';
-  for (const [key, label] of CATEGORIES) {
+  const definitions = [
+    ...CATEGORIES.slice(0, 5),
+    ['more', 'More'],
+    ...CATEGORIES.slice(5),
+  ];
+  for (const [key, label] of definitions) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
     button.dataset.testid = `codex-tab-${key}`;
-    button.setAttribute('aria-pressed', String(activeCategory === key));
-    button.addEventListener('click', () => openCategory(key));
+    if (key === 'more') {
+      button.dataset.more = 'true';
+      button.setAttribute('aria-expanded', 'false');
+      button.addEventListener('click', () => {
+        const expanded = tabsEl.classList.toggle('more-open');
+        button.setAttribute('aria-expanded', String(expanded));
+      });
+    } else {
+      button.setAttribute('aria-pressed', String(activeCategory === key));
+      button.addEventListener('click', () => openCategory(key));
+    }
     tabsEl.append(button);
   }
 }
@@ -211,7 +278,7 @@ function renderInfobox(entry) {
   const title = document.createElement('div');
   title.className = 'wiki-infobox-title';
   const name = document.createElement('strong');
-  name.textContent = String(entry.title || 'Entry').toUpperCase();
+  name.textContent = 'RECORD';
   const category = document.createElement('span');
   category.textContent = categoryLabel(entry.category).toUpperCase();
   title.append(name, category);
@@ -240,7 +307,7 @@ function renderContents(sections) {
   sections.forEach(([id, label], index) => {
     const anchor = document.createElement('a');
     anchor.href = `#${id}`;
-    anchor.textContent = `${index + 1}. ${label}`;
+    anchor.textContent = `${index + 1} ${label}`;
     nav.append(anchor);
   });
   contents.append(heading, nav);
@@ -254,6 +321,8 @@ function renderDetail(entry) {
   }
   activeId = entry.id;
   setHash(entry.category, entry.id);
+  detailEl.dataset.category = entry.category;
+  detailEl.dataset.entryId = entry.id;
   detailEl.innerHTML = '';
 
   const breadcrumbs = document.createElement('nav');
@@ -274,7 +343,7 @@ function renderDetail(entry) {
   heading.textContent = entry.title;
   const subtitle = document.createElement('div');
   subtitle.className = 'wiki-subtitle';
-  subtitle.textContent = `${categoryLabel(entry.category).replace(/s$/, '')}${entry.tags?.length ? ` · ${entry.tags.slice(0, 2).join(' · ')}` : ''}`;
+  subtitle.textContent = entrySubtitle(entry);
   copy.append(heading, subtitle);
   titleRow.append(icon, copy);
   detailEl.append(titleRow);
@@ -405,17 +474,29 @@ function renderList(entries) {
     button.dataset.entryId = entry.id;
     button.setAttribute('aria-selected', String(entry.id === activeId));
 
-    const badge = document.createElement('span');
-    badge.className = 'badge';
-    badge.textContent = entry.category;
+    const icon = document.createElement('span');
+    icon.className = `entry-icon icon--${entry.category}`;
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = entryIcon(entry);
+    const copy = document.createElement('span');
+    copy.className = 'entry-copy';
+    const meta = document.createElement('span');
+    meta.className = 'entry-meta';
+    meta.textContent = entryMeta(entry);
     const heading = document.createElement('h3');
     heading.textContent = entry.title;
     const summary = document.createElement('p');
-    summary.textContent = entry.summary;
-    button.append(badge, heading, summary);
+    summary.textContent = entrySummary(entry);
+    copy.append(meta, heading, summary);
+    const chevron = document.createElement('span');
+    chevron.className = 'entry-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '›';
+    button.append(icon, copy, chevron);
     button.addEventListener('click', () => {
       for (const other of listEl.querySelectorAll('.entry')) other.setAttribute('aria-selected', 'false');
       button.setAttribute('aria-selected', 'true');
+      setCodexView('article');
       renderDetail(entry);
     });
     listEl.append(button);
@@ -457,6 +538,7 @@ searchEl.addEventListener('input', () => {
   clearTimeout(timer);
   timer = setTimeout(() => {
     timer = null;
+    setCodexView('directory');
     activeId = null;
     load();
   }, 180);
@@ -464,6 +546,7 @@ searchEl.addEventListener('input', () => {
 
 const deepLink = parseHash();
 if (deepLink) {
+  setCodexView('article');
   activeCategory = deepLink.category;
   activeId = deepLink.id;
 }
