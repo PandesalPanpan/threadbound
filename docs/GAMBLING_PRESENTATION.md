@@ -9,6 +9,7 @@ M9-04 exposed the Gold-only Blackjack, Coinflip, and Slots foundations from M9-0
 - SQLite repositories continue to own wager debit, payout credit, resolved-game persistence, and idempotent replay protection in the same transaction.
 - `src/gambling-routes.js` authenticates the player, invokes those services, and persists one concise Threadbound Adventure Stream receipt for each explicit command/result.
 - `public/gambling-rich-card.js` is a Presentation Model. It records the player's visible command, invokes the server boundary, waits for the authoritative stream receipt, and renders only the server-returned Blackjack projection. It does not compute cards, scores, payouts, or wager legality.
+- `public/blackjack-card.js` is the reusable dynamic card component. Figma's face cards in node `44:507` are frame/text compositions rather than reusable image assets, so the component renders server-dealt rank/suit values while preserving the Figma dimensions and typography. The `THREAD` back is the committed export of node `44:567` at `public/assets/runtime/blackjack-card-back.6ab5c2eb53e6.png`.
 - `public/ui-v2/gambling.css` translates Figma active Blackjack node `44:507` and resolved result node `44:619` into the existing vanilla HTML/CSS stream shell.
 - Coinflip and Slots remain message-first receipts; Blackjack is the one secondary system with a rich interactive surface in this increment.
 

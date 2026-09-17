@@ -131,15 +131,18 @@ html.threadbound-v2 body.threadbound-player #stream .blackjack-card-suit { font-
 html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back {
   align-items: center;
   justify-content: center;
-  gap: .0625rem;
-  padding: .375rem;
+  padding: 0;
   background: #372d4e;
-  color: var(--tb-v2-text);
   text-align: center;
 }
 
-html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back strong { color: var(--tb-v2-purple); font-size: 1.125rem; line-height: 1.1; }
-html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back small { font-size: .4375rem; line-height: 1; }
+html.threadbound-v2 body.threadbound-player #stream .blackjack-card-back-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
 
 html.threadbound-v2 body.threadbound-player #stream .blackjack-bankroll {
   display: flex;

@@ -1,3 +1,5 @@
+import { createBlackjackCard } from './blackjack-card.js';
+
 const stream = document.querySelector('[data-testid="adventure-stream"]');
 
 if (stream) {
@@ -89,31 +91,6 @@ if (stream) {
     return `${Math.max(0, Number(value) || 0)} Gold`;
   }
 
-  function suitDetails(cardCode) {
-    const value = String(cardCode || '').toUpperCase();
-    const suit = value.slice(-1);
-    const rank = value.slice(0, -1);
-    return {
-      rank: rank || '?',
-      symbol: { C: '♣', D: '♦', H: '♥', S: '♠' }[suit] || '•',
-      red: suit === 'D' || suit === 'H',
-    };
-  }
-
-  function playingCard(cardCode, { hidden = false, testId = null } = {}) {
-    if (hidden) {
-      const back = withTestId(el('div', 'blackjack-playing-card blackjack-card-back'), testId);
-      back.setAttribute('aria-label', 'Hidden dealer card');
-      back.append(el('strong', '', '✦'), el('small', '', 'THREAD'));
-      return back;
-    }
-    const details = suitDetails(cardCode);
-    const cardElement = withTestId(el('div', `blackjack-playing-card${details.red ? ' is-red' : ''}`, ''), testId);
-    cardElement.setAttribute('aria-label', `${details.rank} of ${details.symbol}`);
-    cardElement.append(el('strong', 'blackjack-card-rank', details.rank), el('span', 'blackjack-card-suit', details.symbol));
-    return cardElement;
-  }
-
   function scorePill(score, testId = null, tone = '') {
     const pill = withTestId(el('span', `blackjack-score-pill${tone ? ` is-${tone}` : ''}`, score), testId);
     return pill;
@@ -127,9 +104,9 @@ if (stream) {
     const scoreElement = scorePill(scoreValue, `${testPrefix}-score`, result && score > 21 ? 'loss' : '');
     header.append(heading, scoreElement);
     const cardsRow = el('div', 'blackjack-card-row');
-    cards.forEach((cardCode, index) => cardsRow.append(playingCard(cardCode, { testId: `${testPrefix}-card-${index}` })));
+    cards.forEach((cardCode, index) => cardsRow.append(createBlackjackCard(cardCode, { testId: `${testPrefix}-card-${index}` })));
     for (let index = cards.length; index < cards.length + hiddenCardCount; index += 1) {
-      cardsRow.append(playingCard('', { hidden: true, testId: `${testPrefix}-card-${index}` }));
+      cardsRow.append(createBlackjackCard('', { hidden: true, testId: `${testPrefix}-card-${index}` }));
     }
     area.append(header, cardsRow);
     return area;

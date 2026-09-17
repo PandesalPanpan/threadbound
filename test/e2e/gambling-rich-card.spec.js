@@ -67,6 +67,14 @@ test.describe('mobile gambling chat flow', () => {
     if (await activeSurface.isVisible()) {
       await expect(card.locator('[data-testid^="blackjack-player-card-"]')).toHaveCount(2);
       await expect(card.locator('[data-testid^="blackjack-dealer-card-"]')).toHaveCount(2);
+      await expect(card.locator('[data-blackjack-card="true"][data-card-kind="face"]')).toHaveCount(3);
+      const cardBack = card.locator('[data-blackjack-card="true"][data-card-kind="back"]');
+      await expect(cardBack).toHaveCount(1);
+      await expect(cardBack).toHaveAttribute('data-blackjack-asset-id', 'ui.blackjack-card-back.figma-v1');
+      const cardBackImage = cardBack.locator('img');
+      await expect(cardBackImage).toHaveAttribute('src', /\/assets\/runtime\/blackjack-card-back\.[a-f0-9]{12}\.png$/);
+      await expect(cardBackImage).toHaveJSProperty('naturalWidth', 46);
+      await expect(card.locator('[data-card-code]').first()).toHaveAttribute('data-card-code', /^(10|[2-9JQKA])[CDHS]$/);
       await expect(page.getByTestId('blackjack-action-hit')).toBeVisible();
       await expect(page.getByTestId('blackjack-action-stand')).toBeVisible();
       await expect(page.getByTestId('blackjack-action-double')).toBeDisabled();
