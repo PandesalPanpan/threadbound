@@ -14,10 +14,15 @@ if (!['threaded', 'local'].includes(authMode)) throw new Error('THREADBOUND_AUTH
 if (authMode === 'local' && process.env.NODE_ENV === 'production') {
   throw new Error('Local auth mode is disabled in production.');
 }
+const legacyGameRoute = process.env.THREADBOUND_LEGACY_GAME?.trim() === '1';
+if (legacyGameRoute && process.env.NODE_ENV === 'production') {
+  throw new Error('The legacy game route is disabled in production.');
+}
 
 export const config = {
   port,
   authMode,
+  legacyGameRoute,
   sessionSecret: required('SESSION_SECRET'),
   databasePath: process.env.THREADBOUND_DB_PATH?.trim() || './data/threadbound.sqlite',
   threaded: authMode === 'threaded' ? {

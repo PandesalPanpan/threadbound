@@ -4,7 +4,7 @@ async function login(page, slot = 'd') {
   await page.goto('/');
   await page.getByTestId(`local-login-${slot}`).click();
   await page.context().request.post('/api/party/leave');
-  await page.goto('/game-react');
+  await page.goto('/game');
 }
 
 async function command(page, value) {

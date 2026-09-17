@@ -194,8 +194,14 @@ export function createApp({ config, threadedGateway, repository, codexRepository
 
   app.get('/health', (_request, response) => response.json({ status: 'ok', service: 'threadbound', auth_mode: config.authMode }));
   app.get('/', (request, response) => response.type('html').send(homePage({ connected: Boolean(request.session.threaded), authMode: config.authMode })));
-  app.get('/game', (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode)) : response.redirect('/'));
-  app.get('/game-react', requireConnection, (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined));
+  const serveReactGame = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
+  const serveLegacyGame = (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode)) : response.redirect('/');
+  app.get('/game', (request, response, next) => {
+    if (!request.session.threaded?.playerId) return response.redirect('/');
+    return config.legacyGameRoute ? serveLegacyGame(request, response) : serveReactGame(request, response, next);
+  });
+  app.get('/game-react', requireConnection, serveReactGame);
+  app.get('/game-legacy', (request, response) => process.env.NODE_ENV === 'production' ? response.status(404).send('Legacy game route is disabled.') : serveLegacyGame(request, response));
   app.get('/codex', (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode)) : response.redirect('/'));
   app.get('/arc-workshop', (request, response) => request.session.threaded && config.authMode === 'local' ? response.type('html').send(arcWorkshopPage(config.authMode)) : response.redirect('/'));
 

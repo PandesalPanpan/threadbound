@@ -123,7 +123,7 @@ export function BattlePrototypeApp() {
     } catch (caught) { setError(caught.message); } finally { setBusy(false); }
   }, [busy, run]);
 
-  const goToStream = () => { window.location.href = '/game-react'; };
+  const goToStream = () => { window.location.href = '/game'; };
   const receipt = lastAction && outcome ? receiptFor({ action: lastAction.action, outcome }) : null;
 
   if (!dashboard) return <main className="battle-loading"><span className="loading-orbit" />Loading the live battle model…</main>;
@@ -131,12 +131,12 @@ export function BattlePrototypeApp() {
   return (
     <div className="battle-app">
       <header className="battle-topbar">
-        <a className="battle-brand" href="/game-react"><span className="brand-mark">✦</span><span>THREADBOUND</span></a>
+        <a className="battle-brand" href="/game"><span className="brand-mark">✦</span><span>THREADBOUND</span></a>
         <div className="battle-topbar__context"><span className="panel-kicker">BATTLE PROTOTYPE</span><span>Existing run state · live adapter</span></div>
-        <nav className="battle-nav" aria-label="Threadbound"><a href="/game-react">Play</a><a href="/codex">Codex</a><a className="is-current" href="/game-react?view=battle" aria-current="page">Battle</a></nav>
+        <nav className="battle-nav" aria-label="Threadbound"><a href="/game">Play</a><a href="/codex">Codex</a><a className="is-current" href="/game?view=battle" aria-current="page">Battle</a></nav>
       </header>
       <main className="battle-layout">
-        <aside className="battle-left"><ChatFeed entries={entries} receipt={receipt} /><div className="battle-left__footer"><span>React + Vite boundary</span><a href="/game">Legacy-compatible shell ↗</a></div></aside>
+        <aside className="battle-left"><ChatFeed entries={entries} receipt={receipt} /><div className="battle-left__footer"><span>React + Vite boundary</span><a href="/game-legacy">Legacy-compatible shell ↗</a></div></aside>
         <section className="battle-main" aria-label="Battle prototype">
           <div className="battle-intro"><div><span className="panel-kicker">FIGMA KEYFRAME FLOW</span><h1>One committed action, one readable moment.</h1><p>The arena animates state already resolved by Threadbound. The browser never decides damage, reward, cooldown, or victory.</p></div><button className="back-button" type="button" onClick={goToStream}>← Adventure Stream</button></div>
           {error ? <div className="battle-error" role="alert" data-testid="battle-error">{error}</div> : null}

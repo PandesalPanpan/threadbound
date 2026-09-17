@@ -6,7 +6,7 @@ test('React battle prototype drives the five backend-backed presentation states'
   await page.goto('/');
   await page.getByTestId('local-login-d').click();
   await page.context().request.post('/api/party/leave');
-  await page.goto('/game-react?view=battle');
+  await page.goto('/game?view=battle');
 
   await expect(page.getByTestId('battle-card')).toHaveAttribute('data-battle-phase', 'preBattle');
   await expect(page.getByTestId('battle-pre-battle')).toContainText('Enter the hollow');

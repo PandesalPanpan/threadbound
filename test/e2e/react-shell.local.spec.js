@@ -5,7 +5,7 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await page.goto('/');
   await page.getByTestId('local-login-d').click();
   await page.context().request.post('/api/party/leave');
-  await page.goto('/game-react');
+  await page.goto('/game');
 
   await expect(page.getByTestId('stream-player-status')).toBeVisible();
   await expect(page.getByTestId('adventure-stream-log')).toBeVisible();

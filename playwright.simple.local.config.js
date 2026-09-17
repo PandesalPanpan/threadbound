@@ -23,6 +23,7 @@ export default defineConfig({
       SESSION_SECRET: 'threadbound-simple-local-e2e-session-secret',
       THREADBOUND_DB_PATH: ':memory:',
       THREADBOUND_AUTH_MODE: 'local',
+      THREADBOUND_LEGACY_GAME: '1',
       THREADED_BASE_URL: '',
       THREADED_CLIENT_ID: '',
       THREADED_REDIRECT_URI: '',
