@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { battleViewModel, phaseFromRun, projectCombatOutcome, resolveVisualAsset, selectSkill } from '../frontend/src/battle/presentation.js';
+
+const run = {
+  id: 'run-1',
+  phase: 'combat',
+  version: 4,
+  encounterIndex: 0,
+  viewer: { playerId: 'player-1', displayName: 'Rune Bard', hp: 18, maxHp: 24, focus: 2, maxFocus: 4, skillCooldowns: {} },
+  participants: [{ playerId: 'player-1', displayName: 'Rune Bard', hp: 18, maxHp: 24, focus: 2, maxFocus: 4 }],
+  enemy: { id: 'rot-toad', name: 'Rot Toad', hp: 10, maxHp: 14, isBoss: false },
+};
+
+test('phase projection follows the authoritative run state', () => {
+  assert.equal(phaseFromRun(null), 'preBattle');
+  assert.equal(phaseFromRun(run), 'live');
+  assert.equal(phaseFromRun({ ...run, phase: 'upgrade' }), 'decision');
+  assert.equal(phaseFromRun({ ...run, phase: 'complete' }), 'result');
+});
+
+test('battle view model keeps arbitrary attacker and target data intact', () => {
+  const assets = [
+    { id: 'character.male-wizard.v1', kind: 'character', src: '/wizard.webp' },
+    { id: 'mob.rot-toad.v1', kind: 'mob', src: '/toad.webp' },
+  ];
+  const model = battleViewModel({ dashboard: { character: { id: 'player-1', displayName: 'Rune Bard' } }, assets, outcome: { state: run } });
+  assert.equal(model.attacker.name, 'Rune Bard');
+  assert.equal(model.target.name, 'Rot Toad');
+  assert.equal(model.target.asset.id, 'mob.rot-toad.v1');
+});
+
+test('combat outcome projection reads damage and critical facts without recalculating them', () => {
+  const projected = projectCombatOutcome({
+    damage: 7,
+    retaliation: 2,
+    critical: true,
+    events: [{ type: 'EnemyDamaged', damage: 7 }, { type: 'CriticalStrikeLanded' }],
+    state: { ...run, enemy: { ...run.enemy, hp: 3 }, participants: [{ ...run.participants[0], hp: 16 }] },
+  }, { action: 'attack', previousRun: run });
+  assert.deepEqual(projected, {
+    action: 'attack',
+    skillId: null,
+    damage: 7,
+    retaliation: 2,
+    critical: true,
+    defeated: false,
+    targetHpBefore: 10,
+    targetHpAfter: 3,
+    actorHpBefore: 18,
+    actorHpAfter: 16,
+    eventTypes: ['EnemyDamaged', 'CriticalStrikeLanded'],
+  });
+});
+
+test('skill selection only exposes a server-provided affordable off-cooldown skill', () => {
+  const skills = [{ id: 'piercing-stitch', kind: 'damage', cost: 2 }, { id: 'slow', kind: 'damage', cost: 3 }];
+  assert.equal(selectSkill(skills, run).id, 'piercing-stitch');
+  assert.equal(selectSkill(skills, { ...run, viewer: { ...run.viewer, focus: 1 } }), null);
+  assert.equal(resolveVisualAsset({ id: 'rot-toad' }, 'mob', [{ id: 'mob.rot-toad.v1', kind: 'mob', src: '/toad.webp' }]).id, 'mob.rot-toad.v1');
+});

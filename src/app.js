@@ -195,6 +195,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.get('/health', (_request, response) => response.json({ status: 'ok', service: 'threadbound', auth_mode: config.authMode }));
   app.get('/', (request, response) => response.type('html').send(homePage({ connected: Boolean(request.session.threaded), authMode: config.authMode })));
   app.get('/game', (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode)) : response.redirect('/'));
+  app.get('/game-react', requireConnection, (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined));
   app.get('/codex', (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode)) : response.redirect('/'));
   app.get('/arc-workshop', (request, response) => request.session.threaded && config.authMode === 'local' ? response.type('html').send(arcWorkshopPage(config.authMode)) : response.redirect('/'));
 
@@ -269,6 +270,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
         dungeonReadiness,
       },
     });
+  });
+
+  app.get('/api/visual-assets', requireConnection, (_request, response) => {
+    response.setHeader('Cache-Control', 'public, max-age=300');
+    return response.json({ version: VISUAL_ASSET_CATALOG_VERSION, assets: VISUAL_ASSETS });
   });
 
   app.get('/api/events', requireConnection, (request, response) => realtimeHub.attach(response, { playerId: request.session.threaded.playerId }));
