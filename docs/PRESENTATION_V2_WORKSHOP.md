@@ -35,3 +35,17 @@ referential, or publication rules.
 The broader Figma battle section is recorded under `42:2`; it remains a later
 vertical slice because the ordered presentation plan completes the Workshop
 surface before revisiting additional gameplay presentation boundaries.
+
+## Desktop workspace
+
+The desktop pass ports the bounded two-column states from Figma nodes `74:102`
+(editor + impact) and `74:180` (draft review + publish). The editor keeps the
+JSON authoring surface at 760px and the impact preview at 580px; review keeps
+the package review at 850px and drafts/publications at 490px. The right review
+rail scrolls independently as authoritative records accumulate.
+
+Review actions are explicit: unsaved validated JSON exposes Save valid draft,
+saved draft records expose Publish revision, and published records expose
+neither mutation. The desktop E2E slice captures both states in
+`ux-review/arc-workshop-v2-editor-desktop.png` and
+`ux-review/arc-workshop-v2-review-desktop.png`.

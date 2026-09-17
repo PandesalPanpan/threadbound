@@ -11,17 +11,24 @@ const saveSlot = document.querySelector('#save-manifest-slot');
 const editorActions = document.querySelector('.workshop-editor-actions');
 const reviewActions = document.querySelector('#review-actions');
 const editorView = document.querySelector('#workshop-editor-view');
+const editorImpactView = document.querySelector('#editor-impact-view');
 const reviewView = document.querySelector('#workshop-review-view');
 const editorPreviewSlot = document.querySelector('#editor-preview-slot');
 const reviewPreviewSlot = document.querySelector('#review-preview-slot');
 const pageEyebrow = document.querySelector('#workshop-page-eyebrow');
 const pageTitle = document.querySelector('#workshop-page-title');
 const pageSubtitle = document.querySelector('#workshop-page-subtitle');
+const recordChip = document.querySelector('#workshop-record-chip');
 const localChip = document.querySelector('#workshop-local-chip');
 const notice = document.querySelector('.workshop-notice');
 const resourceActions = document.querySelector('.workshop-resource-actions');
+const reviewPublishActions = document.querySelector('#review-publish-actions');
+const reviewPublishButton = document.querySelector('#review-publish');
+const backToEditorButton = document.querySelector('#back-to-editor');
 
 let parsedManifest = null;
+let currentRecordId = null;
+let currentRecord = null;
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
@@ -65,6 +72,7 @@ function setView(view) {
   const review = view === 'review';
   shell.dataset.workshopView = view;
   editorView.hidden = review;
+  editorImpactView.hidden = review;
   reviewView.hidden = !review;
   if (review) {
     reviewPreviewSlot.append(previewNode);
@@ -73,13 +81,29 @@ function setView(view) {
     editorPreviewSlot.append(previewNode);
     editorActions.append(saveSlot);
   }
+  updateReviewActions();
 }
 
-function setPageHeader(manifest = null, review = Boolean(manifest)) {
-  pageEyebrow.textContent = review ? 'ARC MANIFEST' : 'WORLD AUTHORING';
+function updateReviewActions() {
+  const hasDraftRecord = Boolean(currentRecordId && currentRecord?.status === 'draft');
+  const hasPersistedRecord = Boolean(currentRecordId);
+  reviewPublishActions.hidden = !hasDraftRecord;
+  saveSlot.hidden = hasPersistedRecord;
+}
+
+function setPageHeader(manifest = null, review = Boolean(manifest), record = currentRecord) {
+  pageEyebrow.textContent = review ? 'DRAFT REVIEW' : 'WORLD AUTHORING';
   pageTitle.textContent = manifest?.arc?.title || 'Arc Workshop';
-  pageSubtitle.textContent = manifest?.arc?.premise || 'Bring a v2 Arc Manifest from any AI, local model, or human-written JSON file.';
-  localChip.textContent = review ? manifestVersionLabel(manifest) : 'LOCAL DEV ONLY';
+  pageSubtitle.textContent = review
+    ? 'Review impact, verify safety, then publish into the local authoritative world.'
+    : 'Bring a v2 Arc Manifest from any AI, local model, or human-written JSON file.';
+  recordChip.hidden = !review;
+  recordChip.textContent = review
+    ? record?.revision ? `${String(record.status || 'draft').toUpperCase()} · REVISION ${record.revision}` : 'VALIDATED · UNSAVED'
+    : '';
+  localChip.textContent = review
+    ? manifestVersionLabel(manifest)
+    : window.matchMedia?.('(min-width: 43rem)').matches ? 'LOCAL DEVELOPMENT' : 'LOCAL DEV ONLY';
   localChip.dataset.variant = review ? 'version' : 'local';
   notice.hidden = review;
   resourceActions.hidden = review;
@@ -155,33 +179,51 @@ function renderVNextPreview(manifest) {
   `;
 }
 
+function statsMarkup(stats, className) {
+  return `<div class="workshop-stat-grid ${className}">${stats.map(([value, label]) => previewStat(value, label)).join('')}</div>`;
+}
+
 function renderPreview(manifest) {
   if (!manifest?.arc) {
+    delete previewNode.dataset.manifestVersion;
     previewNode.innerHTML = '<p class="muted">No manifest loaded.</p>';
     return;
   }
 
   const v2 = manifest.manifestVersion === 2;
-  const stats = v2
-    ? [
-      [manifest.dungeons?.length, 'Dungeons'],
-      [manifest.enemies?.length, 'Enemies'],
-      [manifest.bosses?.length, 'Bosses'],
-      [totalItems(manifest), 'Items'],
-      [manifest.areas?.length, 'Areas'],
-      [manifest.towns?.length, 'Towns'],
-      [manifest.npcs?.length, 'NPCs'],
-      [recipeCount(manifest), 'Recipes'],
-    ]
-    : [
-      [manifest.dungeons?.length, 'Dungeons'],
-      [manifest.enemies?.length, 'Enemies'],
-      [manifest.bosses?.length, 'Bosses'],
-      [totalItems(manifest), 'Items'],
-      [(manifest.storyQuests?.length || 0) + (manifest.quests?.length || 0), 'Quests'],
-      [manifest.lore?.length, 'Lore'],
-      [manifest.achievements?.length, 'Achievements'],
-    ];
+  previewNode.dataset.manifestVersion = v2 ? '2' : '1';
+  const questCount = (manifest.storyQuests?.length || 0) + (manifest.quests?.length || 0);
+  const editorCombatStats = [
+    [manifest.dungeons?.length, 'Dungeons'],
+    [manifest.enemies?.length, 'Enemies'],
+    [manifest.bosses?.length, 'Bosses'],
+    [totalItems(manifest), 'Items'],
+    [questCount, 'Quests'],
+  ];
+  const editorWorldStats = [
+    [manifest.areas?.length, 'Areas'],
+    [manifest.towns?.length, 'Towns'],
+    [manifest.npcs?.length, 'NPCs'],
+    [manifest.shops?.length, 'Shops'],
+    [recipeCount(manifest), 'Recipes'],
+  ];
+  const reviewWorldStats = [
+    [manifest.areas?.length, 'Areas'],
+    [manifest.towns?.length, 'Towns'],
+    [manifest.npcs?.length, 'NPCs'],
+    [questCount, 'Quests'],
+    [manifest.shops?.length, 'Shops'],
+    [recipeCount(manifest), 'Recipes'],
+    [manifest.progressionChallenges?.length, 'Progression'],
+  ];
+  const reviewContentStats = [
+    [manifest.dungeons?.length, 'Dungeons'],
+    [manifest.enemies?.length, 'Enemies'],
+    [manifest.bosses?.length, 'Bosses'],
+    [totalItems(manifest), 'Items'],
+    [manifest.lore?.length, 'Lore'],
+    [manifest.achievements?.length, 'Achievements'],
+  ];
 
   previewNode.innerHTML = `
     <div class="workshop-preview-heading">
@@ -189,8 +231,17 @@ function renderPreview(manifest) {
       <h3>${escapeHtml(manifest.arc.title)}</h3>
       <p>${escapeHtml(manifest.arc.premise)}</p>
     </div>
-    <div class="workshop-stat-grid">
-      ${stats.map(([value, label]) => previewStat(value, label)).join('')}
+    <div class="workshop-preview-groups">
+      <div class="workshop-stat-group workshop-editor-stats">
+        ${statsMarkup(editorCombatStats, 'workshop-editor-combat-stats')}
+        ${v2 ? statsMarkup(editorWorldStats, 'workshop-editor-world-stats') : ''}
+      </div>
+      <div class="workshop-stat-group workshop-review-stats">
+        ${v2 ? '<p class="workshop-stat-group-label">World package</p>' : ''}
+        ${v2 ? statsMarkup(reviewWorldStats, 'workshop-review-world-stats') : ''}
+        ${v2 ? '<p class="workshop-stat-group-label">Combat + content</p>' : ''}
+        ${statsMarkup(reviewContentStats, 'workshop-review-content-stats')}
+      </div>
     </div>
     ${renderVNextPreview(manifest)}
     <details class="workshop-package-details workshop-legacy-details">
@@ -270,6 +321,8 @@ function showReview(manifest, validation) {
 }
 
 function showEditor() {
+  currentRecordId = null;
+  currentRecord = null;
   setPageHeader(null);
   setView('editor');
 }
@@ -334,7 +387,10 @@ saveButton.addEventListener('click', async () => {
     setStatus('Saving draft…');
     const { record } = await request('/api/arc-workshop/manifests', { method: 'POST', body: JSON.stringify({ manifest, source: 'manual-upload' }) });
     saveButton.disabled = true;
-    setPageHeader(record.manifest, true);
+    currentRecordId = record.id;
+    currentRecord = record;
+    setPageHeader(record.manifest, true, record);
+    updateReviewActions();
     await loadManifests();
     setStatus(`Saved ${record.manifest.arc.title} revision ${record.revision} as a draft.`);
   } catch (error) {
@@ -351,6 +407,8 @@ draftsNode.addEventListener('click', async (event) => {
       const { record } = await request(`/api/arc-workshop/manifests/${encodeURIComponent(button.dataset.id)}`);
       editor.value = pretty(record.manifest);
       parsedManifest = record.manifest;
+      currentRecordId = record.id;
+      currentRecord = record;
       showReview(record.manifest, record.validation);
       setStatus(`Loaded ${record.manifest.arc.title} revision ${record.revision}.`);
     }
@@ -358,6 +416,8 @@ draftsNode.addEventListener('click', async (event) => {
       setStatus('Revalidating and publishing…');
       const { record } = await request(`/api/arc-workshop/manifests/${encodeURIComponent(button.dataset.id)}/publish`, { method: 'POST', body: '{}' });
       parsedManifest = record.manifest;
+      currentRecordId = record.id;
+      currentRecord = record;
       showReview(record.manifest, record.validation);
       await loadManifests();
       setStatus(`Published ${record.manifest.arc.title} revision ${record.revision}. Its validated Arc content is now live.`);
@@ -366,6 +426,27 @@ draftsNode.addEventListener('click', async (event) => {
     if (error.body?.validation) showReview(parsedManifest, error.body.validation);
     setStatus(error.message);
   }
+});
+
+reviewPublishButton.addEventListener('click', async () => {
+  if (!currentRecordId) return;
+  try {
+    setStatus('Revalidating and publishing…');
+    const { record } = await request(`/api/arc-workshop/manifests/${encodeURIComponent(currentRecordId)}/publish`, { method: 'POST', body: '{}' });
+    parsedManifest = record.manifest;
+    currentRecord = record;
+    showReview(record.manifest, record.validation);
+    await loadManifests();
+    setStatus(`Published ${record.manifest.arc.title} revision ${record.revision}. Its validated Arc content is now live.`);
+  } catch (error) {
+    if (error.body?.validation) showReview(parsedManifest, error.body.validation);
+    setStatus(error.message);
+  }
+});
+
+backToEditorButton.addEventListener('click', () => {
+  showEditor();
+  setStatus('Back in the editor. Validate again after making changes.');
 });
 
 document.querySelector('#download-context').addEventListener('click', () => window.location.assign('/api/arc-workshop/context?download=1'));

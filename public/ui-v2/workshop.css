@@ -69,6 +69,7 @@ html.threadbound-v2-arc-workshop .workshop-hero p {
   line-height: 1.5;
 }
 
+.workshop-record-chip,
 .workshop-local-chip,
 .workshop-version-chip,
 .workshop-status-chip {
@@ -87,10 +88,27 @@ html.threadbound-v2-arc-workshop .workshop-hero p {
   white-space: nowrap;
 }
 
-.workshop-local-chip {
+.workshop-chip-row {
   position: absolute;
   top: 1.8125rem;
   right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .4rem;
+  max-width: calc(100% - .25rem);
+}
+
+.workshop-record-chip {
+  color: var(--tb-v2-gold);
+}
+
+.workshop-record-chip[hidden] {
+  display: none;
+}
+
+.workshop-local-chip {
+  position: static;
 }
 
 .workshop-local-chip[data-variant='version'] {
@@ -274,7 +292,7 @@ html.threadbound-v2-arc-workshop .workshop-notice {
   margin-top: .95rem;
 }
 
-.workshop-editor-view #workshop-impact-editor-title {
+.workshop-editor-impact-view #workshop-impact-editor-title {
   display: none;
 }
 
@@ -286,7 +304,7 @@ html.threadbound-v2-arc-workshop .workshop-notice {
   min-width: 0;
 }
 
-.workshop-editor-view #manifest-preview {
+.workshop-editor-impact-view #manifest-preview {
   margin-top: .7rem;
   padding: .55rem;
   border: 1px solid var(--tb-v2-border);
@@ -350,9 +368,9 @@ html.threadbound-v2-arc-workshop .workshop-notice {
   display: none;
 }
 
-.workshop-editor-view .workshop-preview-heading,
-.workshop-editor-view .workshop-world-package,
-.workshop-editor-view .workshop-legacy-details {
+.workshop-editor-impact-view .workshop-preview-heading,
+.workshop-editor-impact-view .workshop-world-package,
+.workshop-editor-impact-view .workshop-legacy-details {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -574,6 +592,10 @@ html.threadbound-v2-arc-workshop .workshop-notice {
 }
 
 @media (min-width: 43rem) {
+  html.threadbound-v2-arc-workshop .workshop-view[hidden] {
+    display: none;
+  }
+
   html.threadbound-v2-arc-workshop .workshop-shell {
     padding: 2rem clamp(1.5rem, 3vw, 2.5rem) 5rem;
   }
@@ -593,9 +615,9 @@ html.threadbound-v2-arc-workshop .workshop-notice {
     min-height: 20rem;
   }
 
-  html.threadbound-v2-arc-workshop .workshop-editor-view .workshop-preview-heading,
-  html.threadbound-v2-arc-workshop .workshop-editor-view .workshop-world-package,
-  html.threadbound-v2-arc-workshop .workshop-editor-view .workshop-legacy-details {
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-preview-heading,
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-world-package,
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-legacy-details {
     position: static;
     width: auto;
     height: auto;
@@ -607,15 +629,15 @@ html.threadbound-v2-arc-workshop .workshop-notice {
     border: 0;
   }
 
-  html.threadbound-v2-arc-workshop .workshop-editor-view .workshop-preview-heading {
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-preview-heading {
     margin-bottom: .7rem;
   }
 
-  html.threadbound-v2-arc-workshop .workshop-editor-view .workshop-world-package {
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-world-package {
     margin-top: 1rem;
   }
 
-  html.threadbound-v2-arc-workshop .workshop-editor-view .workshop-stat:nth-child(n + 5) {
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-stat:nth-child(n + 5) {
     display: block;
   }
 }
@@ -624,4 +646,559 @@ html.threadbound-v2-arc-workshop .workshop-notice {
   html.threadbound-v2-arc-workshop * {
     scroll-behavior: auto;
   }
+}
+
+/* PV2-I02: keep the mobile flow compact while giving desktop the two designed columns. */
+.workshop-preview-groups {
+  min-width: 0;
+}
+
+.workshop-stat-group {
+  min-width: 0;
+}
+
+.workshop-editor-stats {
+  display: block;
+}
+
+.workshop-editor-combat-stats,
+.workshop-editor-world-stats,
+.workshop-review-stats {
+  display: grid;
+}
+
+.workshop-editor-world-stats,
+.workshop-review-stats {
+  display: none;
+}
+
+.workshop-editor-impact-view #manifest-preview[data-manifest-version='2'] .workshop-editor-combat-stats {
+  display: none;
+}
+
+.workshop-editor-impact-view #manifest-preview[data-manifest-version='2'] .workshop-editor-world-stats {
+  display: grid;
+}
+
+.workshop-editor-impact-view #manifest-preview[data-manifest-version='2'] .workshop-editor-world-stats .workshop-stat:nth-child(n + 5),
+.workshop-editor-impact-view #manifest-preview[data-manifest-version='1'] .workshop-editor-combat-stats .workshop-stat:nth-child(n + 5) {
+  display: none;
+}
+
+.workshop-review-impact #manifest-preview {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.workshop-review-impact .workshop-review-stats {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.workshop-review-impact .workshop-editor-stats {
+  display: none;
+}
+
+.workshop-review-impact .workshop-review-stats .workshop-stat-group-label {
+  display: none;
+}
+
+.workshop-review-impact .workshop-review-content-stats,
+.workshop-review-impact .workshop-review-world-stats {
+  display: grid;
+}
+
+.workshop-review-impact .workshop-review-content-stats .workshop-stat:nth-child(n + 5),
+.workshop-review-impact .workshop-review-world-stats .workshop-stat:nth-child(n + 5) {
+  display: none;
+}
+
+.workshop-review-package-title,
+.workshop-human-guidance,
+.workshop-drafts-intro,
+.workshop-safety-note,
+.workshop-drafts-status {
+  display: none;
+}
+
+.workshop-review-actions > #review-publish-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.workshop-review-actions > #review-publish-actions[hidden] {
+  display: none;
+}
+
+.workshop-review-actions > #review-publish-actions button {
+  width: 100%;
+}
+
+@media (max-width: 42.999rem) {
+  .workshop-record-chip {
+    display: none;
+  }
+}
+
+@media (min-width: 43rem) {
+  html.threadbound-v2-arc-workshop .workshop-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 760px) minmax(0, 580px);
+    column-gap: 20px;
+    align-items: start;
+    width: min(100%, 1440px);
+    max-width: 90rem;
+    padding: 1.75rem 2.4375rem 4rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-hero {
+    grid-column: 1;
+    grid-row: 1;
+    width: 760px;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-hero h1 {
+    max-width: 20rem;
+    font-size: 2rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-hero p {
+    max-width: 760px;
+    font-size: var(--tb-v2-text-md);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-local-chip {
+    top: auto;
+    left: 17.375rem;
+    right: auto;
+    min-width: 8.25rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-chip-row {
+    top: 1.5rem;
+    left: 17.375rem;
+    right: auto;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-status {
+    position: static;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-notice {
+    grid-column: 2;
+    grid-row: 1;
+    width: 470px;
+    min-height: 76px;
+    margin: .3rem 0 0 110px;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-resource-actions {
+    grid-column: 1;
+    grid-row: 2;
+    width: 402px;
+    margin-top: 1.4rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-status {
+    grid-column: 2;
+    grid-row: 2;
+    width: 470px;
+    height: auto;
+    margin: 1.3rem 0 0 110px;
+    overflow: visible;
+    clip: auto;
+    color: var(--tb-v2-green);
+    font-size: var(--tb-v2-text-xs);
+    font-weight: 600;
+    white-space: normal;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-view {
+    grid-column: 1;
+    grid-row: 3;
+    width: 760px;
+    max-width: none;
+    min-height: 652px;
+    margin-top: 1.25rem;
+    padding: 1.0625rem 1.1875rem 1.5rem;
+    border: 1px solid var(--tb-v2-border);
+    border-radius: var(--tb-v2-radius-xl);
+    background: var(--tb-v2-surface);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-view > h2 {
+    margin: 0 0 .9rem;
+    font-size: 1.125rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-upload {
+    min-height: 3.875rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-view textarea {
+    min-height: 24.25rem;
+    margin-top: .95rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-actions {
+    grid-template-columns: 210px 210px;
+    gap: 14px;
+    margin-top: .9rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-actions button {
+    min-height: 2.75rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view {
+    grid-column: 2;
+    grid-row: 3;
+    width: 580px;
+    max-width: none;
+    min-height: 324px;
+    margin-top: 1.25rem;
+    padding: 1.0625rem 1.1875rem;
+    border: 1px solid var(--tb-v2-border);
+    border-radius: var(--tb-v2-radius-xl);
+    background: var(--tb-v2-surface);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view > h2 {
+    display: block;
+    margin: 0 0 .7rem;
+    font-size: 1.125rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view #manifest-preview {
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-preview-heading {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 0 .75rem;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-preview-heading h3 {
+    margin: .55rem 0 .2rem;
+    font-size: var(--tb-v2-text-lg);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-world-package,
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-legacy-details {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-stats {
+    display: flex;
+    flex-direction: column;
+    gap: .7rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-combat-stats,
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-world-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.2fr);
+    gap: .5rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-combat-stats,
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-world-stats {
+    display: grid;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-combat-stats .workshop-stat,
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-world-stats .workshop-stat {
+    display: block;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-combat-stats .workshop-stat:nth-child(n + 5),
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-editor-world-stats .workshop-stat:nth-child(n + 5) {
+    display: block;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-editor-impact-view .workshop-review-stats {
+    display: none;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-shell[data-workshop-view='review'] {
+    display: block;
+    width: min(100%, 1440px);
+    padding-top: 1.75rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-shell[data-workshop-view='review'] .workshop-hero {
+    width: 850px;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-shell[data-workshop-view='review'] .workshop-local-chip {
+    left: auto;
+    min-width: 9.25rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-shell[data-workshop-view='review'] .workshop-chip-row {
+    left: 22.75rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-shell[data-workshop-view='review'] .workshop-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-view {
+    display: grid;
+    grid-template-columns: minmax(0, 850px) minmax(0, 490px);
+    gap: 20px;
+    width: 1360px;
+    max-width: none;
+    margin-top: 2.125rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-package,
+  html.threadbound-v2-arc-workshop .workshop-drafts-section {
+    min-width: 0;
+    min-height: 700px;
+    padding: 1.0625rem 1.1875rem;
+    border: 1px solid var(--tb-v2-border);
+    border-radius: var(--tb-v2-radius-xl);
+    background: var(--tb-v2-surface);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-package {
+    display: flex;
+    flex-direction: column;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-package-title {
+    display: block;
+    margin: 0 0 .9rem;
+    color: var(--tb-v2-text);
+    font-size: 1.125rem;
+    line-height: var(--tb-v2-leading-tight);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-package .workshop-validation-card {
+    min-height: 5.5rem;
+    padding: .75rem .875rem;
+    border: 0;
+    border-radius: var(--tb-v2-radius-md);
+    background: var(--tb-v2-inset);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-package .workshop-validation-card h2 {
+    font-size: var(--tb-v2-text-lg);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-package .workshop-validation-warning,
+  html.threadbound-v2-arc-workshop .workshop-review-package .workshop-validation-error {
+    margin-top: .45rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact {
+    order: 2;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact > h2 {
+    display: none;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact #manifest-preview {
+    margin-top: 1.05rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-preview-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-stats {
+    display: flex;
+    gap: .7rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-stat-group-label {
+    display: block;
+    margin: 0 0 .7rem;
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-xs);
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-content-stats,
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-world-stats {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: .5rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-world-stats {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(0, 1.2fr);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-content-stats .workshop-stat,
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-world-stats .workshop-stat {
+    display: block;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-content-stats .workshop-stat:nth-child(n + 5),
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-review-world-stats .workshop-stat:nth-child(n + 5) {
+    grid-row: auto;
+    display: block;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-impact .workshop-world-package {
+    display: none;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-human-guidance {
+    display: block;
+    order: 3;
+    margin-top: 1rem;
+    padding: .75rem .875rem;
+    border-radius: var(--tb-v2-radius-md);
+    background: var(--tb-v2-surface-raised);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-human-guidance > p {
+    margin: 0 0 .65rem;
+    color: var(--tb-v2-gold);
+    font-size: var(--tb-v2-text-xs);
+    font-weight: 700;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-human-guidance ul {
+    display: grid;
+    gap: .25rem;
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-xs);
+    line-height: 1.55;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-help {
+    order: 4;
+    margin-top: 1rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-actions {
+    order: 5;
+    width: 100%;
+    margin-top: auto;
+    padding-top: 1rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-actions > #save-manifest-slot,
+  html.threadbound-v2-arc-workshop .workshop-review-actions > #review-publish-actions {
+    width: 250px;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-review-actions > #review-publish-actions {
+    grid-template-columns: 250px 180px;
+    gap: 1rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-drafts-section {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    height: 700px;
+    overflow: auto;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-drafts-section > h2 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-drafts-intro {
+    display: block;
+    margin: .55rem 0 0;
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-xs);
+    line-height: 1.55;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-draft-card {
+    margin-top: .9rem;
+    padding: .7rem .8rem;
+    background: var(--tb-v2-inset);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-draft-card small {
+    margin-top: .45rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-draft-actions {
+    grid-template-columns: 126px 138px;
+    gap: 1rem;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-safety-note {
+    display: block;
+    margin-top: 1.25rem;
+    padding: .75rem .875rem;
+    border-radius: var(--tb-v2-radius-md);
+    background: var(--tb-v2-surface-raised);
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-safety-note p {
+    margin: 0 0 .65rem;
+    color: var(--tb-v2-purple);
+    font-size: var(--tb-v2-text-xs);
+    font-weight: 700;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-safety-note span {
+    display: block;
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-xs);
+    line-height: 1.55;
+  }
+
+  html.threadbound-v2-arc-workshop .workshop-drafts-status {
+    display: block;
+    margin: 1.25rem 0 0;
+    color: var(--tb-v2-green);
+    font-size: var(--tb-v2-text-xs);
+    font-weight: 600;
+  }
+}
+
+html.threadbound-v2-arc-workshop .workshop-view[hidden] {
+  display: none !important;
 }
