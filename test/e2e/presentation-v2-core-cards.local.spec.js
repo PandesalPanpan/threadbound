@@ -38,7 +38,7 @@ test('390px core loop keeps actions, receipts, expanded details, and reusable st
   await command(page, 'inventory');
   const inventory = page.getByTestId('stream-command-card');
   await expect(inventory.getByTestId('inventory-rich-card')).toBeVisible();
-  await expect(inventory.locator('[data-testid^="inventory-rich-upgrade-comparison-"]')).toContainText('After upgrade');
+  await expect(inventory.locator('[data-testid^="inventory-rich-upgrade-comparison-"]').first()).toContainText('After upgrade');
   await expect(inventory.locator('.inventory-rich-list')).toHaveCSS('overflow-y', 'auto');
   expect(await inventory.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBeTruthy();
   mkdirSync(REVIEW_DIR, { recursive: true });
