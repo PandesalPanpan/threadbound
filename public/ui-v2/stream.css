@@ -151,13 +151,39 @@ html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header span 
 html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header strong { color: var(--tb-v2-text); font-size: var(--tb-v2-text-sm); }
 html.threadbound-v2 body.threadbound-player #stream .rich-chat-card-header small { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-xs); }
 
-html.threadbound-v2 body.threadbound-player #stream .rich-card-history-snapshot { grid-template-columns: 2rem minmax(0, 1fr); opacity: 1; }
+html.threadbound-v2 body.threadbound-player #stream .rich-card-history {
+  grid-template-columns: 2rem minmax(0, 1fr);
+  padding-block: .25rem .5rem;
+}
+
+html.threadbound-v2 body.threadbound-player #stream .rich-card-history > .stream-avatar {
+  background: transparent;
+}
+
+.rich-card-history-content { display: grid; min-width: 0; gap: .5rem; }
+.rich-card-history-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; min-width: 0; }
+.rich-card-history-header-copy { display: grid; min-width: 0; gap: .0625rem; }
+.rich-card-history-header-copy strong { color: var(--tb-v2-text); font-size: var(--tb-v2-text-xs); font-weight: 700; }
+.rich-card-history-header-copy small { color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); }
+.rich-card-history-count { flex: 0 0 auto; padding: .1875rem .4375rem; border-radius: var(--tb-v2-radius-pill); background: var(--tb-v2-surface-raised); color: var(--tb-v2-text); font-size: .5rem; font-weight: 700; line-height: 1; }
+.rich-card-history-list { display: grid; gap: .5rem; min-width: 0; padding: .75rem; border: 1px solid var(--tb-v2-border); border-radius: var(--tb-v2-radius-md); background: var(--tb-v2-surface); }
+.rich-card-history-snapshot { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .5rem; min-width: 0; padding: .5rem; border-radius: var(--tb-v2-radius-sm); background: var(--tb-v2-surface-raised); opacity: 1; }
+.rich-card-history-icon { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: .4375rem; background: color-mix(in srgb, var(--tb-v2-purple) 14%, var(--tb-v2-inset)); }
+.rich-card-history-icon::after { content: ''; width: .625rem; height: .625rem; border-radius: .125rem; background: var(--tb-v2-purple); }
+.rich-card-history-icon[data-history-tone='shop'] { background: color-mix(in srgb, var(--tb-v2-gold) 13%, var(--tb-v2-inset)); }
+.rich-card-history-icon[data-history-tone='shop']::after { background: var(--tb-v2-gold); }
+.rich-card-history-icon[data-history-tone='area'], .rich-card-history-icon[data-history-tone='leaderboard'] { background: color-mix(in srgb, var(--tb-v2-blue) 13%, var(--tb-v2-inset)); }
+.rich-card-history-icon[data-history-tone='area']::after, .rich-card-history-icon[data-history-tone='leaderboard']::after { background: var(--tb-v2-blue); }
+.rich-card-history-icon[data-history-tone='quest'], .rich-card-history-icon[data-history-tone='bank'] { background: color-mix(in srgb, var(--tb-v2-red) 13%, var(--tb-v2-inset)); }
+.rich-card-history-icon[data-history-tone='quest']::after, .rich-card-history-icon[data-history-tone='bank']::after { background: var(--tb-v2-red); }
+.rich-card-history-icon[data-history-tone='blackjack'] { background: color-mix(in srgb, var(--tb-v2-green) 13%, var(--tb-v2-inset)); }
+.rich-card-history-icon[data-history-tone='blackjack']::after { background: var(--tb-v2-green); }
 
 .rich-card-history-disclosure {
   min-width: 0;
-  border: 1px solid var(--tb-v2-border);
-  border-radius: .4375rem;
-  background: var(--tb-v2-surface-raised);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .rich-card-history-disclosure > summary {
@@ -165,8 +191,8 @@ html.threadbound-v2 body.threadbound-player #stream .rich-card-history-snapshot 
   grid-template-columns: minmax(0, 1fr) max-content;
   gap: .5rem;
   align-items: center;
-  min-height: 3rem;
-  padding: .5rem;
+  min-height: 2rem;
+  padding: 0;
   cursor: pointer;
   list-style: none;
 }
@@ -177,6 +203,7 @@ html.threadbound-v2 body.threadbound-player #stream .rich-card-history-snapshot 
 .rich-card-history-details { overflow: hidden; color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); text-overflow: ellipsis; white-space: nowrap; }
 .rich-card-history-label { padding: .1875rem .4375rem; border-radius: var(--tb-v2-radius-pill); background: var(--tb-v2-surface); color: var(--tb-v2-muted); font-size: .5rem; font-weight: 700; }
 .rich-card-history-note { margin: 0; padding: 0 .5rem .5rem; color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); }
+.rich-card-history-footer { margin: 0; color: var(--tb-v2-muted); font-size: var(--tb-v2-text-2xs); }
 
 html.threadbound-v2 body.threadbound-player #stream .stream-suggestions {
   position: relative;

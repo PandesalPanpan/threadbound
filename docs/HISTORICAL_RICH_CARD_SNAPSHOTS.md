@@ -2,7 +2,7 @@
 
 ## Purpose
 
-M2-06 keeps the Adventure Stream readable while preserving command-card history. The newest rich command card remains the only interactive card. When a different rich card supersedes it, the previous card becomes a compact immutable snapshot inside the stream instead of remaining as another large interactive panel.
+M2-06 keeps the Adventure Stream readable while preserving command-card history. The newest rich command card remains the only interactive card. When a different rich card supersedes it, the previous card becomes a compact immutable snapshot inside one `COLLAPSED HISTORY` group instead of remaining as another large interactive panel.
 
 ## Presentation contract
 
@@ -10,11 +10,12 @@ M2-06 keeps the Adventure Stream readable while preserving command-card history.
 
 - The current `[data-testid="stream-command-card"]` remains the single interactive command-card host.
 - The primitive remembers a compact presentation snapshot of the current rich card after decoration.
-- When the card identity changes (`kind + title`), the previous presentation snapshot is appended to the Adventure Stream log.
+- When the card identity changes (`kind + title`), the previous presentation snapshot is appended to the Adventure Stream log's `COLLAPSED HISTORY` group, which reports its count and keeps the newest 12 rows.
 - Historical snapshots contain no buttons, inputs, selects, textareas, or other command controls.
-- Dismissing the current card does not create a historical snapshot by itself.
+- Dismissing the current card clears the remembered snapshot and does not create or later resurrect a historical snapshot.
 - Re-rendering the same card identity updates the remembered projection instead of creating duplicate history entries.
 - Snapshot content is derived only from already-rendered authoritative projections. It is not a gameplay source of truth and cannot mutate server state.
+- The Blackjack projection uses a semantic `Blackjack` title and compact result/bankroll details when it supersedes the active surface.
 
 Representative compact summaries include Inventory item/stat context and Bank/Profile balances when those values are already present in the rendered card. Other card families fall back to the card title/subtitle rather than duplicating their full UI.
 
@@ -31,8 +32,9 @@ This remains a presentation concern. Domain rules, Gold/Honey ownership, persist
 - historical snapshots contain no interactive controls;
 - the newest Inventory card remains the active rich card;
 - dismissing the active card does not create another snapshot;
+- a mixed history remains in one bounded 12-snapshot group and does not resurrect a dismissed card;
 - the page remains within the mobile viewport width;
-- the representative mobile screenshot is still captured at `ux-review/rich-chat-card-mobile.png`.
+- representative mobile screenshots are captured at `ux-review/rich-chat-card-mobile.png` and `ux-review/rich-chat-card-history-mobile.png`.
 
 The first browser gate exposed an initialization bug where the compatibility adapter captured the Adventure Stream log before it had been rendered. The repair resolves the log lazily during card reconciliation, and the complete browser suite passed afterward.
 
