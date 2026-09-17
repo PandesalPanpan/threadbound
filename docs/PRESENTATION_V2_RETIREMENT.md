@@ -67,30 +67,29 @@ The following graph is reachable from the `/game` HTML entrypoints:
 - `visual-asset-catalog.js` is shared by `sprite-catalog.js` and the server-side
   visual asset catalog contract; it is not an orphan asset file.
 
-### Production-orphan presentation candidates
+### Production-orphan presentation modules removed in J02
 
 These files have no path from any current HTML entrypoint or live public-module
 import. Their literal import edges form one disconnected legacy branch:
 
 | File | Evidence | Current classification |
 | --- | --- | --- |
-| `public/combat-skills.js` | No `src/app.js` script tag and no public-module import. Its `combat-skill-panel` is absent by design in the current simple-loop regression (`test/e2e/mobile-chat-first-regression.spec.js`). | Production-orphan candidate; historical skills suite still exists. |
-| `public/gameplay-feel.js` | No current page or public-module import; it is the root of the disconnected branch below. | Production-orphan candidate; historical gameplay-feel suite/docs still exist. |
-| `public/semantic-combat-colors.js` | Imported only by `gameplay-feel.js`. | Disconnected child candidate. |
-| `public/combat-transition-presentation.js` | Imported only by `semantic-combat-colors.js`. | Disconnected child candidate. |
-| `public/ux-coherence-bootstrap.js` | Imported only by `semantic-combat-colors.js`. | Disconnected child candidate. |
-| `public/ux-coherence.js` | Literal dynamic import only from `ux-coherence-bootstrap.js`. | Disconnected child candidate. |
-| `public/buildcraft-presentation.js` | Literal dynamic import only from `ux-coherence-bootstrap.js`. | Disconnected child candidate. |
+| `public/combat-skills.js` | No `src/app.js` script tag and no public-module import. Its `combat-skill-panel` is absent by design in the current simple-loop regression (`test/e2e/mobile-chat-first-regression.spec.js`). | Removed in J02; historical skills suite remains archived. |
+| `public/gameplay-feel.js` | No current page or public-module import; it was the root of the disconnected branch below. | Removed in J02; historical gameplay-feel suite/docs remain archived. |
+| `public/semantic-combat-colors.js` | Imported only by `gameplay-feel.js`. | Removed in J02. |
+| `public/combat-transition-presentation.js` | Imported only by `semantic-combat-colors.js`. | Removed in J02. |
+| `public/ux-coherence-bootstrap.js` | Imported only by `semantic-combat-colors.js`. | Removed in J02. |
+| `public/ux-coherence.js` | Literal dynamic import only from `ux-coherence-bootstrap.js`. | Removed in J02. |
+| `public/buildcraft-presentation.js` | Literal dynamic import only from `ux-coherence-bootstrap.js`. | Removed in J02. |
 
-The candidate set is safe from a *current runtime* dependency perspective, but
-it is not yet a deletion list. The historical projects
+The removed set was safe from a *current runtime* dependency perspective. The
+historical projects
 `playwright.skills.local.config.js` and the old
 `combat-skills.spec.js`, `gameplay-feel.spec.js`, `ux-coherence.spec.js`, and
 `buildcraft-depth.spec.js` still describe the retired tactical presentation.
 Those projects are excluded from the canonical `test:e2e` graph, and the
 skills project currently fails at its first missing `combat-skill-panel`, but
-their disposition must be explicit before J02 removes the corresponding
-production files.
+they remain archived migration references rather than runtime dependencies.
 
 ## Stylesheet inventory
 
@@ -131,10 +130,10 @@ The inventory was checked against:
 - `npm run test:e2e:legacy-skills`, which currently fails at the expected stale
   `combat-skill-panel` assertion rather than proving a current runtime load.
 
-### J02 handoff
+### J03 handoff
 
-Before removing the seven production-orphan candidates, decide whether the
-historical tactical Playwright projects and their documentation are to be
-retired with them or retained as archived migration references. Then remove
-only the agreed files, update stale references, and run the full canonical
-unit/E2E gates plus any retained migration suites.
+J02 removed only the seven disconnected browser modules. No stylesheet was
+removed, and the backend/domain skill, preview, and run-build support remains
+intact. J03 should run the full canonical unit/E2E gates, decide whether the
+historical tactical Playwright projects are retained or formally retired, and
+prepare the merge/main-CI handoff.
