@@ -170,9 +170,9 @@ Check an item only after implementation, tests, documentation, merge, and green 
 
 ### Phase J — legacy presentation retirement
 
-- [ ] **PV2-J01** Inventory obsolete presentation modules/styles and prove no live dependency.
-- [ ] **PV2-J02** Remove only verified-obsolete files.
-- [ ] **PV2-J03** Run full gates, merge, verify green `main`, document next increment.
+- [x] **PV2-J01** Inventory obsolete presentation modules/styles and prove no live dependency.
+- [x] **PV2-J02** Remove only verified-obsolete files.
+- [x] **PV2-J03** Run full gates, merge, verify green `main`, document next increment.
 
 ### Phase K — HUMAN experience gates
 
