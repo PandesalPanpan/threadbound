@@ -9,7 +9,7 @@ export function ContextRail({ dashboard, connected }) {
       <div className="context-divider" />
       <span className="panel-kicker">RUN MIRROR</span>
       {run ? <div className="context-run"><strong>{run.enemy?.name || 'Run in progress'}</strong><span>{run.phase} · version {run.version}</span><span>{run.participants?.length || 1} Weaver{run.participants?.length === 1 ? '' : 's'}</span></div> : <p className="context-empty">No active run. Start a battle when the thread is ready.</p>}
-      <a className="context-link" href="/game">View full Adventure Stream <span>↗</span></a>
+      <a className="context-link" href="/game-react">View full Adventure Stream <span>↗</span></a>
     </aside>
   );
 }

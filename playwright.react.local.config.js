@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testMatch: ['**/react-battle.local.spec.js'],
+  testMatch: ['**/react-*.local.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

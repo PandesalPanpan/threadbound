@@ -44,7 +44,7 @@ for this slice; it is not possible to cite missing node IDs or export those
 missing artworks. The prototype uses the verified v2 palette and the committed
 semantic runtime asset catalog until those Figma nodes are supplied.
 
-## First slice
+## First slice and chat-shell increment
 
 - `frontend/` contains the Vite/React source and plain CSS token layer.
 - Express serves the built app at authenticated `/game-react`.
@@ -56,12 +56,26 @@ semantic runtime asset catalog until those Figma nodes are supplied.
   HTTP remains authoritative.
 - `public/react-battle/` is a deterministic production build output served by
   the existing Express static middleware.
+- `/game-react` now defaults to the React Adventure Stream shell. The tactical
+  arena remains available at `/game-react?view=battle` while route parity is
+  verified.
+- `GameShellApp` loads the authoritative dashboard, semantic asset catalog,
+  stream, Area, Quest, and Shop projections. `AdventureStream`, `CommandComposer`,
+  the desktop quick rail, and the read-only Live Context rail all share one
+  command dispatcher.
+- Inventory, Shop/Bank, Party, Hunt, Dungeon, Quest, Area/Town, Profile, Help,
+  and Codex cards are embedded in the stream. Mutations first record the typed
+  command and then call the existing server route; the follow-up receipt comes
+  from the activity stream projection.
+- The shell uses stable semantic `visualAssetId` values at the presentation
+  boundary and does not introduce browser-side combat, reward, readiness, or
+  economy rules.
 
 ## Verification and next increment
 
 The focused Playwright suite (`npm run test:e2e:react-local`, isolated by
-`playwright.react.local.config.js`) captures all five states at 390×844 and
-verifies the same flow at 1440×960. The next increment is to compare those screenshots
-against supplied battle nodes, add real exported Figma artwork when available,
-and then migrate the Adventure Stream shell behind a feature flag only after
-equivalent chat, inventory, shop, dungeon, and realtime coverage is green.
+`playwright.react.local.config.js`) captures all five battle states plus the
+chat-shell command-card journey at 390×844 and verifies the shell at 1440×960.
+The next increment is to compare the shell and battle screenshots against
+supplied Figma nodes, add real exported Figma artwork when available, and
+continue parity coverage before switching the canonical `/game` route.

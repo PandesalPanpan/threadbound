@@ -33,8 +33,26 @@ export function getVisualAssets() {
   return api('/api/visual-assets');
 }
 
-export function getStream() {
-  return api('/api/stream?limit=8');
+export function getStream({ limit = 30, before = null } = {}) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (before) query.set('before', before);
+  return api(`/api/stream?${query.toString()}`);
+}
+
+export function postStreamMessage(body) {
+  return api('/api/stream/messages', { method: 'POST', body: JSON.stringify({ body }) });
+}
+
+export function getAreas() {
+  return api('/api/areas');
+}
+
+export function getQuests() {
+  return api('/api/quests');
+}
+
+export function getShop() {
+  return api('/api/shop');
 }
 
 export async function connectRealtime(onMessage) {
