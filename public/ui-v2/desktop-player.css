@@ -1,0 +1,440 @@
+/* Desktop player shell derived from Figma node 68:2. The mobile stream remains
+   the source of truth; these rails are a responsive presentation layer around it. */
+.desktop-player-shell,
+.desktop-player-center {
+  display: contents;
+}
+
+.desktop-command-rail,
+.desktop-live-context,
+.desktop-header-context {
+  display: none;
+}
+
+@media (min-width: 45.0625rem) {
+  html.threadbound-v2 body.threadbound-player .threadbound-topnav {
+    position: relative;
+    height: 4rem;
+    min-height: 4rem;
+    padding-inline: 1.5rem;
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-header-context {
+    position: absolute;
+    left: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 0;
+    transform: translateX(-50%);
+  }
+
+  .desktop-header-context-copy {
+    overflow: hidden;
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-sm);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-header-live {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 1.5rem;
+    padding: .2rem .5rem;
+    border-radius: var(--tb-v2-radius-pill);
+    background: var(--tb-v2-green-inset);
+    color: var(--tb-v2-green);
+    font-size: var(--tb-v2-text-2xs);
+    font-weight: 800;
+    letter-spacing: .08em;
+  }
+
+  .desktop-header-live-dot {
+    width: .35rem;
+    height: .35rem;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 .4rem currentColor;
+  }
+
+  .desktop-header-player {
+    max-width: 12rem;
+    overflow: hidden;
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-xs);
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > .page-hero,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #status,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #identity,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #character,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #party,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #dungeon,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #inventory,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #achievements,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #world,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > #honey,
+  html.threadbound-v2 body.threadbound-player .threadbound-game-page > .signout {
+    display: none !important;
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-player-shell {
+    display: grid;
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 48.75rem) minmax(18rem, 26.25rem);
+    width: 100%;
+    min-height: calc(100dvh - 4rem);
+    margin: 0 auto;
+    background: var(--tb-v2-canvas);
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-player-center {
+    display: block;
+    min-width: 0;
+    min-height: calc(100dvh - 4rem);
+    border-right: 1px solid var(--tb-v2-border);
+    border-left: 1px solid var(--tb-v2-border);
+    background: var(--tb-v2-canvas);
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-command-rail,
+  html.threadbound-v2 body.threadbound-player .desktop-live-context {
+    display: block;
+    min-width: 0;
+    min-height: calc(100dvh - 4rem);
+    background: var(--tb-v2-inset);
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-command-rail {
+    border-right: 1px solid var(--tb-v2-border);
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-live-context {
+    border-left: 1px solid var(--tb-v2-border);
+  }
+
+  .desktop-rail-inner,
+  .desktop-context-inner {
+    width: 100%;
+    min-width: 0;
+    padding: 1.25rem 1rem;
+  }
+
+  .desktop-context-inner {
+    padding-inline: 1.5rem;
+  }
+
+  .desktop-rail-kicker,
+  .desktop-rail-section-label {
+    color: var(--tb-v2-muted);
+    font-size: .5625rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    line-height: 1.2;
+  }
+
+  .desktop-rail-commands {
+    display: grid;
+    gap: .375rem;
+    margin-top: .75rem;
+  }
+
+  .desktop-rail-command {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: .625rem;
+    align-items: center;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: .5rem .625rem;
+    border: 1px solid transparent;
+    border-radius: var(--tb-v2-radius-sm);
+    background: transparent;
+    color: var(--tb-v2-muted);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .desktop-rail-command:hover {
+    border-color: var(--tb-v2-border);
+    background: var(--tb-v2-surface);
+    color: var(--tb-v2-text);
+  }
+
+  .desktop-rail-command:active {
+    background: var(--tb-v2-surface-raised);
+  }
+
+  .desktop-rail-command-icon {
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    border-radius: .375rem;
+    background: var(--tb-v2-surface);
+    color: var(--tb-v2-purple);
+    font-size: .8rem;
+    font-weight: 800;
+  }
+
+  .desktop-rail-command-label {
+    overflow: hidden;
+    font-size: var(--tb-v2-text-sm);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-rail-divider {
+    height: 1px;
+    margin: 1rem 0 .75rem;
+    background: var(--tb-v2-border);
+  }
+
+  .desktop-party-card {
+    display: grid;
+    gap: .625rem;
+    min-height: 5.625rem;
+    margin-top: .625rem;
+    padding: .75rem;
+    border: 1px solid var(--tb-v2-border);
+    border-radius: var(--tb-v2-radius-md);
+    background: var(--tb-v2-surface);
+  }
+
+  .desktop-party-header,
+  .desktop-party-member {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+    min-width: 0;
+  }
+
+  .desktop-party-title,
+  .desktop-party-member span {
+    overflow: hidden;
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-sm);
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-party-online,
+  .desktop-party-member small {
+    flex: 0 0 auto;
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-2xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-party-roster {
+    display: grid;
+    gap: .3rem;
+  }
+
+  .desktop-party-member {
+    min-height: 1.25rem;
+  }
+
+  .desktop-rail-note {
+    margin: 1rem 0 0;
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-2xs);
+    line-height: 1.45;
+  }
+
+  .desktop-context-cards {
+    display: grid;
+    gap: 1rem;
+    margin-top: .75rem;
+  }
+
+  .desktop-context-card {
+    display: grid;
+    gap: .75rem;
+    min-width: 0;
+    padding: .875rem;
+    border: 1px solid var(--tb-v2-border);
+    border-radius: var(--tb-v2-radius-md);
+    background: var(--tb-v2-surface);
+  }
+
+  .desktop-context-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .625rem;
+    min-width: 0;
+  }
+
+  .desktop-context-card-copy {
+    display: grid;
+    gap: .15rem;
+    min-width: 0;
+  }
+
+  .desktop-context-kicker {
+    color: var(--tb-v2-muted);
+    font-size: .5rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+  }
+
+  .desktop-context-title {
+    overflow: hidden;
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-md);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-context-subtitle {
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-xs);
+  }
+
+  .desktop-context-card-icon {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 2rem;
+    place-items: center;
+    border-radius: .5rem;
+    background: var(--tb-v2-blue-inset);
+    color: var(--tb-v2-blue);
+    font-size: .95rem;
+    font-weight: 800;
+  }
+
+  .desktop-context-card-quest .desktop-context-card-icon {
+    background: var(--tb-v2-red-inset);
+    color: var(--tb-v2-red);
+  }
+
+  .desktop-context-card-guild .desktop-context-card-icon {
+    background: var(--tb-v2-purple-inset);
+    color: var(--tb-v2-purple);
+  }
+
+  .desktop-context-fact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: .75rem;
+    align-items: baseline;
+    padding-top: .5rem;
+    border-top: 1px solid color-mix(in srgb, var(--tb-v2-border) 72%, transparent);
+  }
+
+  .desktop-context-fact span {
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-xs);
+  }
+
+  .desktop-context-fact strong {
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-xs);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .desktop-context-note,
+  .desktop-context-error,
+  .desktop-context-empty {
+    margin: 0;
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-xs);
+    line-height: 1.45;
+  }
+
+  .desktop-guild-roster {
+    display: grid;
+    gap: .375rem;
+  }
+
+  .desktop-guild-row {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) max-content;
+    gap: .5rem;
+    align-items: baseline;
+    min-width: 0;
+  }
+
+  .desktop-guild-rank,
+  .desktop-guild-row small {
+    color: var(--tb-v2-muted);
+    font-size: var(--tb-v2-text-2xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-guild-row strong {
+    overflow: hidden;
+    color: var(--tb-v2-text);
+    font-size: var(--tb-v2-text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-context-action {
+    width: 100%;
+    min-height: var(--tb-v2-control-min);
+    padding: .5rem .75rem;
+    border: 1px solid var(--tb-v2-border);
+    border-radius: var(--tb-v2-radius-sm);
+    background: var(--tb-v2-surface-raised);
+    color: var(--tb-v2-text);
+    cursor: pointer;
+    font-size: var(--tb-v2-text-xs);
+    font-weight: 700;
+  }
+
+  .desktop-context-action:hover {
+    border-color: var(--tb-v2-purple);
+    color: var(--tb-v2-purple);
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-player-center #stream {
+    width: 100% !important;
+    max-width: none !important;
+    height: calc(100dvh - 4rem);
+    min-height: calc(100dvh - 4rem);
+    margin: 0 !important;
+    overflow: hidden;
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-player-center #stream .adventure-stream-log {
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  html.threadbound-v2 body.threadbound-player .desktop-player-center #stream .stream-command-card {
+    max-height: min(44dvh, 30rem);
+  }
+}
+
+@media (max-width: 45rem) {
+  .desktop-player-shell {
+    display: contents;
+  }
+
+  .desktop-player-center {
+    display: contents;
+  }
+}

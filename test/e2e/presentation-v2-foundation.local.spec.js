@@ -33,7 +33,7 @@ async function expectFoundation(page, viewportName) {
     navHeight: document.querySelector('.threadbound-topnav')?.getBoundingClientRect().height || 0,
   }));
   expect(layout.scrollWidth, `${viewportName} has horizontal overflow`).toBeLessThanOrEqual(layout.viewport);
-  expect(layout.navHeight).toBeGreaterThanOrEqual(viewportName === 'mobile' ? 62 : 66);
+  expect(layout.navHeight).toBeGreaterThanOrEqual(viewportName === 'mobile' ? 62 : 64);
 
   const navTargets = await page.locator('.threadbound-topnav a:visible').evaluateAll((elements) =>
     elements.map((element) => ({

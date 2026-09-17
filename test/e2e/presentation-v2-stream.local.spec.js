@@ -100,7 +100,7 @@ test.describe('presentation v2 Adventure Stream', () => {
     });
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.viewport);
     expect(metrics.streamWidth).toBeGreaterThan(600);
-    expect(metrics.streamWidth).toBeLessThanOrEqual(760);
+    expect(metrics.streamWidth).toBeLessThanOrEqual(780);
     expect(metrics.composerWidth).toBeLessThanOrEqual(metrics.streamWidth);
 
     await mkdir('test-results/presentation-v2', { recursive: true });

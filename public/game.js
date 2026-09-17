@@ -1,9 +1,10 @@
 import { enemySprite, weaverSprite } from './sprite-catalog.js';
 import './relic-progression.js';
+import { installDesktopPlayerShell, updateDesktopPlayerShell } from './ui-v2/desktop-player.js';
 
 document.documentElement.classList.add('threadbound-player-root');
 document.body.classList.add('threadbound-player');
-for (const href of ['/game.css', '/game-feel.css', '/ui-v2/stream.css', '/ui-v2/core-cards.css', '/ui-v2/world-social.css', '/ui-v2/dungeon.css', '/ui-v2/gambling.css']) {
+for (const href of ['/game.css', '/game-feel.css', '/ui-v2/stream.css', '/ui-v2/core-cards.css', '/ui-v2/world-social.css', '/ui-v2/dungeon.css', '/ui-v2/gambling.css', '/ui-v2/desktop-player.css']) {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = href;
@@ -37,6 +38,7 @@ mobileNav.innerHTML = `
   <a href="/codex"><strong>⌘</strong><span>Codex</span></a>
 `;
 document.body.append(mobileNav);
+installDesktopPlayerShell();
 
 let lastDashboard = null;
 let recentReward = null;
@@ -361,6 +363,7 @@ async function doRefresh({ quiet = false } = {}) {
   renderParty(data);
   renderGear(data);
   renderMetaSections(data);
+  await updateDesktopPlayerShell(data);
   applyView(activeView);
   return data;
 }
