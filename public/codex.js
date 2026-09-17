@@ -12,6 +12,7 @@ const statusEl = document.querySelector('#codex-status');
 const searchEl = document.querySelector('#codex-search');
 const tabsEl = document.querySelector('#codex-tabs');
 const countsEl = document.querySelector('#codex-counts');
+const railItemsEl = document.querySelector('#codex-rail-items');
 const listEl = document.querySelector('#codex-list');
 const detailEl = document.querySelector('#codex-detail');
 
@@ -228,6 +229,26 @@ function renderTabs() {
     }
     tabsEl.append(button);
   }
+  renderCategoryRail(lastResult?.counts || {});
+}
+
+function renderCategoryRail(counts = {}) {
+  if (!railItemsEl) return;
+  railItemsEl.innerHTML = '';
+  for (const [key, label] of CATEGORIES) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'codex-rail-item';
+    button.dataset.testid = `codex-rail-${key}`;
+    button.setAttribute('aria-pressed', String(activeCategory === key));
+    const name = document.createElement('span');
+    name.textContent = label;
+    const count = document.createElement('span');
+    count.textContent = key === 'all' ? Object.values(counts).reduce((total, value) => total + Number(value || 0), 0) : counts[key] ?? 0;
+    button.append(name, count);
+    button.addEventListener('click', () => openCategory(key));
+    railItemsEl.append(button);
+  }
 }
 
 function renderCounts(counts) {
@@ -239,6 +260,7 @@ function renderCounts(counts) {
     chip.textContent = `${label} ${counts[key] ?? 0}`;
     countsEl.append(chip);
   }
+  renderCategoryRail(counts);
 }
 
 function metadataRows(entry) {
@@ -314,13 +336,14 @@ function renderContents(sections) {
   return contents;
 }
 
-function renderDetail(entry) {
+function renderDetail(entry, { updateHash = true } = {}) {
   if (!entry) {
+    history.replaceState(null, '', location.pathname);
     detailEl.innerHTML = '<div class="empty">Choose an entry to open its full record.</div>';
     return;
   }
   activeId = entry.id;
-  setHash(entry.category, entry.id);
+  if (updateHash) setHash(entry.category, entry.id);
   detailEl.dataset.category = entry.category;
   detailEl.dataset.entryId = entry.id;
   detailEl.innerHTML = '';
@@ -352,12 +375,16 @@ function renderDetail(entry) {
   summary.className = 'wiki-lead';
   summary.dataset.testid = 'codex-detail-summary';
   appendLinkedText(summary, entry.summary, entry);
-  detailEl.append(summary, renderInfobox(entry));
+  detailEl.append(summary);
+  const articleBody = document.createElement('div');
+  articleBody.className = 'wiki-article-body';
+  articleBody.append(renderInfobox(entry));
+  detailEl.append(articleBody);
 
   const sections = [['codex-overview', 'Overview']];
   if (entry.mechanics && Object.keys(entry.mechanics).length) sections.push(['codex-mechanics-section', 'Mechanics']);
   sections.push(['codex-related', 'Related pages'], ['codex-history', 'History']);
-  detailEl.append(renderContents(sections));
+  articleBody.append(renderContents(sections));
 
   const overview = document.createElement('section');
   overview.className = 'wiki-section';
@@ -368,7 +395,7 @@ function renderDetail(entry) {
   body.dataset.testid = 'codex-detail-body';
   appendLinkedText(body, entry.body || entry.summary, entry);
   overview.append(overviewTitle, body);
-  detailEl.append(overview);
+  articleBody.append(overview);
 
   if (entry.mechanics && Object.keys(entry.mechanics).length) {
     const mechanicsSection = document.createElement('section');
@@ -389,7 +416,7 @@ function renderDetail(entry) {
       mechanics.append(row);
     }
     mechanicsSection.append(mechanicsTitle, mechanics);
-    detailEl.append(mechanicsSection);
+    articleBody.append(mechanicsSection);
   }
 
   const relatedSection = document.createElement('section');
@@ -406,7 +433,7 @@ function renderDetail(entry) {
     related.append(wikiLink(`Browse ${categoryLabel(entry.category)}`, () => openCategory(entry.category)));
   }
   relatedSection.append(relatedTitle, related);
-  detailEl.append(relatedSection);
+  articleBody.append(relatedSection);
 
   const historySection = document.createElement('section');
   historySection.className = 'wiki-section';
@@ -454,7 +481,7 @@ function renderDetail(entry) {
     }, { testId: 'codex-related-item' });
     historySection.append(relatedItem);
   }
-  detailEl.append(historySection);
+  articleBody.append(historySection);
 }
 
 function renderList(entries) {
@@ -502,8 +529,13 @@ function renderList(entries) {
     listEl.append(button);
   }
 
+  const listNote = document.createElement('span');
+  listNote.className = 'codex-list-note';
+  listNote.textContent = `${lastResult?.counts?.history ?? 0} history records · retry-safe world projection`;
+  listEl.append(listNote);
+
   const selected = entries.find((entry) => entry.id === activeId) || entries[0];
-  renderDetail(selected);
+  renderDetail(selected, { updateHash: Boolean(activeId) });
 }
 
 async function load() {

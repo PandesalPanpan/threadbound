@@ -31,8 +31,6 @@ test('mobile Codex directory and article preserve authoritative records in the F
   }
   await expect(page.getByTestId('codex-count-items')).toContainText('Items');
   await expect(page.getByTestId('codex-count-history')).toContainText('History');
-  await page.getByTestId('codex-tab-more').click();
-  await expect(page.locator('#codex-tabs')).toHaveClass(/more-open/);
 
   const entries = page.getByTestId('codex-entry');
   await expect(entries.first()).toBeVisible();
@@ -40,6 +38,9 @@ test('mobile Codex directory and article preserve authoritative records in the F
   await expect(entries.first().locator('.entry-meta')).toBeVisible();
   await expect(entries.first().locator('.entry-chevron')).toHaveText('›');
   await screenshot(page, 'codex-directory-390x844');
+
+  await page.getByTestId('codex-tab-more').click();
+  await expect(page.locator('#codex-tabs')).toHaveClass(/more-open/);
 
   await page.getByTestId('codex-entry').first().click();
   await expect(page.locator('.wiki-breadcrumbs')).toBeVisible();
