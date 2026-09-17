@@ -196,13 +196,20 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.get('/', (request, response) => response.type('html').send(homePage({ connected: Boolean(request.session.threaded), authMode: config.authMode })));
   const serveReactGame = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
   const serveLegacyGame = (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode)) : response.redirect('/');
+  const serveReactCodex = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
+  const serveLegacyCodex = (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode)) : response.redirect('/');
   app.get('/game', (request, response, next) => {
     if (!request.session.threaded?.playerId) return response.redirect('/');
     return config.legacyGameRoute ? serveLegacyGame(request, response) : serveReactGame(request, response, next);
   });
   app.get('/game-react', requireConnection, serveReactGame);
   app.get('/game-legacy', (request, response) => process.env.NODE_ENV === 'production' ? response.status(404).send('Legacy game route is disabled.') : serveLegacyGame(request, response));
-  app.get('/codex', (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode)) : response.redirect('/'));
+  app.get('/codex', (request, response, next) => {
+    if (!request.session.threaded?.playerId) return response.redirect('/');
+    return config.legacyCodexRoute ? serveLegacyCodex(request, response) : serveReactCodex(request, response, next);
+  });
+  app.get('/codex-react', requireConnection, serveReactCodex);
+  app.get('/codex-legacy', (request, response) => process.env.NODE_ENV === 'production' ? response.status(404).send('Legacy Codex route is disabled.') : serveLegacyCodex(request, response));
   app.get('/arc-workshop', (request, response) => request.session.threaded && config.authMode === 'local' ? response.type('html').send(arcWorkshopPage(config.authMode)) : response.redirect('/'));
 
   app.post('/auth/local', (request, response) => {

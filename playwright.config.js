@@ -33,6 +33,7 @@ export default defineConfig({
         THREADBOUND_DB_PATH: ':memory:',
         THREADBOUND_AUTH_MODE: 'threaded',
         THREADBOUND_LEGACY_GAME: '1',
+        THREADBOUND_LEGACY_CODEX: '1',
         // Rich-card fixtures intentionally grind setup Gold; the dedicated local
         // cooldown Playwright test runs against the real canonical duration.
         THREADBOUND_HUNT_COOLDOWN_SECONDS: '0',

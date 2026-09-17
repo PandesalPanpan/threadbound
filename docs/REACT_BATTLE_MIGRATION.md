@@ -1,10 +1,10 @@
 # React battle prototype migration map
 
 Status: React shell and secondary-surface increment on the dedicated
-`react-battle-prototype` branch. The canonical `/game` route now serves the
-authenticated React/Vite shell; the old Express page is retained only behind
-the development/test-only `/game-legacy` route and the
-`THREADBOUND_LEGACY_GAME=1` compatibility flag.
+`react-battle-prototype` branch. The canonical `/game` and `/codex` routes now
+serve authenticated React/Vite surfaces; the old Express pages are retained
+only behind the development/test-only `/game-legacy` and `/codex-legacy`
+routes, plus their explicit compatibility flags.
 
 ## Why this boundary exists
 
@@ -20,9 +20,9 @@ the player presentation boundary while the old page remains available for
 focused compatibility coverage during the strangler migration.
 
 That is the documented limitation required before introducing a framework under
-the presentation plan. React is served at the canonical `/game` route (and the
-`/game-react` compatibility alias), without moving business rules into the
-browser or changing the server/domain contracts.
+the presentation plan. React is served at the canonical `/game` and `/codex`
+routes (with `/game-react` and `/codex-react` compatibility aliases), without
+moving business rules into the browser or changing the server/domain contracts.
 
 ## Responsibility map
 
@@ -55,6 +55,10 @@ semantic runtime asset catalog until those Figma nodes are supplied.
 - `frontend/` contains the Vite/React source and plain CSS token layer.
 - Express serves the built app at authenticated `/game`; `/game-react` remains
   an authenticated compatibility alias for bookmarks and transition coverage.
+- Express serves the same built app at authenticated `/codex`; `/codex-react`
+  remains an authenticated compatibility alias, while `/codex-legacy` and
+  `THREADBOUND_LEGACY_CODEX=1` preserve focused old-DOM coverage outside
+  production.
 - The arena starts the existing tactical `Frayed Hollow` route so the skill
   state is exercised behind `/game?view=battle` without making the default
   Adventure Stream a turn-by-turn simulation.
@@ -70,6 +74,10 @@ semantic runtime asset catalog until those Figma nodes are supplied.
 - `/game-legacy` is available only outside production. Test configurations that
   still exercise the old DOM explicitly set `THREADBOUND_LEGACY_GAME=1`; the
   production/default route is never silently downgraded.
+- `CodexApp` reads the existing `/api/codex` projection, uses server-owned
+  category/search filtering, and keeps the selected record in the URL while
+  presenting a responsive browse/list/detail surface. It does not duplicate
+  codex or progression rules in the browser.
 - `GameShellApp` loads the authoritative dashboard, semantic asset catalog,
   stream, Area, Quest, Shop, and Gambling projections. `AdventureStream`, `CommandComposer`,
   the desktop quick rail, and the read-only Live Context rail all share one
@@ -91,6 +99,8 @@ The focused Playwright suite (`npm run test:e2e:react-local`, isolated by
 chat-shell command-card journey, two-browser party state propagation, Guild
 Hall profile/Duel, and Gold games at 390×844, then verifies the shell at
 1440×960 on the canonical `/game` route.
+The same suite covers the canonical `/codex` route at both viewports, including
+category search and detail selection.
 The retained legacy suites run only with the explicit compatibility flag.
 `npm run check`, the 379-test unit suite, and the full E2E matrix are green for
 this increment. The next increment is to compare the shell and battle

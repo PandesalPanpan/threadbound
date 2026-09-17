@@ -24,6 +24,7 @@ export default defineConfig({
       THREADBOUND_DB_PATH: ':memory:',
       THREADBOUND_AUTH_MODE: 'local',
       THREADBOUND_LEGACY_GAME: '1',
+      THREADBOUND_LEGACY_CODEX: '1',
       THREADED_BASE_URL: '',
       THREADED_CLIENT_ID: '',
       THREADED_REDIRECT_URI: '',

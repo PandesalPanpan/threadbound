@@ -59,6 +59,12 @@ export function getGambling() {
   return api('/api/gambling');
 }
 
+export function getCodex({ category = 'all', query = '' } = {}) {
+  const params = new URLSearchParams({ category });
+  if (query.trim()) params.set('q', query.trim());
+  return api(`/api/codex?${params.toString()}`);
+}
+
 export async function connectRealtime(onMessage) {
   if (!('WebSocket' in globalThis)) return () => {};
   try {
