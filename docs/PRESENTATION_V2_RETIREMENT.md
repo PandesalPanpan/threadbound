@@ -1,6 +1,6 @@
 # Presentation v2 retirement inventory
 
-This document is the branch-local evidence for PV2-J01 in
+This document is the merged-main evidence for PV2-J01 in
 `docs/THREADBOUND_MASTER_PLAN.md`. It inventories the browser presentation graph
 after PV2-I03. It does not remove files and does not authorize checking the
 master-plan item until the work is merged and `main` is green.

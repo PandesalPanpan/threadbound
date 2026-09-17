@@ -1,6 +1,6 @@
 # Presentation v2 Adventure Stream
 
-Status: **Phase B branch-local implementation; checklist remains unchecked until merge and green `main` CI.**
+Status: **Phase B merged into local `main`; canonical checklist item PV2-B01–B04 is complete.**
 
 ## Figma references
 

@@ -97,10 +97,10 @@ existing rich-card contract and command history behavior.
 Passing checks:
 
 - `npx playwright test test/e2e/presentation-v2-dungeon.local.spec.js --config=playwright.simple.local.config.js` — 4 passed.
-- `npm run test:e2e:simple-local` — 14 passed, including stream, Battle Details,
+- `npm run test:e2e:simple-local` — 21 passed, including stream, Battle Details,
   rich-card compatibility, foundation, simple-loop, and Phase E dungeon tests.
 - `npm run check` — passed.
-- `npm test` — 372 passed.
+- `npm test` — 375 passed.
 
 The new focused spec covers mobile entry, active rooms, authoritative enemy
 and player HP, HP persistence across room transitions, reload, the distinct

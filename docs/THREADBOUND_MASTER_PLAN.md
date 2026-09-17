@@ -109,64 +109,64 @@ Check an item only after implementation, tests, documentation, merge, and green 
 
 ### Phase A — tokens and shared foundation
 
-- [ ] **PV2-A01** Isolated Figma-derived tokens and 42dot Sans typography/fallbacks under `public/ui-v2/`.
-- [ ] **PV2-A02** Shared responsive top navigation and mobile/desktop shell primitives.
-- [ ] **PV2-A03** Reusable buttons, chips, cards, stat rows, sprite frames, and empty/loading/error states with accessible focus/disabled semantics.
-- [ ] **PV2-A04** Load foundations through explicit v2 page classes while preserving legacy behavior.
-- [ ] **PV2-A05** Automated 390×844 and 1440×960 foundation checks plus inspected screenshots.
+- [x] **PV2-A01** Isolated Figma-derived tokens and 42dot Sans typography/fallbacks under `public/ui-v2/`.
+- [x] **PV2-A02** Shared responsive top navigation and mobile/desktop shell primitives.
+- [x] **PV2-A03** Reusable buttons, chips, cards, stat rows, sprite frames, and empty/loading/error states with accessible focus/disabled semantics.
+- [x] **PV2-A04** Load foundations through explicit v2 page classes while preserving legacy behavior.
+- [x] **PV2-A05** Automated 390×844 and 1440×960 foundation checks plus inspected screenshots.
 
 ### Phase B — Adventure Stream foundation
 
-- [ ] **PV2-B01** Player, partner, NPC, and Threadbound/system message primitives.
-- [ ] **PV2-B02** Responsive Adventure Stream and composer/action dock.
-- [ ] **PV2-B03** Interactive rich-card and historical collapsed-card primitives.
-- [ ] **PV2-B04** Newest-card interactivity, bounded history, accessible disclosure, reload continuity, and realtime insertion.
+- [x] **PV2-B01** Player, partner, NPC, and Threadbound/system message primitives.
+- [x] **PV2-B02** Responsive Adventure Stream and composer/action dock.
+- [x] **PV2-B03** Interactive rich-card and historical collapsed-card primitives.
+- [x] **PV2-B04** Newest-card interactivity, bounded history, accessible disclosure, reload continuity, and realtime insertion.
 
 ### Phase C — core loop cards
 
-- [ ] **PV2-C01** Hunt action and result-first automatic-battle receipt with Battle Details.
-- [ ] **PV2-C02** Inventory overview/equipment/bounded list/expanded item (`62:8`).
-- [ ] **PV2-C03** Shop overview and expanded offer (`62:68`).
-- [ ] **PV2-C04** Equipment actions plus Bank, Heal, and Upgrade using existing APIs.
-- [ ] **PV2-C05** Empty/loading/error states including `62:119`.
+- [x] **PV2-C01** Hunt action and result-first automatic-battle receipt with Battle Details.
+- [x] **PV2-C02** Inventory overview/equipment/bounded list/expanded item (`62:8`).
+- [x] **PV2-C03** Shop overview and expanded offer (`62:68`).
+- [x] **PV2-C04** Equipment actions plus Bank, Heal, and Upgrade using existing APIs.
+- [x] **PV2-C05** Empty/loading/error states including `62:119`.
 
 ### Phase D — world and social cards
 
-- [ ] **PV2-D01** Town, NPC, and Guild Hall.
-- [ ] **PV2-D02** Profile, Leaderboard, and Duel.
-- [ ] **PV2-D03** Quest and Area.
-- [ ] **PV2-D04** Every interaction remains a visible action plus coherent receipt.
+- [x] **PV2-D01** Town, NPC, and Guild Hall.
+- [x] **PV2-D02** Profile, Leaderboard, and Duel.
+- [x] **PV2-D03** Quest and Area.
+- [x] **PV2-D04** Every interaction remains a visible action plus coherent receipt.
 
 ### Phase E — dungeon endurance
 
-- [ ] **PV2-E01** Entry, readiness, and party state.
-- [ ] **PV2-E02** Room combat and persistent inter-room HP.
-- [ ] **PV2-E03** Boss state and sparse decisions.
-- [ ] **PV2-E04** Success/failure and explicit healing.
-- [ ] **PV2-E05** Realtime two-player reload/reconnect coverage.
+- [x] **PV2-E01** Entry, readiness, and party state.
+- [x] **PV2-E02** Room combat and persistent inter-room HP.
+- [x] **PV2-E03** Boss state and sparse decisions.
+- [x] **PV2-E04** Success/failure and explicit healing.
+- [x] **PV2-E05** Realtime two-player reload/reconnect coverage.
 
 ### Phase F — secondary systems and mixed-stream polish
 
-- [ ] **PV2-F01** Blackjack and remaining secondary systems via message-first flow.
-- [ ] **PV2-F02** Long mixed history, disclosure, and receipt-density polish.
+- [x] **PV2-F01** Blackjack and remaining secondary systems via message-first flow.
+- [x] **PV2-F02** Long mixed history, disclosure, and receipt-density polish.
 
 ### Phase G — desktop player counterpart
 
-- [ ] **PV2-G01** 1440×960 command rail, dominant stream, and read-only Live Context from `68:2`.
-- [ ] **PV2-G02** Prove rails are not private gameplay interfaces.
-- [ ] **PV2-G03** Complete mobile/desktop parity review for player flows.
+- [x] **PV2-G01** 1440×960 command rail, dominant stream, and read-only Live Context from `68:2`.
+- [x] **PV2-G02** Prove rails are not private gameplay interfaces.
+- [x] **PV2-G03** Complete mobile/desktop parity review for player flows.
 
 ### Phase H — Codex v2
 
-- [ ] **PV2-H01** Mobile directory `73:5` and article `73:66`.
-- [ ] **PV2-H02** Desktop library + article `73:108`.
-- [ ] **PV2-H03** Preserve data/search/navigation and state coverage.
+- [x] **PV2-H01** Mobile directory `73:5` and article `73:66`.
+- [x] **PV2-H02** Desktop library + article `73:108`.
+- [x] **PV2-H03** Preserve data/search/navigation and state coverage.
 
 ### Phase I — Arc Workshop v2
 
-- [ ] **PV2-I01** Mobile editor `74:2` and validation/publish `74:46`.
-- [ ] **PV2-I02** Desktop editor/impact `74:102` and draft review/publish `74:180`.
-- [ ] **PV2-I03** Verify errors, valid draft, explicit publish/revalidation, compatibility, preview breadth, and DRAFT/PUBLISHED distinction.
+- [x] **PV2-I01** Mobile editor `74:2` and validation/publish `74:46`.
+- [x] **PV2-I02** Desktop editor/impact `74:102` and draft review/publish `74:180`.
+- [x] **PV2-I03** Verify errors, valid draft, explicit publish/revalidation, compatibility, preview breadth, and DRAFT/PUBLISHED distinction.
 
 ### Phase J — legacy presentation retirement
 
