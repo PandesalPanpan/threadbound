@@ -125,8 +125,12 @@ function names(entries, field = 'name') {
   return (entries || []).map((entry) => entry?.[field]).filter(Boolean).join(' · ');
 }
 
+function itemTemplates(manifest) {
+  return (manifest?.itemPools || []).flatMap((pool) => pool?.items || []);
+}
+
 function totalItems(manifest) {
-  return manifest.itemPools?.reduce((total, pool) => total + (pool.items?.length || 0), 0) || 0;
+  return itemTemplates(manifest).length;
 }
 
 function recipeCount(manifest) {
@@ -140,6 +144,12 @@ function previewStat(value, label) {
 function previewNames(label, entries, field = 'name') {
   const value = names(entries, field);
   return value ? `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>` : '';
+}
+
+function previewFamily(label, entries, field = 'name') {
+  const list = entries || [];
+  const value = names(list, field);
+  return `<p><strong>${escapeHtml(label)} (${list.length}):</strong>${value ? ` ${escapeHtml(value)}` : ' — none'}</p>`;
 }
 
 function renderVNextPreview(manifest) {
@@ -164,14 +174,23 @@ function renderVNextPreview(manifest) {
       <details class="workshop-package-details">
         <summary>View all v2 content</summary>
         <div class="workshop-package-copy">
-          ${previewNames('Areas', manifest.areas)}
-          ${previewNames('Towns', manifest.towns)}
-          ${previewNames('NPCs', manifest.npcs)}
-          ${previewNames('Quests', manifest.quests, 'title')}
-          ${previewNames('Shops', manifest.shops)}
-          ${previewNames('Crafting', manifest.craftingRecipes)}
-          ${previewNames('Cooking', manifest.cookingRecipes)}
-          ${previewNames('Progression', manifest.progressionChallenges, 'id')}
+          ${previewFamily('Areas', manifest.areas)}
+          ${previewFamily('Towns', manifest.towns)}
+          ${previewFamily('NPCs', manifest.npcs)}
+          ${previewFamily('Quests', manifest.quests, 'title')}
+          ${previewFamily('Shops', manifest.shops)}
+          ${previewFamily('Shop stocks', manifest.shopStocks, 'id')}
+          ${previewFamily('Crafting recipes', manifest.craftingRecipes)}
+          ${previewFamily('Cooking recipes', manifest.cookingRecipes)}
+          ${previewFamily('Progression challenges', manifest.progressionChallenges, 'id')}
+          ${previewFamily('Dungeons', manifest.dungeons)}
+          ${previewFamily('Enemies', manifest.enemies)}
+          ${previewFamily('Bosses', manifest.bosses)}
+          ${previewFamily('Item pools', manifest.itemPools, 'id')}
+          ${previewFamily('Equipment templates', itemTemplates(manifest), 'namePattern')}
+          ${previewFamily('Lore', manifest.lore, 'title')}
+          ${previewFamily('Achievements', manifest.achievements, 'title')}
+          ${previewFamily('Historical consequences', manifest.historicalConsequences, 'title')}
           <p class="muted">v2 world references, recipes, progression challenges, and combat resistances are revalidated server-side before a draft can be saved or published.</p>
         </div>
       </details>
@@ -247,13 +266,16 @@ function renderPreview(manifest) {
     <details class="workshop-package-details workshop-legacy-details">
       <summary>View manifest content</summary>
       <div class="workshop-package-copy">
-        ${previewNames('Dungeons', manifest.dungeons)}
-        ${previewNames('Enemies', manifest.enemies)}
-        ${previewNames('Bosses', manifest.bosses)}
-        ${previewNames('Story Quests', manifest.storyQuests, 'title')}
-        ${previewNames('Quests', manifest.quests, 'title')}
-        ${previewNames('Achievements', manifest.achievements, 'title')}
-        ${previewNames('Lore', manifest.lore, 'title')}
+        ${previewFamily('Dungeons', manifest.dungeons)}
+        ${previewFamily('Enemies', manifest.enemies)}
+        ${previewFamily('Bosses', manifest.bosses)}
+        ${previewFamily('Story Quests', manifest.storyQuests, 'title')}
+        ${previewFamily('Quests', manifest.quests, 'title')}
+        ${previewFamily('Item pools', manifest.itemPools, 'id')}
+        ${previewFamily('Equipment templates', itemTemplates(manifest), 'namePattern')}
+        ${previewFamily('Achievements', manifest.achievements, 'title')}
+        ${previewFamily('Lore', manifest.lore, 'title')}
+        ${previewFamily('Historical consequences', manifest.historicalConsequences, 'title')}
       </div>
     </details>
   `;

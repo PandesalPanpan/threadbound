@@ -49,3 +49,17 @@ saved draft records expose Publish revision, and published records expose
 neither mutation. The desktop E2E slice captures both states in
 `ux-review/arc-workshop-v2-editor-desktop.png` and
 `ux-review/arc-workshop-v2-review-desktop.png`.
+
+## PV2-I03 verification
+
+- Malformed JSON and authoritative v2 validation failures remain in the review
+  state with an explicit error summary and a disabled draft action.
+- Saving remains draft-only; publish calls the existing server publish route,
+  which revalidates the persisted manifest before promotion.
+- v1 compatibility, v2 world-package content, full Brightbell breadth, and the
+  unmistakable DRAFT/PUBLISHED list states are covered by the Workshop E2E
+  suite. The expandable v2 preview enumerates areas, towns, NPCs, quests,
+  shops/stocks, recipes, progression, dungeons, enemies, bosses, item pools,
+  equipment templates, lore, achievements, and historical consequences.
+  The expanded mobile review state is captured in
+  `ux-review/arc-workshop-vnext-expanded-mobile.png`.

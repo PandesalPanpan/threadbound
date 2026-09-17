@@ -137,6 +137,24 @@ test('valid manifests save as draft, publish explicitly, and supersede old revis
   gameRepository.close();
 });
 
+test('publishing revalidates the persisted draft and leaves invalid content unpublished', () => {
+  const { gameRepository, manifestRepository, service } = setup();
+  const draft = service.saveDraft(validManifest(), { source: 'revalidation-test' });
+  const invalid = structuredClone(draft.manifest);
+  invalid.dungeons[0].bossId = 'missing-boss';
+  manifestRepository.db.prepare('UPDATE arc_manifests SET manifest_json = ? WHERE id = ?').run(JSON.stringify(invalid), draft.id);
+
+  assert.throws(() => service.publish(draft.id), (error) => {
+    assert.equal(error.code, 'arc_manifest_invalid');
+    assert.equal(error.validation.valid, false);
+    assert.ok(error.validation.errors.some((entry) => entry.code === 'unknown_boss_reference'));
+    return true;
+  });
+  assert.equal(manifestRepository.get(draft.id).status, 'draft');
+  assert.equal(manifestRepository.listPublished().length, 0);
+  gameRepository.close();
+});
+
 test('validator accepts optional typed visual assets and rejects unknown or cross-kind references', () => {
   const validator = new ArcManifestValidator();
   assert.equal(validator.validate(validManifest()).valid, true);

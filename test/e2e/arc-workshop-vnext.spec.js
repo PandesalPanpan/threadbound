@@ -47,6 +47,20 @@ test('Arc Workshop previews and validates a vNext world package clearly', async 
   await mkdir('ux-review', { recursive: true });
   await page.screenshot({ path: 'ux-review/arc-workshop-vnext-mobile.png', fullPage: true });
 
+  await world.locator('details').locator('summary').click();
+  await expect(world).toContainText('Shop stocks (1)');
+  await expect(world).toContainText('Crafting recipes (1)');
+  await expect(world).toContainText('Cooking recipes (1)');
+  await expect(world).toContainText('Dungeons (1)');
+  await expect(world).toContainText('Enemies (1)');
+  await expect(world).toContainText('Bosses (1)');
+  await expect(world).toContainText('Item pools (1)');
+  await expect(world).toContainText('Equipment templates (2)');
+  await expect(world).toContainText('Lore (0)');
+  await expect(world).toContainText('Achievements (0)');
+  await expect(world).toContainText('Historical consequences (0)');
+  await page.screenshot({ path: 'ux-review/arc-workshop-vnext-expanded-mobile.png', fullPage: true });
+
   await page.getByTestId('save-manifest').click();
   await expect(page.getByTestId('workshop-status')).toContainText(/Saved Sunpetal Crossing revision \d+ as a draft/);
   const list = page.getByTestId('manifest-list');
@@ -91,6 +105,19 @@ test('Brightbell Bloom full Arc stays readable and saves only as a validated dra
   expect(bodyWidth).toBeLessThanOrEqual(390);
   await mkdir('ux-review', { recursive: true });
   await page.screenshot({ path: 'ux-review/brightbell-bloom-workshop-mobile.png', fullPage: true });
+
+  await world.locator('details').locator('summary').click();
+  await expect(world).toContainText('Shop stocks (2)');
+  await expect(world).toContainText('Crafting recipes (3)');
+  await expect(world).toContainText('Cooking recipes (3)');
+  await expect(world).toContainText('Dungeons (3)');
+  await expect(world).toContainText('Enemies (12)');
+  await expect(world).toContainText('Bosses (3)');
+  await expect(world).toContainText('Item pools (3)');
+  await expect(world).toContainText('Equipment templates (21)');
+  await expect(world).toContainText('Lore (5)');
+  await expect(world).toContainText('Achievements (6)');
+  await expect(world).toContainText('Historical consequences (2)');
 
   await page.getByTestId('save-manifest').click();
   await expect(page.getByTestId('workshop-status')).toContainText(/Saved The Brightbell Bloom revision \d+ as a draft/);
