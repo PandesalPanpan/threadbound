@@ -1,3 +1,5 @@
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
+
 function openInventoryFromShop() {
   const card = document.querySelector('[data-testid="stream-command-card"]');
   if (card) {
@@ -71,7 +73,7 @@ function enhanceShopCard(card, { documentRef = document } = {}) {
   }
   if (!isShopCard(card)) return;
 
-  delete card.dataset.inventoryRichCard;
+  resetRichCardMetadata(card);
   card.dataset.shopRichCard = 'true';
   card.dataset.richCardKind = 'shop';
   card.setAttribute('aria-label', 'Shop panel');

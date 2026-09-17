@@ -1,3 +1,5 @@
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
+
 const stream = document.querySelector('#stream');
 
 if (stream) {
@@ -84,6 +86,7 @@ if (stream) {
   async function renderBank() {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
+    resetRichCardMetadata(card);
     showError('');
     const shop = await api('/api/shop');
     const balance = shop.bank || { carriedGold: shop.currency?.balance || 0, bankedGold: 0 };

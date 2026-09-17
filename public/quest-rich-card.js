@@ -1,3 +1,5 @@
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
+
 const stream = document.querySelector('#stream');
 
 if (stream) {
@@ -97,6 +99,7 @@ if (stream) {
   function renderQuests(model) {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
+    resetRichCardMetadata(card);
     card.hidden = false;
     card.innerHTML = '';
     card.dataset.richCardKind = 'quest';

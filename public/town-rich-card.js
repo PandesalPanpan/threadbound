@@ -1,4 +1,5 @@
 import { createSpriteElement, weaverSpriteFrame } from './sprite-catalog.js';
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
 
 const stream = document.querySelector('#stream');
 
@@ -149,6 +150,7 @@ if (stream) {
   function renderTown(area) {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
+    resetRichCardMetadata(card);
     card.hidden = false;
     card.innerHTML = '';
     card.dataset.richCardKind = 'town';

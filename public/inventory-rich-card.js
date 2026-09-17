@@ -1,4 +1,5 @@
 import { createSpriteElement, itemSpriteFrame } from './sprite-catalog.js';
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
 
 const SLOT_ORDER = Object.freeze(['weapon', 'helmet', 'armor', 'boots', 'accessory']);
 const SLOT_LABELS = Object.freeze({
@@ -284,6 +285,7 @@ function statePanel(documentRef, state, title, detail, testId) {
 async function renderInventoryCard(card, { documentRef = document } = {}) {
   if (!card || card.hidden || !inventoryCommand(card)) return;
   if (card.dataset.inventoryRichRendering === 'true') return;
+  resetRichCardMetadata(card);
   card.dataset.inventoryRichCard = 'true';
   card.dataset.richCardKind = 'inventory';
   card.dataset.inventoryRichRendering = 'true';

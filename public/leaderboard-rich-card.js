@@ -1,6 +1,7 @@
 import { attachBattleDetails } from './battle-details.js';
 import { renderSimulatedAdventurerProfile } from './simulated-profile-rich-card.js';
 import { createSpriteElement, weaverSpriteFrame } from './sprite-catalog.js';
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
 
 const stream = document.querySelector('#stream');
 
@@ -139,6 +140,7 @@ if (stream) {
   function renderLeaderboard(guildHall, latestDuel = null) {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
+    resetRichCardMetadata(card);
     const entries = Array.isArray(guildHall.leaderboard) ? guildHall.leaderboard : [];
     card.hidden = false;
     card.innerHTML = '';

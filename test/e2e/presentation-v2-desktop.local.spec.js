@@ -84,4 +84,33 @@ test.describe('presentation v2 desktop player shell', () => {
     await expect(page.getByTestId('stream-system-entry').filter({ hasText: /Victory|Defeat|fell to/i }).last()).toBeVisible();
     expect(apiMutations).toEqual(['/api/hunt']);
   });
+
+  test('keeps common player flows semantically identical across mobile typing and desktop rails', async ({ page }) => {
+    const flows = [
+      { id: 'town', command: 'town', kind: 'town' },
+      { id: 'inventory', command: 'inventory', kind: 'inventory' },
+      { id: 'quest', command: 'quest', kind: 'quest' },
+      { id: 'bank', command: 'bank', kind: 'bank' },
+      { id: 'guild-hall', command: 'leaderboard', kind: 'leaderboard' },
+    ];
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await login(page, 'b');
+    await expect(page.getByTestId('desktop-command-rail')).toBeHidden();
+    for (const flow of flows) {
+      await page.getByTestId('stream-message').fill(flow.command);
+      await page.getByTestId('stream-send').click();
+      await expect(page.getByTestId('stream-command-card')).toHaveAttribute('data-rich-card-kind', flow.kind);
+    }
+
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await page.reload();
+    await expect(page.getByTestId('app-status')).toHaveText('Ready');
+    await expect(page.getByTestId('desktop-command-rail')).toBeVisible();
+    await expect(page.getByTestId('mobile-game-nav')).toBeHidden();
+    for (const flow of flows) {
+      await page.getByTestId(`desktop-command-${flow.id}`).click();
+      await expect(page.getByTestId('stream-command-card')).toHaveAttribute('data-rich-card-kind', flow.kind);
+    }
+  });
 });

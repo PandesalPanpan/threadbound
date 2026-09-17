@@ -1,4 +1,5 @@
 import { createSpriteElement, itemSpriteFrame, weaverSpriteFrame } from './sprite-catalog.js';
+import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
 
 const stream = document.querySelector('#stream');
 
@@ -104,6 +105,7 @@ if (stream) {
   function renderProfile(data) {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
+    resetRichCardMetadata(card);
     const character = data.character;
     const levelProgression = character.levelProgression || {};
     card.hidden = false;
