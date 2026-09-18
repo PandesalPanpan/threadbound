@@ -1,4 +1,6 @@
 import { Character } from '../domain/Character.js';
+import { projectAutomaticBattleResult } from './AutomaticBattleReadModel.js';
+import { BATTLE_FIGMA_VISUAL_ASSET_IDS } from '../content/VisualAssetCatalog.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
 import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
 import { applyFightBuffs } from '../domain/FightBuffPolicy.js';
@@ -14,6 +16,37 @@ import { SQLiteHuntCooldownRepository } from '../infrastructure/SQLiteHuntCooldo
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
 const RARITY_TIERS = Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 });
+const HUNT_WEAVER_VISUALS = Object.freeze([
+  BATTLE_FIGMA_VISUAL_ASSET_IDS['bramble-druid'],
+  BATTLE_FIGMA_VISUAL_ASSET_IDS['rune-bard'],
+  BATTLE_FIGMA_VISUAL_ASSET_IDS['iron-vanguard'],
+]);
+
+function stableVisualIndex(value, length) {
+  if (!length) return 0;
+  let hash = 2166136261;
+  for (const character of String(value || 'threadbound')) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % length;
+}
+
+function playerBattleVisualAssetId(playerId) {
+  return HUNT_WEAVER_VISUALS[stableVisualIndex(playerId, HUNT_WEAVER_VISUALS.length)] || null;
+}
+
+function battleLoadoutSnapshot(equipment = {}) {
+  return Object.fromEntries(Object.entries(equipment).map(([slot, item]) => [slot, item ? {
+    id: item.id,
+    name: item.name,
+    slot: item.slot || slot,
+    rarity: item.rarity || null,
+    attackBonus: Number(item.attackBonus || 0),
+    effectCode: item.effectCode || null,
+    visualAssetId: item.visualAssetId || null,
+  } : null]));
+}
 
 function configuredHuntCooldownSeconds() {
   const raw = process.env.THREADBOUND_HUNT_COOLDOWN_SECONDS;
@@ -120,6 +153,7 @@ export class HuntService {
         maxHp: stats.maxHp,
         speed: stats.speed,
         critChance: stats.critChance,
+        visualAssetId: playerBattleVisualAssetId(player.id),
         equipment,
         equippedItem: equipped,
       },
@@ -127,6 +161,8 @@ export class HuntService {
       enemyRoll: this.rng(),
       random: this.rng,
     });
+    const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
+    const battleLoadout = battleLoadoutSnapshot(equipment);
     const progressionBefore = progressionForExperience(this.progressionRepository.get(playerId).experience);
 
     let item = null;
@@ -188,6 +224,11 @@ export class HuntService {
       experienceToNextLevel: progression.experienceToNextLevel,
       battleOutcome: result.battle.outcome,
       battleTurnCount: result.battle.turns.length,
+      battle: result.battle,
+      battleReplay,
+      battleLoadout,
+      playerVisualAssetId: playerBattleVisualAssetId(player.id),
+      enemyVisualAssetId: result.enemy.visualAssetId || null,
       huntCooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
       huntBaseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
       huntCooldownReductionPercent: cooldownPolicy.appliedReductionPercent,
@@ -211,6 +252,8 @@ export class HuntService {
     return {
       ...result,
       progression,
+      battleReplay,
+      battleLoadout,
       levelsGained,
       leveledUp: levelsGained > 0,
       deathPenalty,
