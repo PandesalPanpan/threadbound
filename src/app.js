@@ -324,6 +324,13 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       throw error;
     }
   });
+  app.post('/api/stream/inventory-view', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const dashboard = gameService.dashboard(playerId);
+    const entry = activityStream.recordInventoryView({ playerId, dashboard });
+    realtimeHub.broadcast({ type: 'stream_entry', entry });
+    return response.status(201).json({ entry, dashboard });
+  });
 
   app.get('/api/codex', requireConnection, (request, response) => {
     const category = String(request.query.category || 'all').toLowerCase();
