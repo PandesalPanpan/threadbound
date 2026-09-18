@@ -55,6 +55,45 @@ export class ActivityStreamService {
     });
   }
 
+  recordInventoryView({ playerId, dashboard }) {
+    const player = this.gameRepository.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    const character = dashboard?.character || {};
+    const equipment = character.equipment || {};
+    const inventory = Array.isArray(dashboard?.inventory) ? dashboard.inventory : [];
+    const compactItem = (item) => item ? {
+      id: item.id,
+      name: item.name,
+      slot: item.slot || null,
+      rarity: item.rarity || 'common',
+      attackBonus: Number(item.attackBonus || 0),
+      effect: item.effect ? { name: item.effect.name || null } : null,
+      visualAssetId: item.visualAssetId || null,
+    } : null;
+    const equipmentSnapshot = Object.fromEntries(Object.entries(equipment).map(([slot, item]) => [slot, compactItem(item)]));
+    const inventorySnapshot = inventory.map(compactItem);
+    return this.streamRepository.append({
+      kind: 'system',
+      eventType: 'InventoryViewed',
+      actorPlayerId: player.id,
+      actorName: player.displayName,
+      body: `${player.displayName} opened Inventory · ${inventorySnapshot.length} item${inventorySnapshot.length === 1 ? '' : 's'} · ${Number(character.gold ?? character.threadDust ?? 0)} Gold.`,
+      metadata: {
+        playerId: player.id,
+        character: {
+          id: character.id || player.id,
+          displayName: character.displayName || player.displayName,
+          gold: Number(character.gold ?? character.threadDust ?? 0),
+          currentHealth: Number(character.currentHealth || 0),
+          maxHealth: Number(character.maxHealth ?? character.maxHp ?? 1),
+          healthPotions: Number(character.healthPotions || 0),
+        },
+        equipment: equipmentSnapshot,
+        inventory: inventorySnapshot,
+      },
+    });
+  }
+
   recordDomainEvent(event) {
     const projected = this.#project(event);
     if (!projected) return null;
@@ -147,7 +186,7 @@ export class ActivityStreamService {
     switch (event.type) {
       case 'HuntResolved': {
         const receipt = projectHuntReceipt(event, { actorName: actorName || 'Adventurer', fallbackEnemyName: enemyName || 'enemy' });
-        return { actorName: 'THREADBOUND', body: receipt.text };
+        return { actorPlayerId: event.playerId || null, actorName: 'THREADBOUND', body: receipt.text };
       }
       case 'AdventureResolved': {
         const outcome = event.victory ? 'defeated' : 'fell to';
