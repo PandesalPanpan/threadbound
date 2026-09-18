@@ -97,6 +97,42 @@ test('QuestService advances kill, Hunt, Adventure, collect, boss, and visit/spea
   }
 });
 
+test('QuestService projects persisted Hunt counters onto objective cards after reload', () => {
+  const { repository, player, eventBus, service } = fixture();
+  try {
+    service.accept(player.id, OBJECTIVE_QUEST.id, '2026-09-13T02:00:00.000Z');
+    let quest = service.browse(player.id).quests[0];
+    assert.equal(quest.objectives.find((objective) => objective.id === 'hunts').current, 0);
+    assert.equal(quest.objectives.find((objective) => objective.id === 'hunts').target, 2);
+
+    eventBus.publish({ type: 'HuntResolved', playerId: player.id, enemyId: 'thread-wolf', victory: true });
+    quest = service.browse(player.id).quests[0];
+    const huntObjective = quest.objectives.find((objective) => objective.id === 'hunts');
+    assert.deepEqual({ current: huntObjective.current, target: huntObjective.target, complete: huntObjective.complete }, {
+      current: 1,
+      target: 2,
+      complete: false,
+    });
+
+    const reconstructed = new QuestService({
+      repository,
+      questRepository: new SQLiteQuestRepository({ database: repository.db }),
+      areaRepository: new SQLiteAreaRepository({ database: repository.db }),
+      questCatalog: [OBJECTIVE_QUEST],
+    });
+    try {
+      const afterReload = reconstructed.browse(player.id).quests[0].objectives.find((objective) => objective.id === 'hunts');
+      assert.equal(afterReload.current, 1);
+      assert.equal(afterReload.target, 2);
+    } finally {
+      reconstructed.dispose();
+    }
+  } finally {
+    service.dispose();
+    repository.close();
+  }
+});
+
 test('Quest objective progress survives repository reconstruction', () => {
   const { repository, player, questRepository, eventBus, service } = fixture();
   try {

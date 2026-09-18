@@ -51,8 +51,10 @@ export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, en
   const battle = simulateAutomaticBattle(
     { resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }) },
     {
-      combatants: [
+      players: [
         { ...player, id: playerId, hp: currentHealth, maxHp },
+      ],
+      enemies: [
         {
           id: enemyId,
           name: encounter.name,

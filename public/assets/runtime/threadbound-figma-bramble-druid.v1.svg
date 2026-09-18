@@ -1,0 +1,26 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Character Source / Bramble Druid">
+<ellipse id="Shadow" cx="56.5" cy="102" rx="27.5" ry="4" fill="#080808"/>
+<rect id="Left Leg" x="43" y="82" width="9" height="20" rx="4" fill="#4D331F"/>
+<rect id="Right Leg" x="60" y="82" width="9" height="20" rx="4" fill="#4D331F"/>
+<path id="Leaf Cloak" d="M56 48L84.5317 65.9656L73.6336 95.0344H38.3664L27.4683 65.9656L56 48Z" fill="#335C38"/>
+<rect id="Torso" x="40" y="46" width="32" height="42" rx="10" fill="#5C8F52"/>
+<path id="Head" d="M56.5 22.5C65.917 22.5 73.5 29.6908 73.5 38.5C73.5 47.3092 65.917 54.5 56.5 54.5C47.083 54.5 39.5 47.3092 39.5 38.5C39.5 29.6908 47.083 22.5 56.5 22.5Z" fill="#C29473" stroke="#171614"/>
+<ellipse id="Hair Back" cx="55.5" cy="35" rx="22.5" ry="17" fill="#DBC9AB"/>
+<ellipse id="Face" cx="56.5" cy="38" rx="15.5" ry="14" fill="#C29473"/>
+<ellipse id="Hair Left" cx="41.5" cy="44" rx="6.5" ry="14" fill="#DBC9AB"/>
+<ellipse id="Hair Right" cx="72.5" cy="44" rx="6.5" ry="14" fill="#DBC9AB"/>
+<ellipse id="Eye L" cx="51" cy="38.5" rx="2" ry="2.5" fill="#14331A"/>
+<ellipse id="Eye R" cx="64" cy="38.5" rx="2" ry="2.5" fill="#14331A"/>
+<rect id="Antler L1" x="38" y="10" width="4" height="17" rx="2" transform="rotate(25 38 10)" fill="#4D331F"/>
+<rect id="Antler L2" x="31" y="9" width="4" height="11" rx="2" transform="rotate(-20 31 9)" fill="#4D331F"/>
+<rect id="Antler R1" x="69" y="10" width="4" height="17" rx="2" transform="rotate(-25 69 10)" fill="#4D331F"/>
+<rect id="Antler R2" x="76" y="9" width="4" height="11" rx="2" transform="rotate(20 76 9)" fill="#4D331F"/>
+<rect id="Staff" x="84" y="28" width="5" height="65" rx="2.5" transform="rotate(-4 84 28)" fill="#4D331F"/>
+<circle id="Staff Orb" cx="86.5" cy="27.5" r="8.5" fill="#6EDB9C"/>
+<circle id="Orb Core" cx="86.5" cy="27.5" r="4.5" fill="#BFFFC7"/>
+<path id="Leaf FX 1" d="M22.5315 54.1131L23.8934 63.0235L16.1923 67.7077L14.8304 58.7973L22.5315 54.1131Z" fill="#6EDB9C"/>
+<path id="Leaf FX 2" d="M92.8971 43.75L100.044 47.1292L99.3971 55.0083L92.25 51.6292L92.8971 43.75Z" fill="#5C8F52"/>
+<path id="Leaf FX 3" d="M22.7588 73.6319L28.5697 77.902L26.863 84.9082L21.0521 80.6382L22.7588 73.6319Z" fill="#5C8F52"/>
+</g>
+</svg>

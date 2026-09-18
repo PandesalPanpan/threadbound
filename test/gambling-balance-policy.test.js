@@ -17,15 +17,16 @@ function setup() {
   return { repository, player };
 }
 
-test('shared gambling balance policy accepts only the bounded Gold wager range', () => {
+test('shared gambling balance policy accepts every whole Gold wager from one upward', () => {
   assert.equal(normalizeGamblingWager(GAMBLING_MIN_WAGER_GOLD), 1);
-  assert.equal(normalizeGamblingWager(GAMBLING_MAX_WAGER_GOLD), 100);
-  assert.throws(() => normalizeGamblingWager(0), /between 1 and 100 Gold/);
-  assert.throws(() => normalizeGamblingWager(101), /between 1 and 100 Gold/);
+  assert.equal(GAMBLING_MAX_WAGER_GOLD, null);
+  assert.equal(normalizeGamblingWager(101), 101);
+  assert.equal(normalizeGamblingWager(1000), 1000);
+  assert.throws(() => normalizeGamblingWager(0), /at least 1 Gold/);
   assert.throws(() => normalizeGamblingWager(1.5), /whole number of Gold/);
 });
 
-test('Blackjack rejects an over-cap wager before mutating carried Gold', () => {
+test('Blackjack accepts a wager above the removed product cap when carried Gold covers it', () => {
   const { repository, player } = setup();
   try {
     const service = new BlackjackService({
@@ -33,40 +34,53 @@ test('Blackjack rejects an over-cap wager before mutating carried Gold', () => {
       idFactory: () => 'blackjack-cap-round',
       deckFactory: () => ['10H', '9S', '7C', '7D', '5H', '10C'],
     });
-    assert.throws(
-      () => service.start(player.id, 101, { idempotencyKey: 'blackjack-cap-0001' }),
-      (error) => error.code === 'invalid_blackjack_wager' && /between 1 and 100 Gold/.test(error.message),
-    );
-    assert.equal(repository.getPlayer(player.id).threadDust, 1000);
+    const result = service.start(player.id, 101, { idempotencyKey: 'blackjack-cap-0001' });
+    assert.equal(result.round.wager, 101);
+    assert.equal(repository.getPlayer(player.id).threadDust, 899);
   } finally {
     repository.close();
   }
 });
 
-test('Coinflip rejects an over-cap wager before mutating carried Gold', () => {
+test('Coinflip accepts a wager above the removed product cap when carried Gold covers it', () => {
   const { repository, player } = setup();
   try {
     const service = new CoinflipService({ repository, random: () => 0.1, idFactory: () => 'coinflip-cap-round' });
-    assert.throws(
-      () => service.flip(player.id, 101, 'heads', { idempotencyKey: 'coinflip-cap-0001' }),
-      (error) => error.code === 'invalid_coinflip_wager' && /between 1 and 100 Gold/.test(error.message),
-    );
-    assert.equal(repository.getPlayer(player.id).threadDust, 1000);
+    const result = service.flip(player.id, 101, 'heads', { idempotencyKey: 'coinflip-cap-0001' });
+    assert.equal(result.flip.wager, 101);
+    assert.equal(repository.getPlayer(player.id).threadDust, 1101);
   } finally {
     repository.close();
   }
 });
 
-test('Slots rejects an over-cap wager before mutating carried Gold', () => {
+test('Slots accepts a wager above the removed product cap when carried Gold covers it', () => {
   const { repository, player } = setup();
   try {
     const service = new SlotsService({ repository, random: () => 0.99, idFactory: () => 'slots-cap-spin' });
-    assert.throws(
-      () => service.spin(player.id, 101, { idempotencyKey: 'slots-cap-0001' }),
-      (error) => error.code === 'invalid_slots_wager' && /between 1 and 100 Gold/.test(error.message),
-    );
-    assert.equal(repository.getPlayer(player.id).threadDust, 1000);
+    const result = service.spin(player.id, 101, { idempotencyKey: 'slots-cap-0001' });
+    assert.equal(result.spin.wager, 101);
+    assert.equal(repository.getPlayer(player.id).threadDust, result.carriedGold);
+    assert.notEqual(result.carriedGold, 1000);
   } finally {
     repository.close();
+  }
+});
+
+test('each Gold game enforces the current carried balance atomically', () => {
+  const cases = [
+    ['Blackjack', BlackjackService, 'insufficient_blackjack_gold', (service, player) => service.start(player.id, 1001, { idempotencyKey: 'blackjack-balance-0001' })],
+    ['Coinflip', CoinflipService, 'insufficient_coinflip_gold', (service, player) => service.flip(player.id, 1001, 'heads', { idempotencyKey: 'coinflip-balance-0001' })],
+    ['Slots', SlotsService, 'insufficient_slots_gold', (service, player) => service.spin(player.id, 1001, { idempotencyKey: 'slots-balance-0001' })],
+  ];
+  for (const [name, Service, code, play] of cases) {
+    const { repository, player } = setup();
+    try {
+      const service = new Service({ repository, random: () => 0.1, deckFactory: name === 'Blackjack' ? () => ['10H', '9S', '7C', '7D', '5H', '10C'] : undefined });
+      assert.throws(() => play(service, player), (error) => error.code === code);
+      assert.equal(repository.getPlayer(player.id).threadDust, 1000);
+    } finally {
+      repository.close();
+    }
   }
 });

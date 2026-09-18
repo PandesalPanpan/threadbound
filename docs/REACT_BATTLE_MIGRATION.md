@@ -1,109 +1,67 @@
-# React battle prototype migration map
+# React Battle Simulation
 
-Status: React shell and secondary-surface increment on the dedicated
-`react-battle-prototype` branch. The canonical `/game` and `/codex` routes now
-serve authenticated React/Vite surfaces; the old Express pages are retained
-only behind the development/test-only `/game-legacy` and `/codex-legacy`
-routes, plus their explicit compatibility flags.
+The React battle surface is an authenticated projection of the existing
+server-side automatic battle engine. It does not own combat formulas, HP, Mana,
+targeting, rewards, or victory state.
 
-## Why this boundary exists
+## Authoritative flow
 
-The former `/game` presentation was an Express-rendered, plain JavaScript
-strangler surface. The Figma
-battle brief introduces a different concrete constraint: one reusable arena
-must hold five visual keyframes (`preBattle`, `live`, `impact`, `skillCast`, and
-`result`) while preserving the shared chat shell and animating a committed
-combat outcome. Keeping those transitions in the current DOM-owned module graph
-would require another layer of imperative coordination and would make the
-arena difficult to reuse for arbitrary attacker/target pairs. React now owns
-the player presentation boundary while the old page remains available for
-focused compatibility coverage during the strangler migration.
+`GET /api/battle-simulation` returns a deterministic preview. `POST
+/api/battle-simulation` returns the same server-owned battle payload for the
+focused replay. `BattleSimulationService` selects the canonical 3v3 roster and
+delegates resolution to `AutomaticBattleSimulator`; `AutomaticBattleReadModel`
+projects the concise result receipt and expandable turn details.
 
-That is the documented limitation required before introducing a framework under
-the presentation plan. React is served at the canonical `/game` and `/codex`
-routes (with `/game-react` and `/codex-react` compatibility aliases), without
-moving business rules into the browser or changing the server/domain contracts.
+The browser indexes `BattleStarted`, `SkillCastStarted`, `BasicAttackStarted`,
+and `TurnResolved` events. It animates the action phase and then replaces the
+displayed collection with the next committed `TurnResolved.combatants`
+snapshot. It never derives damage from Attack, Defense, or Mana. A reload uses
+the same authoritative GET projection and returns to the committed result.
 
-## Responsibility map
+## Figma source of truth
 
-| Concern | Authoritative owner | React prototype boundary |
+The inspected Figma file is `xfAbc94dv0LxhxhC9q9BhK`, page node `91:2`.
+Reference nodes are:
+
+- `115:3` — Pre-Battle
+- `115:199` — Live Battle
+- `127:2` — Attack Impact
+- `115:395` — Skill Cast
+- `115:601` — Result
+
+Canonical artwork is exported from the source nodes and committed under
+`public/assets/runtime/threadbound-figma-*.v1.svg`. The asset generator emits
+hashed WebP runtime files and semantic catalog entries. The React registry in
+`frontend/src/battle/visuals.js` maps each stable ID to its source node:
+
+| Unit | Stable visual asset ID | Source node |
 | --- | --- | --- |
-| Character, enemy, HP, Focus, phase | `GameService` + `AdventureRun` + SQLite | `battleViewModel` reads the dashboard/run projection |
-| Damage, criticals, cooldowns, rewards | domain policies and `GameService` | renders `CombatActionResolved`/command response fields |
-| Start, attack, skill, upgrade | existing Express API routes | `api/client.js` sends commands with idempotency keys |
-| Stream receipts | `ActivityStreamService` + WebSocket hub | `ChatFeed` displays `/api/stream` and realtime entries |
-| Semantic character/mob art | visual asset catalog | `/api/visual-assets` + stable `visualAssetId` resolution |
-| Motion | browser presentation | CSS transforms/opacity/scale keyed by backend-driven phase |
+| Bramble Druid | `character.bramble-druid-figma.v1` | `112:7` |
+| Iron Vanguard | `character.iron-vanguard-figma.v1` | `112:12` |
+| Rune Bard | `character.rune-bard-figma.v1` | `112:17` |
+| Cinder Imp | `mob.cinder-imp-figma.v1` | `112:22` |
+| Rot Toad | `mob.rot-toad-figma.v1` | `112:27` |
+| Gloom Hound | `mob.gloom-hound-figma.v1` | `112:32` |
 
-The browser never calculates combat values or decides whether a command is
-legal. It only chooses an available server-provided command, then animates the
-response.
+Presentation resolves these IDs through `/api/visual-assets`; no direct legacy
+sprite path or CSS/emoji stand-in is used for the canonical units.
 
-## Figma evidence and current gap
+## Surface behavior
 
-The supplied Figma file (`xfAbc94dv0LxhxhC9q9BhK`) was inspected through its
-page metadata and the existing v2 shell nodes. It contains the chat-first
-mobile/desktop flows used by the current presentation plan, but no nodes named
-`TB / Prototype`, `Pre-Battle`, `Attack Impact`, `Skill Cast`, `Rune Bard`, or
-`Rot Toad`. The five-state battle brief is therefore the visual specification
-for this slice; it is not possible to cite missing node IDs or export those
-missing artworks. The prototype uses the verified v2 palette and the committed
-semantic runtime asset catalog until those Figma nodes are supplied.
+- Pre-Battle presents the six exported roster artworks and a single start action.
+- Live Battle keeps enemy units above the threadline and player units below it.
+- Attack Impact and Skill Cast animate the acting unit, target recoil, impact
+  flash, HP transition, Mana meter, and floating numeric delta.
+- Skills are shown only when the server event stream says they were ready and
+  cast. Auto-casting is resolved by the domain policy at the Mana threshold.
+- Result shows one concise receipt first; turn-by-turn summaries stay behind
+  the Battle Details disclosure.
+- Play, Codex, and Arc Workshop are the only battle navigation links. Arc
+  Workshop is rendered only when the dashboard capability allows it.
 
-## First slice and chat-shell increment
+## Verification
 
-- `frontend/` contains the Vite/React source and plain CSS token layer.
-- Express serves the built app at authenticated `/game`; `/game-react` remains
-  an authenticated compatibility alias for bookmarks and transition coverage.
-- Express serves the same built app at authenticated `/codex`; `/codex-react`
-  remains an authenticated compatibility alias, while `/codex-legacy` and
-  `THREADBOUND_LEGACY_CODEX=1` preserve focused old-DOM coverage outside
-  production.
-- The arena starts the existing tactical `Frayed Hollow` route so the skill
-  state is exercised behind `/game?view=battle` without making the default
-  Adventure Stream a turn-by-turn simulation.
-- `BattleArena` is reusable by data: attacker/target IDs, names, HP, Focus,
-  art, damage, and critical state come from the read model/command response.
-- WebSocket `state_changed` and `stream_entry` projections refresh the adapter;
-  HTTP remains authoritative.
-- `public/react-battle/` is a deterministic production build output served by
-  the existing Express static middleware.
-- `/game` now defaults to the React Adventure Stream shell. The tactical arena
-  remains available at `/game?view=battle`; the same query works through the
-  compatibility alias.
-- `/game-legacy` is available only outside production. Test configurations that
-  still exercise the old DOM explicitly set `THREADBOUND_LEGACY_GAME=1`; the
-  production/default route is never silently downgraded.
-- `CodexApp` reads the existing `/api/codex` projection, uses server-owned
-  category/search filtering, and keeps the selected record in the URL while
-  presenting a responsive browse/list/detail surface. It does not duplicate
-  codex or progression rules in the browser.
-- `GameShellApp` loads the authoritative dashboard, semantic asset catalog,
-  stream, Area, Quest, Shop, and Gambling projections. `AdventureStream`, `CommandComposer`,
-  the desktop quick rail, and the read-only Live Context rail all share one
-  command dispatcher.
-- Inventory, Shop/Bank, Party, Hunt, Adventure, Dungeon, Quest, Area/Town,
-  Profile, Leaderboard/Duel, Gambling, World/Achievements, Honey, Help, and
-  Codex cards are embedded in the stream. Mutations first record the typed
-  command and then call the existing server route; the follow-up receipt comes
-  from the activity stream projection. Read-only profile/leaderboard inspection
-  also records the typed action before refreshing the authoritative projection.
-- The shell uses stable semantic `visualAssetId` values at the presentation
-  boundary and does not introduce browser-side combat, reward, readiness, or
-  economy rules.
-
-## Verification and next increment
-
-The focused Playwright suite (`npm run test:e2e:react-local`, isolated by
-`playwright.react.local.config.js`) captures all five battle states, the core
-chat-shell command-card journey, two-browser party state propagation, Guild
-Hall profile/Duel, and Gold games at 390×844, then verifies the shell at
-1440×960 on the canonical `/game` route.
-The same suite covers the canonical `/codex` route at both viewports, including
-category search and detail selection.
-The retained legacy suites run only with the explicit compatibility flag.
-`npm run check`, the 379-test unit suite, and the full E2E matrix are green for
-this increment. The next increment is to compare the shell and battle
-screenshots against supplied Figma nodes, add real exported Figma artwork when
-available, and retire the compatibility route after remaining parity gates are
-accepted.
+`test/battle-simulation-service.test.js` verifies the 3v3 projection, Figma
+metadata, six stable asset IDs, skill/Mana events, and the non-mutating boundary.
+`test/e2e/react-battle.local.spec.js` covers the 390×844 flow, canonical art,
+event replay, Battle Details, reload recovery, and the 1440×960 layout.

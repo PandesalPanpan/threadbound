@@ -43,12 +43,14 @@ export function speedInitiativeState({ combatants, turns = [] } = {}) {
     throw new Error('Speed initiative requires combatants.');
   }
 
-  const normalized = combatants.map((combatant, index) => {
+  const normalized = combatants.filter((combatant) => combatant?.hp == null || Number(combatant.hp) > 0).map((combatant, index) => {
     const projected = projectCombatantWithAutomaticEffects(combatant);
     const id = String(projected?.id || '').trim();
     if (!id) throw new Error(`Combatant ${index + 1} requires an id for Speed initiative.`);
-    return { id, index, speed: normalizeBattleSpeed(projected.speed) };
+    const originalIndex = combatants.indexOf(combatant);
+    return { id, index: originalIndex, speed: normalizeBattleSpeed(projected.speed) };
   });
+  if (normalized.length === 0) throw new Error('Speed initiative requires a living combatant.');
   if (new Set(normalized.map((entry) => entry.id)).size !== normalized.length) {
     throw new Error('Speed initiative combatant ids must be unique.');
   }

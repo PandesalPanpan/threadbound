@@ -1,53 +1,99 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, commandKey, connectRealtime, getDashboard, getStream, getVisualAssets } from './api/client.js';
-import { battleViewModel, phaseFromRun, projectCombatOutcome, selectSkill } from './battle/presentation.js';
 import { BattleArena } from './components/BattleArena.jsx';
 import { ChatFeed } from './components/ChatFeed.jsx';
 import { ContextRail } from './components/ContextRail.jsx';
 
-const ANIMATION_MS = Object.freeze(globalThis.__THREADBOUND_FAST_TEST__
-  ? { attack: 120, skill: 150 }
-  : { attack: 1050, skill: 1300 });
+const PLAYBACK_MS = Object.freeze(globalThis.__THREADBOUND_FAST_TEST__
+  ? { impact: 90, skill: 120, settle: 55 }
+  : { impact: 360, skill: 470, settle: 180 });
 
-function receiptFor({ action, outcome }) {
-  const damage = Number(outcome?.damage || 0);
-  const label = action === 'skill' ? 'Skill cast' : 'Attack landed';
-  return {
-    title: label,
-    copy: damage > 0 ? `−${damage} HP · Threadbound committed the result.` : 'The action resolved without damage.',
-  };
+function startedSnapshot(payload) {
+  return payload?.battle?.events?.find((event) => event.type === 'BattleStarted')?.combatants
+    || payload?.battle?.combatants
+    || [];
+}
+
+function completedSnapshot(payload) {
+  return payload?.battle?.events?.findLast?.((event) => event.type === 'BattleCompleted')?.combatants
+    || payload?.battle?.combatants
+    || startedSnapshot(payload);
+}
+
+function initialFrame(payload) {
+  return { combatants: structuredClone(startedSnapshot(payload)), currentTurn: 0, active: null, lastTurn: null };
+}
+
+function resultFrame(payload) {
+  return { combatants: structuredClone(completedSnapshot(payload)), currentTurn: payload?.battle?.turns?.length || 0, active: null, lastTurn: payload?.battle?.turns?.at?.(-1) || null };
+}
+
+function timelineFor(payload) {
+  const turns = Array.isArray(payload?.battle?.turns) ? payload.battle.turns : [];
+  const events = Array.isArray(payload?.battle?.events) ? payload.battle.events : [];
+  const snapshots = new Map(events.filter((event) => event.type === 'TurnResolved' && Array.isArray(event.combatants)).map((event) => [Number(event.turnNumber), event.combatants]));
+  return turns.map((turn) => {
+    const number = Number(turn.turnNumber);
+    const actionEvent = events.find((event) => Number(event.turnNumber) === number && (event.type === 'SkillCastStarted' || event.type === 'BasicAttackStarted'));
+    const skillEvent = events.find((event) => Number(event.turnNumber) === number && event.type === 'SkillCastStarted');
+    return {
+      turn,
+      snapshot: snapshots.get(number) || null,
+      active: {
+        type: skillEvent ? 'SkillCastStarted' : 'BasicAttackStarted',
+        actionType: turn.metadata?.actionType || actionEvent?.type || 'basic-attack',
+        actorId: turn.actorId,
+        targetId: turn.targetId,
+        skillId: turn.metadata?.skillId || skillEvent?.skillId || null,
+        skillName: skillEvent?.skillName || null,
+        damage: Number(turn.targetDamage || 0),
+        healing: Number(turn.selfHealing || 0),
+        critical: Boolean(turn.metadata?.critical),
+        turnNumber: number,
+      },
+    };
+  });
+}
+
+function storageKey(payload) {
+  return payload?.battleId ? `threadbound:battle-simulation:${payload.battleId}` : null;
 }
 
 export function BattlePrototypeApp() {
   const [dashboard, setDashboard] = useState(null);
   const [assets, setAssets] = useState([]);
   const [entries, setEntries] = useState([]);
-  const [outcome, setOutcome] = useState(null);
-  const [previousRun, setPreviousRun] = useState(null);
-  const [lastAction, setLastAction] = useState(null);
-  const [phase, setPhase] = useState('preBattle');
+  const [payload, setPayload] = useState(null);
+  const [display, setDisplay] = useState({ phase: 'preBattle', frame: initialFrame(null) });
+  const [step, setStep] = useState(-1);
+  const [playing, setPlaying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
-  const timerRef = useRef(null);
+  const cancelledRef = useRef(false);
 
-  const refresh = useCallback(async ({ includeStream = false } = {}) => {
-    const [nextDashboard, nextStream] = await Promise.all([getDashboard(), includeStream ? getStream() : Promise.resolve(null)]);
+  const load = useCallback(async () => {
+    const [nextDashboard, assetPayload, streamPayload, battlePayload] = await Promise.all([
+      getDashboard(),
+      getVisualAssets(),
+      getStream({ limit: 30 }),
+      api('/api/battle-simulation'),
+    ]);
+    if (cancelledRef.current) return;
     setDashboard(nextDashboard);
-    if (nextStream?.entries) setEntries(nextStream.entries);
+    setAssets(assetPayload?.assets || []);
+    setEntries(streamPayload?.entries || []);
+    setPayload(battlePayload);
+    const key = storageKey(battlePayload);
+    const resumed = key && window.sessionStorage.getItem(key);
+    setDisplay({ phase: resumed ? 'result' : 'preBattle', frame: resumed ? resultFrame(battlePayload) : initialFrame(battlePayload) });
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    Promise.all([getDashboard(), getVisualAssets(), getStream()]).then(([nextDashboard, assetPayload, streamPayload]) => {
-      if (cancelled) return;
-      setDashboard(nextDashboard);
-      setAssets(assetPayload.assets || []);
-      setEntries(streamPayload.entries || []);
-      setPhase(phaseFromRun(nextDashboard.activeRun));
-    }).catch((caught) => { if (!cancelled) setError(caught.message); });
-    return () => { cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
+    cancelledRef.current = false;
+    load().catch((caught) => { if (!cancelledRef.current) setError(caught.message); });
+    return () => { cancelledRef.current = true; };
+  }, [load]);
 
   useEffect(() => {
     let closed = false;
@@ -55,92 +101,83 @@ export function BattlePrototypeApp() {
     connectRealtime((message) => {
       if (closed) return;
       setConnected(true);
-      if (message.type === 'stream_entry' && message.entry) setEntries((current) => [...current.filter((entry) => entry.id !== message.entry.id), message.entry].slice(-8));
-      if (message.type === 'state_changed' && !busy) refresh({ includeStream: true }).catch(() => {});
-    }).then((close) => { closeSocket = close; setConnected(true); }).catch(() => setConnected(false));
-    const fallback = window.setInterval(() => { if (!busy) refresh().catch(() => {}); }, 4000);
-    return () => { closed = true; closeSocket(); window.clearInterval(fallback); };
-  }, [busy, refresh]);
+      if (message.type === 'stream_entry' && message.entry) {
+        setEntries((current) => [...current.filter((entry) => entry.id !== message.entry.id), message.entry].slice(-30));
+      }
+      if (message.type === 'state_changed' && !playing) {
+        getDashboard().then((nextDashboard) => { if (!closed) setDashboard(nextDashboard); }).catch(() => {});
+      }
+    }).then((close) => { if (!closed) { closeSocket = close; setConnected(true); } }).catch(() => { if (!closed) setConnected(false); });
+    return () => { closed = true; closeSocket(); };
+  }, [playing]);
 
-  const run = outcome?.state || dashboard?.activeRun || null;
-  const battle = useMemo(() => battleViewModel({ dashboard, assets, outcome, previousRun, phase, action: lastAction }), [assets, dashboard, lastAction, outcome, phase, previousRun]);
-  const availableSkill = selectSkill(dashboard?.combatSkills || [], run);
+  const timeline = useMemo(() => timelineFor(payload), [payload]);
 
-  const completeAction = useCallback(async (actionName, skillId = null) => {
-    if (!run?.id || busy || phase !== 'live') return;
-    setError('');
+  useEffect(() => {
+    if (!playing || step < 0 || !timeline[step]) return undefined;
+    const current = timeline[step];
+    const skill = current.active.actionType === 'skill' || current.active.type === 'SkillCastStarted';
+    setDisplay((state) => ({ ...state, phase: skill ? 'skillCast' : 'impact', active: current.active }));
+    const timer = window.setTimeout(() => {
+      const isLast = step >= timeline.length - 1;
+      setDisplay((state) => ({
+        phase: isLast ? 'result' : 'live',
+        frame: {
+          combatants: structuredClone(current.snapshot || state.frame.combatants),
+          currentTurn: current.turn.turnNumber,
+          active: null,
+          lastTurn: current.turn,
+        },
+      }));
+      setStep((index) => index + 1);
+      if (isLast) setPlaying(false);
+    }, (skill ? PLAYBACK_MS.skill : PLAYBACK_MS.impact) + PLAYBACK_MS.settle);
+    return () => window.clearTimeout(timer);
+  }, [playing, step, timeline]);
+
+  const start = useCallback(async () => {
+    if (busy || !payload) return;
     setBusy(true);
-    const before = structuredClone(run);
-    setPreviousRun(before);
+    setError('');
     try {
-      const path = actionName === 'skill' ? `/api/runs/${encodeURIComponent(run.id)}/skills/${encodeURIComponent(skillId)}` : `/api/runs/${encodeURIComponent(run.id)}/attack`;
-      const nextOutcome = await api(path, { method: 'POST', headers: { 'Idempotency-Key': commandKey(`prototype-${actionName}`) } });
-      const projected = projectCombatOutcome(nextOutcome, { action: actionName, previousRun: before });
-      setOutcome(nextOutcome);
-      setLastAction(projected);
-      setPhase(actionName === 'skill' ? 'skillCast' : 'impact');
-      timerRef.current = window.setTimeout(async () => {
-        if (['complete', 'failed'].includes(nextOutcome?.state?.phase)) {
-          setDashboard((current) => current ? { ...current, activeRun: null } : current);
-          setPhase('result');
-          setBusy(false);
-          return;
-        }
-        setOutcome(null);
-        setPreviousRun(null);
-        setLastAction(null);
-        setPhase(phaseFromRun(nextOutcome.state));
-        setBusy(false);
-        await refresh({ includeStream: true }).catch(() => {});
-      }, ANIMATION_MS[actionName] || ANIMATION_MS.attack);
+      const nextPayload = await api('/api/battle-simulation', { method: 'POST', headers: { 'Idempotency-Key': commandKey('battle-simulation') } });
+      setPayload(nextPayload);
+      const key = storageKey(nextPayload);
+      if (key) window.sessionStorage.setItem(key, 'started');
+      setDisplay({ phase: 'live', frame: initialFrame(nextPayload) });
+      setStep(0);
+      setPlaying(true);
     } catch (caught) {
-      setBusy(false);
       setError(caught.message);
-      await refresh().catch(() => {});
+    } finally {
+      setBusy(false);
     }
-  }, [busy, phase, refresh, run]);
+  }, [busy, payload]);
 
-  const startBattle = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
-    setError('');
-    try {
-      const payload = await api('/api/dungeons/frayed-hollow/start', { method: 'POST' });
-      setDashboard((current) => ({ ...current, activeRun: payload.run }));
-      setPhase('live');
-      setEntries((current) => [...current, { id: `local-start-${Date.now()}`, actorName: 'THREADBOUND', actorType: 'system', body: `Entered ${payload.run?.dungeonDefinition?.name || 'Frayed Hollow'}.`, createdAt: new Date().toISOString() }].slice(-8));
-    } catch (caught) { setError(caught.message); } finally { setBusy(false); }
-  }, [busy]);
-
-  const chooseDecision = useCallback(async (choiceId) => {
-    if (!run?.id || busy) return;
-    setBusy(true);
-    setError('');
-    try {
-      const payload = await api(`/api/runs/${encodeURIComponent(run.id)}/upgrade`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('prototype-decision') }, body: JSON.stringify({ upgradeId: choiceId }) });
-      setDashboard((current) => ({ ...current, activeRun: payload.run }));
-      setPhase(phaseFromRun(payload.run));
-    } catch (caught) { setError(caught.message); } finally { setBusy(false); }
-  }, [busy, run]);
+  const replay = useCallback(() => {
+    if (!payload || busy) return;
+    const key = storageKey(payload);
+    if (key) window.sessionStorage.removeItem(key);
+    setDisplay({ phase: 'preBattle', frame: initialFrame(payload) });
+    setStep(-1);
+  }, [busy, payload]);
 
   const goToStream = () => { window.location.href = '/game'; };
-  const receipt = lastAction && outcome ? receiptFor({ action: lastAction.action, outcome }) : null;
-
-  if (!dashboard) return <main className="battle-loading"><span className="loading-orbit" />Loading the live battle model…</main>;
+  if (!dashboard || !payload) return <main className="battle-loading"><span className="loading-orbit" />Loading the battle thread…</main>;
 
   return (
     <div className="battle-app">
       <header className="battle-topbar">
-        <a className="battle-brand" href="/game"><span className="brand-mark">✦</span><span>THREADBOUND</span></a>
-        <div className="battle-topbar__context"><span className="panel-kicker">BATTLE PROTOTYPE</span><span>Existing run state · live adapter</span></div>
-        <nav className="battle-nav" aria-label="Threadbound"><a href="/game">Play</a><a href="/codex">Codex</a><a className="is-current" href="/game?view=battle" aria-current="page">Battle</a></nav>
+        <a className="battle-brand" href="/game" aria-label="Threadbound Adventure Stream"><span className="brand-mark">✦</span><span>THREADBOUND</span></a>
+        <div className="battle-topbar__context"><span className="panel-kicker">BATTLE SIMULATION</span><span>Server-resolved event stream · Figma keyframe study</span></div>
+        <nav className="battle-nav" aria-label="Threadbound"><a href="/game">Play</a><a href="/codex">Codex</a>{dashboard.capabilities?.arcWorkshop ? <a href="/arc-workshop">Arc Workshop</a> : null}</nav>
       </header>
       <main className="battle-layout">
-        <aside className="battle-left"><ChatFeed entries={entries} receipt={receipt} /><div className="battle-left__footer"><span>React + Vite boundary</span><a href="/game-legacy">Legacy-compatible shell ↗</a></div></aside>
-        <section className="battle-main" aria-label="Battle prototype">
-          <div className="battle-intro"><div><span className="panel-kicker">FIGMA KEYFRAME FLOW</span><h1>One committed action, one readable moment.</h1><p>The arena animates state already resolved by Threadbound. The browser never decides damage, reward, cooldown, or victory.</p></div><button className="back-button" type="button" onClick={goToStream}>← Adventure Stream</button></div>
+        <aside className="battle-left"><ChatFeed entries={entries} /><div className="battle-left__footer"><span>Authoritative replay · {payload.battle.turns.length} turns</span><a href="/game">Back to Adventure Stream ↗</a></div></aside>
+        <section className="battle-main" aria-label="Automatic battle simulation">
+          <div className="battle-intro"><div><span className="panel-kicker">WATCH THE THREADS FIGHT</span><h1>Every strike lands once.</h1><p>Threadbound resolves the full battle on the server. This surface replays its committed events, Mana changes, HP snapshots, and result receipt.</p></div><button className="back-button" type="button" onClick={goToStream}>← Adventure Stream</button></div>
           {error ? <div className="battle-error" role="alert" data-testid="battle-error">{error}</div> : null}
-          <BattleArena battle={battle} skills={dashboard.combatSkills} runUpgrades={dashboard.runUpgrades} phase={phase} busy={busy} onStart={startBattle} onAttack={() => completeAction('attack')} onSkill={(skillId) => completeAction('skill', skillId)} onDecision={chooseDecision} onBack={goToStream} />
+          <BattleArena payload={payload} assets={assets} frame={display.frame} phase={display.phase} active={display.active || null} busy={busy || playing} onStart={start} onReplay={replay} onBack={goToStream} />
         </section>
         <ContextRail dashboard={dashboard} connected={connected} />
       </main>

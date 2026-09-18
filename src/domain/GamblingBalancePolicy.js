@@ -1,5 +1,7 @@
 export const GAMBLING_MIN_WAGER_GOLD = 1;
-export const GAMBLING_MAX_WAGER_GOLD = 100;
+// There is no product-wide cap. Each repository transaction still checks the
+// current carried balance immediately before debiting the wager.
+export const GAMBLING_MAX_WAGER_GOLD = null;
 
 export function normalizeGamblingWager(value, { game = 'Gambling', code = 'invalid_gambling_wager' } = {}) {
   const wager = Number(value);
@@ -8,8 +10,8 @@ export function normalizeGamblingWager(value, { game = 'Gambling', code = 'inval
     error.code = code;
     throw error;
   }
-  if (wager < GAMBLING_MIN_WAGER_GOLD || wager > GAMBLING_MAX_WAGER_GOLD) {
-    const error = new Error(`${game} wager must be between ${GAMBLING_MIN_WAGER_GOLD} and ${GAMBLING_MAX_WAGER_GOLD} Gold.`);
+  if (wager < GAMBLING_MIN_WAGER_GOLD) {
+    const error = new Error(`${game} wager must be at least ${GAMBLING_MIN_WAGER_GOLD} Gold.`);
     error.code = code;
     throw error;
   }

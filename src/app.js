@@ -11,6 +11,7 @@ import { CodexService } from './application/CodexService.js';
 import { ArcManifestService } from './application/ArcManifestService.js';
 import { ActivityStreamService } from './application/ActivityStreamService.js';
 import { CombatPreviewService } from './application/CombatPreviewService.js';
+import { BattleSimulationService } from './application/BattleSimulationService.js';
 import { GameService } from './application/GameService.js';
 import { HuntService } from './application/HuntService.js';
 import { AdventureService } from './application/AdventureService.js';
@@ -34,10 +35,10 @@ import { SQLiteRunCommandRepository } from './infrastructure/SQLiteRunCommandRep
 import { SQLiteSessionStore } from './infrastructure/SQLiteSessionStore.js';
 
 const LOCAL_PROFILES = Object.freeze({
-  a: Object.freeze({ id: 'local:a', name: 'Local Weaver A', username: 'local-a' }),
-  b: Object.freeze({ id: 'local:b', name: 'Local Weaver B', username: 'local-b' }),
-  c: Object.freeze({ id: 'local:c', name: 'Local Weaver C', username: 'local-c' }),
-  d: Object.freeze({ id: 'local:d', name: 'Local Weaver D', username: 'local-d' }),
+  a: Object.freeze({ id: 'local:a', name: 'Local Weaver A', username: 'local-a', capabilities: Object.freeze({ arcWorkshop: true }) }),
+  b: Object.freeze({ id: 'local:b', name: 'Local Weaver B', username: 'local-b', capabilities: Object.freeze({ arcWorkshop: true }) }),
+  c: Object.freeze({ id: 'local:c', name: 'Local Weaver C', username: 'local-c', capabilities: Object.freeze({ arcWorkshop: false }) }),
+  d: Object.freeze({ id: 'local:d', name: 'Local Weaver D', username: 'local-d', capabilities: Object.freeze({ arcWorkshop: true }) }),
 });
 const INITIAL_STREAM_LIMIT = 30;
 
@@ -45,30 +46,39 @@ function sharedHead(title) {
   return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1e1f22"><title>${title}</title><link rel="stylesheet" href="/threadbound-theme.css"><link rel="stylesheet" href="/ui-v2/index.css"><script>document.documentElement.classList.add('threadbound-v2', 'threadbound-v2-' + (location.pathname.split('/')[1] || 'home'))</script>`;
 }
 
-function topNav(active, authMode = 'threaded') {
-  const workshop = authMode === 'local' ? `<a data-testid="nav-workshop" href="/arc-workshop"${active === 'workshop' ? ' aria-current="page"' : ''}>Workshop</a>` : '';
+function canAccessArcWorkshop(connection) {
+  return Boolean(connection?.source === 'local' && connection.profile?.capabilities?.arcWorkshop === true);
+}
+
+function sessionCapabilities(connection) {
+  return { arcWorkshop: canAccessArcWorkshop(connection) };
+}
+
+function topNav(active, authMode = 'threaded', capabilities = null) {
+  const canShowWorkshop = capabilities === null ? authMode === 'local' : capabilities.arcWorkshop === true;
+  const workshop = canShowWorkshop ? `<a data-testid="nav-workshop" href="/arc-workshop"${active === 'workshop' ? ' aria-current="page"' : ''}>Arc Workshop</a>` : '';
   return `<nav class="threadbound-topnav" aria-label="Threadbound"><a class="brand" href="/game">THREADBOUND</a><div class="nav-links"><a data-testid="nav-game" href="/game"${active === 'game' ? ' aria-current="page"' : ''}>Play</a><a data-testid="nav-codex" href="/codex"${active === 'codex' ? ' aria-current="page"' : ''}>Codex</a>${workshop}</div></nav>`;
 }
 
-function gamePage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Hunt for gear, grow stronger, then challenge dangerous dungeons with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/simple-loop.js"></script><script type="module" src="/ordinary-adventure.js"></script></body></html>`;
+function gamePage(authMode, capabilities = {}) {
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}<link rel="stylesheet" href="/adventure-stream.css"></head><body>${topNav('game', authMode, capabilities)}<main class="threadbound-page threadbound-game-page"><header class="page-hero"><div><span class="eyebrow">THE LOOM IS MOVING</span><h1>Threadbound</h1><p>Hunt for gear, grow stronger, then challenge dangerous dungeons with your party.</p></div></header><div id="status" data-testid="app-status">Loading…</div><section id="identity"></section><section id="stream" data-testid="adventure-stream"></section><section id="character"></section><section id="party"></section><section id="dungeon"></section><section id="inventory"></section><section id="achievements"></section><section id="world"></section><section id="honey"></section><form class="signout" action="/disconnect" method="post"><button type="submit">Sign out</button></form></main><script>window.THREADBOUND_AUTH_MODE=${JSON.stringify(authMode)}</script><script src="/run-command-idempotency.js"></script><script type="module" src="/game.js"></script><script type="module" src="/adventure-stream.js"></script><script type="module" src="/adventure-meta-commands.js"></script><script type="module" src="/simple-loop.js"></script><script type="module" src="/ordinary-adventure.js"></script></body></html>`;
 }
 
-function codexPage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound Codex')}</head><body>${topNav('codex', authMode)}<main class="threadbound-page codex-shell"><div class="codex-heading-row"><header class="page-hero"><div><span class="eyebrow">LIVING ARCHIVE</span><h1>Codex</h1><p><span class="codex-description-mobile">Everything the world has revealed so far.</span><span class="codex-description-desktop">Relics, enemies, bosses, achievements, lore, and history from the same evolving world.</span></p></div></header><div class="toolbar"><label class="codex-search-control"><span aria-hidden="true">⌕</span><input id="codex-search" data-testid="codex-search" type="search" aria-label="Search the Loom" placeholder="Search the Loom…" autocomplete="off"></label><div id="codex-tabs" class="tabs"></div></div></div><div id="codex-status" data-testid="codex-status">Loading…</div><div id="codex-counts" class="counts"></div><div class="codex-layout"><aside id="codex-category-rail" class="codex-category-rail" aria-label="Codex categories"><span class="codex-rail-label">BROWSE</span><div id="codex-rail-items"></div><p>The Codex grows from authoritative state and published Arc content.</p></aside><section id="codex-list" class="codex-list" aria-label="Codex entries"></section><article id="codex-detail" class="codex-detail" data-testid="codex-detail"></article></div><footer class="codex-footer">Authoritative game/content state · not a duplicate wiki</footer></main><script type="module" src="/codex.js"></script></body></html>`;
+function codexPage(authMode, capabilities = {}) {
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound Codex')}</head><body>${topNav('codex', authMode, capabilities)}<main class="threadbound-page codex-shell"><div class="codex-heading-row"><header class="page-hero"><div><span class="eyebrow">LIVING ARCHIVE</span><h1>Codex</h1><p><span class="codex-description-mobile">Everything the world has revealed so far.</span><span class="codex-description-desktop">Relics, enemies, bosses, achievements, lore, and history from the same evolving world.</span></p></div></header><div class="toolbar"><label class="codex-search-control"><span aria-hidden="true">⌕</span><input id="codex-search" data-testid="codex-search" type="search" aria-label="Search the Loom" placeholder="Search the Loom…" autocomplete="off"></label><div id="codex-tabs" class="tabs"></div></div></div><div id="codex-status" data-testid="codex-status">Loading…</div><div id="codex-counts" class="counts"></div><div class="codex-layout"><aside id="codex-category-rail" class="codex-category-rail" aria-label="Codex categories"><span class="codex-rail-label">BROWSE</span><div id="codex-rail-items"></div><p>The Codex grows from authoritative state and published Arc content.</p></aside><section id="codex-list" class="codex-list" aria-label="Codex entries"></section><article id="codex-detail" class="codex-detail" data-testid="codex-detail"></article></div><footer class="codex-footer">Authoritative game/content state · not a duplicate wiki</footer></main><script type="module" src="/codex.js"></script></body></html>`;
 }
 
-function arcWorkshopPage(authMode) {
-  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound Arc Workshop')}<link rel="stylesheet" href="/ui-v2/workshop.css"></head><body>${topNav('workshop', authMode)}<main class="threadbound-page workshop-shell" data-workshop-view="editor"><header class="page-hero workshop-hero"><div><span id="workshop-page-eyebrow" class="eyebrow">WORLD AUTHORING</span><h1 id="workshop-page-title">Arc Workshop</h1><div class="workshop-chip-row"><span id="workshop-record-chip" class="workshop-record-chip" hidden></span><span id="workshop-local-chip" class="workshop-local-chip">LOCAL DEV ONLY</span></div><p id="workshop-page-subtitle">Bring a v2 Arc Manifest from any AI, local model, or human-written JSON file.</p></div></header><section class="workshop-notice" aria-labelledby="workshop-notice-title"><strong id="workshop-notice-title">No paid AI API required.</strong><p>Export world context + JSON Schema, generate anywhere, then validate here. Uploading never publishes automatically.</p></section><div class="workshop-resource-actions" aria-label="Authoring resources"><button id="download-context" data-testid="download-world-context" type="button">World context</button><button id="download-schema" data-testid="download-manifest-schema" type="button">JSON Schema</button></div><p id="workshop-status" class="workshop-status" data-testid="workshop-status" role="status" aria-live="polite">Loading…</p><section id="workshop-editor-view" class="workshop-view workshop-editor-view" aria-labelledby="workshop-editor-title"><h2 id="workshop-editor-title">1 · Upload or paste</h2><div class="workshop-upload"><div><strong>Choose arc-manifest.json</strong><small>JSON · maximum 512 KB</small></div><input id="manifest-file" data-testid="manifest-file" type="file" accept="application/json,.json"><label class="workshop-browse-button" for="manifest-file">Browse</label></div><textarea id="manifest-editor" data-testid="manifest-editor" spellcheck="false" aria-label="Arc Manifest JSON" placeholder="Paste arc-manifest.json here…"></textarea><div class="workshop-editor-actions"><button id="validate-manifest" data-testid="validate-manifest" class="primary-action" type="button">Validate</button><div id="save-manifest-slot"><button id="save-manifest" data-testid="save-manifest" type="button" disabled>Save valid draft</button></div></div><p class="workshop-help">Impact preview updates as valid JSON is parsed.</p></section><section id="editor-impact-view" class="workshop-impact-section workshop-editor-impact-view" aria-labelledby="workshop-impact-editor-title"><h2 id="workshop-impact-editor-title">Impact preview</h2><div id="editor-preview-slot" class="workshop-preview-slot"><div id="manifest-preview" data-testid="manifest-preview"><p class="muted">No manifest loaded.</p></div></div></section><section id="workshop-review-view" class="workshop-view workshop-review-view" aria-labelledby="workshop-drafts-title" hidden><div class="workshop-review-package"><h2 class="workshop-review-package-title">Validation + package impact</h2><section id="validation-result" class="workshop-validation-card" data-testid="validation-result" aria-live="polite"><p class="muted">Validate a manifest to see errors and warnings.</p></section><div id="review-actions" class="workshop-review-actions"><div id="review-publish-actions" hidden><button id="review-publish" class="primary-action" type="button">Publish revision</button><button id="back-to-editor" type="button">Back to editor</button></div></div><section class="workshop-impact-section workshop-review-impact" aria-labelledby="workshop-impact-review-title"><h2 id="workshop-impact-review-title">Impact preview</h2><div id="review-preview-slot" class="workshop-preview-slot"></div></section><div class="workshop-human-guidance"><p>HUMAN REVIEW BEFORE PUBLISH</p><ul><li>70% lighthearted/colorful guild adventure</li><li>20% exciting danger</li><li>10% serious/emotional weight</li><li>Original Threadbound identity; references translated into abstract traits</li><li>No copied characters, factions, locations, artifacts, dialogue, bosses, or storylines</li></ul></div><p class="workshop-review-help">Publishing revalidates authoritative rules. This visual checklist complements schema validation; it does not replace human judgment.</p></div><section class="workshop-drafts-section" aria-labelledby="workshop-drafts-title"><h2 id="workshop-drafts-title">Drafts &amp; publications</h2><p class="workshop-drafts-intro">Saved manifests are versioned records. Only draft records expose Publish.</p><div id="manifest-list" data-testid="manifest-list"><p class="muted">No uploaded manifests yet.</p></div><div class="workshop-safety-note"><p>AUTHORITATIVE BOUNDARY</p><span>Manifest data may only reference Threadbound-owned mechanic IDs, objective types, equipment slots/stats/rarities, reward types, visual asset IDs, and constrained effect resistances.</span></div><p class="workshop-drafts-status">Status · ready to publish after human review</p></section></section></main><script type="module" src="/arc-workshop.js"></script></body></html>`;
+function arcWorkshopPage(authMode, capabilities = {}) {
+  return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound Arc Workshop')}<link rel="stylesheet" href="/ui-v2/workshop.css"></head><body>${topNav('workshop', authMode, capabilities)}<main class="threadbound-page workshop-shell" data-workshop-view="editor"><header class="page-hero workshop-hero"><div><span id="workshop-page-eyebrow" class="eyebrow">WORLD AUTHORING</span><h1 id="workshop-page-title">Arc Workshop</h1><div class="workshop-chip-row"><span id="workshop-record-chip" class="workshop-record-chip" hidden></span><span id="workshop-local-chip" class="workshop-local-chip">LOCAL DEV ONLY</span></div><p id="workshop-page-subtitle">Bring a v2 Arc Manifest from any AI, local model, or human-written JSON file.</p></div></header><section class="workshop-notice" aria-labelledby="workshop-notice-title"><strong id="workshop-notice-title">No paid AI API required.</strong><p>Export world context + JSON Schema, generate anywhere, then validate here. Uploading never publishes automatically.</p></section><div class="workshop-resource-actions" aria-label="Authoring resources"><button id="download-context" data-testid="download-world-context" type="button">World context</button><button id="download-schema" data-testid="download-manifest-schema" type="button">JSON Schema</button></div><p id="workshop-status" class="workshop-status" data-testid="workshop-status" role="status" aria-live="polite">Loading…</p><section id="workshop-editor-view" class="workshop-view workshop-editor-view" aria-labelledby="workshop-editor-title"><h2 id="workshop-editor-title">1 · Upload or paste</h2><div class="workshop-upload"><div><strong>Choose arc-manifest.json</strong><small>JSON · maximum 512 KB</small></div><input id="manifest-file" data-testid="manifest-file" type="file" accept="application/json,.json"><label class="workshop-browse-button" for="manifest-file">Browse</label></div><textarea id="manifest-editor" data-testid="manifest-editor" spellcheck="false" aria-label="Arc Manifest JSON" placeholder="Paste arc-manifest.json here…"></textarea><div class="workshop-editor-actions"><button id="validate-manifest" data-testid="validate-manifest" class="primary-action" type="button">Validate</button><div id="save-manifest-slot"><button id="save-manifest" data-testid="save-manifest" type="button" disabled>Save valid draft</button></div></div><p class="workshop-help">Impact preview updates as valid JSON is parsed.</p></section><section id="editor-impact-view" class="workshop-impact-section workshop-editor-impact-view" aria-labelledby="workshop-impact-editor-title"><h2 id="workshop-impact-editor-title">Impact preview</h2><div id="editor-preview-slot" class="workshop-preview-slot"><div id="manifest-preview" data-testid="manifest-preview"><p class="muted">No manifest loaded.</p></div></div></section><section id="workshop-review-view" class="workshop-view workshop-review-view" aria-labelledby="workshop-drafts-title" hidden><div class="workshop-review-package"><h2 class="workshop-review-package-title">Validation + package impact</h2><section id="validation-result" class="workshop-validation-card" data-testid="validation-result" aria-live="polite"><p class="muted">Validate a manifest to see errors and warnings.</p></section><div id="review-actions" class="workshop-review-actions"><div id="review-publish-actions" hidden><button id="review-publish" class="primary-action" type="button">Publish revision</button><button id="back-to-editor" type="button">Back to editor</button></div></div><section class="workshop-impact-section workshop-review-impact" aria-labelledby="workshop-impact-review-title"><h2 id="workshop-impact-review-title">Impact preview</h2><div id="review-preview-slot" class="workshop-preview-slot"></div></section><div class="workshop-human-guidance"><p>HUMAN REVIEW BEFORE PUBLISH</p><ul><li>70% lighthearted/colorful guild adventure</li><li>20% exciting danger</li><li>10% serious/emotional weight</li><li>Original Threadbound identity; references translated into abstract traits</li><li>No copied characters, factions, locations, artifacts, dialogue, bosses, or storylines</li></ul></div><p class="workshop-review-help">Publishing revalidates authoritative rules. This visual checklist complements schema validation; it does not replace human judgment.</p></div><section class="workshop-drafts-section" aria-labelledby="workshop-drafts-title"><h2 id="workshop-drafts-title">Drafts &amp; publications</h2><p class="workshop-drafts-intro">Saved manifests are versioned records. Only draft records expose Publish.</p><div id="manifest-list" data-testid="manifest-list"><p class="muted">No uploaded manifests yet.</p></div><div class="workshop-safety-note"><p>AUTHORITATIVE BOUNDARY</p><span>Manifest data may only reference Threadbound-owned mechanic IDs, objective types, equipment slots/stats/rarities, reward types, visual asset IDs, and constrained effect resistances.</span></div><p class="workshop-drafts-status">Status · ready to publish after human review</p></section></section></main><script type="module" src="/arc-workshop.js"></script></body></html>`;
 }
 
 function localLoginForms() {
   return `<h2>Local development login</h2><p>No Threaded server is required. Open another private/incognito window and choose a different Weaver to test co-op locally.</p><div>${Object.entries(LOCAL_PROFILES).map(([slot, profile]) => `<form method="post" action="/auth/local" style="display:inline"><input type="hidden" name="slot" value="${slot}"><button type="submit" data-testid="local-login-${slot}">Enter as ${profile.name}</button></form>`).join('')}</div><p><small>Local auth is rejected when NODE_ENV=production. Honey purchases are unavailable because Threaded remains the authoritative wallet owner.</small></p>`;
 }
 
-function homePage({ connected, authMode }) {
+function homePage({ connected, authMode, capabilities = {} }) {
   const login = authMode === 'local' ? localLoginForms() : '<p><a data-testid="threaded-login" class="primary-link" href="/auth/threaded">Connect with Threaded</a></p>';
-  const workshop = authMode === 'local' ? ' · <a href="/arc-workshop">Arc Workshop</a>' : '';
+  const workshop = capabilities.arcWorkshop === true ? ' · <a href="/arc-workshop">Arc Workshop</a>' : '';
   return `<!doctype html><html lang="en"><head>${sharedHead('Threadbound')}</head><body><main class="threadbound-page home-shell"><header class="page-hero"><div><span class="eyebrow">PERSISTENT CO-OP ROGUELITE</span><h1>Threadbound</h1><p>Enter an evolving world tied to your Threaded identity and Honey wallet.</p></div></header><section class="panel">${connected ? `<p>Connected successfully. <a data-testid="enter-game" href="/game">Enter Threadbound</a> · <a href="/codex">Open Codex</a>${workshop}</p>` : login}</section></main></body></html>`;
 }
 
@@ -120,6 +130,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     }
   });
   const gameService = new GameService({ repository, eventBus, arcManifestService });
+  const battleSimulationService = new BattleSimulationService({ gameService });
   const huntService = new HuntService({ repository, eventBus });
   const adventureService = new AdventureService({ repository, eventBus });
   const duelService = new DuelService({ repository, eventBus });
@@ -151,7 +162,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   };
   const requireWorkshop = (request, response, next) => {
     if (!request.session.threaded?.playerId) return response.status(401).json({ error: 'identity_not_connected', message: 'Sign in to Threadbound first.' });
-    if (config.authMode !== 'local' || request.session.threaded.source !== 'local') return response.status(403).json({ error: 'arc_workshop_unavailable', message: 'Arc Workshop mutation is currently restricted to standalone local development mode until production admin authorization exists.' });
+    if (config.authMode !== 'local' || !canAccessArcWorkshop(request.session.threaded)) return response.status(403).json({ error: 'arc_workshop_unavailable', message: 'Arc Workshop is only available to an authorized local authoring profile.' });
     next();
   };
   const idempotentRunCommand = (request, response, next) => {
@@ -193,11 +204,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   };
 
   app.get('/health', (_request, response) => response.json({ status: 'ok', service: 'threadbound', auth_mode: config.authMode }));
-  app.get('/', (request, response) => response.type('html').send(homePage({ connected: Boolean(request.session.threaded), authMode: config.authMode })));
+  app.get('/', (request, response) => response.type('html').send(homePage({ connected: Boolean(request.session.threaded), authMode: config.authMode, capabilities: sessionCapabilities(request.session.threaded) })));
   const serveReactGame = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
-  const serveLegacyGame = (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode)) : response.redirect('/');
+  const serveLegacyGame = (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode, sessionCapabilities(request.session.threaded))) : response.redirect('/');
   const serveReactCodex = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
-  const serveLegacyCodex = (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode)) : response.redirect('/');
+  const serveLegacyCodex = (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode, sessionCapabilities(request.session.threaded))) : response.redirect('/');
   app.get('/game', (request, response, next) => {
     if (!request.session.threaded?.playerId) return response.redirect('/');
     return config.legacyGameRoute ? serveLegacyGame(request, response) : serveReactGame(request, response, next);
@@ -210,7 +221,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
   app.get('/codex-react', requireConnection, serveReactCodex);
   app.get('/codex-legacy', (request, response) => process.env.NODE_ENV === 'production' ? response.status(404).send('Legacy Codex route is disabled.') : serveLegacyCodex(request, response));
-  app.get('/arc-workshop', (request, response) => request.session.threaded && config.authMode === 'local' ? response.type('html').send(arcWorkshopPage(config.authMode)) : response.redirect('/'));
+  app.get('/arc-workshop', (request, response) => request.session.threaded?.playerId && config.authMode === 'local' && canAccessArcWorkshop(request.session.threaded) ? response.type('html').send(arcWorkshopPage(config.authMode, sessionCapabilities(request.session.threaded))) : response.redirect('/'));
 
   app.post('/auth/local', (request, response) => {
     if (config.authMode !== 'local') return response.status(404).send('Not found');
@@ -273,6 +284,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     response.json({
       authSource: connection.source || 'threaded',
       threadedUser: connection.profile,
+      capabilities: sessionCapabilities(connection),
       wallet: connection.wallet,
       ...dashboard,
       runUpgrades: dashboard.activeRun?.simpleCombat ? [] : runUpgrades,
@@ -403,8 +415,13 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/hunt', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
     const hunt = huntService.hunt(playerId);
-    return response.json({ hunt, dashboard: gameService.dashboard(playerId) });
+    return response.json({ hunt, dashboard: gameService.dashboard(playerId), quests: questService.browse(playerId) });
   });
+  app.get('/api/battle-simulation', requireConnection, (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json(battleSimulationService.preview(request.session.threaded.playerId));
+  });
+  app.post('/api/battle-simulation', requireConnection, (request, response) => response.status(201).json(battleSimulationService.preview(request.session.threaded.playerId)));
   app.post('/api/adventure', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
     const adventure = adventureService.adventure(playerId);

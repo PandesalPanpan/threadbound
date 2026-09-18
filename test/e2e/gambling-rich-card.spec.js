@@ -27,15 +27,16 @@ test.describe('mobile gambling chat flow', () => {
     expect(browse.ok()).toBe(true);
     const gambling = await browse.json();
     expect(gambling.blackjack.currency).toBe('Gold');
+    expect(gambling.limits.maxWagerGold).toBeNull();
 
-    const overCap = await context.request.post('/api/gambling/coinflip', {
-      headers: { 'Idempotency-Key': 'playwright-gambling-cap-0001' },
-      data: { wager: 101, choice: 'heads' },
+    const overBalance = await context.request.post('/api/gambling/coinflip', {
+      headers: { 'Idempotency-Key': 'playwright-gambling-balance-0001' },
+      data: { wager: 1, choice: 'heads' },
     });
-    expect(overCap.status()).toBe(422);
-    const overCapPayload = await overCap.json();
-    expect(overCapPayload.error).toBe('invalid_coinflip_wager');
-    expect(overCapPayload.message).toContain('between 1 and 100 Gold');
+    expect(overBalance.status()).toBe(409);
+    const overBalancePayload = await overBalance.json();
+    expect(overBalancePayload.error).toBe('insufficient_coinflip_gold');
+    expect(overBalancePayload.message).toContain('only carry 0 Gold');
 
     // A fresh test player has no Gold. Earn it through the authoritative gameplay
     // loop instead of bypassing economy rules just to exercise the side activity.

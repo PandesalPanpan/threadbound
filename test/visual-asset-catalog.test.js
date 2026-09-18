@@ -9,12 +9,12 @@ import { CANONICAL_VISUAL_ASSET_IDS, compactVisualAssetCatalog } from '../src/co
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('visual asset catalog has unique typed semantic IDs and resolvable hashed files', async () => {
-  assert.equal(VISUAL_ASSETS.length, 366);
+  assert.equal(VISUAL_ASSETS.length, 372);
   assert.equal(new Set(VISUAL_ASSETS.map((asset) => asset.id)).size, VISUAL_ASSETS.length);
   for (const asset of VISUAL_ASSETS) {
     assert.match(asset.id, /^(mob|boss|item|icon|character)\.[a-z0-9-]+\.v\d+$/);
     assert.match(asset.src, /^\/assets\/runtime\/[a-z0-9-]+\.[a-f0-9]{12}\.webp$/);
-    assert.equal(asset.provenance.license, 'project-owned-ai-generated');
+    assert.ok(['project-owned-ai-generated', 'project-owned-figma-export'].includes(asset.provenance.license));
     await access(path.join(ROOT, 'public', asset.src));
   }
 });

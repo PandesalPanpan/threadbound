@@ -47,7 +47,8 @@ export function resolveDuelBattle({ challenger, opponent, random = Math.random }
   const battle = simulateAutomaticBattle(
     { resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }) },
     {
-      combatants: [left, right],
+      players: [left],
+      enemies: [right],
       context: { activity: 'duel', challengerId: left.id, opponentId: right.id },
     },
   );

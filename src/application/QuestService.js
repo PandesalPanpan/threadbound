@@ -11,12 +11,17 @@ function normalizeCatalog(quests) {
   return Object.freeze(models);
 }
 
-function projectQuest(quest) {
+function projectQuest(quest, progress = null) {
+  const progressByObjectiveId = new Map((progress?.objectiveProgress || []).map((row) => [row.objectiveId, row]));
   return Object.freeze({
     ...quest.toJSON(),
     objectives: Object.freeze(quest.objectives.map((objective) => Object.freeze({
       ...objective,
       label: describeQuestObjective(objective),
+      current: Number(progressByObjectiveId.get(objective.id)?.current || 0),
+      target: Number(progressByObjectiveId.get(objective.id)?.target || objective.count),
+      required: Number(progressByObjectiveId.get(objective.id)?.target || objective.count),
+      complete: Boolean(progressByObjectiveId.get(objective.id)?.complete),
     }))),
   });
 }
@@ -52,7 +57,7 @@ export class QuestService {
       .map((quest) => {
         const progress = progressByQuestId.get(quest.id) || null;
         return Object.freeze({
-          ...projectQuest(quest),
+          ...projectQuest(quest, progress),
           state: presentationState(progress),
           progress: progress?.toJSON() || null,
         });
@@ -81,7 +86,7 @@ export class QuestService {
       error.code = 'quest_already_accepted';
       throw error;
     }
-    const result = Object.freeze({ quest: projectQuest(quest), progress: accepted.progress.toJSON() });
+    const result = Object.freeze({ quest: projectQuest(quest, accepted.progress), progress: accepted.progress.toJSON() });
     this.eventBus?.publish?.({ type: 'QuestAccepted', playerId, questId: quest.id, questTitle: quest.title, areaNumber: quest.areaNumber });
     return result;
   }
@@ -113,7 +118,7 @@ export class QuestService {
       throw error;
     }
     const saved = this.questRepository.save(playerId, progress.claim(claimedAt));
-    const result = Object.freeze({ quest: projectQuest(quest), progress: saved.toJSON() });
+    const result = Object.freeze({ quest: projectQuest(quest, saved), progress: saved.toJSON() });
     this.eventBus?.publish?.({ type: 'QuestClaimed', playerId, questId: quest.id, questTitle: quest.title, areaNumber: quest.areaNumber });
     return result;
   }

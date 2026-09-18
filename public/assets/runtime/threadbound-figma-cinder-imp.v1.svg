@@ -1,0 +1,22 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Character Source / Cinder Imp">
+<ellipse id="Shadow" cx="55" cy="102.5" rx="26" ry="3.5" fill="#080808"/>
+<ellipse id="Body" cx="56.5" cy="65" rx="16.5" ry="20" fill="#241714"/>
+<ellipse id="Head" cx="56" cy="39" rx="22" ry="19" fill="#241714"/>
+<path id="Horn L" d="M39.084 10.6266L40.2908 30.7337L26.289 26.1842L39.084 10.6266Z" fill="#E64014"/>
+<path id="Horn R" d="M73.084 5.37336L85.879 20.9309L71.8771 25.4804L73.084 5.37336Z" fill="#E64014"/>
+<ellipse id="Eye L" cx="47.5" cy="37" rx="3.5" ry="3" fill="#FF8C1A"/>
+<ellipse id="Eye R" cx="64.5" cy="37" rx="3.5" ry="3" fill="#FF8C1A"/>
+<rect id="Mouth" x="48" y="45" width="17" height="3" rx="1.5" fill="#E64014"/>
+<path id="Wing L" d="M29.0478 45.5506L30.1198 75.0141L5.78831 63.6682L29.0478 45.5506Z" fill="#241714"/>
+<path id="Wing R" d="M82.0478 32.4494L105.307 50.567L80.9758 61.913L82.0478 32.4494Z" fill="#241714"/>
+<rect id="Arm L" x="29" y="56" width="12" height="30" rx="6" transform="rotate(-22 29 56)" fill="#241714"/>
+<rect id="Arm R" x="73" y="55" width="12" height="30" rx="6" transform="rotate(22 73 55)" fill="#241714"/>
+<rect id="Leg L" x="43" y="78" width="9" height="24" rx="4.5" fill="#241714"/>
+<rect id="Leg R" x="61" y="78" width="9" height="24" rx="4.5" fill="#241714"/>
+<rect id="Tail" x="78" y="77" width="22" height="5" rx="2.5" transform="rotate(25 78 77)" fill="#241714"/>
+<path id="Tail Flame" d="M99.9088 63.9581L107.37 76.3507L97.1359 78.1553L99.9088 63.9581Z" fill="#FF8C1A"/>
+<circle id="Fireball" cx="21" cy="72" r="8" fill="#E64014"/>
+<circle id="Fire Core" cx="21" cy="72" r="4" fill="#FF8C1A"/>
+</g>
+</svg>

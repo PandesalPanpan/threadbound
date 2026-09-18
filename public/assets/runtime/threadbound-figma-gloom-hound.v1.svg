@@ -1,0 +1,22 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="115.344" height="112" viewBox="0 0 115.344 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Character Source / Gloom Hound">
+<ellipse id="Shadow" cx="57" cy="98.5" rx="39" ry="4.5" fill="#080808"/>
+<ellipse id="Body" cx="59.5" cy="65.5" rx="28.5" ry="17.5" fill="#140F1A"/>
+<ellipse id="Chest" cx="53.5" cy="74.5" rx="15.5" ry="13.5" fill="#291F33"/>
+<ellipse id="Head" cx="36.5" cy="55" rx="19.5" ry="17" fill="#140F1A"/>
+<path id="Ear L" d="M24.3861 26.3024L27.6569 45.1568L14.8639 42.901L24.3861 26.3024Z" fill="#140F1A"/>
+<path id="Ear R" d="M50.3861 24.6976L59.778 40.5577L46.985 42.8135L50.3861 24.6976Z" fill="#140F1A"/>
+<ellipse id="Eye L" cx="30.5" cy="52" rx="3.5" ry="3" fill="#DB1F1A"/>
+<ellipse id="Eye R" cx="44.5" cy="52" rx="3.5" ry="3" fill="#DB1F1A"/>
+<rect id="Snout" x="22" y="58" width="26" height="9" rx="4" fill="#47454D"/>
+<rect id="Mouth" x="25" y="65" width="21" height="3" rx="1.5" fill="#DB1F1A"/>
+<rect id="Front Leg L" x="31" y="72" width="9" height="29" rx="4.5" transform="rotate(-5 31 72)" fill="#140F1A"/>
+<rect id="Front Leg R" x="47" y="72" width="9" height="29" rx="4.5" transform="rotate(5 47 72)" fill="#140F1A"/>
+<rect id="Back Leg" x="72" y="69" width="12" height="28" rx="6" transform="rotate(12 72 69)" fill="#140F1A"/>
+<rect id="Tail Base" x="81" y="55" width="24" height="9" rx="4.5" transform="rotate(18 81 55)" fill="#140F1A"/>
+<path id="Tail Wisp" d="M100.987 36.0928L115.344 54.0135L101.509 59.0488L100.987 36.0928Z" fill="#291F33"/>
+<path id="Smoke 1" d="M67.5595 33.7812L68.0194 57.5885L53.1939 52.7714L67.5595 33.7812Z" fill="#291F33"/>
+<path id="Smoke 2" d="M80.8252 26.3367L92.4359 47.6382L78.8823 50.5191L80.8252 26.3367Z" fill="#140F1A"/>
+<circle id="Smoke Orb" cx="90.5" cy="33.5" r="5.5" fill="#291F33"/>
+</g>
+</svg>

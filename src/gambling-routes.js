@@ -1,6 +1,7 @@
 import { BlackjackService } from './application/BlackjackService.js';
 import { CoinflipService } from './application/CoinflipService.js';
 import { SlotsService } from './application/SlotsService.js';
+import { gamblingBalanceLimits } from './domain/GamblingBalancePolicy.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
 
 function idempotencyKey(request) {
@@ -58,15 +59,15 @@ function gamblingHelpReceipt(game, state) {
       const dealerCards = `${round.dealerHand.join(' ')}${round.dealerHiddenCardCount ? ' ?' : ''}`;
       return `Blackjack · You ${handText(round.playerHand, round.playerScore)} · Dealer ${dealerCards} = ${round.dealerScore}${round.dealerHiddenCardCount ? '+' : ''} · ${round.wager} Gold wager · type hit or stand · ${carriedGold} Gold carried.`;
     }
-    return `Blackjack · ${carriedGold} Gold carried · type blackjack <wager> to deal · wager 1–100 Gold.`;
+    return `Blackjack · ${carriedGold} Gold carried · type blackjack <wager> to deal · wager 1+ carried Gold.`;
   }
   if (game === 'coinflip') {
-    return `Coinflip · ${carriedGold} Gold carried · type coinflip <wager> heads or coinflip <wager> tails · wager 1–100 Gold.`;
+    return `Coinflip · ${carriedGold} Gold carried · type coinflip <wager> heads or coinflip <wager> tails · wager 1+ carried Gold.`;
   }
   if (game === 'slots') {
-    return `Slots · ${carriedGold} Gold carried · type slots <wager> · wager 1–100 Gold.`;
+    return `Slots · ${carriedGold} Gold carried · type slots <wager> · wager 1+ carried Gold.`;
   }
-  return `Games · blackjack <wager> · coinflip <wager> heads|tails · slots <wager> · wagers use 1–100 carried Gold only.`;
+  return `Games · blackjack <wager> · coinflip <wager> heads|tails · slots <wager> · wagers use 1+ carried Gold only.`;
 }
 
 function statusFor(error) {
@@ -122,7 +123,7 @@ export function installGamblingRoutes(app, { repository }) {
 
   app.get('/api/gambling', requireConnection, respond((request, response) => {
     response.setHeader('Cache-Control', 'no-store');
-    return response.json({ blackjack: blackjack.browse(request.session.threaded.playerId) });
+    return response.json({ blackjack: blackjack.browse(request.session.threaded.playerId), limits: gamblingBalanceLimits() });
   }));
 
   app.post('/api/gambling/help', requireConnection, respond((request, response) => {

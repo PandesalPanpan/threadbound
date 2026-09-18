@@ -8377,6 +8377,132 @@ export const VISUAL_ASSETS = Object.freeze([
       "row": 1,
       "column": 7
     }
+  },
+  {
+    "id": "character.bramble-druid-figma.v1",
+    "kind": "character",
+    "label": "Bramble Druid",
+    "description": "Figma battle concept artwork for Bramble Druid.",
+    "tags": [
+      "character",
+      "battle",
+      "player",
+      "support"
+    ],
+    "src": "/assets/runtime/battle-bramble-druid.4c49060c1d3f.webp",
+    "width": 112,
+    "height": 112,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "112:7",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    }
+  },
+  {
+    "id": "character.iron-vanguard-figma.v1",
+    "kind": "character",
+    "label": "Iron Vanguard",
+    "description": "Figma battle concept artwork for Iron Vanguard.",
+    "tags": [
+      "character",
+      "battle",
+      "player",
+      "tank"
+    ],
+    "src": "/assets/runtime/battle-iron-vanguard.52c3a2ecdaef.webp",
+    "width": 112,
+    "height": 112,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "112:12",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    }
+  },
+  {
+    "id": "character.rune-bard-figma.v1",
+    "kind": "character",
+    "label": "Rune Bard",
+    "description": "Figma battle concept artwork for Rune Bard.",
+    "tags": [
+      "character",
+      "battle",
+      "player",
+      "arcane"
+    ],
+    "src": "/assets/runtime/battle-rune-bard.65f9a6fa248b.webp",
+    "width": 112,
+    "height": 112,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "112:17",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    }
+  },
+  {
+    "id": "mob.cinder-imp-figma.v1",
+    "kind": "mob",
+    "label": "Cinder Imp",
+    "description": "Figma battle concept artwork for Cinder Imp.",
+    "tags": [
+      "mob",
+      "battle",
+      "enemy",
+      "fire"
+    ],
+    "src": "/assets/runtime/battle-cinder-imp.e625388e7e23.webp",
+    "width": 112,
+    "height": 112,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "112:22",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    }
+  },
+  {
+    "id": "mob.rot-toad-figma.v1",
+    "kind": "mob",
+    "label": "Rot Toad",
+    "description": "Figma battle concept artwork for Rot Toad.",
+    "tags": [
+      "mob",
+      "battle",
+      "enemy",
+      "poison"
+    ],
+    "src": "/assets/runtime/battle-rot-toad.6015231b2f0f.webp",
+    "width": 112,
+    "height": 112,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "112:27",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    }
+  },
+  {
+    "id": "mob.gloom-hound-figma.v1",
+    "kind": "mob",
+    "label": "Gloom Hound",
+    "description": "Figma battle concept artwork for Gloom Hound.",
+    "tags": [
+      "mob",
+      "battle",
+      "enemy",
+      "shadow"
+    ],
+    "src": "/assets/runtime/battle-gloom-hound.0e3e09a9b4be.webp",
+    "width": 115,
+    "height": 112,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "112:32",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    }
   }
 ].map((asset) => Object.freeze(asset)));
 export const VISUAL_ASSET_BY_ID = new Map(VISUAL_ASSETS.map((asset) => [asset.id, asset]));

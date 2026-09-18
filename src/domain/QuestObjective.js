@@ -71,7 +71,7 @@ function eventIncrement(objective, event) {
         && ['HuntResolved', 'AdventureResolved'].includes(event.type)
         && event.enemyId === objective.targetId ? 1 : 0;
     case 'hunt':
-      return event.type === 'HuntResolved' ? 1 : 0;
+      return event.type === 'HuntResolved' && event.victory === true ? 1 : 0;
     case 'adventure':
       return event.type === 'AdventureResolved' ? 1 : 0;
     case 'collect':

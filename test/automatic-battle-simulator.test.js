@@ -168,3 +168,88 @@ test('max-turn bound prevents a non-progressing policy from looping forever', ()
   assert.equal(result.stopReason, 'max-turns');
   assert.equal(result.turns.length, 3);
 });
+
+test('one shared simulator resolves every 1-to-3 party and enemy collection size', () => {
+  for (let playerCount = 1; playerCount <= 3; playerCount += 1) {
+    for (let enemyCount = 1; enemyCount <= 3; enemyCount += 1) {
+      const result = simulateAutomaticBattle(
+        { resolveAction: () => ({ targetDamage: 1 }) },
+        {
+          players: Array.from({ length: playerCount }, (_, index) => ({
+            id: `player-${playerCount}-${index}`,
+            hp: 20,
+            maxHp: 20,
+            speed: 10,
+          })),
+          enemies: Array.from({ length: enemyCount }, (_, index) => ({
+            id: `enemy-${enemyCount}-${index}`,
+            hp: 1,
+            maxHp: 1,
+            speed: 1,
+          })),
+          context: { activity: 'party-preview', playerCount, enemyCount },
+        },
+      );
+
+      assert.equal(result.outcome, 'victory');
+      assert.equal(result.players.length, playerCount);
+      assert.equal(result.enemies.length, enemyCount);
+      assert.equal(result.winnerTeam, 'players');
+      assert.equal(result.winnerIds.length, playerCount);
+      assert.equal(result.loserIds.length, enemyCount);
+    }
+  }
+});
+
+test('automatic teams retarget a defeated target deterministically and never let defeated actors act', () => {
+  const result = simulateAutomaticBattle(
+    {
+      selectTarget: () => 'enemy-a',
+      resolveAction: ({ actor }) => ({ targetDamage: actor.id === 'player-a' ? 2 : 0 }),
+    },
+    {
+      players: [
+        { id: 'player-a', hp: 20, maxHp: 20, speed: 10 },
+        { id: 'player-b', hp: 20, maxHp: 20, speed: 9 },
+      ],
+      enemies: [
+        { id: 'enemy-a', hp: 1, maxHp: 1, speed: 1 },
+        { id: 'enemy-b', hp: 1, maxHp: 1, speed: 1 },
+      ],
+    },
+  );
+
+  assert.equal(result.outcome, 'victory');
+  const targetIds = result.turns.filter((turn) => turn.targetId).map((turn) => turn.targetId);
+  assert.deepEqual([...new Set(targetIds)], ['enemy-a', 'enemy-b']);
+  assert.ok(targetIds.slice(1).every((targetId) => targetId === 'enemy-b'));
+  assert.ok(result.events.some((event) => event.type === 'TargetRetargeted' && event.targetId === 'enemy-b'));
+  assert.ok(result.turns.every((turn) => !['enemy-a', 'enemy-b'].includes(turn.actorId)));
+});
+
+test('Mana thresholds auto-cast the first ready skill and expose authoritative skill events', () => {
+  const result = simulateAutomaticBattle(
+    {
+      resolveAction: ({ actionType }) => ({ targetDamage: actionType === 'skill' ? 4 : 1 }),
+    },
+    {
+      players: [{
+        id: 'bard',
+        hp: 20,
+        maxHp: 20,
+        speed: 10,
+        mana: 90,
+        maxMana: 100,
+        manaGain: 10,
+        skills: [{ id: 'threadsong', name: 'Threadsong', manaCost: 100 }],
+      }],
+      enemies: [{ id: 'toad', hp: 20, maxHp: 20, speed: 1 }],
+    },
+  );
+
+  assert.equal(result.outcome, 'victory');
+  assert.ok(result.events.some((event) => event.type === 'SkillReady' && event.combatantId === 'bard'));
+  assert.ok(result.events.some((event) => event.type === 'SkillCast' && event.skillId === 'threadsong'));
+  assert.equal(result.turns.find((turn) => turn.metadata.actionType === 'skill').actorManaAfter, 0);
+  assert.ok(result.events.some((event) => event.type === 'ManaChanged' && event.reason === 'skill-cast'));
+});

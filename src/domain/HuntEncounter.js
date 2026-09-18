@@ -42,13 +42,15 @@ export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, ran
   const battle = simulateAutomaticBattle(
     { resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }) },
     {
-      combatants: [
+      players: [
         {
           ...player,
           id: playerId,
           hp: currentHealth,
           maxHp,
         },
+      ],
+      enemies: [
         {
           id: enemyId,
           name: enemy.name,

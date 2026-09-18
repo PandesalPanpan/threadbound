@@ -82,6 +82,15 @@ const CANONICAL_VISUAL_ASSET_IDS = Object.freeze({
   'hollow-mirror': 'boss.void-singularity.v1',
 });
 
+export const BATTLE_FIGMA_VISUAL_ASSET_IDS = Object.freeze({
+  'bramble-druid': 'character.bramble-druid-figma.v1',
+  'iron-vanguard': 'character.iron-vanguard-figma.v1',
+  'rune-bard': 'character.rune-bard-figma.v1',
+  'cinder-imp': 'mob.cinder-imp-figma.v1',
+  'rot-toad': 'mob.rot-toad-figma.v1',
+  'gloom-hound': 'mob.gloom-hound-figma.v1',
+});
+
 let viewerPlayerId = null;
 let viewerStableIdentity = null;
 
@@ -262,4 +271,10 @@ export function createSpriteElement(frame, { className = '', testId = null, labe
 // because generated-sprite-presentation.js consumes the frame helpers above.
 if (globalThis.document) {
   queueMicrotask(() => import('./generated-sprite-presentation.js').catch(() => {}));
+}
+
+export function battleSpriteFrame(unit = {}) {
+  const id = String(unit.visualAssetId || BATTLE_FIGMA_VISUAL_ASSET_IDS[String(unit.id || unit.unitId || '').trim()] || '');
+  const asset = visualAsset(id);
+  return asset ? runtimeAssetFrame(asset) : null;
 }

@@ -1,0 +1,25 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Character Source / Rune Bard">
+<ellipse id="Shadow" cx="56.5" cy="103.5" rx="28.5" ry="3.5" fill="#080808"/>
+<rect id="Left Leg" x="43" y="83" width="9" height="19" rx="4" fill="#171614"/>
+<rect id="Right Leg" x="61" y="83" width="9" height="19" rx="4" fill="#171614"/>
+<path id="Robe" d="M56 49L79.7764 65.9291L70.6946 93.3209H41.3054L32.2236 65.9291L56 49Z" fill="#573D7A"/>
+<rect id="Torso" x="40" y="45" width="32" height="39" rx="8" fill="#382E54"/>
+<ellipse id="Head" cx="56.5" cy="39" rx="17.5" ry="16" fill="#C29473"/>
+<ellipse id="Hair" cx="56.5" cy="32" rx="20.5" ry="14" fill="#B8ABC7"/>
+<ellipse id="Face" cx="56.5" cy="39.5" rx="15.5" ry="13.5" fill="#C29473"/>
+<ellipse id="Eye L" cx="51" cy="39.5" rx="2" ry="2.5" fill="#4D337A"/>
+<ellipse id="Eye R" cx="64" cy="39.5" rx="2" ry="2.5" fill="#4D337A"/>
+<path id="Hat" d="M56.5 11L79.4497 29.75H33.5503L56.5 11Z" fill="#291F42"/>
+<rect id="Hat Brim" x="28" y="28" width="57" height="7" rx="3.5" fill="#291F42"/>
+<circle id="Hat Gem" cx="62.5" cy="20.5" r="3.5" fill="#C7A366"/>
+<rect id="Book Left" x="14" y="57" width="22" height="25" rx="3" transform="rotate(8 14 57)" fill="#734729"/>
+<rect id="Book Right" x="34" y="54" width="22" height="25" rx="3" transform="rotate(-8 34 54)" fill="#80522E"/>
+<rect id="Book Glow" x="25" y="59" width="4" height="18" rx="2" fill="#C7A366"/>
+<circle id="Note 1" cx="90" cy="46" r="4" fill="#4D8CB8"/>
+<rect id="Note Stem 1" x="91" y="32" width="3" height="14" rx="1.5" fill="#4D8CB8"/>
+<circle id="Note 2" cx="90.5" cy="71.5" r="3.5" fill="#8057C7"/>
+<rect id="Note Stem 2" x="92" y="59" width="3" height="12" rx="1.5" fill="#8057C7"/>
+<circle id="Rune Orb" cx="88.5" cy="90.5" r="6.5" fill="#618CDE"/>
+</g>
+</svg>

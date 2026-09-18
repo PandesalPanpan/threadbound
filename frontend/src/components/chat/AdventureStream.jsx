@@ -1,6 +1,20 @@
+import { useCallback, useEffect, useRef } from 'react';
 import { entryBody, entryKey, entryKind, formatEntryTime } from '../../shell/presentation.js';
 
 export function AdventureStream({ entries = [], activeCard = null, onLoadMore = null, hasMore = false, connected = false }) {
+  const logRef = useRef(null);
+  const nearBottomRef = useRef(true);
+  const onScroll = useCallback((event) => {
+    const element = event.currentTarget;
+    nearBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 72;
+  }, []);
+
+  useEffect(() => {
+    const element = logRef.current;
+    if (!element || !nearBottomRef.current) return;
+    element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+  }, [entries.length, activeCard]);
+
   return (
     <section className="game-shell-stream" aria-labelledby="adventure-stream-title">
       <header className="game-shell-stream__header">
@@ -10,7 +24,7 @@ export function AdventureStream({ entries = [], activeCard = null, onLoadMore = 
         </div>
         <span className={`stream-live-pill${connected ? ' is-live' : ''}`} data-testid="stream-connection"><i /> {connected ? 'LIVE' : 'SYNC'}</span>
       </header>
-      <div className="game-shell-stream__log" data-testid="adventure-stream-log" role="log" aria-live="polite">
+      <div ref={logRef} className="game-shell-stream__log" data-testid="adventure-stream-log" role="log" aria-live="polite" onScroll={onScroll}>
         {hasMore && onLoadMore ? <button className="stream-load-more" type="button" onClick={onLoadMore}>Load earlier receipts</button> : null}
         {entries.length ? entries.map((entry) => {
           const kind = entryKind(entry);
