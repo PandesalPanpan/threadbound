@@ -111,12 +111,12 @@ three explicit decisions beside the composer.
 Passing checks:
 
 - `npx playwright test test/e2e/presentation-v2-dungeon.local.spec.js --config=playwright.simple.local.config.js` — 4 passed.
-- `npx playwright test --config=playwright.react.local.config.js` — 7 passed,
+- `npx playwright test --config=playwright.react.local.config.js` — 11 passed,
   including the React Dungeon decision journey.
 - `npm run test:e2e:simple-local` — passed, including stream, Battle Details,
   rich-card compatibility, foundation, simple-loop, and Dungeon tests.
 - `npm run check` — passed.
-- `npm test` — 389 passed.
+- `npm test` — 390 passed.
 
 The focused specs cover mobile entry, active rooms, authoritative enemy and
 player HP, HP persistence across room transitions, reload, the distinct boss
