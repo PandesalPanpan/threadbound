@@ -5,10 +5,24 @@ test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true
 
 test('Arc Workshop previews and validates a vNext world package clearly', async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('local-login-a').click();
+  await page.getByTestId('local-login-b').click();
   await page.goto('/arc-workshop');
   await expect(page).toHaveURL(/\/arc-workshop$/);
   await expect(page.getByRole('heading', { name: 'Arc Workshop' })).toBeVisible();
+
+  const worldContextResponse = await page.request.get('/api/arc-workshop/context');
+  expect(worldContextResponse.ok()).toBe(true);
+  const worldContext = await worldContextResponse.json();
+  expect(worldContext.visualAssetCatalog.collections.characters.some((asset) => asset.id === 'character.road-sellsword.v1' && asset.role === 'Wandering Blade')).toBe(true);
+  expect(worldContext.visualAssetCatalog.collections.mobs.some((asset) => asset.label === 'Field Mouse' && asset.family === 'rodent')).toBe(true);
+  expect(worldContext.visualAssetCatalog.collections.bosses.some((asset) => asset.label === 'Watcher Prime' && asset.boardCategory === 'elite')).toBe(true);
+  expect(worldContext.visualAssetCatalog.collections.mobs.every((asset) => !Object.hasOwn(asset, 'src') && !Object.hasOwn(asset, 'provenance'))).toBe(true);
+  expect(worldContext.generationRules.some((rule) => /family and board category/i.test(rule))).toBe(true);
+
+  const catalogResponse = await page.request.get('/api/arc-workshop/visual-assets');
+  expect(catalogResponse.ok()).toBe(true);
+  const catalog = await catalogResponse.json();
+  expect(catalog.assets.find((asset) => asset.id === 'mob.field-mouse.v1')).toMatchObject({ family: 'rodent', boardCategory: 'common-mob' });
 
   await page.getByTestId('manifest-file').setInputFiles('examples/arc-manifest-vnext.example.json');
 
@@ -62,11 +76,52 @@ test('Arc Workshop previews and validates a vNext world package clearly', async 
   await page.screenshot({ path: 'ux-review/arc-workshop-vnext-expanded-mobile.png', fullPage: true });
 
   await page.getByTestId('save-manifest').click();
-  await expect(page.getByTestId('workshop-status')).toContainText(/Saved Sunpetal Crossing revision \d+ as a draft/);
+  const savedStatus = page.getByTestId('workshop-status');
+  await expect(savedStatus).toContainText(/Saved Sunpetal Crossing revision \d+ as a draft/);
+  const revisionMatch = (await savedStatus.textContent())?.match(/revision (\d+)/);
+  expect(revisionMatch).not.toBeNull();
+  const revision = revisionMatch[1];
   const list = page.getByTestId('manifest-list');
   await expect(list).toContainText('Sunpetal Crossing');
   await expect(list).toContainText('draft');
   await expect(list).toContainText('v2 · world package');
+  const savedDraft = list.locator('.manifest-row')
+    .filter({ hasText: 'Sunpetal Crossing' })
+    .filter({ hasText: `revision ${revision}` })
+    .first();
+
+  await savedDraft.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByTestId('workshop-status')).toContainText(`Published Sunpetal Crossing revision ${revision}`);
+
+  await page.getByTestId('nav-game').click();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  const areaResponse = await page.request.get('/api/areas');
+  expect(areaResponse.ok()).toBe(true);
+  const areaPayload = await areaResponse.json();
+  const authoredTown = areaPayload.area.towns.find((town) => town.id === 'petalrest');
+  expect(authoredTown?.npcs[0]).toMatchObject({ visualAssetId: 'character.road-sellsword.v1' });
+
+  await page.getByTestId('stream-message').fill('town');
+  await page.getByTestId('stream-send').click();
+  await expect(page.getByTestId('town-npc-sprite-mina-smith')).toHaveAttribute('data-visual-asset-id', 'character.road-sellsword.v1');
+  await page.screenshot({ path: 'ux-review/figma-character-library-town-mobile.png', fullPage: true });
+  await page.getByTestId('town-npc-mina-smith').screenshot({ path: 'ux-review/figma-character-library-town-npc-mobile.png' });
+
+  const startResponse = await page.request.post('/api/dungeons/sunpetal-trial/start-simple');
+  expect(startResponse.status()).toBe(201);
+  await page.reload();
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
+  await expect(page.getByTestId('simple-dungeon-enemy-sprite')).toHaveAttribute('data-visual-asset-id', 'mob.field-mouse.v1');
+  await page.screenshot({ path: 'ux-review/figma-character-library-battle-mobile.png', fullPage: true });
+
+  await page.goto('/codex');
+  await expect(page.getByTestId('codex-status')).not.toHaveText('Loading…');
+  await page.getByTestId('codex-search').fill('Bellfield Mouse');
+  const mouse = page.locator('[data-testid="codex-entry"][data-entry-id="petal-wisp"]');
+  await expect(mouse).toBeVisible();
+  await mouse.click();
+  await expect(page.getByTestId('codex-detail-art')).toHaveAttribute('data-visual-asset-id', 'mob.field-mouse.v1');
+  await page.screenshot({ path: 'ux-review/figma-character-library-codex-mobile.png', fullPage: true });
 });
 
 test('Brightbell Bloom full Arc stays readable and saves only as a validated draft on mobile', async ({ page }) => {

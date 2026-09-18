@@ -147,6 +147,7 @@ if (stream) {
     return {
       id: metadata.enemyId || metadata.defeatedEnemyId || slugify(name),
       name,
+      visualAssetId: metadata.enemyVisualAssetId || metadata.defeatedEnemyVisualAssetId || metadata.nextEnemyVisualAssetId || null,
       isBoss: Boolean(metadata.defeatedBoss || metadata.enemy?.isBoss || /boss/i.test(label)),
     };
   }
@@ -210,10 +211,10 @@ if (stream) {
       visual.className = 'stream-hunt-visual';
       visual.dataset.testid = 'stream-hunt-visual';
       const enemyName = metadata.enemyName || 'Hunt enemy';
-      visual.append(createSpriteElement(enemySpriteFrame({ id: metadata.enemyId, name: enemyName }), {
+      visual.append(createSpriteElement(enemySpriteFrame({ id: metadata.enemyId, name: enemyName, visualAssetId: metadata.enemyVisualAssetId }), {
         className: 'stream-hunt-sprite generated-enemy-sprite',
         testId: 'stream-hunt-sprite',
-        label: enemyName,
+        label: `${enemyName} artwork`,
       }));
 
       const copy = document.createElement('div');

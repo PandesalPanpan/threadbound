@@ -125,6 +125,17 @@ If a mood reference is useful, convert it to generic visual properties such as â
 
 Generated art still enters Threadbound through the project-owned source-sheet, visual-asset catalog, deterministic runtime asset, and `visualAssetId` workflow. Gameplay domain objects must not depend on raw image URLs or prompt text.
 
+## Figma character-library authoring contract
+
+The exported world context includes the semantic character library imported from the approved Figma file. Treat its IDs as an allowlist, not as a request to recreate Figma geometry in Arc JSON.
+
+- Choose an exact `visualAssetId` from the grouped `characters`, `mobs`, or `bosses` collection. Never write an SVG filename, runtime WebP URL, Figma node ID, crop coordinate, or prompt text into a manifest.
+- Use `character.<semantic-name>.v1` for a humanoid NPC, Weaver, or ally; v2 NPC artwork is optional and must be character-kind only. Omitted NPC art uses the existing deterministic fallback.
+- Use `mob.<semantic-name>.v1` for an ordinary enemy and `boss.<semantic-name>.v1` for a boss. Humanoid Figma sources may have both character and mob aliases; choose the kind that matches the entity, not the silhouette alone.
+- Keep the authored name and role in agreement with the catalog's label, family, role, and board category. The asset is visual support; the manifest's stable entity ID, name, role, and mechanics remain authoritative.
+- Prefer short semantic IDs and readable display names. Examples: `character.road-sellsword.v1` for a town guard NPC, `mob.glow-jelly.v1` for a common creature, and `boss.watcher-prime.v1` for an elite boss.
+- Do not make a gallery or expose source provenance to players. Town, battle, and Codex surfaces render the selected full-body asset where the product surface already presents character/enemy art.
+
 ## Generation prompt contract
 
 When generating an Arc or Arc component, provide the model with:

@@ -139,8 +139,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const combatPreview = new CombatPreviewService({ repository });
   const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
   const partyService = new PartyService({ repository, eventBus });
-  const areaService = new AreaService({ repository, eventBus });
-  const townService = new TownService({ repository, eventBus });
+  const townService = new TownService({ repository, eventBus, arcManifestService });
+  const areaService = new AreaService({ repository, eventBus, townService });
   const questService = new QuestService({ repository, eventBus, questCatalog: QUEST_CATALOG });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
   const purchaseService = threadedGateway ? new HoneyPurchaseService({ repository, threadedGateway }) : null;
@@ -360,7 +360,16 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.get('/api/arc-workshop/manifests', requireWorkshop, (_request, response) => response.json({ manifests: arcManifestService.list() }));
   app.get('/api/arc-workshop/visual-assets', requireWorkshop, (_request, response) => response.json({
     version: VISUAL_ASSET_CATALOG_VERSION,
-    assets: VISUAL_ASSETS.map(({ id, kind, label, description, tags }) => ({ id, kind, label, description, tags })),
+    assets: VISUAL_ASSETS.map(({ id, kind, label, description, family, role, tags, sourceMaster }) => ({
+      id,
+      kind,
+      label,
+      description,
+      ...(family ? { family } : {}),
+      ...(role ? { role } : {}),
+      ...(sourceMaster?.boardCategory ? { boardCategory: sourceMaster.boardCategory } : {}),
+      tags,
+    })),
   }));
   app.get('/api/arc-workshop/manifests/:id', requireWorkshop, (request, response) => {
     const record = arcManifestService.get(String(request.params.id));

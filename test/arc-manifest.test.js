@@ -166,6 +166,22 @@ test('validator accepts optional typed visual assets and rejects unknown or cros
   assert.equal(result.errors.filter((error) => error.code === 'unknown_visual_asset').length, 2);
 });
 
+test('imported Figma humanoid and elite aliases validate at their authored combat kinds', () => {
+  const validator = new ArcManifestValidator();
+  const manifest = validManifest();
+  manifest.enemies[0].visualAssetId = 'mob.ridge-wolf.v1';
+  manifest.bosses[0].visualAssetId = 'boss.watcher-prime.v1';
+  assert.equal(validator.validate(manifest).valid, true);
+
+  const wrongEnemyKind = structuredClone(manifest);
+  wrongEnemyKind.enemies[0].visualAssetId = 'boss.watcher-prime.v1';
+  assert.equal(validator.validate(wrongEnemyKind).valid, false);
+
+  const wrongBossKind = structuredClone(manifest);
+  wrongBossKind.bosses[0].visualAssetId = 'mob.ridge-wolf.v1';
+  assert.equal(validator.validate(wrongBossKind).valid, false);
+});
+
 test('publishing projects lore/history and exposes runtime dungeon plus manifest reward', () => {
   const { gameRepository, codexRepository, service } = setup();
   const record = service.publish(service.saveDraft(validManifest()).id);
@@ -177,6 +193,17 @@ test('publishing projects lore/history and exposes runtime dungeon plus manifest
   assert.equal(runtime.encounters[0].visualAssetId, 'mob.fire-elemental.v1');
   assert.equal(runtime.boss.hp, 18);
   assert.equal(runtime.boss.visualAssetId, 'boss.lava-titan.v1');
+
+  const run = DungeonRun.start({
+    id: 'manifest-visual-run',
+    ownerType: 'player',
+    ownerId: 'player-1',
+    startedByPlayerId: 'player-1',
+    participants: [{ playerId: 'player-1', maxHealth: 40 }],
+    dungeonId: runtime.id,
+    dungeonDefinition: runtime,
+  });
+  assert.equal(run.toJSON().enemy.visualAssetId, 'mob.fire-elemental.v1');
 
   const reward = service.generateReward('test-cinder-vault');
   assert.equal(reward.definitionId, 'test-ember-needle');
@@ -229,7 +256,12 @@ test('world context exports supported mechanics and current published arc metada
   assert.equal(context.publishedGeneratedArcs[0].arcId, 'ashen-thread-test');
   assert.equal(context.visualAssetCatalog.selectionMode, 'exact-allowlisted-id');
   assert.ok(context.visualAssetCatalog.shortlist.every((asset) => !Object.hasOwn(asset, 'src')));
+  assert.ok(context.visualAssetCatalog.collections.characters.some((asset) => asset.id === 'character.road-sellsword.v1'));
+  assert.ok(context.visualAssetCatalog.collections.mobs.some((asset) => asset.id === 'mob.marsh-blob.v1'));
+  assert.ok(context.visualAssetCatalog.collections.bosses.some((asset) => asset.id === 'boss.iron-husk.v1'));
+  assert.ok(context.visualAssetCatalog.collections.characters.every((asset) => !Object.hasOwn(asset, 'src') && !Object.hasOwn(asset, 'provenance')));
   assert.ok(context.generationRules.some((rule) => /story quest objectives/i.test(rule)));
+  assert.ok(context.generationRules.some((rule) => /NPCs.*character/i.test(rule)));
   assert.ok(context.generationRules.some((rule) => /Return JSON only/i.test(rule)));
   gameRepository.close();
 });

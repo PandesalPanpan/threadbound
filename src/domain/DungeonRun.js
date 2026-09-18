@@ -50,6 +50,7 @@ function cloneEnemy(definition, playerCount, isBoss = false) {
   return {
     id: definition.id,
     name: definition.name,
+    ...(definition.visualAssetId ? { visualAssetId: definition.visualAssetId } : {}),
     hp,
     maxHp: hp,
     retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier),
@@ -493,7 +494,15 @@ export class DungeonRun {
 
   #defeatCurrentEnemy(events, playerId, now) {
     const defeated = structuredClone(this.state.enemy);
-    events.push({ type: 'EnemyDefeated', playerId, runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: defeated.id, isBoss: defeated.isBoss });
+    events.push({
+      type: 'EnemyDefeated',
+      playerId,
+      runId: this.state.id,
+      dungeonId: this.state.dungeonId,
+      enemyId: defeated.id,
+      visualAssetId: defeated.visualAssetId || null,
+      isBoss: defeated.isBoss,
+    });
     const deathRetaliation = this.#resolveDeathEffects(defeated, events);
     if (this.state.phase !== 'failed') this.#advanceAfterDefeat(events, now);
     return deathRetaliation;

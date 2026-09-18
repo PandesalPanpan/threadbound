@@ -10,21 +10,23 @@
   "enemies": [
     {
       "id": "petal-wisp",
-      "name": "Petal Wisp",
+      "name": "Bellfield Mouse",
       "baseHp": 8,
       "retaliation": 1,
       "abilities": ["basic_retaliation"],
-      "resistances": { "fire": "resistant", "psychic": "immune" }
+      "resistances": { "fire": "resistant", "psychic": "immune" },
+      "visualAssetId": "mob.field-mouse.v1"
     }
   ],
   "bosses": [
     {
       "id": "thorn-captain",
-      "name": "Thorn Captain",
+      "name": "Watcher Prime",
       "baseHp": 16,
       "retaliation": 2,
       "abilities": ["basic_retaliation"],
-      "resistances": { "poison": "high-resistant" }
+      "resistances": { "poison": "high-resistant" },
+      "visualAssetId": "boss.watcher-prime.v1"
     }
   ],
   "dungeons": [
@@ -94,7 +96,7 @@
     { "id": "petalrest", "areaId": "sunpetal-road", "name": "Petalrest" }
   ],
   "npcs": [
-    { "id": "mina-smith", "townId": "petalrest", "name": "Mina", "role": "blacksmith" }
+    { "id": "mina-smith", "townId": "petalrest", "name": "Mina", "role": "blacksmith", "visualAssetId": "character.road-sellsword.v1" }
   ],
   "quests": [
     {

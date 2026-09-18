@@ -569,6 +569,13 @@
   }
 }
 
+html.threadbound-v2-codex .codex-list .entry-artwork,
+html.threadbound-v2-codex .codex-detail .wiki-entry-artwork {
+  display: block;
+  background-color: var(--tb-v2-inset);
+  background-origin: content-box;
+}
+
 @media (min-width: 43rem) {
   html.threadbound-v2-codex .threadbound-page.codex-shell {
     width: 100%;

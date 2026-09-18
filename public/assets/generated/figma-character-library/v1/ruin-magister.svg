@@ -1,0 +1,25 @@
+<svg width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_166_2292)">
+<g clip-path="url(#clip1_166_2292)">
+<path d="M52 29C56.9706 29 61 24.9706 61 20C61 15.0294 56.9706 11 52 11C47.0294 11 43 15.0294 43 20C43 24.9706 47.0294 29 52 29Z" fill="#D6C7A7" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M31 32H72L81 82H23L31 32Z" fill="#7A5A74" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M35 42H69L72 49H32L35 42Z" fill="#C9A466" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M34 82H49L46 97H30L34 82ZM55 82H70L76 97H60L55 82Z" fill="#3A3029" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M34 39L15 54L22 63L43 48L34 39ZM69 39L88 54L81 63L60 48L69 39Z" fill="#D6C7A7" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M88 11L93 12L84 96L79 95L88 11Z" fill="#8C6A58" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M91 19C95.9706 19 100 14.9706 100 10C100 5.02944 95.9706 1 91 1C86.0294 1 82 5.02944 82 10C82 14.9706 86.0294 19 91 19Z" fill="#C9A466" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.45" d="M91 24C98.732 24 105 17.732 105 10C105 2.26801 98.732 -4 91 -4C83.268 -4 77 2.26801 77 10C77 17.732 83.268 24 91 24Z" fill="#F2E8D5" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M50 56H58L54 63L61 70H50L57 63L50 56Z" fill="#C9A466" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.35" d="M18 37C22.9706 37 27 32.9706 27 28C27 23.0294 22.9706 19 18 19C13.0294 19 9 23.0294 9 28C9 32.9706 13.0294 37 18 37Z" fill="#7A5A74" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.35" d="M95 65C100.523 65 105 60.5228 105 55C105 49.4772 100.523 45 95 45C89.4772 45 85 49.4772 85 55C85 60.5228 89.4772 65 95 65Z" fill="#7A5A74" stroke="#211B17" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_166_2292">
+<rect width="112" height="112" fill="white"/>
+</clipPath>
+<clipPath id="clip1_166_2292">
+<rect width="112" height="112" fill="white"/>
+</clipPath>
+</defs>
+</svg>

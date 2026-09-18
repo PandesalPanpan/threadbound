@@ -3,6 +3,7 @@ import { normalizeCookingRecipe } from '../domain/CookingRecipePolicy.js';
 import { AUTOMATIC_BATTLE_EFFECT_TYPES } from '../domain/AutomaticBattleEffectPolicy.js';
 import { normalizeAutomaticBattleResistances } from '../domain/AutomaticBattleResistancePolicy.js';
 import { QUEST_OBJECTIVE_TYPES } from '../domain/QuestObjective.js';
+import { visualAsset } from '../content/VisualAssetCatalog.js';
 
 export const ARC_MANIFEST_VNEXT_VERSION = 2;
 export const ARC_MANIFEST_SUPPORTED_VERSIONS = Object.freeze([1, ARC_MANIFEST_VNEXT_VERSION]);
@@ -87,6 +88,9 @@ export class ArcManifestVNextValidator {
       if (!townIds.has(npc.townId)) addError(`${path}.townId`, 'unknown_town_reference', `Unknown Town ID "${npc.townId}".`);
       if (!text(npc.name)) addError(`${path}.name`, 'npc_name_required', 'NPC name is required.');
       if (!NPC_ROLES.has(npc.role)) addError(`${path}.role`, 'unsupported_npc_role', `NPC role must be one of: ${[...NPC_ROLES].join(', ')}.`);
+      if (npc.visualAssetId !== undefined && !visualAsset(npc.visualAssetId, 'character')) {
+        addError(`${path}.visualAssetId`, 'unknown_visual_asset', 'NPC visualAssetId must reference an allowlisted character asset.');
+      }
     });
 
     const stockIds = new Set((manifest.shopStocks || []).map((stock) => stock?.id).filter(text));

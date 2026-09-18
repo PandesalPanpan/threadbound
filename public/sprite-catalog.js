@@ -175,12 +175,12 @@ function resolvedAsset(entity, kind, fallbackSeed) {
     const inferred = visualAsset(inferredId, kind);
     if (inferred) return inferred;
   }
-  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind);
+  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind && asset.provenance?.sourceCollection !== 'figma-character-library-v1');
   return candidates[stableIndex(fallbackSeed, candidates.length)] || null;
 }
 
 export function weaverSprite(seed) {
-  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === 'character');
+  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === 'character' && asset.provenance?.sourceCollection !== 'figma-character-library-v1');
   return candidates[stableIndex(effectiveWeaverSeed(seed), candidates.length)]?.src
     || WEAVER_SPRITES[stableIndex(effectiveWeaverSeed(seed), WEAVER_SPRITES.length)];
 }
@@ -198,6 +198,13 @@ export function weaverSpriteFrame(seed, { variant = 'male' } = {}) {
   if (asset) return runtimeAssetFrame(asset);
   const atlas = variant === 'female' ? GENERATED_SPRITE_ATLASES.femaleWeavers : GENERATED_SPRITE_ATLASES.maleWeavers;
   return atlasFrame(atlas, stableIndex(effectiveWeaverSeed(seed), atlas.columns * atlas.rows));
+}
+
+export function characterSpriteFrame(entity = {}, { variant = 'male', seed = null } = {}) {
+  const normalized = typeof entity === 'string' ? { id: entity } : entity;
+  const explicit = visualAsset(normalized?.visualAssetId, 'character');
+  if (explicit) return runtimeAssetFrame(explicit);
+  return weaverSpriteFrame(seed || normalized?.id || normalized?.npcId || normalized?.name || 'threadbound-character', { variant });
 }
 
 export function enemySpriteFrame(enemy = {}) {

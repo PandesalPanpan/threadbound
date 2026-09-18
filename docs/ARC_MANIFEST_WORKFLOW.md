@@ -50,6 +50,8 @@ These editorial rules complement rather than replace schema validation. The vali
 - v2 crafting/cooking recipes reuse the existing domain recipe policies and may only reference item definitions present in the same manifest. Cooking remains fight-count based rather than wall-clock based.
 - v2 progression challenges reference a validated dungeon and Area and preserve the default rule that major progression challenges require both human players.
 - v2 enemy/boss resistances use only the automatic battle engine's constrained `fire`, `poison`, `ice`, and `psychic` vocabulary with `normal`, `resistant`, `high-resistant`, or `immune` handling.
+- v2 NPC `visualAssetId` is optional; when present it must resolve to an allowlisted `character` asset from the exported Figma character-library collections. Names, roles, Town references, and NPC mechanics remain manifest-owned data.
+- Arc generation must use exact semantic IDs from the grouped visual-asset context. Runtime URLs, SVG names, Figma node IDs, crop geometry, and source provenance are never valid authored manifest values.
 - Uploaded files begin as drafts.
 - Publishing is an explicit action.
 - Published arc content is projected into the Codex automatically.

@@ -183,6 +183,7 @@ export class SimpleDungeonService {
       recommendedAttack: persisted.dungeonDefinition?.recommendedAttack || 9,
       enemyId: persisted.enemy?.id || null,
       enemyName: `${persisted.enemy?.name || 'Enemy'}${enrageCopy}`,
+      enemyVisualAssetId: persisted.enemy?.visualAssetId || null,
       enemyHp: persisted.enemy?.hp ?? null,
       enemyMaxHp: persisted.enemy?.maxHp ?? null,
       actorHp: actor?.hp ?? null,

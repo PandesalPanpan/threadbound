@@ -107,7 +107,7 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
   return Object.freeze({
     kind: 'hunt-result',
     victory,
-    enemy: Object.freeze({ id: event.enemyId || null, name: enemyName }),
+    enemy: Object.freeze({ id: event.enemyId || null, name: enemyName, visualAssetId: event.enemyVisualAssetId || null }),
     hp: Object.freeze({ damageTaken, remaining: remainingHp, max: maxHp }),
     rewards: Object.freeze({ gold, xp }),
     deathPenalty: victory ? null : Object.freeze({ goldLost, carriedGold, bankedGold }),

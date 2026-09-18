@@ -4,6 +4,10 @@ import { ArcManifestVNextValidator, ARC_MANIFEST_VNEXT_VERSION, publicArcManifes
 import { ArcEquipmentTemplateValidator } from '../src/application/ArcEquipmentTemplateValidator.js';
 import { ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
 import { validateArcTownShopStocks } from '../src/content/ArcTownShopCatalog.js';
+import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
+import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
+import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
+import { ArcManifestService } from '../src/application/ArcManifestService.js';
 
 function equipment(id, overrides = {}) {
   return {
@@ -34,7 +38,7 @@ function manifestV2() {
     historicalConsequences: [],
     areas: [{ id: 'vnext-area-1', number: 1, name: 'Sunpetal Road', recommendedLevel: { min: 1, max: 8 } }],
     towns: [{ id: 'vnext-town-1', areaId: 'vnext-area-1', name: 'Petalrest' }],
-    npcs: [{ id: 'vnext-smith', townId: 'vnext-town-1', name: 'Mina', role: 'blacksmith' }],
+    npcs: [{ id: 'vnext-smith', townId: 'vnext-town-1', name: 'Mina', role: 'blacksmith', visualAssetId: 'character.road-sellsword.v1' }],
     quests: [{ id: 'vnext-quest-1', areaId: 'vnext-area-1', title: 'Meet the Smith', objectives: [{ type: 'speak', targetId: 'vnext-smith', count: 1 }] }],
     shopStocks: [{ id: 'vnext-stock', townId: 'vnext-town-1', areaNumber: 1, offers: [{ sku: 'blade', itemTemplateId: 'vnext-blade', cost: 20 }] }],
     shops: [{ id: 'vnext-shop', townId: 'vnext-town-1', name: 'Petalrest Outfitters', stockId: 'vnext-stock' }],
@@ -78,6 +82,21 @@ test('Arc Manifest vNext fails closed on broken world references, invalid effect
   assert.ok(result.errors.some((error) => error.code === 'unknown_recipe_item'));
 });
 
+test('Arc Manifest vNext keeps NPC artwork optional but accepts only character visual assets', () => {
+  const validator = new ArcManifestVNextValidator();
+  const withoutArtwork = manifestV2();
+  delete withoutArtwork.npcs[0].visualAssetId;
+  assert.equal(validator.validate(withoutArtwork).valid, true);
+
+  for (const visualAssetId of ['mob.road-sellsword.v1', 'boss.road-sellsword.v1', 'item.fire-dagger.v1', 'character.not-in-catalog.v1']) {
+    const invalid = manifestV2();
+    invalid.npcs[0].visualAssetId = visualAssetId;
+    const result = validator.validate(invalid);
+    assert.equal(result.valid, false, visualAssetId);
+    assert.ok(result.errors.some((error) => error.path === 'npcs[0].visualAssetId' && error.code === 'unknown_visual_asset'));
+  }
+});
+
 test('legacy manifests remain supported while the public vNext contract advertises the constrained vocabulary', () => {
   const legacy = { manifestVersion: 1 };
   assert.equal(new ArcManifestVNextValidator().validate(legacy).valid, true);
@@ -87,4 +106,23 @@ test('legacy manifests remain supported while the public vNext contract advertis
   assert.deepEqual(contract.effectTypes, ['fire', 'poison', 'ice', 'psychic']);
   assert.ok(contract.requiredCollections.includes('areas'));
   assert.ok(contract.requiredCollections.includes('progressionChallenges'));
+});
+
+test('published v2 Town projections preserve optional NPC character art without exposing URLs', () => {
+  const gameRepository = new SQLiteGameRepository({ filename: ':memory:' });
+  const codexRepository = new SQLiteCodexRepository({ database: gameRepository.db });
+  const manifestRepository = new SQLiteArcManifestRepository({ database: gameRepository.db });
+  const service = new ArcManifestService({ gameRepository, codexRepository, manifestRepository, bundledManifests: [] });
+  const draft = service.saveDraft(manifestV2(), { source: 'vnext-town-test' });
+  service.publish(draft.id);
+
+  const allTowns = service.runtimeTowns();
+  const town = allTowns.find((entry) => entry.id === 'vnext-town-1');
+  assert.ok(town);
+  assert.equal(town.areaNumber, 1);
+  assert.equal(town.npcs[0].visualAssetId, 'character.road-sellsword.v1');
+  assert.equal(Object.hasOwn(town.npcs[0], 'src'), false);
+  assert.equal(service.runtimeTowns({ onlyWithExplicitNpcVisual: true }).some((entry) => entry.id === town.id), true);
+
+  gameRepository.close();
 });

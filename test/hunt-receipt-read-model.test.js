@@ -8,6 +8,7 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
     victory: true,
     enemyId: 'forest-slime',
     enemyName: 'Forest Slime',
+    enemyVisualAssetId: 'mob.marsh-blob.v1',
     damageTaken: 4,
     remainingHp: 36,
     maxHp: 40,
@@ -28,6 +29,7 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
   }, { actorName: 'Mira' });
 
   assert.deepEqual(receipt.rewards, { gold: 7, xp: 20 });
+  assert.equal(receipt.enemy.visualAssetId, 'mob.marsh-blob.v1');
   assert.equal(receipt.deathPenalty, null);
   assert.deepEqual(receipt.progression, { level: 2, leveledUp: true, levelsGained: 1 });
   assert.deepEqual(receipt.loot, { id: 'item-1', name: 'Gleaming Fang', rarity: 'rare', attackBonus: 3 });

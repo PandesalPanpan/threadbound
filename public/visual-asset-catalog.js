@@ -8503,6 +8503,4856 @@ export const VISUAL_ASSETS = Object.freeze([
       "creator": "Threadbound project",
       "license": "project-owned-figma-export"
     }
+  },
+  {
+    "id": "character.road-sellsword.v1",
+    "kind": "character",
+    "label": "Road Sellsword",
+    "description": "Figma humanoid artwork for Road Sellsword (Wandering Blade).",
+    "family": "sellsword",
+    "role": "Wandering Blade",
+    "tags": [
+      "character",
+      "humanoid",
+      "sellsword",
+      "melee",
+      "traveler"
+    ],
+    "src": "/assets/runtime/character-library-road-sellsword.68d4aa5b41e5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:7",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/road-sellsword.svg",
+      "nodeId": "166:7"
+    }
+  },
+  {
+    "id": "mob.road-sellsword.v1",
+    "kind": "mob",
+    "label": "Road Sellsword",
+    "description": "Figma humanoid artwork for Road Sellsword (Wandering Blade).",
+    "family": "sellsword",
+    "role": "Wandering Blade",
+    "tags": [
+      "mob",
+      "humanoid",
+      "sellsword",
+      "melee",
+      "traveler"
+    ],
+    "src": "/assets/runtime/character-library-road-sellsword.68d4aa5b41e5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:7",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/road-sellsword.svg",
+      "nodeId": "166:7"
+    }
+  },
+  {
+    "id": "character.farm-defender.v1",
+    "kind": "character",
+    "label": "Farm Defender",
+    "description": "Figma humanoid artwork for Farm Defender (Pitchfork Guard).",
+    "family": "guard",
+    "role": "Pitchfork Guard",
+    "tags": [
+      "character",
+      "humanoid",
+      "guard",
+      "melee",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-farm-defender.e11cab06e59e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:21",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/farm-defender.svg",
+      "nodeId": "166:21"
+    }
+  },
+  {
+    "id": "mob.farm-defender.v1",
+    "kind": "mob",
+    "label": "Farm Defender",
+    "description": "Figma humanoid artwork for Farm Defender (Pitchfork Guard).",
+    "family": "guard",
+    "role": "Pitchfork Guard",
+    "tags": [
+      "mob",
+      "humanoid",
+      "guard",
+      "melee",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-farm-defender.e11cab06e59e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:21",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/farm-defender.svg",
+      "nodeId": "166:21"
+    }
+  },
+  {
+    "id": "character.town-watcher.v1",
+    "kind": "character",
+    "label": "Town Watcher",
+    "description": "Figma humanoid artwork for Town Watcher (Lantern Patrol).",
+    "family": "guard",
+    "role": "Lantern Patrol",
+    "tags": [
+      "character",
+      "humanoid",
+      "guard",
+      "patrol",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-town-watcher.5686d4bbf608.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:35",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/town-watcher.svg",
+      "nodeId": "166:35"
+    }
+  },
+  {
+    "id": "mob.town-watcher.v1",
+    "kind": "mob",
+    "label": "Town Watcher",
+    "description": "Figma humanoid artwork for Town Watcher (Lantern Patrol).",
+    "family": "guard",
+    "role": "Lantern Patrol",
+    "tags": [
+      "mob",
+      "humanoid",
+      "guard",
+      "patrol",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-town-watcher.5686d4bbf608.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:35",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/town-watcher.svg",
+      "nodeId": "166:35"
+    }
+  },
+  {
+    "id": "character.dock-bruiser.v1",
+    "kind": "character",
+    "label": "Dock Bruiser",
+    "description": "Figma humanoid artwork for Dock Bruiser (Harbor Enforcer).",
+    "family": "bruiser",
+    "role": "Harbor Enforcer",
+    "tags": [
+      "character",
+      "humanoid",
+      "bruiser",
+      "melee",
+      "harbor"
+    ],
+    "src": "/assets/runtime/character-library-dock-bruiser.b7c9a5a76ffc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:48",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/dock-bruiser.svg",
+      "nodeId": "166:48"
+    }
+  },
+  {
+    "id": "mob.dock-bruiser.v1",
+    "kind": "mob",
+    "label": "Dock Bruiser",
+    "description": "Figma humanoid artwork for Dock Bruiser (Harbor Enforcer).",
+    "family": "bruiser",
+    "role": "Harbor Enforcer",
+    "tags": [
+      "mob",
+      "humanoid",
+      "bruiser",
+      "melee",
+      "harbor"
+    ],
+    "src": "/assets/runtime/character-library-dock-bruiser.b7c9a5a76ffc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:48",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/dock-bruiser.svg",
+      "nodeId": "166:48"
+    }
+  },
+  {
+    "id": "character.stable-runner.v1",
+    "kind": "character",
+    "label": "Stable Runner",
+    "description": "Figma humanoid artwork for Stable Runner (Agile Youth).",
+    "family": "runner",
+    "role": "Agile Youth",
+    "tags": [
+      "character",
+      "humanoid",
+      "runner",
+      "agile",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-stable-runner.167468c7dc5c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:63",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/stable-runner.svg",
+      "nodeId": "166:63"
+    }
+  },
+  {
+    "id": "mob.stable-runner.v1",
+    "kind": "mob",
+    "label": "Stable Runner",
+    "description": "Figma humanoid artwork for Stable Runner (Agile Youth).",
+    "family": "runner",
+    "role": "Agile Youth",
+    "tags": [
+      "mob",
+      "humanoid",
+      "runner",
+      "agile",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-stable-runner.167468c7dc5c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:63",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/stable-runner.svg",
+      "nodeId": "166:63"
+    }
+  },
+  {
+    "id": "character.market-guard.v1",
+    "kind": "character",
+    "label": "Market Guard",
+    "description": "Figma humanoid artwork for Market Guard (Shield Escort).",
+    "family": "guard",
+    "role": "Shield Escort",
+    "tags": [
+      "character",
+      "humanoid",
+      "guard",
+      "shield",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-market-guard.22e3b718c6ad.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:77",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/market-guard.svg",
+      "nodeId": "166:77"
+    }
+  },
+  {
+    "id": "mob.market-guard.v1",
+    "kind": "mob",
+    "label": "Market Guard",
+    "description": "Figma humanoid artwork for Market Guard (Shield Escort).",
+    "family": "guard",
+    "role": "Shield Escort",
+    "tags": [
+      "mob",
+      "humanoid",
+      "guard",
+      "shield",
+      "town"
+    ],
+    "src": "/assets/runtime/character-library-market-guard.22e3b718c6ad.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:77",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/market-guard.svg",
+      "nodeId": "166:77"
+    }
+  },
+  {
+    "id": "character.cutpurse-scout.v1",
+    "kind": "character",
+    "label": "Cutpurse Scout",
+    "description": "Figma humanoid artwork for Cutpurse Scout (Street Rogue).",
+    "family": "rogue",
+    "role": "Street Rogue",
+    "tags": [
+      "character",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "street"
+    ],
+    "src": "/assets/runtime/character-library-cutpurse-scout.80883f78eb79.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:172",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/cutpurse-scout.svg",
+      "nodeId": "166:172"
+    }
+  },
+  {
+    "id": "mob.cutpurse-scout.v1",
+    "kind": "mob",
+    "label": "Cutpurse Scout",
+    "description": "Figma humanoid artwork for Cutpurse Scout (Street Rogue).",
+    "family": "rogue",
+    "role": "Street Rogue",
+    "tags": [
+      "mob",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "street"
+    ],
+    "src": "/assets/runtime/character-library-cutpurse-scout.80883f78eb79.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:172",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/cutpurse-scout.svg",
+      "nodeId": "166:172"
+    }
+  },
+  {
+    "id": "character.ragged-thief.v1",
+    "kind": "character",
+    "label": "Ragged Thief",
+    "description": "Figma humanoid artwork for Ragged Thief (Quick Snatcher).",
+    "family": "rogue",
+    "role": "Quick Snatcher",
+    "tags": [
+      "character",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "street"
+    ],
+    "src": "/assets/runtime/character-library-ragged-thief.f83230acf150.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:186",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ragged-thief.svg",
+      "nodeId": "166:186"
+    }
+  },
+  {
+    "id": "mob.ragged-thief.v1",
+    "kind": "mob",
+    "label": "Ragged Thief",
+    "description": "Figma humanoid artwork for Ragged Thief (Quick Snatcher).",
+    "family": "rogue",
+    "role": "Quick Snatcher",
+    "tags": [
+      "mob",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "street"
+    ],
+    "src": "/assets/runtime/character-library-ragged-thief.f83230acf150.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:186",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ragged-thief.svg",
+      "nodeId": "166:186"
+    }
+  },
+  {
+    "id": "character.brush-raider.v1",
+    "kind": "character",
+    "label": "Brush Raider",
+    "description": "Figma humanoid artwork for Brush Raider (Ambush Fighter).",
+    "family": "raider",
+    "role": "Ambush Fighter",
+    "tags": [
+      "character",
+      "humanoid",
+      "raider",
+      "ambush",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-brush-raider.0ff563c4a57c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:200",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/brush-raider.svg",
+      "nodeId": "166:200"
+    }
+  },
+  {
+    "id": "mob.brush-raider.v1",
+    "kind": "mob",
+    "label": "Brush Raider",
+    "description": "Figma humanoid artwork for Brush Raider (Ambush Fighter).",
+    "family": "raider",
+    "role": "Ambush Fighter",
+    "tags": [
+      "mob",
+      "humanoid",
+      "raider",
+      "ambush",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-brush-raider.0ff563c4a57c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:200",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/brush-raider.svg",
+      "nodeId": "166:200"
+    }
+  },
+  {
+    "id": "character.hood-stalker.v1",
+    "kind": "character",
+    "label": "Hood Stalker",
+    "description": "Figma humanoid artwork for Hood Stalker (Knife Skirmisher).",
+    "family": "rogue",
+    "role": "Knife Skirmisher",
+    "tags": [
+      "character",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-hood-stalker.74e785b67fec.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:213",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/hood-stalker.svg",
+      "nodeId": "166:213"
+    }
+  },
+  {
+    "id": "mob.hood-stalker.v1",
+    "kind": "mob",
+    "label": "Hood Stalker",
+    "description": "Figma humanoid artwork for Hood Stalker (Knife Skirmisher).",
+    "family": "rogue",
+    "role": "Knife Skirmisher",
+    "tags": [
+      "mob",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-hood-stalker.74e785b67fec.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:213",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/hood-stalker.svg",
+      "nodeId": "166:213"
+    }
+  },
+  {
+    "id": "character.fence-runner.v1",
+    "kind": "character",
+    "label": "Fence Runner",
+    "description": "Figma humanoid artwork for Fence Runner (Smuggler Lookout).",
+    "family": "scout",
+    "role": "Smuggler Lookout",
+    "tags": [
+      "character",
+      "humanoid",
+      "scout",
+      "stealth",
+      "smuggler"
+    ],
+    "src": "/assets/runtime/character-library-fence-runner.53d6172255c9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:228",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/fence-runner.svg",
+      "nodeId": "166:228"
+    }
+  },
+  {
+    "id": "mob.fence-runner.v1",
+    "kind": "mob",
+    "label": "Fence Runner",
+    "description": "Figma humanoid artwork for Fence Runner (Smuggler Lookout).",
+    "family": "scout",
+    "role": "Smuggler Lookout",
+    "tags": [
+      "mob",
+      "humanoid",
+      "scout",
+      "stealth",
+      "smuggler"
+    ],
+    "src": "/assets/runtime/character-library-fence-runner.53d6172255c9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:228",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/fence-runner.svg",
+      "nodeId": "166:228"
+    }
+  },
+  {
+    "id": "character.night-mugger.v1",
+    "kind": "character",
+    "label": "Night Mugger",
+    "description": "Figma humanoid artwork for Night Mugger (Alley Predator).",
+    "family": "rogue",
+    "role": "Alley Predator",
+    "tags": [
+      "character",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "street"
+    ],
+    "src": "/assets/runtime/character-library-night-mugger.290a2043f33a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:242",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/night-mugger.svg",
+      "nodeId": "166:242"
+    }
+  },
+  {
+    "id": "mob.night-mugger.v1",
+    "kind": "mob",
+    "label": "Night Mugger",
+    "description": "Figma humanoid artwork for Night Mugger (Alley Predator).",
+    "family": "rogue",
+    "role": "Alley Predator",
+    "tags": [
+      "mob",
+      "humanoid",
+      "rogue",
+      "stealth",
+      "street"
+    ],
+    "src": "/assets/runtime/character-library-night-mugger.290a2043f33a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:242",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/night-mugger.svg",
+      "nodeId": "166:242"
+    }
+  },
+  {
+    "id": "character.pike-recruit.v1",
+    "kind": "character",
+    "label": "Pike Recruit",
+    "description": "Figma humanoid artwork for Pike Recruit (Basic Spearman).",
+    "family": "spearman",
+    "role": "Basic Spearman",
+    "tags": [
+      "character",
+      "humanoid",
+      "spearman",
+      "melee",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-pike-recruit.024943300166.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:321",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/pike-recruit.svg",
+      "nodeId": "166:321"
+    }
+  },
+  {
+    "id": "mob.pike-recruit.v1",
+    "kind": "mob",
+    "label": "Pike Recruit",
+    "description": "Figma humanoid artwork for Pike Recruit (Basic Spearman).",
+    "family": "spearman",
+    "role": "Basic Spearman",
+    "tags": [
+      "mob",
+      "humanoid",
+      "spearman",
+      "melee",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-pike-recruit.024943300166.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:321",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/pike-recruit.svg",
+      "nodeId": "166:321"
+    }
+  },
+  {
+    "id": "character.wall-archer.v1",
+    "kind": "character",
+    "label": "Wall Archer",
+    "description": "Figma humanoid artwork for Wall Archer (Local Bowman).",
+    "family": "archer",
+    "role": "Local Bowman",
+    "tags": [
+      "character",
+      "humanoid",
+      "archer",
+      "ranged",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-wall-archer.bf396f5bf997.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:335",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/wall-archer.svg",
+      "nodeId": "166:335"
+    }
+  },
+  {
+    "id": "mob.wall-archer.v1",
+    "kind": "mob",
+    "label": "Wall Archer",
+    "description": "Figma humanoid artwork for Wall Archer (Local Bowman).",
+    "family": "archer",
+    "role": "Local Bowman",
+    "tags": [
+      "mob",
+      "humanoid",
+      "archer",
+      "ranged",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-wall-archer.bf396f5bf997.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:335",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/wall-archer.svg",
+      "nodeId": "166:335"
+    }
+  },
+  {
+    "id": "character.tower-guard.v1",
+    "kind": "character",
+    "label": "Tower Guard",
+    "description": "Figma humanoid artwork for Tower Guard (Defensive Sentinel).",
+    "family": "guard",
+    "role": "Defensive Sentinel",
+    "tags": [
+      "character",
+      "humanoid",
+      "guard",
+      "defense",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-tower-guard.393c9a870a04.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:349",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/tower-guard.svg",
+      "nodeId": "166:349"
+    }
+  },
+  {
+    "id": "mob.tower-guard.v1",
+    "kind": "mob",
+    "label": "Tower Guard",
+    "description": "Figma humanoid artwork for Tower Guard (Defensive Sentinel).",
+    "family": "guard",
+    "role": "Defensive Sentinel",
+    "tags": [
+      "mob",
+      "humanoid",
+      "guard",
+      "defense",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-tower-guard.393c9a870a04.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:349",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/tower-guard.svg",
+      "nodeId": "166:349"
+    }
+  },
+  {
+    "id": "character.barracks-trainee.v1",
+    "kind": "character",
+    "label": "Barracks Trainee",
+    "description": "Figma humanoid artwork for Barracks Trainee (New Frontliner).",
+    "family": "recruit",
+    "role": "New Frontliner",
+    "tags": [
+      "character",
+      "humanoid",
+      "recruit",
+      "melee",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-barracks-trainee.68cd7c934f2d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:362",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/barracks-trainee.svg",
+      "nodeId": "166:362"
+    }
+  },
+  {
+    "id": "mob.barracks-trainee.v1",
+    "kind": "mob",
+    "label": "Barracks Trainee",
+    "description": "Figma humanoid artwork for Barracks Trainee (New Frontliner).",
+    "family": "recruit",
+    "role": "New Frontliner",
+    "tags": [
+      "mob",
+      "humanoid",
+      "recruit",
+      "melee",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-barracks-trainee.68cd7c934f2d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:362",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/barracks-trainee.svg",
+      "nodeId": "166:362"
+    }
+  },
+  {
+    "id": "character.banner-guard.v1",
+    "kind": "character",
+    "label": "Banner Guard",
+    "description": "Figma humanoid artwork for Banner Guard (Rally Soldier).",
+    "family": "guard",
+    "role": "Rally Soldier",
+    "tags": [
+      "character",
+      "humanoid",
+      "guard",
+      "rally",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-banner-guard.91f90b96f9a9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:377",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/banner-guard.svg",
+      "nodeId": "166:377"
+    }
+  },
+  {
+    "id": "mob.banner-guard.v1",
+    "kind": "mob",
+    "label": "Banner Guard",
+    "description": "Figma humanoid artwork for Banner Guard (Rally Soldier).",
+    "family": "guard",
+    "role": "Rally Soldier",
+    "tags": [
+      "mob",
+      "humanoid",
+      "guard",
+      "rally",
+      "militia"
+    ],
+    "src": "/assets/runtime/character-library-banner-guard.91f90b96f9a9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:377",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/banner-guard.svg",
+      "nodeId": "166:377"
+    }
+  },
+  {
+    "id": "character.crossroad-warden.v1",
+    "kind": "character",
+    "label": "Crossroad Warden",
+    "description": "Figma humanoid artwork for Crossroad Warden (Route Protector).",
+    "family": "warden",
+    "role": "Route Protector",
+    "tags": [
+      "character",
+      "humanoid",
+      "warden",
+      "defense",
+      "road"
+    ],
+    "src": "/assets/runtime/character-library-crossroad-warden.27d40d8758f2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:391",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/crossroad-warden.svg",
+      "nodeId": "166:391"
+    }
+  },
+  {
+    "id": "mob.crossroad-warden.v1",
+    "kind": "mob",
+    "label": "Crossroad Warden",
+    "description": "Figma humanoid artwork for Crossroad Warden (Route Protector).",
+    "family": "warden",
+    "role": "Route Protector",
+    "tags": [
+      "mob",
+      "humanoid",
+      "warden",
+      "defense",
+      "road"
+    ],
+    "src": "/assets/runtime/character-library-crossroad-warden.27d40d8758f2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:391",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XV",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/crossroad-warden.svg",
+      "nodeId": "166:391"
+    }
+  },
+  {
+    "id": "character.worn-pilgrim.v1",
+    "kind": "character",
+    "label": "Worn Pilgrim",
+    "description": "Figma humanoid artwork for Worn Pilgrim (Staff Traveler).",
+    "family": "pilgrim",
+    "role": "Staff Traveler",
+    "tags": [
+      "character",
+      "humanoid",
+      "pilgrim",
+      "traveler",
+      "staff"
+    ],
+    "src": "/assets/runtime/character-library-worn-pilgrim.2de2229eb3d0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:469",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/worn-pilgrim.svg",
+      "nodeId": "166:469"
+    }
+  },
+  {
+    "id": "mob.worn-pilgrim.v1",
+    "kind": "mob",
+    "label": "Worn Pilgrim",
+    "description": "Figma humanoid artwork for Worn Pilgrim (Staff Traveler).",
+    "family": "pilgrim",
+    "role": "Staff Traveler",
+    "tags": [
+      "mob",
+      "humanoid",
+      "pilgrim",
+      "traveler",
+      "staff"
+    ],
+    "src": "/assets/runtime/character-library-worn-pilgrim.2de2229eb3d0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:469",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/worn-pilgrim.svg",
+      "nodeId": "166:469"
+    }
+  },
+  {
+    "id": "character.trail-hunter.v1",
+    "kind": "character",
+    "label": "Trail Hunter",
+    "description": "Figma humanoid artwork for Trail Hunter (Forest Tracker).",
+    "family": "hunter",
+    "role": "Forest Tracker",
+    "tags": [
+      "character",
+      "humanoid",
+      "hunter",
+      "ranged",
+      "forest"
+    ],
+    "src": "/assets/runtime/character-library-trail-hunter.2b4b672c639a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:483",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/trail-hunter.svg",
+      "nodeId": "166:483"
+    }
+  },
+  {
+    "id": "mob.trail-hunter.v1",
+    "kind": "mob",
+    "label": "Trail Hunter",
+    "description": "Figma humanoid artwork for Trail Hunter (Forest Tracker).",
+    "family": "hunter",
+    "role": "Forest Tracker",
+    "tags": [
+      "mob",
+      "humanoid",
+      "hunter",
+      "ranged",
+      "forest"
+    ],
+    "src": "/assets/runtime/character-library-trail-hunter.2b4b672c639a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:483",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/trail-hunter.svg",
+      "nodeId": "166:483"
+    }
+  },
+  {
+    "id": "character.courier-lancer.v1",
+    "kind": "character",
+    "label": "Courier Lancer",
+    "description": "Figma humanoid artwork for Courier Lancer (Swift Messenger).",
+    "family": "courier",
+    "role": "Swift Messenger",
+    "tags": [
+      "character",
+      "humanoid",
+      "courier",
+      "agile",
+      "road"
+    ],
+    "src": "/assets/runtime/character-library-courier-lancer.76651814823e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:497",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/courier-lancer.svg",
+      "nodeId": "166:497"
+    }
+  },
+  {
+    "id": "mob.courier-lancer.v1",
+    "kind": "mob",
+    "label": "Courier Lancer",
+    "description": "Figma humanoid artwork for Courier Lancer (Swift Messenger).",
+    "family": "courier",
+    "role": "Swift Messenger",
+    "tags": [
+      "mob",
+      "humanoid",
+      "courier",
+      "agile",
+      "road"
+    ],
+    "src": "/assets/runtime/character-library-courier-lancer.76651814823e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:497",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/courier-lancer.svg",
+      "nodeId": "166:497"
+    }
+  },
+  {
+    "id": "character.ruin-delver.v1",
+    "kind": "character",
+    "label": "Ruin Delver",
+    "description": "Figma humanoid artwork for Ruin Delver (Dungeon Explorer).",
+    "family": "delver",
+    "role": "Dungeon Explorer",
+    "tags": [
+      "character",
+      "humanoid",
+      "delver",
+      "explorer",
+      "ruin"
+    ],
+    "src": "/assets/runtime/character-library-ruin-delver.ce68426e8fe1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:510",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ruin-delver.svg",
+      "nodeId": "166:510"
+    }
+  },
+  {
+    "id": "mob.ruin-delver.v1",
+    "kind": "mob",
+    "label": "Ruin Delver",
+    "description": "Figma humanoid artwork for Ruin Delver (Dungeon Explorer).",
+    "family": "delver",
+    "role": "Dungeon Explorer",
+    "tags": [
+      "mob",
+      "humanoid",
+      "delver",
+      "explorer",
+      "ruin"
+    ],
+    "src": "/assets/runtime/character-library-ruin-delver.ce68426e8fe1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:510",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ruin-delver.svg",
+      "nodeId": "166:510"
+    }
+  },
+  {
+    "id": "character.camp-ranger.v1",
+    "kind": "character",
+    "label": "Camp Ranger",
+    "description": "Figma humanoid artwork for Camp Ranger (Outdoor Marksman).",
+    "family": "ranger",
+    "role": "Outdoor Marksman",
+    "tags": [
+      "character",
+      "humanoid",
+      "ranger",
+      "ranged",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-camp-ranger.12c83594264f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:525",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/camp-ranger.svg",
+      "nodeId": "166:525"
+    }
+  },
+  {
+    "id": "mob.camp-ranger.v1",
+    "kind": "mob",
+    "label": "Camp Ranger",
+    "description": "Figma humanoid artwork for Camp Ranger (Outdoor Marksman).",
+    "family": "ranger",
+    "role": "Outdoor Marksman",
+    "tags": [
+      "mob",
+      "humanoid",
+      "ranger",
+      "ranged",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-camp-ranger.12c83594264f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:525",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/camp-ranger.svg",
+      "nodeId": "166:525"
+    }
+  },
+  {
+    "id": "character.wayfarer-healer.v1",
+    "kind": "character",
+    "label": "Wayfarer Healer",
+    "description": "Figma humanoid artwork for Wayfarer Healer (Travel Medic).",
+    "family": "healer",
+    "role": "Travel Medic",
+    "tags": [
+      "character",
+      "humanoid",
+      "healer",
+      "support",
+      "traveler"
+    ],
+    "src": "/assets/runtime/character-library-wayfarer-healer.07b0eefa3e73.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:539",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/wayfarer-healer.svg",
+      "nodeId": "166:539"
+    }
+  },
+  {
+    "id": "mob.wayfarer-healer.v1",
+    "kind": "mob",
+    "label": "Wayfarer Healer",
+    "description": "Figma humanoid artwork for Wayfarer Healer (Travel Medic).",
+    "family": "healer",
+    "role": "Travel Medic",
+    "tags": [
+      "mob",
+      "humanoid",
+      "healer",
+      "support",
+      "traveler"
+    ],
+    "src": "/assets/runtime/character-library-wayfarer-healer.07b0eefa3e73.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:539",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVI",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/wayfarer-healer.svg",
+      "nodeId": "166:539"
+    }
+  },
+  {
+    "id": "character.apprentice-alchemist.v1",
+    "kind": "character",
+    "label": "Apprentice Alchemist",
+    "description": "Figma humanoid artwork for Apprentice Alchemist (Potion Caster).",
+    "family": "alchemist",
+    "role": "Potion Caster",
+    "tags": [
+      "character",
+      "humanoid",
+      "alchemist",
+      "arcane",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-apprentice-alchemist.0580584b8a33.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:622",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/apprentice-alchemist.svg",
+      "nodeId": "166:622"
+    }
+  },
+  {
+    "id": "mob.apprentice-alchemist.v1",
+    "kind": "mob",
+    "label": "Apprentice Alchemist",
+    "description": "Figma humanoid artwork for Apprentice Alchemist (Potion Caster).",
+    "family": "alchemist",
+    "role": "Potion Caster",
+    "tags": [
+      "mob",
+      "humanoid",
+      "alchemist",
+      "arcane",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-apprentice-alchemist.0580584b8a33.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:622",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/apprentice-alchemist.svg",
+      "nodeId": "166:622"
+    }
+  },
+  {
+    "id": "character.temple-acolyte.v1",
+    "kind": "character",
+    "label": "Temple Acolyte",
+    "description": "Figma humanoid artwork for Temple Acolyte (Light Disciple).",
+    "family": "acolyte",
+    "role": "Light Disciple",
+    "tags": [
+      "character",
+      "humanoid",
+      "acolyte",
+      "holy",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-temple-acolyte.874b0e2e0a8c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:636",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/temple-acolyte.svg",
+      "nodeId": "166:636"
+    }
+  },
+  {
+    "id": "mob.temple-acolyte.v1",
+    "kind": "mob",
+    "label": "Temple Acolyte",
+    "description": "Figma humanoid artwork for Temple Acolyte (Light Disciple).",
+    "family": "acolyte",
+    "role": "Light Disciple",
+    "tags": [
+      "mob",
+      "humanoid",
+      "acolyte",
+      "holy",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-temple-acolyte.874b0e2e0a8c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:636",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/temple-acolyte.svg",
+      "nodeId": "166:636"
+    }
+  },
+  {
+    "id": "character.ash-reader.v1",
+    "kind": "character",
+    "label": "Ash Reader",
+    "description": "Figma humanoid artwork for Ash Reader (Fire Scholar).",
+    "family": "scholar",
+    "role": "Fire Scholar",
+    "tags": [
+      "character",
+      "humanoid",
+      "scholar",
+      "fire",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-ash-reader.e3eab35f09f5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:650",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ash-reader.svg",
+      "nodeId": "166:650"
+    }
+  },
+  {
+    "id": "mob.ash-reader.v1",
+    "kind": "mob",
+    "label": "Ash Reader",
+    "description": "Figma humanoid artwork for Ash Reader (Fire Scholar).",
+    "family": "scholar",
+    "role": "Fire Scholar",
+    "tags": [
+      "mob",
+      "humanoid",
+      "scholar",
+      "fire",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-ash-reader.e3eab35f09f5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:650",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ash-reader.svg",
+      "nodeId": "166:650"
+    }
+  },
+  {
+    "id": "character.herb-mystic.v1",
+    "kind": "character",
+    "label": "Herb Mystic",
+    "description": "Figma humanoid artwork for Herb Mystic (Nature Support).",
+    "family": "mystic",
+    "role": "Nature Support",
+    "tags": [
+      "character",
+      "humanoid",
+      "mystic",
+      "nature",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-herb-mystic.ee80ea4b9d34.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:663",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/herb-mystic.svg",
+      "nodeId": "166:663"
+    }
+  },
+  {
+    "id": "mob.herb-mystic.v1",
+    "kind": "mob",
+    "label": "Herb Mystic",
+    "description": "Figma humanoid artwork for Herb Mystic (Nature Support).",
+    "family": "mystic",
+    "role": "Nature Support",
+    "tags": [
+      "mob",
+      "humanoid",
+      "mystic",
+      "nature",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-herb-mystic.ee80ea4b9d34.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:663",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/herb-mystic.svg",
+      "nodeId": "166:663"
+    }
+  },
+  {
+    "id": "character.rune-novice.v1",
+    "kind": "character",
+    "label": "Rune Novice",
+    "description": "Figma humanoid artwork for Rune Novice (Arcane Trainee).",
+    "family": "rune",
+    "role": "Arcane Trainee",
+    "tags": [
+      "character",
+      "humanoid",
+      "rune",
+      "arcane",
+      "ranged"
+    ],
+    "src": "/assets/runtime/character-library-rune-novice.5d1b60ea5d89.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:678",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/rune-novice.svg",
+      "nodeId": "166:678"
+    }
+  },
+  {
+    "id": "mob.rune-novice.v1",
+    "kind": "mob",
+    "label": "Rune Novice",
+    "description": "Figma humanoid artwork for Rune Novice (Arcane Trainee).",
+    "family": "rune",
+    "role": "Arcane Trainee",
+    "tags": [
+      "mob",
+      "humanoid",
+      "rune",
+      "arcane",
+      "ranged"
+    ],
+    "src": "/assets/runtime/character-library-rune-novice.5d1b60ea5d89.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:678",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/rune-novice.svg",
+      "nodeId": "166:678"
+    }
+  },
+  {
+    "id": "character.bell-seer.v1",
+    "kind": "character",
+    "label": "Bell Seer",
+    "description": "Figma humanoid artwork for Bell Seer (Omen Reader).",
+    "family": "seer",
+    "role": "Omen Reader",
+    "tags": [
+      "character",
+      "humanoid",
+      "seer",
+      "omen",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-bell-seer.f1ef6294428b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:692",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/bell-seer.svg",
+      "nodeId": "166:692"
+    }
+  },
+  {
+    "id": "mob.bell-seer.v1",
+    "kind": "mob",
+    "label": "Bell Seer",
+    "description": "Figma humanoid artwork for Bell Seer (Omen Reader).",
+    "family": "seer",
+    "role": "Omen Reader",
+    "tags": [
+      "mob",
+      "humanoid",
+      "seer",
+      "omen",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-bell-seer.f1ef6294428b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:692",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/bell-seer.svg",
+      "nodeId": "166:692"
+    }
+  },
+  {
+    "id": "character.chain-brawler.v1",
+    "kind": "character",
+    "label": "Chain Brawler",
+    "description": "Figma humanoid artwork for Chain Brawler (Brutal Pit Fighter).",
+    "family": "brawler",
+    "role": "Brutal Pit Fighter",
+    "tags": [
+      "character",
+      "humanoid",
+      "brawler",
+      "melee",
+      "arena"
+    ],
+    "src": "/assets/runtime/character-library-chain-brawler.cce762461a64.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:777",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/chain-brawler.svg",
+      "nodeId": "166:777"
+    }
+  },
+  {
+    "id": "mob.chain-brawler.v1",
+    "kind": "mob",
+    "label": "Chain Brawler",
+    "description": "Figma humanoid artwork for Chain Brawler (Brutal Pit Fighter).",
+    "family": "brawler",
+    "role": "Brutal Pit Fighter",
+    "tags": [
+      "mob",
+      "humanoid",
+      "brawler",
+      "melee",
+      "arena"
+    ],
+    "src": "/assets/runtime/character-library-chain-brawler.cce762461a64.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:777",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/chain-brawler.svg",
+      "nodeId": "166:777"
+    }
+  },
+  {
+    "id": "character.mine-breaker.v1",
+    "kind": "character",
+    "label": "Mine Breaker",
+    "description": "Figma humanoid artwork for Mine Breaker (Hammer Worker).",
+    "family": "breaker",
+    "role": "Hammer Worker",
+    "tags": [
+      "character",
+      "humanoid",
+      "breaker",
+      "melee",
+      "mine"
+    ],
+    "src": "/assets/runtime/character-library-mine-breaker.84c8f5f5feb6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:791",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/mine-breaker.svg",
+      "nodeId": "166:791"
+    }
+  },
+  {
+    "id": "mob.mine-breaker.v1",
+    "kind": "mob",
+    "label": "Mine Breaker",
+    "description": "Figma humanoid artwork for Mine Breaker (Hammer Worker).",
+    "family": "breaker",
+    "role": "Hammer Worker",
+    "tags": [
+      "mob",
+      "humanoid",
+      "breaker",
+      "melee",
+      "mine"
+    ],
+    "src": "/assets/runtime/character-library-mine-breaker.84c8f5f5feb6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:791",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/mine-breaker.svg",
+      "nodeId": "166:791"
+    }
+  },
+  {
+    "id": "character.dust-marauder.v1",
+    "kind": "character",
+    "label": "Dust Marauder",
+    "description": "Figma humanoid artwork for Dust Marauder (Desert Raider).",
+    "family": "marauder",
+    "role": "Desert Raider",
+    "tags": [
+      "character",
+      "humanoid",
+      "marauder",
+      "raider",
+      "desert"
+    ],
+    "src": "/assets/runtime/character-library-dust-marauder.1ee9e247ba6d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:805",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/dust-marauder.svg",
+      "nodeId": "166:805"
+    }
+  },
+  {
+    "id": "mob.dust-marauder.v1",
+    "kind": "mob",
+    "label": "Dust Marauder",
+    "description": "Figma humanoid artwork for Dust Marauder (Desert Raider).",
+    "family": "marauder",
+    "role": "Desert Raider",
+    "tags": [
+      "mob",
+      "humanoid",
+      "marauder",
+      "raider",
+      "desert"
+    ],
+    "src": "/assets/runtime/character-library-dust-marauder.1ee9e247ba6d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:805",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/dust-marauder.svg",
+      "nodeId": "166:805"
+    }
+  },
+  {
+    "id": "character.bog-hunter.v1",
+    "kind": "character",
+    "label": "Bog Hunter",
+    "description": "Figma humanoid artwork for Bog Hunter (Marsh Pursuer).",
+    "family": "hunter",
+    "role": "Marsh Pursuer",
+    "tags": [
+      "character",
+      "humanoid",
+      "hunter",
+      "ranged",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-bog-hunter.cdb17cdd730a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:818",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/bog-hunter.svg",
+      "nodeId": "166:818"
+    }
+  },
+  {
+    "id": "mob.bog-hunter.v1",
+    "kind": "mob",
+    "label": "Bog Hunter",
+    "description": "Figma humanoid artwork for Bog Hunter (Marsh Pursuer).",
+    "family": "hunter",
+    "role": "Marsh Pursuer",
+    "tags": [
+      "mob",
+      "humanoid",
+      "hunter",
+      "ranged",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-bog-hunter.cdb17cdd730a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:818",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/bog-hunter.svg",
+      "nodeId": "166:818"
+    }
+  },
+  {
+    "id": "character.mask-cultist.v1",
+    "kind": "character",
+    "label": "Mask Cultist",
+    "description": "Figma humanoid artwork for Mask Cultist (Dark Follower).",
+    "family": "cultist",
+    "role": "Dark Follower",
+    "tags": [
+      "character",
+      "humanoid",
+      "cultist",
+      "shadow",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-mask-cultist.d482baa9048e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:833",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/mask-cultist.svg",
+      "nodeId": "166:833"
+    }
+  },
+  {
+    "id": "mob.mask-cultist.v1",
+    "kind": "mob",
+    "label": "Mask Cultist",
+    "description": "Figma humanoid artwork for Mask Cultist (Dark Follower).",
+    "family": "cultist",
+    "role": "Dark Follower",
+    "tags": [
+      "mob",
+      "humanoid",
+      "cultist",
+      "shadow",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-mask-cultist.d482baa9048e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:833",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/mask-cultist.svg",
+      "nodeId": "166:833"
+    }
+  },
+  {
+    "id": "character.torch-zealot.v1",
+    "kind": "character",
+    "label": "Torch Zealot",
+    "description": "Figma humanoid artwork for Torch Zealot (Fire Fanatic).",
+    "family": "zealot",
+    "role": "Fire Fanatic",
+    "tags": [
+      "character",
+      "humanoid",
+      "zealot",
+      "fire",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-torch-zealot.58215fdcb30c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:847",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/torch-zealot.svg",
+      "nodeId": "166:847"
+    }
+  },
+  {
+    "id": "mob.torch-zealot.v1",
+    "kind": "mob",
+    "label": "Torch Zealot",
+    "description": "Figma humanoid artwork for Torch Zealot (Fire Fanatic).",
+    "family": "zealot",
+    "role": "Fire Fanatic",
+    "tags": [
+      "mob",
+      "humanoid",
+      "zealot",
+      "fire",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-torch-zealot.58215fdcb30c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:847",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XVIII",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/torch-zealot.svg",
+      "nodeId": "166:847"
+    }
+  },
+  {
+    "id": "character.noble-retainer.v1",
+    "kind": "character",
+    "label": "Noble Retainer",
+    "description": "Figma humanoid artwork for Noble Retainer (Court Blade).",
+    "family": "retainer",
+    "role": "Court Blade",
+    "tags": [
+      "character",
+      "humanoid",
+      "retainer",
+      "melee",
+      "court"
+    ],
+    "src": "/assets/runtime/character-library-noble-retainer.1ae4651ea4bc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:930",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/noble-retainer.svg",
+      "nodeId": "166:930"
+    }
+  },
+  {
+    "id": "mob.noble-retainer.v1",
+    "kind": "mob",
+    "label": "Noble Retainer",
+    "description": "Figma humanoid artwork for Noble Retainer (Court Blade).",
+    "family": "retainer",
+    "role": "Court Blade",
+    "tags": [
+      "mob",
+      "humanoid",
+      "retainer",
+      "melee",
+      "court"
+    ],
+    "src": "/assets/runtime/character-library-noble-retainer.1ae4651ea4bc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:930",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/noble-retainer.svg",
+      "nodeId": "166:930"
+    }
+  },
+  {
+    "id": "character.guild-recruit.v1",
+    "kind": "character",
+    "label": "Guild Recruit",
+    "description": "Figma humanoid artwork for Guild Recruit (Rookie Adventurer).",
+    "family": "adventurer",
+    "role": "Rookie Adventurer",
+    "tags": [
+      "character",
+      "humanoid",
+      "adventurer",
+      "melee",
+      "guild"
+    ],
+    "src": "/assets/runtime/character-library-guild-recruit.9041a22e5313.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:944",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/guild-recruit.svg",
+      "nodeId": "166:944"
+    }
+  },
+  {
+    "id": "mob.guild-recruit.v1",
+    "kind": "mob",
+    "label": "Guild Recruit",
+    "description": "Figma humanoid artwork for Guild Recruit (Rookie Adventurer).",
+    "family": "adventurer",
+    "role": "Rookie Adventurer",
+    "tags": [
+      "mob",
+      "humanoid",
+      "adventurer",
+      "melee",
+      "guild"
+    ],
+    "src": "/assets/runtime/character-library-guild-recruit.9041a22e5313.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:944",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/guild-recruit.svg",
+      "nodeId": "166:944"
+    }
+  },
+  {
+    "id": "character.tinker-courier.v1",
+    "kind": "character",
+    "label": "Tinker Courier",
+    "description": "Figma humanoid artwork for Tinker Courier (Gadget Carrier).",
+    "family": "tinker",
+    "role": "Gadget Carrier",
+    "tags": [
+      "character",
+      "humanoid",
+      "tinker",
+      "utility",
+      "guild"
+    ],
+    "src": "/assets/runtime/character-library-tinker-courier.b59526672b26.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:958",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/tinker-courier.svg",
+      "nodeId": "166:958"
+    }
+  },
+  {
+    "id": "mob.tinker-courier.v1",
+    "kind": "mob",
+    "label": "Tinker Courier",
+    "description": "Figma humanoid artwork for Tinker Courier (Gadget Carrier).",
+    "family": "tinker",
+    "role": "Gadget Carrier",
+    "tags": [
+      "mob",
+      "humanoid",
+      "tinker",
+      "utility",
+      "guild"
+    ],
+    "src": "/assets/runtime/character-library-tinker-courier.b59526672b26.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:958",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/tinker-courier.svg",
+      "nodeId": "166:958"
+    }
+  },
+  {
+    "id": "character.caravan-archer.v1",
+    "kind": "character",
+    "label": "Caravan Archer",
+    "description": "Figma humanoid artwork for Caravan Archer (Wagon Escort).",
+    "family": "archer",
+    "role": "Wagon Escort",
+    "tags": [
+      "character",
+      "humanoid",
+      "archer",
+      "ranged",
+      "caravan"
+    ],
+    "src": "/assets/runtime/character-library-caravan-archer.8f398a82ec01.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:971",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/caravan-archer.svg",
+      "nodeId": "166:971"
+    }
+  },
+  {
+    "id": "mob.caravan-archer.v1",
+    "kind": "mob",
+    "label": "Caravan Archer",
+    "description": "Figma humanoid artwork for Caravan Archer (Wagon Escort).",
+    "family": "archer",
+    "role": "Wagon Escort",
+    "tags": [
+      "mob",
+      "humanoid",
+      "archer",
+      "ranged",
+      "caravan"
+    ],
+    "src": "/assets/runtime/character-library-caravan-archer.8f398a82ec01.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:971",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/caravan-archer.svg",
+      "nodeId": "166:971"
+    }
+  },
+  {
+    "id": "character.ridge-spearman.v1",
+    "kind": "character",
+    "label": "Ridge Spearman",
+    "description": "Figma humanoid artwork for Ridge Spearman (Highland Fighter).",
+    "family": "spearman",
+    "role": "Highland Fighter",
+    "tags": [
+      "character",
+      "humanoid",
+      "spearman",
+      "melee",
+      "highland"
+    ],
+    "src": "/assets/runtime/character-library-ridge-spearman.08c1972d53f5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:986",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ridge-spearman.svg",
+      "nodeId": "166:986"
+    }
+  },
+  {
+    "id": "mob.ridge-spearman.v1",
+    "kind": "mob",
+    "label": "Ridge Spearman",
+    "description": "Figma humanoid artwork for Ridge Spearman (Highland Fighter).",
+    "family": "spearman",
+    "role": "Highland Fighter",
+    "tags": [
+      "mob",
+      "humanoid",
+      "spearman",
+      "melee",
+      "highland"
+    ],
+    "src": "/assets/runtime/character-library-ridge-spearman.08c1972d53f5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:986",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/ridge-spearman.svg",
+      "nodeId": "166:986"
+    }
+  },
+  {
+    "id": "character.shrine-keeper.v1",
+    "kind": "character",
+    "label": "Shrine Keeper",
+    "description": "Figma humanoid artwork for Shrine Keeper (Sacred Attendant).",
+    "family": "keeper",
+    "role": "Sacred Attendant",
+    "tags": [
+      "character",
+      "humanoid",
+      "keeper",
+      "holy",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-shrine-keeper.b9db6a11cf4c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1000",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/shrine-keeper.svg",
+      "nodeId": "166:1000"
+    }
+  },
+  {
+    "id": "mob.shrine-keeper.v1",
+    "kind": "mob",
+    "label": "Shrine Keeper",
+    "description": "Figma humanoid artwork for Shrine Keeper (Sacred Attendant).",
+    "family": "keeper",
+    "role": "Sacred Attendant",
+    "tags": [
+      "mob",
+      "humanoid",
+      "keeper",
+      "holy",
+      "support"
+    ],
+    "src": "/assets/runtime/character-library-shrine-keeper.b9db6a11cf4c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1000",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XIX",
+      "boardCategory": "humanoid",
+      "file": "public/assets/generated/figma-character-library/v1/shrine-keeper.svg",
+      "nodeId": "166:1000"
+    }
+  },
+  {
+    "id": "mob.field-mouse.v1",
+    "kind": "mob",
+    "label": "Field Mouse",
+    "description": "Figma common-mob artwork for Field Mouse (Tiny Pest).",
+    "family": "rodent",
+    "role": "Tiny Pest",
+    "tags": [
+      "mob",
+      "common-mob",
+      "rodent",
+      "small",
+      "field"
+    ],
+    "src": "/assets/runtime/character-library-field-mouse.0a827022eb60.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1082",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XX",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/field-mouse.svg",
+      "nodeId": "166:1082"
+    }
+  },
+  {
+    "id": "mob.cave-ratling.v1",
+    "kind": "mob",
+    "label": "Cave Ratling",
+    "description": "Figma common-mob artwork for Cave Ratling (Burrow Vermin).",
+    "family": "rodent",
+    "role": "Burrow Vermin",
+    "tags": [
+      "mob",
+      "common-mob",
+      "rodent",
+      "small",
+      "cave"
+    ],
+    "src": "/assets/runtime/character-library-cave-ratling.6d182012a787.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1096",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XX",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/cave-ratling.svg",
+      "nodeId": "166:1096"
+    }
+  },
+  {
+    "id": "mob.scrap-roach.v1",
+    "kind": "mob",
+    "label": "Scrap Roach",
+    "description": "Figma common-mob artwork for Scrap Roach (Junk Scuttler).",
+    "family": "insect",
+    "role": "Junk Scuttler",
+    "tags": [
+      "mob",
+      "common-mob",
+      "insect",
+      "small",
+      "scrap"
+    ],
+    "src": "/assets/runtime/character-library-scrap-roach.90b0cda5498a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1110",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XX",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/scrap-roach.svg",
+      "nodeId": "166:1110"
+    }
+  },
+  {
+    "id": "mob.marsh-hopper.v1",
+    "kind": "mob",
+    "label": "Marsh Hopper",
+    "description": "Figma common-mob artwork for Marsh Hopper (Swamp Pest).",
+    "family": "amphibian",
+    "role": "Swamp Pest",
+    "tags": [
+      "mob",
+      "common-mob",
+      "amphibian",
+      "small",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-marsh-hopper.f33818acc064.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1123",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XX",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/marsh-hopper.svg",
+      "nodeId": "166:1123"
+    }
+  },
+  {
+    "id": "mob.briar-hare.v1",
+    "kind": "mob",
+    "label": "Briar Hare",
+    "description": "Figma common-mob artwork for Briar Hare (Fast Wildling).",
+    "family": "beast",
+    "role": "Fast Wildling",
+    "tags": [
+      "mob",
+      "common-mob",
+      "beast",
+      "small",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-briar-hare.2c1394db3511.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1138",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XX",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/briar-hare.svg",
+      "nodeId": "166:1138"
+    }
+  },
+  {
+    "id": "mob.mold-mite.v1",
+    "kind": "mob",
+    "label": "Mold Mite",
+    "description": "Figma common-mob artwork for Mold Mite (Spore Pest).",
+    "family": "insect",
+    "role": "Spore Pest",
+    "tags": [
+      "mob",
+      "common-mob",
+      "insect",
+      "small",
+      "fungus"
+    ],
+    "src": "/assets/runtime/character-library-mold-mite.63b26fa27a6d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1152",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XX",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/mold-mite.svg",
+      "nodeId": "166:1152"
+    }
+  },
+  {
+    "id": "mob.ridge-wolf.v1",
+    "kind": "mob",
+    "label": "Ridge Wolf",
+    "description": "Figma common-mob artwork for Ridge Wolf (Pack Hunter).",
+    "family": "canine",
+    "role": "Pack Hunter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "canine",
+      "pack",
+      "highland"
+    ],
+    "src": "/assets/runtime/character-library-ridge-wolf.bffca8c705d5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1234",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/ridge-wolf.svg",
+      "nodeId": "166:1234"
+    }
+  },
+  {
+    "id": "mob.mud-hound.v1",
+    "kind": "mob",
+    "label": "Mud Hound",
+    "description": "Figma common-mob artwork for Mud Hound (Bog Tracker).",
+    "family": "canine",
+    "role": "Bog Tracker",
+    "tags": [
+      "mob",
+      "common-mob",
+      "canine",
+      "pack",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-mud-hound.90058976f419.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1248",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/mud-hound.svg",
+      "nodeId": "166:1248"
+    }
+  },
+  {
+    "id": "mob.cinder-jackal.v1",
+    "kind": "mob",
+    "label": "Cinder Jackal",
+    "description": "Figma common-mob artwork for Cinder Jackal (Heat Chaser).",
+    "family": "canine",
+    "role": "Heat Chaser",
+    "tags": [
+      "mob",
+      "common-mob",
+      "canine",
+      "pack",
+      "fire"
+    ],
+    "src": "/assets/runtime/character-library-cinder-jackal.ab5247c81a7a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1262",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/cinder-jackal.svg",
+      "nodeId": "166:1262"
+    }
+  },
+  {
+    "id": "mob.gloom-coyote.v1",
+    "kind": "mob",
+    "label": "Gloom Coyote",
+    "description": "Figma common-mob artwork for Gloom Coyote (Shadow Hunter).",
+    "family": "canine",
+    "role": "Shadow Hunter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "canine",
+      "pack",
+      "shadow"
+    ],
+    "src": "/assets/runtime/character-library-gloom-coyote.95e4c23e9714.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1275",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/gloom-coyote.svg",
+      "nodeId": "166:1275"
+    }
+  },
+  {
+    "id": "mob.bramble-fox.v1",
+    "kind": "mob",
+    "label": "Bramble Fox",
+    "description": "Figma common-mob artwork for Bramble Fox (Thorn Skirmisher).",
+    "family": "canine",
+    "role": "Thorn Skirmisher",
+    "tags": [
+      "mob",
+      "common-mob",
+      "canine",
+      "agile",
+      "forest"
+    ],
+    "src": "/assets/runtime/character-library-bramble-fox.efcde86765d6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1290",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/bramble-fox.svg",
+      "nodeId": "166:1290"
+    }
+  },
+  {
+    "id": "mob.feral-pup.v1",
+    "kind": "mob",
+    "label": "Feral Pup",
+    "description": "Figma common-mob artwork for Feral Pup (Wild Biter).",
+    "family": "canine",
+    "role": "Wild Biter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "canine",
+      "small",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-feral-pup.29f8597a0059.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1304",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/feral-pup.svg",
+      "nodeId": "166:1304"
+    }
+  },
+  {
+    "id": "mob.marsh-blob.v1",
+    "kind": "mob",
+    "label": "Marsh Blob",
+    "description": "Figma common-mob artwork for Marsh Blob (Mud Slime).",
+    "family": "slime",
+    "role": "Mud Slime",
+    "tags": [
+      "mob",
+      "common-mob",
+      "slime",
+      "marsh",
+      "mud"
+    ],
+    "src": "/assets/runtime/character-library-marsh-blob.8b87ef70d186.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1379",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/marsh-blob.svg",
+      "nodeId": "166:1379"
+    }
+  },
+  {
+    "id": "mob.sap-ooze.v1",
+    "kind": "mob",
+    "label": "Sap Ooze",
+    "description": "Figma common-mob artwork for Sap Ooze (Sticky Slime).",
+    "family": "slime",
+    "role": "Sticky Slime",
+    "tags": [
+      "mob",
+      "common-mob",
+      "slime",
+      "forest",
+      "sticky"
+    ],
+    "src": "/assets/runtime/character-library-sap-ooze.9cc696267703.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1393",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/sap-ooze.svg",
+      "nodeId": "166:1393"
+    }
+  },
+  {
+    "id": "mob.glow-jelly.v1",
+    "kind": "mob",
+    "label": "Glow Jelly",
+    "description": "Figma common-mob artwork for Glow Jelly (Luminous Ooze).",
+    "family": "slime",
+    "role": "Luminous Ooze",
+    "tags": [
+      "mob",
+      "common-mob",
+      "slime",
+      "glow",
+      "cave"
+    ],
+    "src": "/assets/runtime/character-library-glow-jelly.683354c83c21.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1407",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/glow-jelly.svg",
+      "nodeId": "166:1407"
+    }
+  },
+  {
+    "id": "mob.tar-slug.v1",
+    "kind": "mob",
+    "label": "Tar Slug",
+    "description": "Figma common-mob artwork for Tar Slug (Heavy Slime).",
+    "family": "slime",
+    "role": "Heavy Slime",
+    "tags": [
+      "mob",
+      "common-mob",
+      "slime",
+      "dark",
+      "sticky"
+    ],
+    "src": "/assets/runtime/character-library-tar-slug.f58ffe7e1df5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1420",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/tar-slug.svg",
+      "nodeId": "166:1420"
+    }
+  },
+  {
+    "id": "mob.frost-blob.v1",
+    "kind": "mob",
+    "label": "Frost Blob",
+    "description": "Figma common-mob artwork for Frost Blob (Chilling Goo).",
+    "family": "slime",
+    "role": "Chilling Goo",
+    "tags": [
+      "mob",
+      "common-mob",
+      "slime",
+      "ice",
+      "chill"
+    ],
+    "src": "/assets/runtime/character-library-frost-blob.a99ff409e771.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1435",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/frost-blob.svg",
+      "nodeId": "166:1435"
+    }
+  },
+  {
+    "id": "mob.rot-pudding.v1",
+    "kind": "mob",
+    "label": "Rot Pudding",
+    "description": "Figma common-mob artwork for Rot Pudding (Decay Ooze).",
+    "family": "slime",
+    "role": "Decay Ooze",
+    "tags": [
+      "mob",
+      "common-mob",
+      "slime",
+      "poison",
+      "decay"
+    ],
+    "src": "/assets/runtime/character-library-rot-pudding.e541190158fb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1449",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/rot-pudding.svg",
+      "nodeId": "166:1449"
+    }
+  },
+  {
+    "id": "mob.pebble-beetle.v1",
+    "kind": "mob",
+    "label": "Pebble Beetle",
+    "description": "Figma common-mob artwork for Pebble Beetle (Minor Armor Bug).",
+    "family": "beetle",
+    "role": "Minor Armor Bug",
+    "tags": [
+      "mob",
+      "common-mob",
+      "beetle",
+      "small",
+      "armor"
+    ],
+    "src": "/assets/runtime/character-library-pebble-beetle.e2070ddb364d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1522",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/pebble-beetle.svg",
+      "nodeId": "166:1522"
+    }
+  },
+  {
+    "id": "mob.needle-gnat.v1",
+    "kind": "mob",
+    "label": "Needle Gnat",
+    "description": "Figma common-mob artwork for Needle Gnat (Swarm Pest).",
+    "family": "insect",
+    "role": "Swarm Pest",
+    "tags": [
+      "mob",
+      "common-mob",
+      "insect",
+      "small",
+      "swarm"
+    ],
+    "src": "/assets/runtime/character-library-needle-gnat.fb7b1999486c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1536",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/needle-gnat.svg",
+      "nodeId": "166:1536"
+    }
+  },
+  {
+    "id": "mob.mud-tick.v1",
+    "kind": "mob",
+    "label": "Mud Tick",
+    "description": "Figma common-mob artwork for Mud Tick (Clinging Parasite).",
+    "family": "parasite",
+    "role": "Clinging Parasite",
+    "tags": [
+      "mob",
+      "common-mob",
+      "parasite",
+      "small",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-mud-tick.0b984eecc445.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1550",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/mud-tick.svg",
+      "nodeId": "166:1550"
+    }
+  },
+  {
+    "id": "mob.red-scarab.v1",
+    "kind": "mob",
+    "label": "Red Scarab",
+    "description": "Figma common-mob artwork for Red Scarab (Fast Shellbug).",
+    "family": "beetle",
+    "role": "Fast Shellbug",
+    "tags": [
+      "mob",
+      "common-mob",
+      "beetle",
+      "agile",
+      "desert"
+    ],
+    "src": "/assets/runtime/character-library-red-scarab.8049eb24e7b6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1563",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/red-scarab.svg",
+      "nodeId": "166:1563"
+    }
+  },
+  {
+    "id": "mob.root-ant.v1",
+    "kind": "mob",
+    "label": "Root Ant",
+    "description": "Figma common-mob artwork for Root Ant (Colony Forager).",
+    "family": "insect",
+    "role": "Colony Forager",
+    "tags": [
+      "mob",
+      "common-mob",
+      "insect",
+      "small",
+      "forest"
+    ],
+    "src": "/assets/runtime/character-library-root-ant.324db71f84d6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1578",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/root-ant.svg",
+      "nodeId": "166:1578"
+    }
+  },
+  {
+    "id": "mob.glow-firefly.v1",
+    "kind": "mob",
+    "label": "Glow Firefly",
+    "description": "Figma common-mob artwork for Glow Firefly (Distracting Flier).",
+    "family": "insect",
+    "role": "Distracting Flier",
+    "tags": [
+      "mob",
+      "common-mob",
+      "insect",
+      "glow",
+      "swarm"
+    ],
+    "src": "/assets/runtime/character-library-glow-firefly.669ec0a830a0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1592",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/glow-firefly.svg",
+      "nodeId": "166:1592"
+    }
+  },
+  {
+    "id": "mob.grim-sparrow.v1",
+    "kind": "mob",
+    "label": "Grim Sparrow",
+    "description": "Figma common-mob artwork for Grim Sparrow (Dark Bird).",
+    "family": "bird",
+    "role": "Dark Bird",
+    "tags": [
+      "mob",
+      "common-mob",
+      "bird",
+      "small",
+      "shadow"
+    ],
+    "src": "/assets/runtime/character-library-grim-sparrow.75a8c60b3208.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1663",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/grim-sparrow.svg",
+      "nodeId": "166:1663"
+    }
+  },
+  {
+    "id": "mob.bog-gull.v1",
+    "kind": "mob",
+    "label": "Bog Gull",
+    "description": "Figma common-mob artwork for Bog Gull (Marsh Flier).",
+    "family": "bird",
+    "role": "Marsh Flier",
+    "tags": [
+      "mob",
+      "common-mob",
+      "bird",
+      "marsh",
+      "flier"
+    ],
+    "src": "/assets/runtime/character-library-bog-gull.699c7a79581e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1677",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/bog-gull.svg",
+      "nodeId": "166:1677"
+    }
+  },
+  {
+    "id": "mob.ash-raven.v1",
+    "kind": "mob",
+    "label": "Ash Raven",
+    "description": "Figma common-mob artwork for Ash Raven (Soot Wing).",
+    "family": "bird",
+    "role": "Soot Wing",
+    "tags": [
+      "mob",
+      "common-mob",
+      "bird",
+      "fire",
+      "shadow"
+    ],
+    "src": "/assets/runtime/character-library-ash-raven.182b6e6f89c6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1691",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/ash-raven.svg",
+      "nodeId": "166:1691"
+    }
+  },
+  {
+    "id": "mob.needle-bat.v1",
+    "kind": "mob",
+    "label": "Needle Bat",
+    "description": "Figma common-mob artwork for Needle Bat (Cave Flyer).",
+    "family": "bat",
+    "role": "Cave Flyer",
+    "tags": [
+      "mob",
+      "common-mob",
+      "bat",
+      "cave",
+      "flier"
+    ],
+    "src": "/assets/runtime/character-library-needle-bat.7ef5d675295c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1704",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/needle-bat.svg",
+      "nodeId": "166:1704"
+    }
+  },
+  {
+    "id": "mob.dust-owl.v1",
+    "kind": "mob",
+    "label": "Dust Owl",
+    "description": "Figma common-mob artwork for Dust Owl (Silent Hunter).",
+    "family": "bird",
+    "role": "Silent Hunter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "bird",
+      "desert",
+      "stealth"
+    ],
+    "src": "/assets/runtime/character-library-dust-owl.688245093ecd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1719",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/dust-owl.svg",
+      "nodeId": "166:1719"
+    }
+  },
+  {
+    "id": "mob.plague-finch.v1",
+    "kind": "mob",
+    "label": "Plague Finch",
+    "description": "Figma common-mob artwork for Plague Finch (Sickly Bird).",
+    "family": "bird",
+    "role": "Sickly Bird",
+    "tags": [
+      "mob",
+      "common-mob",
+      "bird",
+      "poison",
+      "flier"
+    ],
+    "src": "/assets/runtime/character-library-plague-finch.af00b7f6b213.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1733",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/plague-finch.svg",
+      "nodeId": "166:1733"
+    }
+  },
+  {
+    "id": "mob.fen-toad.v1",
+    "kind": "mob",
+    "label": "Fen Toad",
+    "description": "Figma common-mob artwork for Fen Toad (Toxic Hopper).",
+    "family": "amphibian",
+    "role": "Toxic Hopper",
+    "tags": [
+      "mob",
+      "common-mob",
+      "amphibian",
+      "poison",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-fen-toad.2925d69b15b0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1812",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/fen-toad.svg",
+      "nodeId": "166:1812"
+    }
+  },
+  {
+    "id": "mob.mud-newt.v1",
+    "kind": "mob",
+    "label": "Mud Newt",
+    "description": "Figma common-mob artwork for Mud Newt (Swamp Crawler).",
+    "family": "amphibian",
+    "role": "Swamp Crawler",
+    "tags": [
+      "mob",
+      "common-mob",
+      "amphibian",
+      "marsh",
+      "small"
+    ],
+    "src": "/assets/runtime/character-library-mud-newt.f807e2865c51.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1826",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/mud-newt.svg",
+      "nodeId": "166:1826"
+    }
+  },
+  {
+    "id": "mob.scale-lizard.v1",
+    "kind": "mob",
+    "label": "Scale Lizard",
+    "description": "Figma common-mob artwork for Scale Lizard (Scrappy Reptile).",
+    "family": "reptile",
+    "role": "Scrappy Reptile",
+    "tags": [
+      "mob",
+      "common-mob",
+      "reptile",
+      "melee",
+      "wilds"
+    ],
+    "src": "/assets/runtime/character-library-scale-lizard.cf1ce6f56369.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1840",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/scale-lizard.svg",
+      "nodeId": "166:1840"
+    }
+  },
+  {
+    "id": "mob.reed-snake.v1",
+    "kind": "mob",
+    "label": "Reed Snake",
+    "description": "Figma common-mob artwork for Reed Snake (Marsh Serpent).",
+    "family": "reptile",
+    "role": "Marsh Serpent",
+    "tags": [
+      "mob",
+      "common-mob",
+      "reptile",
+      "poison",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-reed-snake.25dbb42cab09.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1853",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/reed-snake.svg",
+      "nodeId": "166:1853"
+    }
+  },
+  {
+    "id": "mob.cave-skink.v1",
+    "kind": "mob",
+    "label": "Cave Skink",
+    "description": "Figma common-mob artwork for Cave Skink (Fast Tunnel Lizard).",
+    "family": "reptile",
+    "role": "Fast Tunnel Lizard",
+    "tags": [
+      "mob",
+      "common-mob",
+      "reptile",
+      "agile",
+      "cave"
+    ],
+    "src": "/assets/runtime/character-library-cave-skink.02a4d9cf98dc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1868",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/cave-skink.svg",
+      "nodeId": "166:1868"
+    }
+  },
+  {
+    "id": "mob.pond-snapper.v1",
+    "kind": "mob",
+    "label": "Pond Snapper",
+    "description": "Figma common-mob artwork for Pond Snapper (Small Biter).",
+    "family": "reptile",
+    "role": "Small Biter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "reptile",
+      "small",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-pond-snapper.63c6746e48b0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1882",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXV",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/pond-snapper.svg",
+      "nodeId": "166:1882"
+    }
+  },
+  {
+    "id": "mob.spore-bud.v1",
+    "kind": "mob",
+    "label": "Spore Bud",
+    "description": "Figma common-mob artwork for Spore Bud (Fungal Nuisance).",
+    "family": "fungus",
+    "role": "Fungal Nuisance",
+    "tags": [
+      "mob",
+      "common-mob",
+      "fungus",
+      "small",
+      "poison"
+    ],
+    "src": "/assets/runtime/character-library-spore-bud.7fc543ddda8e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1958",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/spore-bud.svg",
+      "nodeId": "166:1958"
+    }
+  },
+  {
+    "id": "mob.thorn-sprout.v1",
+    "kind": "mob",
+    "label": "Thorn Sprout",
+    "description": "Figma common-mob artwork for Thorn Sprout (Plant Skirmisher).",
+    "family": "plant",
+    "role": "Plant Skirmisher",
+    "tags": [
+      "mob",
+      "common-mob",
+      "plant",
+      "forest",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-thorn-sprout.5317fbc205bb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1972",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/thorn-sprout.svg",
+      "nodeId": "166:1972"
+    }
+  },
+  {
+    "id": "mob.moss-maw.v1",
+    "kind": "mob",
+    "label": "Moss Maw",
+    "description": "Figma common-mob artwork for Moss Maw (Hungry Growth).",
+    "family": "plant",
+    "role": "Hungry Growth",
+    "tags": [
+      "mob",
+      "common-mob",
+      "plant",
+      "forest",
+      "bruiser"
+    ],
+    "src": "/assets/runtime/character-library-moss-maw.1c5405b027d8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1986",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/moss-maw.svg",
+      "nodeId": "166:1986"
+    }
+  },
+  {
+    "id": "mob.root-creeper.v1",
+    "kind": "mob",
+    "label": "Root Creeper",
+    "description": "Figma common-mob artwork for Root Creeper (Vine Hunter).",
+    "family": "plant",
+    "role": "Vine Hunter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "plant",
+      "forest",
+      "control"
+    ],
+    "src": "/assets/runtime/character-library-root-creeper.4d3751bc2964.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:1999",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/root-creeper.svg",
+      "nodeId": "166:1999"
+    }
+  },
+  {
+    "id": "mob.bloom-leech.v1",
+    "kind": "mob",
+    "label": "Bloom Leech",
+    "description": "Figma common-mob artwork for Bloom Leech (Flower Parasite).",
+    "family": "plant",
+    "role": "Flower Parasite",
+    "tags": [
+      "mob",
+      "common-mob",
+      "plant",
+      "forest",
+      "parasite"
+    ],
+    "src": "/assets/runtime/character-library-bloom-leech.898ff31ae4f7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2014",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/bloom-leech.svg",
+      "nodeId": "166:2014"
+    }
+  },
+  {
+    "id": "mob.cap-shambler.v1",
+    "kind": "mob",
+    "label": "Cap Shambler",
+    "description": "Figma common-mob artwork for Cap Shambler (Mushroom Walker).",
+    "family": "fungus",
+    "role": "Mushroom Walker",
+    "tags": [
+      "mob",
+      "common-mob",
+      "fungus",
+      "forest",
+      "slow"
+    ],
+    "src": "/assets/runtime/character-library-cap-shambler.736bd826c609.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2028",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVI",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/cap-shambler.svg",
+      "nodeId": "166:2028"
+    }
+  },
+  {
+    "id": "mob.loose-bones.v1",
+    "kind": "mob",
+    "label": "Loose Bones",
+    "description": "Figma common-mob artwork for Loose Bones (Wandering Skeleton).",
+    "family": "undead",
+    "role": "Wandering Skeleton",
+    "tags": [
+      "mob",
+      "common-mob",
+      "undead",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-loose-bones.069a28e742b2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2104",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/loose-bones.svg",
+      "nodeId": "166:2104"
+    }
+  },
+  {
+    "id": "mob.grave-wisp.v1",
+    "kind": "mob",
+    "label": "Grave Wisp",
+    "description": "Figma common-mob artwork for Grave Wisp (Wandering Spirit).",
+    "family": "spirit",
+    "role": "Wandering Spirit",
+    "tags": [
+      "mob",
+      "common-mob",
+      "spirit",
+      "undead",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-grave-wisp.d0ea758ec749.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2118",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/grave-wisp.svg",
+      "nodeId": "166:2118"
+    }
+  },
+  {
+    "id": "mob.dust-ghoul.v1",
+    "kind": "mob",
+    "label": "Dust Ghoul",
+    "description": "Figma common-mob artwork for Dust Ghoul (Tomb Crawler).",
+    "family": "undead",
+    "role": "Tomb Crawler",
+    "tags": [
+      "mob",
+      "common-mob",
+      "undead",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-dust-ghoul.897d324114bc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2132",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/dust-ghoul.svg",
+      "nodeId": "166:2132"
+    }
+  },
+  {
+    "id": "mob.coffin-crow.v1",
+    "kind": "mob",
+    "label": "Coffin Crow",
+    "description": "Figma common-mob artwork for Coffin Crow (Omen Flier).",
+    "family": "undead",
+    "role": "Omen Flier",
+    "tags": [
+      "mob",
+      "common-mob",
+      "undead",
+      "flier"
+    ],
+    "src": "/assets/runtime/character-library-coffin-crow.22a023a23090.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2145",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/coffin-crow.svg",
+      "nodeId": "166:2145"
+    }
+  },
+  {
+    "id": "mob.hex-skull.v1",
+    "kind": "mob",
+    "label": "Hex Skull",
+    "description": "Figma common-mob artwork for Hex Skull (Floating Curse).",
+    "family": "undead",
+    "role": "Floating Curse",
+    "tags": [
+      "mob",
+      "common-mob",
+      "undead",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-hex-skull.2021ee5d641f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2160",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/hex-skull.svg",
+      "nodeId": "166:2160"
+    }
+  },
+  {
+    "id": "mob.shade-drifter.v1",
+    "kind": "mob",
+    "label": "Shade Drifter",
+    "description": "Figma common-mob artwork for Shade Drifter (Dim Haunter).",
+    "family": "spirit",
+    "role": "Dim Haunter",
+    "tags": [
+      "mob",
+      "common-mob",
+      "spirit",
+      "shadow",
+      "undead"
+    ],
+    "src": "/assets/runtime/character-library-shade-drifter.41bcdc2ad77d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2174",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVII",
+      "boardCategory": "common-mob",
+      "file": "public/assets/generated/figma-character-library/v1/shade-drifter.svg",
+      "nodeId": "166:2174"
+    }
+  },
+  {
+    "id": "mob.black-banner-captain.v1",
+    "kind": "mob",
+    "label": "Black Banner Captain",
+    "description": "Figma elite artwork for Black Banner Captain (Veteran Commander).",
+    "family": "commander",
+    "role": "Veteran Commander",
+    "tags": [
+      "mob",
+      "elite",
+      "commander",
+      "humanoid",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-black-banner-captain.d894e2d6e6d1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2251",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/black-banner-captain.svg",
+      "nodeId": "166:2251"
+    }
+  },
+  {
+    "id": "boss.black-banner-captain.v1",
+    "kind": "boss",
+    "label": "Black Banner Captain",
+    "description": "Figma elite artwork for Black Banner Captain (Veteran Commander).",
+    "family": "commander",
+    "role": "Veteran Commander",
+    "tags": [
+      "boss",
+      "elite",
+      "commander",
+      "humanoid",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-black-banner-captain.d894e2d6e6d1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2251",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/black-banner-captain.svg",
+      "nodeId": "166:2251"
+    }
+  },
+  {
+    "id": "mob.pit-champion.v1",
+    "kind": "mob",
+    "label": "Pit Champion",
+    "description": "Figma elite artwork for Pit Champion (Arena Crusher).",
+    "family": "champion",
+    "role": "Arena Crusher",
+    "tags": [
+      "mob",
+      "elite",
+      "champion",
+      "humanoid",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-pit-champion.d5b255d80a0e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2265",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/pit-champion.svg",
+      "nodeId": "166:2265"
+    }
+  },
+  {
+    "id": "boss.pit-champion.v1",
+    "kind": "boss",
+    "label": "Pit Champion",
+    "description": "Figma elite artwork for Pit Champion (Arena Crusher).",
+    "family": "champion",
+    "role": "Arena Crusher",
+    "tags": [
+      "boss",
+      "elite",
+      "champion",
+      "humanoid",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-pit-champion.d5b255d80a0e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2265",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/pit-champion.svg",
+      "nodeId": "166:2265"
+    }
+  },
+  {
+    "id": "mob.veil-executioner.v1",
+    "kind": "mob",
+    "label": "Veil Executioner",
+    "description": "Figma elite artwork for Veil Executioner (Masked Slayer).",
+    "family": "executioner",
+    "role": "Masked Slayer",
+    "tags": [
+      "mob",
+      "elite",
+      "executioner",
+      "humanoid",
+      "stealth"
+    ],
+    "src": "/assets/runtime/character-library-veil-executioner.8902c1b771f4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2279",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/veil-executioner.svg",
+      "nodeId": "166:2279"
+    }
+  },
+  {
+    "id": "boss.veil-executioner.v1",
+    "kind": "boss",
+    "label": "Veil Executioner",
+    "description": "Figma elite artwork for Veil Executioner (Masked Slayer).",
+    "family": "executioner",
+    "role": "Masked Slayer",
+    "tags": [
+      "boss",
+      "elite",
+      "executioner",
+      "humanoid",
+      "stealth"
+    ],
+    "src": "/assets/runtime/character-library-veil-executioner.8902c1b771f4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2279",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/veil-executioner.svg",
+      "nodeId": "166:2279"
+    }
+  },
+  {
+    "id": "mob.ruin-magister.v1",
+    "kind": "mob",
+    "label": "Ruin Magister",
+    "description": "Figma elite artwork for Ruin Magister (Arcane Elite).",
+    "family": "magister",
+    "role": "Arcane Elite",
+    "tags": [
+      "mob",
+      "elite",
+      "magister",
+      "humanoid",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-ruin-magister.91379fbbfbb1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2292",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/ruin-magister.svg",
+      "nodeId": "166:2292"
+    }
+  },
+  {
+    "id": "boss.ruin-magister.v1",
+    "kind": "boss",
+    "label": "Ruin Magister",
+    "description": "Figma elite artwork for Ruin Magister (Arcane Elite).",
+    "family": "magister",
+    "role": "Arcane Elite",
+    "tags": [
+      "boss",
+      "elite",
+      "magister",
+      "humanoid",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-ruin-magister.91379fbbfbb1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2292",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/ruin-magister.svg",
+      "nodeId": "166:2292"
+    }
+  },
+  {
+    "id": "mob.thornback-alpha.v1",
+    "kind": "mob",
+    "label": "Thornback Alpha",
+    "description": "Figma elite artwork for Thornback Alpha (Pack Leader Beast).",
+    "family": "beast",
+    "role": "Pack Leader Beast",
+    "tags": [
+      "mob",
+      "elite",
+      "beast",
+      "forest"
+    ],
+    "src": "/assets/runtime/character-library-thornback-alpha.39d7cd7e82be.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2307",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/thornback-alpha.svg",
+      "nodeId": "166:2307"
+    }
+  },
+  {
+    "id": "boss.thornback-alpha.v1",
+    "kind": "boss",
+    "label": "Thornback Alpha",
+    "description": "Figma elite artwork for Thornback Alpha (Pack Leader Beast).",
+    "family": "beast",
+    "role": "Pack Leader Beast",
+    "tags": [
+      "boss",
+      "elite",
+      "beast",
+      "forest"
+    ],
+    "src": "/assets/runtime/character-library-thornback-alpha.39d7cd7e82be.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2307",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/thornback-alpha.svg",
+      "nodeId": "166:2307"
+    }
+  },
+  {
+    "id": "mob.grave-maw.v1",
+    "kind": "mob",
+    "label": "Grave Maw",
+    "description": "Figma elite artwork for Grave Maw (Undead Devourer).",
+    "family": "undead",
+    "role": "Undead Devourer",
+    "tags": [
+      "mob",
+      "elite",
+      "undead",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-grave-maw.8a6e8f550ce8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2321",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/grave-maw.svg",
+      "nodeId": "166:2321"
+    }
+  },
+  {
+    "id": "boss.grave-maw.v1",
+    "kind": "boss",
+    "label": "Grave Maw",
+    "description": "Figma elite artwork for Grave Maw (Undead Devourer).",
+    "family": "undead",
+    "role": "Undead Devourer",
+    "tags": [
+      "boss",
+      "elite",
+      "undead",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-grave-maw.8a6e8f550ce8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2321",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXVIII",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/grave-maw.svg",
+      "nodeId": "166:2321"
+    }
+  },
+  {
+    "id": "mob.ashhorn-brute.v1",
+    "kind": "mob",
+    "label": "Ashhorn Brute",
+    "description": "Figma elite artwork for Ashhorn Brute (Infernal Charger).",
+    "family": "beast",
+    "role": "Infernal Charger",
+    "tags": [
+      "mob",
+      "elite",
+      "beast",
+      "fire"
+    ],
+    "src": "/assets/runtime/character-library-ashhorn-brute.b3c4ea0f070c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2406",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/ashhorn-brute.svg",
+      "nodeId": "166:2406"
+    }
+  },
+  {
+    "id": "boss.ashhorn-brute.v1",
+    "kind": "boss",
+    "label": "Ashhorn Brute",
+    "description": "Figma elite artwork for Ashhorn Brute (Infernal Charger).",
+    "family": "beast",
+    "role": "Infernal Charger",
+    "tags": [
+      "boss",
+      "elite",
+      "beast",
+      "fire"
+    ],
+    "src": "/assets/runtime/character-library-ashhorn-brute.b3c4ea0f070c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2406",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/ashhorn-brute.svg",
+      "nodeId": "166:2406"
+    }
+  },
+  {
+    "id": "mob.watcher-prime.v1",
+    "kind": "mob",
+    "label": "Watcher Prime",
+    "description": "Figma elite artwork for Watcher Prime (Greater Eye Horror).",
+    "family": "horror",
+    "role": "Greater Eye Horror",
+    "tags": [
+      "mob",
+      "elite",
+      "horror",
+      "aberration",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-watcher-prime.de6da495bdf3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2420",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/watcher-prime.svg",
+      "nodeId": "166:2420"
+    }
+  },
+  {
+    "id": "boss.watcher-prime.v1",
+    "kind": "boss",
+    "label": "Watcher Prime",
+    "description": "Figma elite artwork for Watcher Prime (Greater Eye Horror).",
+    "family": "horror",
+    "role": "Greater Eye Horror",
+    "tags": [
+      "boss",
+      "elite",
+      "horror",
+      "aberration",
+      "arcane"
+    ],
+    "src": "/assets/runtime/character-library-watcher-prime.de6da495bdf3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2420",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/watcher-prime.svg",
+      "nodeId": "166:2420"
+    }
+  },
+  {
+    "id": "mob.bog-titanling.v1",
+    "kind": "mob",
+    "label": "Bog Titanling",
+    "description": "Figma elite artwork for Bog Titanling (Heavy Marsh Beast).",
+    "family": "beast",
+    "role": "Heavy Marsh Beast",
+    "tags": [
+      "mob",
+      "elite",
+      "beast",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-bog-titanling.61eacf4a3bbd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2434",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/bog-titanling.svg",
+      "nodeId": "166:2434"
+    }
+  },
+  {
+    "id": "boss.bog-titanling.v1",
+    "kind": "boss",
+    "label": "Bog Titanling",
+    "description": "Figma elite artwork for Bog Titanling (Heavy Marsh Beast).",
+    "family": "beast",
+    "role": "Heavy Marsh Beast",
+    "tags": [
+      "boss",
+      "elite",
+      "beast",
+      "marsh"
+    ],
+    "src": "/assets/runtime/character-library-bog-titanling.61eacf4a3bbd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2434",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/bog-titanling.svg",
+      "nodeId": "166:2434"
+    }
+  },
+  {
+    "id": "mob.iron-husk.v1",
+    "kind": "mob",
+    "label": "Iron Husk",
+    "description": "Figma elite artwork for Iron Husk (Ancient Construct).",
+    "family": "construct",
+    "role": "Ancient Construct",
+    "tags": [
+      "mob",
+      "elite",
+      "construct",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-iron-husk.94f395e03c8d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2447",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/iron-husk.svg",
+      "nodeId": "166:2447"
+    }
+  },
+  {
+    "id": "boss.iron-husk.v1",
+    "kind": "boss",
+    "label": "Iron Husk",
+    "description": "Figma elite artwork for Iron Husk (Ancient Construct).",
+    "family": "construct",
+    "role": "Ancient Construct",
+    "tags": [
+      "boss",
+      "elite",
+      "construct",
+      "melee"
+    ],
+    "src": "/assets/runtime/character-library-iron-husk.94f395e03c8d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "166:2447",
+      "sourceCollection": "figma-character-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-character-library-v1",
+      "board": "XXIX",
+      "boardCategory": "elite",
+      "file": "public/assets/generated/figma-character-library/v1/iron-husk.svg",
+      "nodeId": "166:2447"
+    }
   }
 ].map((asset) => Object.freeze(asset)));
 export const VISUAL_ASSET_BY_ID = new Map(VISUAL_ASSETS.map((asset) => [asset.id, asset]));

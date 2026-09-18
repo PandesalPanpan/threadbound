@@ -1,4 +1,4 @@
-import { createSpriteElement, weaverSpriteFrame } from './sprite-catalog.js';
+import { characterSpriteFrame, createSpriteElement } from './sprite-catalog.js';
 import { resetRichCardMetadata } from './ui-v2/rich-card-metadata.js';
 
 const stream = document.querySelector('#stream');
@@ -121,8 +121,8 @@ if (stream) {
       row.className = 'thread-town-adventurer';
       row.dataset.testid = `town-guild-adventurer-${adventurer.id}`;
       const sprite = createSpriteElement(
-        weaverSpriteFrame(adventurer.id, { variant: adventurer.spriteVariant === 'female' ? 'female' : 'male' }),
-        { className: 'thread-town-adventurer-sprite', testId: `town-guild-sprite-${adventurer.id}`, label: `${adventurer.name} portrait` },
+        characterSpriteFrame(adventurer, { variant: adventurer.spriteVariant === 'female' ? 'female' : 'male' }),
+        { className: 'thread-town-adventurer-sprite', testId: `town-guild-sprite-${adventurer.id}`, label: `${adventurer.name} artwork` },
       );
       const copy = document.createElement('div');
       copy.className = 'thread-town-adventurer-copy';
@@ -197,8 +197,8 @@ if (stream) {
       row.className = 'thread-town-npc';
       row.dataset.testid = `town-npc-${npc.id}`;
       const sprite = createSpriteElement(
-        weaverSpriteFrame(npc.id, { variant: npc.spriteVariant === 'female' ? 'female' : 'male' }),
-        { className: 'thread-town-npc-sprite', testId: `town-npc-sprite-${npc.id}`, label: `${npc.name} portrait` },
+        characterSpriteFrame(npc, { variant: npc.spriteVariant === 'female' ? 'female' : 'male' }),
+        { className: 'thread-town-npc-sprite', testId: `town-npc-sprite-${npc.id}`, label: `${npc.name} artwork` },
       );
       const copy = document.createElement('div');
       copy.className = 'thread-town-npc-copy';

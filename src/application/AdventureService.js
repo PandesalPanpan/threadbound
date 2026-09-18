@@ -162,6 +162,7 @@ export class AdventureService {
       areaNumber: area.currentAreaNumber,
       enemyId: result.enemy.id,
       enemyName: result.enemy.name,
+      enemyVisualAssetId: result.enemy.visualAssetId || null,
       enemyHp: result.enemy.hp,
       victory: result.victory,
       startingHp: result.startingHp,

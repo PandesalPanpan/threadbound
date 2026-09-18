@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getCodex } from './api/client.js';
+import { getCodex, getVisualAssets } from './api/client.js';
 
 const CATEGORIES = Object.freeze([
   ['all', 'All'],
@@ -19,6 +19,19 @@ function iconFor(category) {
   return { items: '↗', enemies: '◎', bosses: '♛', lore: '✦', achievements: '★', history: '⌛' }[category] || '◇';
 }
 
+function assetForEntry(entry, assets) {
+  if (!entry?.visualAssetId) return null;
+  return assets.find((asset) => asset.id === entry.visualAssetId) || null;
+}
+
+function EntryIcon({ entry, assets, detail = false }) {
+  const asset = assetForEntry(entry, assets);
+  const className = `${detail ? 'react-codex-detail-art' : 'react-codex-entry-art'} react-codex-entry-icon react-codex-entry-icon--${entry.category}`;
+  return asset
+    ? <img className={className} src={asset.src} alt={`${entry.title} artwork`} data-testid={detail ? 'codex-detail-art' : 'codex-entry-art'} data-visual-asset-id={asset.id} />
+    : <span className={className}>{iconFor(entry.category)}</span>;
+}
+
 function parseHash() {
   const [category, ...idParts] = window.location.hash.replace(/^#/, '').split('/');
   const id = decodeURIComponent(idParts.join('/'));
@@ -36,14 +49,14 @@ function entrySummary(entry) {
   return entry.summary || entry.body || 'No summary recorded.';
 }
 
-function Detail({ entry }) {
+function Detail({ entry, assets }) {
   if (!entry) return <div className="react-codex-empty-detail">Choose a record to open its full entry.</div>;
   const mechanics = Object.entries(entry.mechanics || {});
   return (
     <article className="react-codex-detail" data-testid="codex-detail" data-category={entry.category} data-entry-id={entry.id}>
       <nav className="react-codex-breadcrumbs" aria-label="Breadcrumb"><a href="/codex">Codex</a><span>›</span><span>{titleize(entry.category)}</span><span>›</span><strong>{entry.title}</strong></nav>
       <header className="react-codex-detail__header">
-        <span className={`react-codex-entry-icon react-codex-entry-icon--${entry.category}`}>{iconFor(entry.category)}</span>
+        <EntryIcon entry={entry} assets={assets} detail />
         <div><span className="react-codex-kicker">{entryMeta(entry)}</span><h2 data-testid="codex-detail-title">{entry.title}</h2><p data-testid="codex-detail-summary">{entry.summary || entry.body}</p></div>
       </header>
       <div className="react-codex-infobox"><div><span>TYPE</span><strong>{titleize(entry.category).replace(/s$/, '')}</strong></div><div><span>SOURCE</span><strong>{titleize(entry.source || 'Threadbound')}</strong></div>{entry.unlocked !== undefined ? <div><span>STATUS</span><strong>{entry.unlocked ? 'Unlocked' : 'Locked'}</strong></div> : null}{entry.revision ? <div><span>REVISION</span><strong>{entry.revision}</strong></div> : null}</div>
@@ -59,9 +72,14 @@ export function CodexApp() {
   const [category, setCategory] = useState(deepLink?.category || 'all');
   const [query, setQuery] = useState('');
   const [result, setResult] = useState({ entries: [], counts: {}, total: 0 });
+  const [assets, setAssets] = useState([]);
   const [activeId, setActiveId] = useState(deepLink?.id || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    getVisualAssets().then((payload) => setAssets(payload.assets || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,7 +117,7 @@ export function CodexApp() {
         <div className="react-codex-toolbar"><label className="react-codex-search"><span aria-hidden="true">⌕</span><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveId(null); }} aria-label="Search the Loom" placeholder="Search the Loom…" data-testid="codex-search" /></label><div className="react-codex-tabs" role="tablist" aria-label="Codex categories">{CATEGORIES.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={category === key} data-testid={`codex-tab-${key}`} onClick={() => selectCategory(key)}>{label}</button>)}</div></div>
         <div className="react-codex-status" data-testid="codex-status" role="status" aria-live="polite">{status}</div>
         <div className="react-codex-counts">{CATEGORIES.slice(1).map(([key, label]) => <span key={key} data-testid={`codex-count-${key}`}>{label} {result.counts?.[key] || 0}</span>)}<span>All {allCount}</span></div>
-        <div className="react-codex-layout"><aside className="react-codex-rail" aria-label="Codex categories"><span className="react-codex-rail__label">BROWSE</span>{CATEGORIES.map(([key, label]) => <button key={key} type="button" aria-pressed={category === key} data-testid={`codex-rail-${key}`} onClick={() => selectCategory(key)}><span>{label}</span><b>{key === 'all' ? allCount : result.counts?.[key] || 0}</b></button>)}</aside><section className="react-codex-list" aria-label="Codex entries">{result.entries.length ? result.entries.map((entry) => <button key={`${entry.category}:${entry.id}`} type="button" className="react-codex-entry" aria-selected={entry.id === activeId} data-testid="codex-entry" data-entry-id={entry.id} onClick={() => setActiveId(entry.id)}><span className={`react-codex-entry-icon react-codex-entry-icon--${entry.category}`}>{iconFor(entry.category)}</span><span className="react-codex-entry__copy"><small>{entryMeta(entry)}</small><strong>{entry.title}</strong><span>{entrySummary(entry)}</span></span><b aria-hidden="true">›</b></button>) : <div className="react-codex-empty" data-testid="codex-empty">No records match this search.</div>}<small className="react-codex-list-note">{result.counts?.history || 0} history records · retry-safe world projection</small></section><Detail entry={activeEntry} /></div>
+        <div className="react-codex-layout"><aside className="react-codex-rail" aria-label="Codex categories"><span className="react-codex-rail__label">BROWSE</span>{CATEGORIES.map(([key, label]) => <button key={key} type="button" aria-pressed={category === key} data-testid={`codex-rail-${key}`} onClick={() => selectCategory(key)}><span>{label}</span><b>{key === 'all' ? allCount : result.counts?.[key] || 0}</b></button>)}</aside><section className="react-codex-list" aria-label="Codex entries">{result.entries.length ? result.entries.map((entry) => <button key={`${entry.category}:${entry.id}`} type="button" className="react-codex-entry" aria-selected={entry.id === activeId} data-testid="codex-entry" data-entry-id={entry.id} onClick={() => setActiveId(entry.id)}><EntryIcon entry={entry} assets={assets} /><span className="react-codex-entry__copy"><small>{entryMeta(entry)}</small><strong>{entry.title}</strong><span>{entrySummary(entry)}</span></span><b aria-hidden="true">›</b></button>) : <div className="react-codex-empty" data-testid="codex-empty">No records match this search.</div>}<small className="react-codex-list-note">{result.counts?.history || 0} history records · retry-safe world projection</small></section><Detail entry={activeEntry} assets={assets} /></div>
       </main>
     </div>
   );

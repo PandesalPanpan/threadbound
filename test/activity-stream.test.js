@@ -43,6 +43,7 @@ test('Hunt receipt projects canonical rewards, loot, level-up, and optional ques
     playerId: a.id,
     enemyId: 'thread-wolf',
     enemyName: 'Thread Wolf',
+    enemyVisualAssetId: 'mob.ridge-wolf.v1',
     victory: true,
     damageTaken: 8,
     remainingHp: 32,
@@ -64,6 +65,7 @@ test('Hunt receipt projects canonical rewards, loot, level-up, and optional ques
   assert.equal(receipt.body, 'Victory — Local Weaver A defeated Thread Wolf. −8 HP · 32/40 HP. +12 Gold · +20 XP. Level up — 2. Loot — Rare Wolfguard Helm · +3 Attack. +1 Health Potion. Quest — Wolf Watch 3/8. Quest complete — First Hunt.');
   assert.doesNotMatch(receipt.body, /Dust|Relic|Temper/);
   assert.equal(receipt.metadata.gold, 12);
+  assert.equal(receipt.metadata.enemyVisualAssetId, 'mob.ridge-wolf.v1');
   assert.equal(receipt.metadata.questProgress.length, 2);
   assert.equal(service.recent().length, 1);
 });
@@ -120,6 +122,7 @@ test('one explicit combat command becomes one useful system result message', () 
     dungeonId: 'frayed-hollow',
     enemyId: 'frayed-wisp',
     enemyName: 'Frayed Wisp',
+    enemyVisualAssetId: 'mob.ridge-wolf.v1',
     enemyHp: 12,
     enemyMaxHp: 12,
     actorHp: 40,
@@ -148,6 +151,7 @@ test('one explicit combat command becomes one useful system result message', () 
   assert.match(started.body, /Frayed Wisp 12\/12 HP/);
   assert.match(started.body, /40\/40 HP/);
   assert.match(started.body, /Choose your first action/);
+  assert.equal(started.metadata.enemyVisualAssetId, 'mob.ridge-wolf.v1');
   assert.equal(lowLevel, null);
   assert.match(resolved.body, /attacked Frayed Wisp for 6 damage/);
   assert.match(resolved.body, /took 2/);

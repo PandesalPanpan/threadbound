@@ -8,6 +8,8 @@ codexV2.rel = 'stylesheet';
 codexV2.href = '/ui-v2/codex.css';
 document.head.append(codexV2);
 
+import { createSpriteElement, enemySpriteFrame, itemSpriteFrame } from './sprite-catalog.js';
+
 const statusEl = document.querySelector('#codex-status');
 const searchEl = document.querySelector('#codex-search');
 const tabsEl = document.querySelector('#codex-tabs');
@@ -75,6 +77,25 @@ function entryIcon(entry) {
   if (entry.category === 'achievements') return '★';
   if (entry.category === 'history') return '⌛';
   return '◇';
+}
+
+function entrySprite(entry, { className = '', testId = null } = {}) {
+  let frame = null;
+  if (entry.category === 'enemies' || entry.category === 'bosses') {
+    frame = enemySpriteFrame({
+      id: entry.id,
+      name: entry.title,
+      isBoss: entry.category === 'bosses',
+      visualAssetId: entry.visualAssetId,
+    });
+  } else if (entry.category === 'items') {
+    frame = itemSpriteFrame({ id: entry.id, name: entry.title, visualAssetId: entry.visualAssetId });
+  }
+  return frame ? createSpriteElement(frame, {
+    className,
+    testId,
+    label: `${entry.title} artwork`,
+  }) : null;
 }
 
 function parseHash() {
@@ -356,10 +377,12 @@ function renderDetail(entry, { updateHash = true } = {}) {
 
   const titleRow = document.createElement('header');
   titleRow.className = 'wiki-title-row';
-  const icon = document.createElement('div');
-  icon.className = 'wiki-entry-icon';
-  icon.setAttribute('aria-hidden', 'true');
-  icon.textContent = entryIcon(entry);
+  const icon = entrySprite(entry, { className: 'wiki-entry-icon wiki-entry-artwork', testId: 'codex-detail-art' }) || document.createElement('div');
+  if (!icon.dataset.testid) {
+    icon.className = 'wiki-entry-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = entryIcon(entry);
+  }
   const copy = document.createElement('div');
   const heading = document.createElement('h2');
   heading.dataset.testid = 'codex-detail-title';
@@ -501,10 +524,15 @@ function renderList(entries) {
     button.dataset.entryId = entry.id;
     button.setAttribute('aria-selected', String(entry.id === activeId));
 
-    const icon = document.createElement('span');
-    icon.className = `entry-icon icon--${entry.category}`;
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = entryIcon(entry);
+    const icon = entrySprite(entry, {
+      className: `entry-icon icon--${entry.category} entry-artwork`,
+      testId: 'codex-entry-art',
+    }) || document.createElement('span');
+    if (!icon.dataset.testid) {
+      icon.className = `entry-icon icon--${entry.category}`;
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = entryIcon(entry);
+    }
     const copy = document.createElement('span');
     copy.className = 'entry-copy';
     const meta = document.createElement('span');

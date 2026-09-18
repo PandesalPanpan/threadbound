@@ -41,5 +41,22 @@ export function compactVisualAssetCatalog({ kinds = ['mob', 'boss', 'item'], tag
     .filter((asset) => allowedKinds.has(asset.kind))
     .map((asset) => ({ asset, score: asset.tags.reduce((sum, tag) => sum + (requestedTags.has(tag) ? 1 : 0), 0) }))
     .sort((left, right) => right.score - left.score || left.asset.id.localeCompare(right.asset.id));
-  return ranked.slice(0, limit).map(({ asset }) => ({ id: asset.id, kind: asset.kind, label: asset.label, tags: [...asset.tags] }));
+  return ranked.slice(0, limit).map(({ asset }) => ({
+    id: asset.id,
+    kind: asset.kind,
+    label: asset.label,
+    ...(asset.family ? { family: asset.family } : {}),
+    ...(asset.role ? { role: asset.role } : {}),
+    ...(asset.sourceMaster?.boardCategory ? { boardCategory: asset.sourceMaster.boardCategory } : {}),
+    tags: [...asset.tags],
+  }));
+}
+
+export function authoringVisualAssetCollections() {
+  return {
+    characters: compactVisualAssetCatalog({ kinds: ['character'], limit: Infinity }),
+    mobs: compactVisualAssetCatalog({ kinds: ['mob'], limit: Infinity }),
+    bosses: compactVisualAssetCatalog({ kinds: ['boss'], limit: Infinity }),
+    items: compactVisualAssetCatalog({ kinds: ['item'], limit: Infinity }),
+  };
 }

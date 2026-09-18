@@ -66,7 +66,8 @@
       "type": "object", "additionalProperties": true, "required": ["id", "townId", "name", "role"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "townId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 },
-        "role": { "enum": ["shopkeeper", "blacksmith", "banker", "innkeeper", "healer", "quest-giver", "cook", "crafter", "guild-hall", "special"] }
+        "role": { "enum": ["shopkeeper", "blacksmith", "banker", "innkeeper", "healer", "quest-giver", "cook", "crafter", "guild-hall", "special"] },
+        "visualAssetId": { "type": "string", "pattern": "^character\\.[a-z0-9][a-z0-9-]*\\.v[1-9][0-9]*$", "maxLength": 120 }
       }
     },
     "quest": {

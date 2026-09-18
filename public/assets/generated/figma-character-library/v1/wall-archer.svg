@@ -1,0 +1,17 @@
+<svg width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_166_335)">
+<path d="M48 31C52.4183 31 56 27.4183 56 23C56 18.5817 52.4183 15 48 15C43.5817 15 40 18.5817 40 23C40 27.4183 43.5817 31 48 31Z" fill="#D6C7A7" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M35 33L59 34L62 62H33L35 33Z" fill="#697A62" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M35 62H47L43 93H30L35 62ZM50 62H61L69 93H56L50 62Z" fill="#3A3029" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M36 39L24 51L29 57L42 47L36 39ZM58 39L70 50L65 56L54 47L58 39Z" fill="#D6C7A7" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16 84C29.3333 65.3333 29.3333 46.3333 16 27L43 56L16 84Z" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M65 24L73 22L78 62L70 64L65 24Z" fill="#8C6A58" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M69 25L75 18L77 28L69 25ZM72 35L78 28L79 38L72 35ZM73 45L79 38L80 48L73 45Z" fill="#F2E8D5"/>
+<path d="M79 38L78 28L72 35L79 38ZM79 38L73 45L80 48L79 38ZM69 25L75 18L77 28L69 25Z" stroke="#211B17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_166_335">
+<rect width="112" height="112" fill="white"/>
+</clipPath>
+</defs>
+</svg>

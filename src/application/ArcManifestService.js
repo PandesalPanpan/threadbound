@@ -6,7 +6,7 @@ import { normalizeArcEquipmentTemplate, publicArcEquipmentTemplateContract } fro
 import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
-import { compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
+import { authoringVisualAssetCollections, compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
 import { validateArcTownShopStocks } from '../content/ArcTownShopCatalog.js';
 import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 import { ArcEquipmentTemplateValidator } from './ArcEquipmentTemplateValidator.js';
@@ -49,6 +49,7 @@ export class ArcManifestService {
 
   worldContext() {
     const equipmentTemplates = publicArcEquipmentTemplateContract();
+    const visualAssetCollections = authoringVisualAssetCollections();
     return {
       contextVersion: 1,
       manifestVersion: MANIFEST_VERSION,
@@ -76,6 +77,7 @@ export class ArcManifestService {
         version: VISUAL_ASSET_CATALOG_VERSION,
         selectionMode: 'exact-allowlisted-id',
         shortlist: compactVisualAssetCatalog({ tags: ['void', 'shadow', 'ice', 'fire', 'forest', 'knight', 'relic'], limit: 120 }),
+        collections: visualAssetCollections,
         fullCatalogEndpoint: '/api/arc-workshop/visual-assets',
       },
       publishedGeneratedArcs: this.manifestRepository.listPublished().map((entry) => ({
@@ -98,6 +100,10 @@ export class ArcManifestService {
         'Run event schedules may only reference runEvents from the same manifest.',
         'All dungeon encounter, boss, and reward-pool references must resolve within the same manifest.',
         'Choose an exact visualAssetId from the allowlisted catalog for every new enemy, boss, and item template.',
+        'For NPCs, visualAssetId is optional; when supplied, choose an exact allowlisted character asset only, and keep the NPC name and role as the source of truth.',
+        'Use the character collection for humanoid NPCs and player-facing allies; use mob or boss collections only for combatants, never for NPC portrait or full-body art.',
+        'Name visual assets by stable semantic ID, then write a short in-world label and role that agree with the selected family and board category.',
+        'Do not describe visualAssetId as a URL, file path, or generated filename in authored Arc JSON.',
         'Return JSON only when generating an Arc Manifest for upload.',
       ],
     };
@@ -228,6 +234,79 @@ export class ArcManifestService {
       }
     }
     return result;
+  }
+
+  runtimeTowns({ onlyWithExplicitNpcVisual = false, areaNumber = null } = {}) {
+    this.#ensureBundledContent();
+    const result = [];
+    const serviceByRole = {
+      shopkeeper: 'shop',
+      blacksmith: 'upgrade',
+      banker: 'bank',
+      innkeeper: 'inn',
+      healer: 'heal',
+      'quest-giver': 'quest',
+      cook: 'cook',
+      crafter: 'craft',
+      'guild-hall': 'guild_hall',
+      special: 'special',
+    };
+    for (const record of this.manifestRepository.listPublished()) {
+      const manifest = record.manifest;
+      if (manifest.manifestVersion !== 2 || !Array.isArray(manifest.towns)) continue;
+      const areas = new Map((manifest.areas || []).map((area) => [area.id, area]));
+      const npcsByTown = new Map();
+      for (const npc of manifest.npcs || []) {
+        if (!npcsByTown.has(npc.townId)) npcsByTown.set(npc.townId, []);
+        npcsByTown.get(npc.townId).push(npc);
+      }
+      const shopsByTown = new Map();
+      for (const shop of manifest.shops || []) {
+        if (!shopsByTown.has(shop.townId)) shopsByTown.set(shop.townId, []);
+        shopsByTown.get(shop.townId).push(shop);
+      }
+      for (const town of manifest.towns) {
+        const area = areas.get(town.areaId);
+        if (!area) continue;
+        const townNpcs = (npcsByTown.get(town.id) || []).map((npc) => ({
+          id: npc.id,
+          name: npc.name,
+          role: npc.role,
+          service: serviceByRole[npc.role] || 'special',
+          spriteVariant: npc.spriteVariant || 'male',
+          dialogue: npc.dialogue || `${npc.name} is available in ${town.name}.`,
+          ...(npc.visualAssetId ? { visualAssetId: npc.visualAssetId } : {}),
+        }));
+        if (onlyWithExplicitNpcVisual && !townNpcs.some((npc) => npc.visualAssetId)) continue;
+        if (areaNumber !== null && Number(area.number) !== Number(areaNumber)) continue;
+        const services = [...new Set([
+          ...townNpcs.map((npc) => npc.service),
+          ...(shopsByTown.has(town.id) ? ['shop'] : []),
+        ])];
+        result.push({
+          id: town.id,
+          name: town.name,
+          areaNumber: area.number,
+          services,
+          npcIds: townNpcs.map((npc) => npc.id),
+          npcs: townNpcs,
+          generatedArc: true,
+          arcId: manifest.arc.id,
+          arcTitle: manifest.arc.title,
+          sourceManifestId: record.id,
+          sourceManifestRevision: record.revision,
+        });
+      }
+    }
+    return result;
+  }
+
+  runtimeTownProjections(options = {}) {
+    return this.runtimeTowns(options);
+  }
+
+  runtimeTownById(townId, options = {}) {
+    return this.runtimeTowns(options).find((town) => town.id === String(townId || '').trim().toLowerCase()) || null;
   }
 
   resolveDungeon(id) {

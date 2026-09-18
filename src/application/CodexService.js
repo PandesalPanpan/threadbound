@@ -3,6 +3,7 @@ import { HUNT_ENEMIES } from '../domain/HuntEncounter.js';
 import { prepareSimpleDungeon } from '../domain/SimpleDungeonPolicy.js';
 import { ACHIEVEMENTS } from './AchievementProjector.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
+import { resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
 
 function normalize(text) {
   return String(text ?? '').trim().toLowerCase();
@@ -12,6 +13,11 @@ function matchesQuery(entry, query) {
   if (!query) return true;
   const haystack = [entry.title, entry.summary, entry.body, entry.category, ...(entry.tags || [])].join(' ').toLowerCase();
   return haystack.includes(query);
+}
+
+function visualAssetField(entity, kind) {
+  const visualAssetId = resolveVisualAssetId(entity, kind);
+  return visualAssetId ? { visualAssetId } : {};
 }
 
 function enemyEntries(dungeons) {
@@ -30,6 +36,7 @@ function enemyEntries(dungeons) {
         mechanics: { hp: enemy.hp, retaliation: enemy.retaliation, dungeonId: dungeon.id, recommendedAttack: dungeon.recommendedAttack || 9 },
         source: dungeon.sourceManifestId ? 'arc-manifest' : 'domain-model',
         tags: [dungeon.id, dungeon.arcId, 'enemy', 'dungeon'].filter(Boolean),
+        ...visualAssetField(enemy, 'mob'),
       });
     }
   }
@@ -51,6 +58,7 @@ function huntEnemyEntries() {
     },
     source: 'hunt-catalog',
     tags: ['enemy', 'hunt'],
+    ...visualAssetField(enemy, 'mob'),
   }));
 }
 
@@ -64,6 +72,7 @@ function bossEntries(dungeons) {
     mechanics: { hp: dungeon.boss.hp, retaliation: dungeon.boss.retaliation, dungeonId: dungeon.id, recommendedAttack: dungeon.recommendedAttack || 9 },
     source: dungeon.sourceManifestId ? 'arc-manifest' : 'domain-model',
     tags: [dungeon.id, dungeon.arcId, 'boss', 'dungeon'].filter(Boolean),
+    ...visualAssetField(dungeon.boss, 'boss'),
   }));
 }
 
@@ -129,6 +138,7 @@ function itemEntries(codexRepository) {
     source: item.source,
     discoveredAt: item.createdAt,
     tags: [item.rarity, item.slot, item.effectCode, item.source],
+    ...(item.visualAssetId ? { visualAssetId: item.visualAssetId } : {}),
   }));
 }
 
