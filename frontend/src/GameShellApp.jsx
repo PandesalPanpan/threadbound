@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, commandKey, connectRealtime, getAreas, getDashboard, getGambling, getQuests, getShop, getStream, getVisualAssets, postStreamMessage } from './api/client.js';
+import { api, commandKey, connectRealtime, getAreas, getDashboard, getGambling, getQuests, getShop, getStream, getVisualAssets, postInventoryView, postStreamMessage } from './api/client.js';
 import { AdventureStream } from './components/chat/AdventureStream.jsx';
 import { CommandComposer } from './components/chat/CommandComposer.jsx';
 import { renderGameplayPanel } from './components/panels/GameplayPanels.jsx';
@@ -66,7 +66,8 @@ export function GameShellApp() {
     const text = String(command || '').trim();
     if (!text) return null;
     try {
-      const payload = await postStreamMessage(text);
+      const parsed = normalizeCommand(text);
+      const payload = parsed.name === 'inventory' ? await postInventoryView() : await postStreamMessage(text);
       mergeEntry(payload?.entry);
       return payload?.entry || null;
     } catch (caught) {
@@ -291,7 +292,7 @@ export function GameShellApp() {
       <div className="game-shell-layout">
         <QuickRail dashboard={dashboard} onCommand={handleCommand} />
         <main className="game-shell-center">
-          <AdventureStream entries={entries} activeCard={activeCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} />
+          <AdventureStream entries={entries} activeCard={activeCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={dashboard?.character?.id} assets={assets} />
           <CommandComposer onSubmit={handleCommand} busy={busy} contextualActions={contextualActions} />
           {busy ? <span className="game-shell-busy" role="status" data-testid="stream-busy">Syncing authoritative state…</span> : null}
         </main>
