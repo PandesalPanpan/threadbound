@@ -27,6 +27,7 @@ function battleReplayPayload(entry) {
     replayable: true,
     battleId: `hunt:${entry.id || metadata.playerId || 'stream'}`,
     battle: metadata.battle,
+    loadout: metadata.battleLoadout || {},
     receipt: metadata.battleReplay.receipt,
     details: metadata.battleReplay.details,
   };
