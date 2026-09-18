@@ -96,13 +96,14 @@ export function installGamblingRoutes(app, { repository }) {
 
   const record = (request, eventType, body, metadata) => {
     const playerId = request.session.threaded.playerId;
+    const playerName = repository.getPlayer(playerId)?.displayName || 'Adventurer';
     const entry = streamRepository.append({
       kind: 'system',
       eventType,
       actorPlayerId: playerId,
       actorName: 'THREADBOUND',
       body,
-      metadata: { playerId, ...metadata },
+      metadata: { playerId, playerName, ...metadata },
     });
     app.locals.realtimeHub?.broadcast({ type: 'stream_entry', entry });
     app.locals.realtimeHub?.broadcast({ type: 'state_changed', eventType }, { playerIds: [playerId] });
