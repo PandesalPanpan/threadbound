@@ -7,6 +7,16 @@ import { ContextRail } from './components/ContextRail.jsx';
 const PLAYBACK_MS = Object.freeze(globalThis.__THREADBOUND_FAST_TEST__
   ? { impact: 90, skill: 120, settle: 55 }
   : { impact: 360, skill: 470, settle: 180 });
+const replaySource = new URLSearchParams(window.location.search).get('source');
+
+function storedBattleReplay() {
+  if (!replaySource) return null;
+  try {
+    return JSON.parse(window.sessionStorage.getItem('threadbound:battle-replay') || 'null');
+  } catch {
+    return null;
+  }
+}
 
 function startedSnapshot(payload) {
   return payload?.battle?.events?.find((event) => event.type === 'BattleStarted')?.combatants
@@ -73,20 +83,22 @@ export function BattlePrototypeApp() {
   const cancelledRef = useRef(false);
 
   const load = useCallback(async () => {
+    const storedReplay = storedBattleReplay();
     const [nextDashboard, assetPayload, streamPayload, battlePayload] = await Promise.all([
       getDashboard(),
       getVisualAssets(),
       getStream({ limit: 30 }),
-      api('/api/battle-simulation'),
+      storedReplay ? Promise.resolve(storedReplay) : api('/api/battle-simulation'),
     ]);
     if (cancelledRef.current) return;
     setDashboard(nextDashboard);
     setAssets(assetPayload?.assets || []);
     setEntries(streamPayload?.entries || []);
     setPayload(battlePayload);
-    const key = storageKey(battlePayload);
+    const key = replaySource ? null : storageKey(battlePayload);
     const resumed = key && window.sessionStorage.getItem(key);
     setDisplay({ phase: resumed ? 'result' : 'preBattle', frame: resumed ? resultFrame(battlePayload) : initialFrame(battlePayload) });
+    if (replaySource && !storedReplay) setError('That battle replay is no longer available. Showing the Battle Simulation demo instead.');
   }, []);
 
   useEffect(() => {
@@ -140,9 +152,11 @@ export function BattlePrototypeApp() {
     setBusy(true);
     setError('');
     try {
-      const nextPayload = await api('/api/battle-simulation', { method: 'POST', headers: { 'Idempotency-Key': commandKey('battle-simulation') } });
+      const nextPayload = replaySource
+        ? payload
+        : await api('/api/battle-simulation', { method: 'POST', headers: { 'Idempotency-Key': commandKey('battle-simulation') } });
       setPayload(nextPayload);
-      const key = storageKey(nextPayload);
+      const key = replaySource ? null : storageKey(nextPayload);
       if (key) window.sessionStorage.setItem(key, 'started');
       setDisplay({ phase: 'live', frame: initialFrame(nextPayload) });
       setStep(0);
@@ -169,13 +183,13 @@ export function BattlePrototypeApp() {
     <div className="battle-app">
       <header className="battle-topbar">
         <a className="battle-brand" href="/game" aria-label="Threadbound Adventure Stream"><span className="brand-mark">✦</span><span>THREADBOUND</span></a>
-        <div className="battle-topbar__context"><span className="panel-kicker">BATTLE SIMULATION</span><span>Server-resolved event stream · Figma keyframe study</span></div>
+        <div className="battle-topbar__context"><span className="panel-kicker">{replaySource ? 'HUNT REPLAY' : 'BATTLE SIMULATION'}</span><span>{replaySource ? 'Exact committed Hunt events · shared replay' : 'Server-resolved event stream · Figma keyframe study'}</span></div>
         <nav className="battle-nav" aria-label="Threadbound"><a href="/game">Play</a><a href="/codex">Codex</a>{dashboard.capabilities?.arcWorkshop ? <a href="/arc-workshop">Arc Workshop</a> : null}</nav>
       </header>
       <main className="battle-layout">
         <aside className="battle-left"><ChatFeed entries={entries} /><div className="battle-left__footer"><span>Authoritative replay · {payload.battle.turns.length} turns</span><a href="/game">Back to Adventure Stream ↗</a></div></aside>
         <section className="battle-main" aria-label="Automatic battle simulation">
-          <div className="battle-intro"><div><span className="panel-kicker">WATCH THE THREADS FIGHT</span><h1>Every strike lands once.</h1><p>Threadbound resolves the full battle on the server. This surface replays its committed events, Mana changes, HP snapshots, and result receipt.</p></div><button className="back-button" type="button" onClick={goToStream}>← Adventure Stream</button></div>
+          <div className="battle-intro"><div><span className="panel-kicker">{replaySource ? 'AUTHORITATIVE HUNT REPLAY' : 'WATCH THE THREADS FIGHT'}</span><h1>{replaySource ? 'This is what actually happened.' : 'Every strike lands once.'}</h1><p>{replaySource ? 'The player, enemy, equipment snapshot, damage, HP changes, and turn order come from the Hunt that was already committed by the server.' : 'Threadbound resolves the full battle on the server. This surface replays its committed events, Mana changes, HP snapshots, and result receipt.'}</p></div><button className="back-button" type="button" onClick={goToStream}>← Adventure Stream</button></div>
           {error ? <div className="battle-error" role="alert" data-testid="battle-error">{error}</div> : null}
           <BattleArena payload={payload} assets={assets} frame={display.frame} phase={display.phase} active={display.active || null} busy={busy || playing} onStart={start} onReplay={replay} onBack={goToStream} />
         </section>
