@@ -27,6 +27,7 @@ function openHuntBattleReplay(hunt) {
     replayable: true,
     battleId: `hunt:${Date.now()}`,
     battle: hunt.battle,
+    loadout: hunt.battleLoadout || {},
     receipt: hunt.battleReplay.receipt,
     details: hunt.battleReplay.details,
   };
