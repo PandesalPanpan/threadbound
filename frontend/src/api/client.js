@@ -43,6 +43,10 @@ export function postStreamMessage(body) {
   return api('/api/stream/messages', { method: 'POST', body: JSON.stringify({ body }) });
 }
 
+export function postInventoryView() {
+  return api('/api/stream/inventory-view', { method: 'POST' });
+}
+
 export function getAreas() {
   return api('/api/areas');
 }
