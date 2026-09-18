@@ -61,7 +61,7 @@ export class SQLiteEquipmentRepository {
       const item = this.db.prepare('SELECT * FROM items WHERE id = ? AND player_id = ?').get(itemId, playerId);
       if (!item) throw new Error('Item not found.');
       const slot = normalizeEquipmentSlot(item.slot);
-      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') LIMIT 1").get(playerId);
       if (activeRun) {
         const error = new Error('Finish the active dungeon before changing equipped equipment.');
         error.code = 'item_equip_during_run';

@@ -54,6 +54,48 @@ export function resolveHealAction({
 }
 
 /**
+ * A simple Dungeon may consume a real persisted potion only while it is paused
+ * between encounters. The aggregate still owns the run transition; this policy
+ * owns the bounded healing calculation and validation vocabulary.
+ */
+export function resolveDungeonPotionAction({
+  activeRun = null,
+  currentHealth,
+  maxHealth,
+  healthPotions,
+} = {}) {
+  if (!activeRun || activeRun.phase !== 'between_encounter' || activeRun.simpleCombat !== true) {
+    const error = new Error('A health potion can only be used between Dungeon encounters.');
+    error.code = 'potion_not_between_encounters';
+    throw error;
+  }
+
+  const current = Math.max(0, wholeNumber(currentHealth));
+  const maximum = Math.max(1, wholeNumber(maxHealth, 1));
+  const potions = Math.max(0, wholeNumber(healthPotions));
+  if (current >= maximum) {
+    const error = new Error('You are already at full Dungeon HP.');
+    error.code = 'health_already_full';
+    throw error;
+  }
+  if (potions <= 0) {
+    const error = new Error('You have no health potions left.');
+    error.code = 'no_health_potions';
+    throw error;
+  }
+
+  const nextHealth = Math.min(maximum, current + HEALING_RULES.healthPotionHeal);
+  return Object.freeze({
+    method: 'dungeon_health_potion',
+    consumeHealthPotions: 1,
+    healed: nextHealth - current,
+    currentHealth: nextHealth,
+    maxHealth: maximum,
+    healthPotions: potions - 1,
+  });
+}
+
+/**
  * Projection helper for the existing lazy out-of-combat recovery rule. The
  * repository remains responsible for persisting/lazily materializing HP; this
  * policy owns the timing vocabulary so presentation code does not invent it.

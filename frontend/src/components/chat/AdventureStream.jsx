@@ -174,12 +174,109 @@ function InventorySharedCard({ entry, viewerId, assets }) {
   );
 }
 
-const SHARED_RICH_EVENT_TYPES = new Set(['HuntResolved', 'BlackjackPlayed', 'CoinflipPlayed', 'SlotsPlayed', 'InventoryViewed']);
+function DungeonSharedCard({ entry, viewerId }) {
+  const metadata = entry.metadata || {};
+  const eventType = entry.eventType;
+  const defeated = metadata.defeatedEnemyName || metadata.defeatedEnemyId || null;
+  const nextName = metadata.nextEnemyName || metadata.enemyName || null;
+  const nextHp = metadata.nextEnemyHp ?? metadata.enemyHp ?? null;
+  const nextMaxHp = metadata.nextEnemyMaxHp ?? metadata.enemyMaxHp ?? null;
+  const actorHp = metadata.actorHp === null || metadata.actorHp === undefined ? null : `${metadata.actorHp}/${metadata.actorMaxHp} HP`;
+  let tone = 'is-neutral';
+  let label = 'DUNGEON';
+  let title = 'Shared Dungeon update';
+  let detail = '';
+  if (eventType === 'DungeonStarted') {
+    label = 'ENTERED';
+    title = `${actorLabel(entry)} entered ${metadata.dungeonName || 'the Dungeon'}`;
+    detail = nextName ? `${nextName} · ${nextHp}/${nextMaxHp} HP` : 'The first room is ready.';
+  } else if (eventType === 'DungeonEncounterContinued') {
+    label = 'CONTINUE';
+    title = `${nextName || 'The next enemy'} entered`;
+    detail = `${nextHp}/${nextMaxHp} HP · Attack is ready.`;
+  } else if (eventType === 'DungeonPotionUsed') {
+    label = 'POTION USED';
+    title = `+${metadata.healed || 0} HP · ${actorHp || 'HP updated'}`;
+    detail = `${metadata.healthPotions ?? 0} Health Potion${Number(metadata.healthPotions ?? 0) === 1 ? '' : 's'} left · ${nextName || 'Next room'} waiting.`;
+  } else if (eventType === 'DungeonRetreated') {
+    label = 'LEFT SAFELY';
+    title = 'Dungeon run ended before the next room';
+    detail = 'Carried Gold is safe. The clear reward was not secured.';
+    tone = 'is-push';
+  } else if (eventType === 'DungeonFailed') {
+    label = 'DEFEAT';
+    title = 'The party fell';
+    detail = metadata.goldLost > 0 ? `−${metadata.goldLost} carried Gold · Bank safe.` : 'Carried Gold loss: 0 · Bank safe.';
+    tone = 'is-loss';
+  } else if (eventType === 'CombatActionResolved') {
+    label = metadata.phase === 'complete' ? 'CLEARED' : defeated ? 'ROOM CLEARED' : 'ACTION RESOLVED';
+    title = defeated ? `${actorLabel(entry)} defeated ${defeated}` : `${actorLabel(entry)} attacked ${metadata.enemyName || 'the enemy'}`;
+    detail = defeated
+      ? `+${metadata.damage || 0} damage · ${metadata.nextEnemyName ? `Next: ${metadata.nextEnemyName} · ${metadata.nextEnemyHp}/${metadata.nextEnemyMaxHp} HP` : metadata.phase === 'complete' ? 'Dungeon clear reward secured.' : 'Choose the next step.'}`
+      : `${metadata.damage || 0} damage${metadata.retaliation ? ` · −${metadata.retaliation} HP` : ''}`;
+    if (metadata.phase === 'complete') tone = 'is-win';
+  }
+  return (
+    <RichCard
+      kind="dungeon"
+      kicker={sharedKicker(entry, viewerId, 'dungeon')}
+      title="Dungeon"
+      subtitle="A shared read-only receipt. The active Weaver controls the next command."
+      className={`stream-shared-card ${entry.actorPlayerId === viewerId ? 'is-owner' : 'is-observer'}`}
+      testId="stream-dungeon-rich-card"
+    >
+      <div className={`stream-outcome-banner ${tone}`}>
+        <span>{label}</span>
+        <strong>{title}</strong>
+        <b>{detail}</b>
+      </div>
+      <div className="stream-card-facts">
+        {actorHp ? <span>Player HP <strong>{actorHp}</strong></span> : null}
+        {nextName ? <span>{metadata.phase === 'between_encounter' ? 'Next' : 'Enemy'} <strong>{nextName}{nextHp !== null ? ` · ${nextHp}/${nextMaxHp}` : ''}</strong></span> : null}
+        {metadata.phase ? <span>Phase <strong>{String(metadata.phase).replaceAll('_', ' ')}</strong></span> : null}
+      </div>
+    </RichCard>
+  );
+}
+
+function AdventureSharedCard({ entry, viewerId }) {
+  const metadata = entry.metadata || {};
+  const victory = Boolean(metadata.victory);
+  const gold = Number(metadata.gold || 0);
+  const xp = Number(metadata.experienceGained ?? metadata.xp ?? 0);
+  const loss = Number(metadata.goldLost || 0);
+  return (
+    <RichCard
+      kind="adventure"
+      kicker={sharedKicker(entry, viewerId, 'adventure')}
+      title="Adventure"
+      subtitle="An Area encounter resolved by the server and shared with the thread."
+      className={`stream-shared-card ${entry.actorPlayerId === viewerId ? 'is-owner' : 'is-observer'}`}
+      testId="stream-adventure-rich-card"
+    >
+      <div className={`stream-outcome-banner ${victory ? 'is-win' : 'is-loss'}`}>
+        <span>{victory ? 'VICTORY' : 'DEFEAT'}</span>
+        <strong>{victory ? `${actorLabel(entry)} defeated ${metadata.enemyName || 'the encounter'}` : `${actorLabel(entry)} fell to ${metadata.enemyName || 'the encounter'}`}</strong>
+        <b>{victory ? `+${gold} GOLD · +${xp} XP` : loss > 0 ? `−${loss} GOLD · BANK SAFE` : 'NO REWARD'}</b>
+      </div>
+      <div className="stream-card-facts">
+        <span>HP <strong>{metadata.remainingHp ?? 0}/{metadata.maxHp ?? 0}</strong></span>
+        <span>Area <strong>{metadata.areaName || `Area ${metadata.areaNumber || 1}`}</strong></span>
+        {metadata.itemName ? <span>Loot <strong>{metadata.itemName}</strong></span> : null}
+      </div>
+      {metadata.storyEvent?.text ? <p className="stream-card-detail">{metadata.storyEvent.text}</p> : null}
+    </RichCard>
+  );
+}
+
+const SHARED_RICH_EVENT_TYPES = new Set(['HuntResolved', 'AdventureResolved', 'BlackjackPlayed', 'CoinflipPlayed', 'SlotsPlayed', 'InventoryViewed', 'DungeonStarted', 'CombatActionResolved', 'DungeonEncounterContinued', 'DungeonPotionUsed', 'DungeonRetreated', 'DungeonFailed']);
 
 function SharedEntryCard({ entry, viewerId, assets }) {
   if (entry.eventType === 'HuntResolved') return <HuntSharedCard entry={entry} viewerId={viewerId} />;
+  if (entry.eventType === 'AdventureResolved') return <AdventureSharedCard entry={entry} viewerId={viewerId} />;
   if (['BlackjackPlayed', 'CoinflipPlayed', 'SlotsPlayed'].includes(entry.eventType)) return <GamblingSharedCard entry={entry} viewerId={viewerId} />;
   if (entry.eventType === 'InventoryViewed') return <InventorySharedCard entry={entry} viewerId={viewerId} assets={assets} />;
+  if (['DungeonStarted', 'CombatActionResolved', 'DungeonEncounterContinued', 'DungeonPotionUsed', 'DungeonRetreated', 'DungeonFailed'].includes(entry.eventType)) return <DungeonSharedCard entry={entry} viewerId={viewerId} />;
   return null;
 }
 

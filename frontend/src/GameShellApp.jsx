@@ -236,10 +236,16 @@ export function GameShellApp() {
         break;
       }
       case 'heal': {
-        await request(parsed.raw, '/api/recovery/potion', { method: 'POST' });
+        const activeRun = dashboard?.activeRun;
+        const path = activeRun?.simpleCombat && activeRun.phase === 'between_encounter'
+          ? `/api/runs/${encodeURIComponent(activeRun.id)}/potion`
+          : '/api/recovery/potion';
+        await request(parsed.raw, path, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-potion') } });
         setPanel({ kind: 'inventory' });
         break;
       }
+      case 'continue':
+      case 'retreat':
       case 'attack':
       case 'guard':
       case 'interrupt':
@@ -252,8 +258,7 @@ export function GameShellApp() {
           setError('Open a Dungeon and start a run before taking that action.');
           break;
         }
-        const options = { method: 'POST' };
-        if (parsed.name === 'attack') options.headers = { 'Idempotency-Key': `${Date.now()}-shell-attack` };
+        const options = { method: 'POST', headers: { 'Idempotency-Key': commandKey(`shell-${parsed.name}`) } };
         const payload = await request(parsed.raw, `/api/runs/${encodeURIComponent(run.id)}/${parsed.name}`, options);
         if (payload) setPanel({ kind: 'dungeon' });
         break;
@@ -276,6 +281,7 @@ export function GameShellApp() {
   }, [entries]);
 
   const contextualActions = useMemo(() => {
+    if (dashboard?.activeRun?.phase === 'between_encounter') return [{ command: 'continue', label: 'Continue', hint: 'Enter next room' }, { command: 'heal', label: 'Use Potion', hint: 'Heal before risk' }, { command: 'retreat', label: 'Leave', hint: 'Keep carried Gold' }];
     if (dashboard?.activeRun) return [{ command: 'attack', label: 'Attack', hint: 'Resolve the run' }, { command: 'status', label: 'Status', hint: 'Read your HP' }];
     if (dashboard?.simpleLoop?.huntAvailable) return [{ command: 'hunt', label: 'Hunt', hint: 'Quick battle' }, { command: 'dungeon', label: 'Dungeon', hint: 'Persistent run' }];
     return [{ command: 'inventory', label: 'Inventory', hint: 'Open Equipment' }, { command: 'quest', label: 'Quest', hint: 'See objectives' }];

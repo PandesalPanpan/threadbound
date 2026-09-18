@@ -37,6 +37,11 @@ shared stream command card:
 - Active room: room number, encounter identity, enemy current/max HP, current
   player HP, party-member HP rows, and a concise “HP carries into the next
   room” note.
+- Between rooms: a durable `between_encounter` state with the next encounter
+  snapshot, current party HP, explicit Continue / Use Potion / Leave Dungeon
+  actions, and visible risk/reward copy. Continue does not heal; Potion is
+  bounded and inventory-backed; Leave keeps carried Gold but forfeits the
+  completion reward.
 - Boss: a distinct boss kicker and treatment with the same authoritative enemy
   and party HP model. No permanent tactical dashboard is restored.
 - Failure and success: one result-first Adventure Stream receipt from the
@@ -44,7 +49,8 @@ shared stream command card:
   Details for compatible battle receipts.
 - Recovery: after a run ends, the existing Heal/recovery card exposes potion
   use as an explicit next action. The dungeon surface never implies free
-  between-room healing.
+  between-room healing; defeat applies the normal carried-Gold penalty while
+  banked Gold remains safe.
 
 Party readiness uses the existing `/api/party/ready` and `/api/party/leave`
 commands. During a run, a committed partner Attack updates the other browser;
@@ -60,23 +66,30 @@ geometry.
 The server and persisted domain state remain authoritative:
 
 - `/api/dashboard` supplies dungeon definitions, readiness, active run phase,
-  encounter index, enemy HP, participant HP, viewer identity, party state, and
-  the `simpleCombat` capability flag.
+  encounter index, enemy HP, participant HP, viewer identity, party state,
+  between-room `nextEncounter`, and the `simpleCombat` capability flag.
 - `SimpleDungeonService.startDungeon` and `AdventureRun.#simpleCombat` own
-  simple-run creation and Attack resolution.
+  simple-run creation and Attack resolution. `AdventureRun` owns the durable
+  between-room pause and Continue/Potion/Retreat transitions.
 - `/api/dungeons/:id/start-simple`, `/api/runs/:id/attack`,
-  `/api/party/ready`, `/api/party/leave`, and `/api/recovery/potion` remain the
-  existing mutation boundaries.
+  `/api/runs/:id/continue`, `/api/runs/:id/potion`,
+  `/api/runs/:id/retreat`, `/api/party/ready`, and `/api/party/leave` are the
+  Dungeon mutation boundaries. `/api/recovery/potion` remains the separate
+  out-of-run healing boundary.
+- `SQLiteGameRepository` keeps `between_encounter` active across reconnects,
+  consumes a Potion and saves the next room in one transaction, and releases a
+  party after Retreat or defeat. `DungeonRiskPolicy` projects completion-only
+  reward security, carried-Gold death risk, and bank safety.
 - Activity Stream entries and realtime messages are projections. The browser
   refreshes the dashboard after a committed action and on reconnect rather
   than treating a stream message as game state.
 
-No new API or read-model field was needed. The Figma entry preview contains
-more encounter detail than the current dashboard exposes, so the entry card
-deliberately stays at the available dungeon-definition and readiness level
-instead of inventing a preview enemy. Terminal victory/failure stays a
-concise stream receipt because the current active-run read model is absent
-after the run ends.
+The between-room read model intentionally carries the next encounter snapshot
+so the player can make a real choice without the browser guessing what follows.
+There is no automatic room recovery: Continue preserves the current HP,
+Potion heals only the active Dungeon participant and consumes one persisted
+Potion, and Leave keeps carried Gold but forfeits the completion reward. Death
+uses the existing normal carried-Gold penalty and never includes banked Gold.
 
 ## Default simple dungeon versus legacy compatibility
 
@@ -87,27 +100,30 @@ legacy tactical runs through the existing compatibility surface. The legacy
 combat dock remains scoped compatibility UI and is not mounted as the default
 simple-dungeon surface.
 
-The shared rich-card observer explicitly ignores the marked dungeon surface so
-an entry/combat card cannot become a historical `/status`/shop card snapshot.
-External rich cards clear the dungeon marker before rendering, preserving the
-existing rich-card contract and command history behavior.
+React’s Adventure Stream renders shared read-only Dungeon receipts for entry,
+combat, Continue, Potion, Retreat, and defeat. Only the owner’s active command
+card has mutation buttons; observers receive the same facts without controls.
+The legacy Figma surface uses the same server read model and exposes the same
+three explicit decisions beside the composer.
 
 ## Verification
 
 Passing checks:
 
 - `npx playwright test test/e2e/presentation-v2-dungeon.local.spec.js --config=playwright.simple.local.config.js` — 4 passed.
-- `npm run test:e2e:simple-local` — 21 passed, including stream, Battle Details,
-  rich-card compatibility, foundation, simple-loop, and Phase E dungeon tests.
+- `npx playwright test --config=playwright.react.local.config.js` — 7 passed,
+  including the React Dungeon decision journey.
+- `npm run test:e2e:simple-local` — passed, including stream, Battle Details,
+  rich-card compatibility, foundation, simple-loop, and Dungeon tests.
 - `npm run check` — passed.
-- `npm test` — 375 passed.
+- `npm test` — 389 passed.
 
-The new focused spec covers mobile entry, active rooms, authoritative enemy
-and player HP, HP persistence across room transitions, reload, the distinct
-boss state, Attack-only controls, 44px controls, no horizontal overflow,
-failure and explicit healing, success receipt projection, two-browser party
-realtime, draft preservation, offline/reconnect refresh, and the desktop
-`1440x960` surface. It also captures:
+The focused specs cover mobile entry, active rooms, authoritative enemy and
+player HP, HP persistence across room transitions, reload, the distinct boss
+state, Attack-only controls, 44px controls, no horizontal overflow, failure
+and explicit healing, success receipt projection, two-browser party realtime,
+draft preservation, offline/reconnect refresh, the desktop `1440x960` surface,
+and the React between-room Potion/Continue/Retreat journey. They capture:
 
 - `test-results/presentation-v2/dungeon-390x844.png`
 - `test-results/presentation-v2/dungeon-1440x960.png`
@@ -129,4 +145,5 @@ no legacy domain behavior was changed.
   available authoritative read model and semantic sprites, not by static
   screenshots or invented encounter data.
 - Desktop rails and expanded desktop command composition remain Phase G work.
-- The 42dot Sans licensing question remains outside Phase E.
+- 42dot Sans is imported and applied by both the legacy theme and the React
+  bundle; font licensing remains a deployment-policy decision.

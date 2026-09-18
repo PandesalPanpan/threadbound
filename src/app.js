@@ -467,6 +467,9 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/dungeons/:dungeonId/start', requireConnection, (request, response) => response.status(201).json({ run: gameService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
   app.use('/api/runs/:runId', requireConnection, idempotentRunCommand);
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
+  app.post('/api/runs/:runId/continue', requireConnection, (request, response) => response.json(gameService.continueDungeon(request.session.threaded.playerId, request.params.runId)));
+  app.post('/api/runs/:runId/potion', requireConnection, (request, response) => response.json(gameService.useDungeonPotion(request.session.threaded.playerId, request.params.runId)));
+  app.post('/api/runs/:runId/retreat', requireConnection, (request, response) => response.json(gameService.retreatDungeon(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/guard', requireConnection, (request, response) => response.json(gameService.guard(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/interrupt', requireConnection, (request, response) => response.json(gameService.interrupt(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/mend', requireConnection, (request, response) => response.json(gameService.mend(request.session.threaded.playerId, request.params.runId, String(request.body?.targetPlayerId || ''))));
@@ -533,6 +536,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'duel_replay_mismatch',
       'health_already_full',
       'no_health_potions',
+      'potion_not_between_encounters',
+      'simple_dungeon_decision_only',
+      'dungeon_continue_not_available',
+      'dungeon_retreat_not_available',
       'potion_during_dungeon',
       'shop_during_dungeon',
       'shop_offer_not_found',

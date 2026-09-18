@@ -31,7 +31,7 @@ export class SQLiteCookingRepository {
       const player = this.db.prepare('SELECT id, equipped_item_id FROM players WHERE id = ?').get(playerId);
       if (!player) throw new Error('Player not found.');
 
-      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') LIMIT 1").get(playerId);
       if (activeRun) {
         const error = new Error('Finish the active dungeon before cooking.');
         error.code = 'cooking_during_dungeon';

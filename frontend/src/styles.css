@@ -333,6 +333,12 @@ kbd { margin-left: 8px; padding: 2px 5px; color: rgba(23, 19, 31, .75); backgrou
   .battle-empty { min-height: 485px; padding: 36px 22px; }
 }
 
+/* Between-room Dungeon decisions keep the risk visible beside the explicit actions. */
+.shell-dungeon-risk { display: grid; gap: 6px; padding: 10px; background: rgba(245, 176, 71, .06); border: 1px solid rgba(245, 176, 71, .22); border-radius: 8px; }
+.shell-dungeon-risk p { margin: 0; color: var(--tb-muted); font-size: 9px; line-height: 1.45; }
+.shell-dungeon-risk p strong { color: var(--tb-gold); }
+.stream-dungeon-rich-card .stream-outcome-banner { min-height: 54px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
@@ -485,8 +491,12 @@ kbd { margin-left: 8px; padding: 2px 5px; color: rgba(23, 19, 31, .75); backgrou
   .game-shell-location { display: none; }
   .game-shell-topbar__status { gap: 5px; }.game-shell-currency, .game-shell-health { padding: 0 7px; font-size: 10px; }.game-shell-connection { font-size: 7px; }
   .game-shell-layout { display: block; min-height: calc(100dvh - 64px); }
-  .stream-outcome-banner { grid-template-columns: 1fr auto; }
-  .stream-outcome-banner > span { grid-column: 1 / -1; }
+  .stream-outcome-banner { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .stream-outcome-banner > span,
+  .stream-outcome-banner > strong,
+  .stream-outcome-banner > b { grid-column: 1; min-width: 0; }
+  .stream-outcome-banner > strong,
+  .stream-outcome-banner > b { overflow-wrap: normal; word-break: normal; }
   .stream-entry--rich { grid-template-columns: 24px minmax(0, 1fr); gap: 7px; }
   .stream-entry--rich .stream-entry__avatar { width: 24px; height: 24px; font-size: 9px; }
   .game-shell-quick-rail { display: none; }

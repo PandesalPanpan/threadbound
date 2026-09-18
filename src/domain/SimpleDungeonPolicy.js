@@ -3,7 +3,6 @@ export const SIMPLE_DUNGEON_RULES = Object.freeze({
   recommendedAttack: 9,
   enemyHealthMultiplier: 2,
   retaliationMultiplier: 1.5,
-  betweenEncounterRecovery: 0.20,
 });
 
 function harderEnemy(enemy, { boss = false } = {}) {
@@ -49,13 +48,7 @@ export function dungeonReadiness({ attackPower, maxHealth, definition }) {
 }
 
 export function recoverBetweenEncounters(participants) {
-  const recovery = [];
-  for (const participant of participants || []) {
-    if (participant.hp <= 0) continue;
-    const amount = Math.max(1, Math.ceil(participant.maxHp * SIMPLE_DUNGEON_RULES.betweenEncounterRecovery));
-    const before = participant.hp;
-    participant.hp = Math.min(participant.maxHp, participant.hp + amount);
-    recovery.push({ playerId: participant.playerId, amount: participant.hp - before, hp: participant.hp, maxHp: participant.maxHp });
-  }
-  return recovery.filter((entry) => entry.amount > 0);
+  // Kept as a migration-safe export for older callers. New simple runs never
+  // receive free room recovery; healing must be an explicit domain action.
+  return [];
 }

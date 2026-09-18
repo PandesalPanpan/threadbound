@@ -173,6 +173,7 @@ export class SimpleDungeonService {
       participantIds: persisted.participants.map((participant) => participant.playerId),
       runId: persisted.id,
       dungeonId,
+      dungeonName: persisted.dungeonDefinition?.name || null,
       ownerType,
       ownerId,
       simpleCombat: true,

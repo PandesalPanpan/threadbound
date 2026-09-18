@@ -61,7 +61,7 @@ export class SQLiteGameRepository {
     try {
       const item = this.getItem(itemId);
       if (!item || item.playerId !== playerId) throw new Error('Cannot equip an item owned by another player.');
-      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') LIMIT 1").get(playerId);
       if (activeRun) {
         const error = new Error('Finish the active dungeon before changing equipped relics.');
         error.code = 'item_equip_during_run';
@@ -217,13 +217,118 @@ export class SQLiteGameRepository {
       error.code = 'stale_run_version';
       throw error;
     }
+    if (['failed', 'retreated'].includes(nextState.phase) && nextState.ownerType === 'party') {
+      this.#releaseParty(nextState.ownerId);
+    }
     return nextState;
+  }
+
+  saveRunWithPotion(state, playerId) {
+    const expectedVersion = Number.isInteger(state.version) ? state.version : 0;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const storedRow = this.db.prepare('SELECT state_json, version FROM dungeon_runs WHERE id = ?').get(state.id);
+      if (!storedRow) throw new Error('Run not found while using a Dungeon potion.');
+      const stored = this.#decodeRunRow(storedRow);
+      if (stored.version !== expectedVersion) {
+        const error = new Error('Dungeon state changed before the potion could be used. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+      const potionRow = this.db.prepare('SELECT health_potions FROM players WHERE id = ?').get(playerId);
+      if (!potionRow) throw new Error('Player not found.');
+      if (Number(potionRow.health_potions || 0) <= 0) {
+        const error = new Error('You have no health potions left.');
+        error.code = 'no_health_potions';
+        throw error;
+      }
+      const nextState = { ...state, version: expectedVersion + 1 };
+      const update = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
+        nextState.phase,
+        JSON.stringify(nextState),
+        nextState.version,
+        new Date().toISOString(),
+        nextState.id,
+        expectedVersion,
+      );
+      if (update.changes !== 1) {
+        const error = new Error('Dungeon state changed before the potion could be saved. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+      this.db.prepare('UPDATE players SET health_potions = health_potions - 1 WHERE id = ? AND health_potions > 0').run(playerId);
+      this.db.exec('COMMIT');
+      return { state: nextState, healthPotions: Number(potionRow.health_potions) - 1 };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
+  }
+
+  saveFailedRunWithPenalty(state, penaltiesByPlayer = {}) {
+    const expectedVersion = Number.isInteger(state.version) ? state.version : 0;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const storedRow = this.db.prepare('SELECT state_json, version FROM dungeon_runs WHERE id = ?').get(state.id);
+      if (!storedRow) throw new Error('Run not found while applying the Dungeon death penalty.');
+      const stored = this.#decodeRunRow(storedRow);
+      if (stored.version !== expectedVersion) {
+        const error = new Error('Dungeon state changed before the death penalty could be saved. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+
+      const appliedPenalties = {};
+      for (const participant of state.participants || []) {
+        const planned = penaltiesByPlayer[participant.playerId] || { goldLost: 0, lossPercent: 20 };
+        const row = this.db.prepare(`
+          SELECT p.thread_dust AS carried_gold, COALESCE(b.banked_gold, 0) AS banked_gold
+          FROM players p
+          LEFT JOIN player_bank_balances b ON b.player_id = p.id
+          WHERE p.id = ?
+        `).get(participant.playerId);
+        if (!row) throw new Error('Player not found while applying the Dungeon death penalty.');
+        const carriedGoldBefore = Number(row.carried_gold || 0);
+        const goldLost = Math.min(carriedGoldBefore, Math.max(0, Math.floor(Number(planned.goldLost || 0))));
+        if (goldLost > 0) this.db.prepare('UPDATE players SET thread_dust = thread_dust - ? WHERE id = ?').run(goldLost, participant.playerId);
+        appliedPenalties[participant.playerId] = {
+          penaltyType: 'carried_gold',
+          carriedGoldBefore,
+          carriedGoldAfter: carriedGoldBefore - goldLost,
+          goldLost,
+          lossPercent: Number(planned.lossPercent || 20),
+          bankedGold: Number(row.banked_gold || 0),
+          bankedGoldSafe: true,
+        };
+      }
+
+      const nextState = { ...state, version: expectedVersion + 1, deathPenalties: appliedPenalties };
+      const update = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
+        nextState.phase,
+        JSON.stringify(nextState),
+        nextState.version,
+        new Date().toISOString(),
+        nextState.id,
+        expectedVersion,
+      );
+      if (update.changes !== 1) {
+        const error = new Error('Dungeon state changed before the death penalty could be committed.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+      if (nextState.ownerType === 'party') this.#releaseParty(nextState.ownerId);
+      this.db.exec('COMMIT');
+      return { state: nextState, penalties: appliedPenalties };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
   }
 
   getActiveRun(playerId) {
     // Non-combat decision phases are still active runs: they must survive dashboard reads,
     // reconnects, and party/run creation guards until the aggregate reaches complete/failed.
-    const row = this.db.prepare("SELECT dr.state_json, dr.version FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
+    const row = this.db.prepare("SELECT dr.state_json, dr.version FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') ORDER BY dr.created_at DESC LIMIT 1").get(playerId);
     return this.#decodeRunRow(row);
   }
 
@@ -340,6 +445,11 @@ export class SQLiteGameRepository {
   #decodeRunRow(row) {
     if (!row) return null;
     return { ...JSON.parse(row.state_json), version: row.version };
+  }
+
+  #releaseParty(partyId) {
+    this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(partyId);
+    this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(partyId, partyId);
   }
 
   #decodePlayer(row) {

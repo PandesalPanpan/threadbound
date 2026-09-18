@@ -8,7 +8,7 @@ export class SQLiteInventoryRepository {
   sellItem({ playerId, itemId }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') LIMIT 1").get(playerId);
       if (activeRun) {
         const error = new Error('Finish the active dungeon before selling equipment.');
         error.code = 'item_sell_during_run';
@@ -67,7 +67,7 @@ export class SQLiteInventoryRepository {
       // This check belongs inside the same write transaction as Gold spending and item
       // mutation. The Service Layer keeps its earlier check for fast feedback, but only
       // this lock closes the race with a dungeon start committing at the same time.
-      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss') LIMIT 1").get(playerId);
+      const activeRun = this.db.prepare("SELECT 1 FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') LIMIT 1").get(playerId);
       if (activeRun) {
         const error = new Error('Finish the active dungeon before upgrading equipment.');
         error.code = 'relic_upgrade_during_run';

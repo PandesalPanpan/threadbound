@@ -52,6 +52,16 @@ async function finishSimpleRun(contexts) {
   for (let step = 0; step < 80; step += 1) {
     const state = await dashboard(contexts[0].context);
     if (!state.activeRun) return state;
+    if (state.activeRun.phase === 'between_encounter') {
+      const actor = state.activeRun.participants
+        .filter((participant) => participant.hp > 0)
+        .map((participant) => contexts.find((candidate) => candidate.playerId === participant.playerId))
+        .find(Boolean);
+      if (!actor) return state;
+      const response = await actor.context.request.post(`/api/runs/${state.activeRun.id}/continue`);
+      expect(response.ok()).toBe(true);
+      continue;
+    }
     const candidates = state.activeRun.participants
       .filter((participant) => participant.hp > 0)
       .map((participant) => contexts.find((candidate) => candidate.playerId === participant.playerId))
@@ -158,13 +168,35 @@ test('mobile dungeon surface carries authoritative HP into a distinct boss state
     await expect(page.getByTestId('stream-message')).toHaveValue('');
 
     let state = reloaded;
-    while (state.activeRun?.phase === 'combat') {
+    let usedPotion = false;
+    while (state.activeRun && !['boss', 'failed'].includes(state.activeRun.phase)) {
+      if (state.activeRun.phase === 'between_encounter') {
+        const hpBeforeDecision = state.activeRun.viewer.hp;
+        await expect(page.getByTestId('simple-dungeon-card')).toHaveAttribute('data-state', 'between_encounter');
+        await expect(page.getByTestId('stream-continue')).toBeVisible();
+        if (!usedPotion && (await dashboard(context)).character.healthPotions > 0) {
+          await page.getByTestId('stream-dungeon-potion').click();
+          state = await waitForRunVersion(context, state.activeRun.id, state.activeRun.version);
+          expect(state.activeRun.viewer.hp).toBeGreaterThan(hpBeforeDecision);
+          usedPotion = true;
+        } else {
+          await page.getByTestId('stream-continue').click();
+          state = await waitForRunVersion(context, state.activeRun.id, state.activeRun.version);
+          expect(state.activeRun.viewer.hp).toBe(hpBeforeDecision);
+        }
+        continue;
+      }
       const roomBefore = state.activeRun.encounterIndex;
       const hpBeforeRoom = state.activeRun.viewer.hp;
       do {
         state = await attackFromSimpleSurface(page, context);
         if (!state.activeRun) break;
       } while (state.activeRun.phase === 'combat' && state.activeRun.encounterIndex === roomBefore);
+      if (state.activeRun?.phase === 'between_encounter') {
+        expect(state.activeRun.viewer.hp).toBeGreaterThan(0);
+        expect(state.activeRun.viewer.hp).toBeLessThanOrEqual(state.activeRun.viewer.maxHp);
+        expect(hpBeforeRoom).toBeGreaterThan(0);
+      }
       if (state.activeRun?.phase === 'combat' && state.activeRun.encounterIndex > roomBefore) {
         expect(state.activeRun.viewer.hp).toBeGreaterThan(0);
         expect(state.activeRun.viewer.hp).toBeLessThanOrEqual(state.activeRun.viewer.maxHp);
@@ -288,7 +320,12 @@ test('a failed simple run leaves one failure receipt and makes authoritative hea
       for (let step = 0; step < 40; step += 1) {
         const state = await dashboard(context);
         if (!state.activeRun) break;
-        await attackFromSimpleSurface(page, context);
+        if (state.activeRun.phase === 'between_encounter') {
+          const continued = await context.request.post(`/api/runs/${state.activeRun.id}/continue`);
+          expect(continued.ok()).toBe(true);
+        } else {
+          await attackFromSimpleSurface(page, context);
+        }
       }
       const entries = await streamEntries(context);
       if (entries.some((entry) => entry.runId === started.activeRun.id && /fell in Frayed Hollow/i.test(entry.body))) {

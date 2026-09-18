@@ -214,6 +214,45 @@ html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple
 html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta .simple-dungeon-section-label { grid-column: 1 / -1; }
 html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-note { margin: 0; }
 
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-decision-banner,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-next-enemy,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-risk {
+  display: grid;
+  gap: .25rem;
+  padding: .625rem;
+  border-radius: var(--tb-v2-radius-sm);
+  background: var(--tb-v2-surface-raised);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-decision-banner {
+  border: 1px solid color-mix(in srgb, var(--tb-v2-green) 32%, var(--tb-v2-border));
+  background: color-mix(in srgb, var(--tb-v2-green) 7%, var(--tb-v2-surface-raised));
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-decision-banner strong,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-next-enemy strong {
+  color: var(--tb-v2-text);
+  font-size: var(--tb-v2-text-md);
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-decision-banner small,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-next-enemy small,
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-risk p {
+  margin: 0;
+  color: var(--tb-v2-muted);
+  font-size: var(--tb-v2-text-xs);
+  line-height: 1.4;
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-risk {
+  border: 1px solid color-mix(in srgb, var(--tb-v2-gold) 32%, var(--tb-v2-border));
+  background: color-mix(in srgb, var(--tb-v2-gold) 6%, var(--tb-v2-surface-raised));
+}
+
+html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-risk p strong {
+  color: var(--tb-v2-gold);
+}
+
 @media (max-width: 520px) {
   html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-card { gap: .5rem; }
   html.threadbound-v2 body.threadbound-player.simple-gameplay-loop #stream .simple-dungeon-room-meta,

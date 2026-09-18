@@ -144,7 +144,7 @@ if (stream) {
   let dashboard = null;
   let syncing = false;
   let resyncRequested = false;
-  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'help', 'heal', 'potion', 'rest', 'recovery', 'shop', 'buy potion', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
+  const BARE_COMMANDS = new Set(['hunt', 'dungeon', 'run', 'attack', 'continue', 'leave', 'retreat', 'help', 'heal', 'potion', 'rest', 'recovery', 'shop', 'buy potion', 'guard', 'interrupt', 'mend', 'revive', 'upgrade', 'skill']);
 
   function normalizedCommand(value) {
     const trimmed = String(value || '').trim();
@@ -278,6 +278,24 @@ if (stream) {
     await api(`/api/runs/${encodeURIComponent(run.id)}/attack`, { method: 'POST' });
   }
 
+  async function continueDungeon() {
+    const run = dashboard?.activeRun;
+    if (!run) throw new Error('No active dungeon.');
+    await api(`/api/runs/${encodeURIComponent(run.id)}/continue`, { method: 'POST' });
+  }
+
+  async function useDungeonPotion() {
+    const run = dashboard?.activeRun;
+    if (!run) throw new Error('No active dungeon.');
+    await api(`/api/runs/${encodeURIComponent(run.id)}/potion`, { method: 'POST' });
+  }
+
+  async function retreatDungeon() {
+    const run = dashboard?.activeRun;
+    if (!run) throw new Error('No active dungeon.');
+    await api(`/api/runs/${encodeURIComponent(run.id)}/retreat`, { method: 'POST' });
+  }
+
   function renderHelp() {
     if (!commandCard) return;
     commandCard.hidden = false;
@@ -286,12 +304,14 @@ if (stream) {
     delete commandCard.dataset.richCardKind;
     const help = document.createElement('div');
     help.className = 'simple-loop-help';
-    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Dust and gear<br><strong>inventory</strong> — inspect, equip, Temper, or salvage permanent gear<br><strong>shop</strong> — buy healing supplies from Mara<br><strong>heal</strong> — use a health potion now; HP also returns naturally over time<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br>Only the two most relevant actions stay beside the composer; every command remains available by typing it.';
+    help.innerHTML = '<strong>Simple loop</strong><br><strong>hunt</strong> — quick solo battle for Gold and gear<br><strong>inventory</strong> — inspect, equip, Upgrade, or Sell permanent gear<br><strong>shop</strong> — buy healing supplies from Town<br><strong>heal</strong> — use a health potion outside a Dungeon<br><strong>dungeon</strong> — enter the harder stat-check dungeon<br><strong>attack</strong> — attack the current dungeon enemy<br><strong>continue</strong> — enter the next room after a clear<br><strong>potion</strong> — spend one potion between rooms<br><strong>leave</strong> — retreat with carried Gold safe<br>Only the relevant actions stay beside the composer; every command remains available by typing it.';
     commandCard.append(help);
     decorateFigmaSurface();
   }
 
   async function heal() {
+    const run = dashboard?.activeRun;
+    if (run?.simpleCombat && run.phase === 'between_encounter') return useDungeonPotion();
     await api('/api/recovery/potion', { method: 'POST' });
   }
 
@@ -482,6 +502,42 @@ if (stream) {
       ? totalRooms
       : Math.min(totalRooms, Math.max(1, Number(run.encounterIndex || 0) + 1));
     const roomLabel = `Room ${roomNumber} of ${totalRooms}`;
+    if (run.phase === 'between_encounter') {
+      const card = dungeonCardShell('between_encounter', dungeonName);
+      card.classList.toggle('is-party', run.participants.length > 1);
+      card.append(dungeonHeader({ dungeonName, state: 'between_encounter', roomLabel: `${roomLabel} cleared` }));
+      const cleared = textElement('div', 'simple-dungeon-decision-banner');
+      cleared.append(textElement('span', 'simple-dungeon-section-label', 'ROOM CLEARED'), textElement('strong', '', 'Choose before the next encounter'));
+      cleared.append(textElement('small', '', 'HP persists. Nothing restores automatically between rooms.'));
+      card.append(cleared);
+      const next = run.nextEncounter?.enemy;
+      if (next) {
+        const nextEnemy = textElement('div', 'simple-dungeon-next-enemy');
+        nextEnemy.dataset.testid = 'dungeon-next-enemy';
+        nextEnemy.append(textElement('span', 'simple-dungeon-section-label', next.isBoss ? 'NEXT · BOSS' : 'NEXT ENCOUNTER'), textElement('strong', '', next.name), textElement('small', '', hpText(next.hp, next.maxHp)));
+        card.append(nextEnemy);
+      }
+      const party = textElement('div', 'simple-dungeon-party');
+      party.append(textElement('span', 'simple-dungeon-section-label', run.participants.length > 1 ? 'PARTY HP' : 'YOUR HP'));
+      for (const participant of run.participants) {
+        const isViewer = participant.playerId === run.viewer?.playerId;
+        const row = textElement('div', `simple-dungeon-party-row${isViewer ? ' is-you' : ''}`);
+        row.dataset.testid = 'dungeon-party-member';
+        const copy = textElement('div', 'simple-dungeon-party-copy');
+        copy.append(textElement('strong', '', isViewer ? `${participant.displayName} · You` : participant.displayName), textElement('span', '', hpText(participant.hp, participant.maxHp)));
+        row.append(createSpriteElement(weaverSpriteFrame(participant.playerId), { className: 'simple-dungeon-party-sprite', label: participant.displayName }), copy);
+        appendHealthBar(row, participant.hp, participant.maxHp, 'simple-dungeon-party-bar', `${participant.displayName} HP`);
+        party.append(row);
+      }
+      card.append(party);
+      const risk = run.risk || {};
+      const riskCopy = textElement('div', 'simple-dungeon-risk');
+      riskCopy.dataset.testid = 'dungeon-risk';
+      riskCopy.append(textElement('span', 'simple-dungeon-section-label', 'RISK / REWARD'), textElement('p', '', `Clear: +${risk.completionReward?.gold ?? 15} Gold + Equipment · secured only at the end.`), textElement('p', '', `Death: −${risk.death?.goldLost ?? 0} carried Gold · Banked Gold safe. Leave keeps carried Gold but forfeits the clear reward.`));
+      card.append(riskCopy);
+      card.append(textElement('p', 'simple-dungeon-note', 'Choose Continue, Use Potion, or Leave Dungeon below.'));
+      return;
+    }
     const state = run.phase === 'boss' || run.enemy?.isBoss ? 'boss' : 'combat';
     const card = dungeonCardShell(state, dungeonName);
     card.classList.toggle('is-party', run.participants.length > 1);
@@ -632,6 +688,12 @@ if (stream) {
 
     if (['combat', 'boss'].includes(dashboard.activeRun.phase) && dashboard.activeRun.viewer?.hp > 0) {
       addButton('Attack', 'attack', attack, 'stream-attack');
+    } else if (dashboard.activeRun.phase === 'between_encounter') {
+      addButton('Continue', 'continue', continueDungeon, 'stream-continue');
+      const viewer = dashboard.activeRun.viewer;
+      const potions = Number(dashboard.character?.healthPotions || 0);
+      addButton(`Use Potion · ${potions}`, 'heal', useDungeonPotion, 'stream-dungeon-potion');
+      addButton('Leave Dungeon', 'retreat', retreatDungeon, 'stream-retreat');
     }
   }
 
@@ -657,7 +719,10 @@ if (stream) {
         dashboard.activeRun?.simpleCombat || false,
         dashboard.activeRun?.encounterIndex ?? null,
         dashboard.activeRun?.enemy?.hp ?? null,
+        dashboard.activeRun?.nextEncounter?.enemy?.id || null,
+        dashboard.activeRun?.nextEncounter?.enemy?.hp ?? null,
         ...(dashboard.activeRun?.participants || []).map((participant) => `${participant.playerId}:${participant.hp}`),
+        dashboard.character?.healthPotions || 0,
         dashboard.character?.attackPower || 0,
         dashboard.inventory?.length || 0,
         dashboard.party?.id || null,
@@ -705,7 +770,7 @@ if (stream) {
       // commands. The authoritative adventure handler has the fresher run context.
       if (noRun && command === '/attack') return;
 
-      if (['/hunt', '/dungeon', '/run', '/attack', '/help', '/heal', '/potion', '/rest', '/recovery'].includes(command)) {
+      if (['/hunt', '/dungeon', '/run', '/attack', '/continue', '/leave', '/retreat', '/help', '/heal', '/potion', '/rest', '/recovery'].includes(command)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (acting) return;
@@ -716,6 +781,8 @@ if (stream) {
           if (command === '/hunt') await hunt();
           else if (command === '/dungeon' || command === '/run') await startDungeon();
           else if (command === '/attack') await attack();
+          else if (command === '/continue') await continueDungeon();
+          else if (command === '/leave' || command === '/retreat') await retreatDungeon();
           else if (command === '/heal' || command === '/potion') await heal();
           else if (command === '/rest' || command === '/recovery') renderRecovery();
           else renderHelp();

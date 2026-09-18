@@ -3,7 +3,7 @@ import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunE
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 import { RUN_UPGRADES, runUpgrade } from './RunPowerCatalog.js';
 import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
-import { prepareSimpleDungeon, recoverBetweenEncounters } from './SimpleDungeonPolicy.js';
+import { prepareSimpleDungeon } from './SimpleDungeonPolicy.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -55,6 +55,7 @@ export class AdventureRun {
     this.state.runUpgradeDraftIndex ??= 0;
     this.state.runUpgradeResume ??= null;
     this.state.selectedUpgrades ??= this.state.selectedUpgrade ? [this.state.selectedUpgrade] : [];
+    this.state.nextEncounter ??= null;
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
     this.state.simpleCombat = state.simpleCombat === true;
     if (this.state.simpleCombat) {
@@ -116,6 +117,7 @@ export class AdventureRun {
     state.enemyIntent = null;
     state.attacksSinceIntent = 0;
     state.intentCount = 0;
+    state.nextEncounter = null;
     for (const participant of state.participants) resetSimpleParticipant(participant);
     return new AdventureRun(state);
   }
@@ -129,6 +131,114 @@ export class AdventureRun {
   }
 
   attack(args) { return this.#combat('attack', args); }
+
+  continueEncounter({ playerId } = {}) {
+    if (!this.state.simpleCombat) throw new Error('Continue is only available for a simple Dungeon run.');
+    if (this.state.phase !== 'between_encounter' || !this.state.nextEncounter) {
+      const error = new Error('There is no Dungeon encounter waiting to continue.');
+      error.code = 'dungeon_continue_not_available';
+      throw error;
+    }
+    const participant = this.participant(playerId);
+    if (!participant) throw new Error('Run not found.');
+    if (participant.hp <= 0) throw new Error('A downed player cannot continue the Dungeon.');
+
+    const next = this.#activateNextEncounter();
+    return {
+      state: this.toJSON(),
+      events: [{
+        type: 'DungeonEncounterContinued',
+        playerId,
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        phase: this.state.phase,
+        encounterIndex: this.state.encounterIndex,
+        enemyId: next.enemy.id,
+        enemyName: next.enemy.name,
+        enemyHp: next.enemy.hp,
+        enemyMaxHp: next.enemy.maxHp,
+        enemyIsBoss: Boolean(next.enemy.isBoss),
+        participantIds: this.state.participants.map((candidate) => candidate.playerId),
+        participants: this.state.participants.map((candidate) => ({
+          playerId: candidate.playerId,
+          hp: candidate.hp,
+          maxHp: candidate.maxHp,
+        })),
+      }],
+      simpleCombat: true,
+    };
+  }
+
+  usePotionBetweenEncounters({ playerId, healed } = {}) {
+    if (!this.state.simpleCombat) throw new Error('Dungeon potions are only available for a simple Dungeon run.');
+    if (this.state.phase !== 'between_encounter' || !this.state.nextEncounter) {
+      throw new Error('A Dungeon potion can only be used between encounters.');
+    }
+    const participant = this.participant(playerId);
+    if (!participant) throw new Error('Run not found.');
+    if (participant.hp <= 0) throw new Error('A downed player cannot use a Dungeon potion.');
+    const amount = Math.floor(Number(healed));
+    if (!Number.isInteger(amount) || amount <= 0) throw new Error('Dungeon potion healing must be positive.');
+    const beforeHp = participant.hp;
+    participant.hp = Math.min(participant.maxHp, participant.hp + amount);
+    const next = this.#activateNextEncounter();
+    return {
+      state: this.toJSON(),
+      events: [{
+        type: 'DungeonPotionUsed',
+        playerId,
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        healed: participant.hp - beforeHp,
+        actorHp: participant.hp,
+        actorMaxHp: participant.maxHp,
+        phase: this.state.phase,
+        encounterIndex: this.state.encounterIndex,
+        enemyId: next.enemy.id,
+        enemyName: next.enemy.name,
+        enemyHp: next.enemy.hp,
+        enemyMaxHp: next.enemy.maxHp,
+        enemyIsBoss: Boolean(next.enemy.isBoss),
+        participantIds: this.state.participants.map((candidate) => candidate.playerId),
+        participants: this.state.participants.map((candidate) => ({
+          playerId: candidate.playerId,
+          hp: candidate.hp,
+          maxHp: candidate.maxHp,
+        })),
+      }],
+      healed: participant.hp - beforeHp,
+      simpleCombat: true,
+    };
+  }
+
+  retreat({ playerId, now = new Date().toISOString() } = {}) {
+    if (!this.state.simpleCombat) throw new Error('Retreat is only available for a simple Dungeon run.');
+    if (this.state.phase !== 'between_encounter' || !this.state.nextEncounter) {
+      const error = new Error('Retreat is only available between Dungeon encounters.');
+      error.code = 'dungeon_retreat_not_available';
+      throw error;
+    }
+    if (!this.hasParticipant(playerId)) throw new Error('Run not found.');
+    this.state.phase = 'retreated';
+    this.state.enemy = null;
+    this.state.nextEncounter = null;
+    this.state.enemyIntent = null;
+    this.state.completedAt = now;
+    return {
+      state: this.toJSON(),
+      events: [{
+        type: 'DungeonRetreated',
+        playerId,
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        participantIds: this.state.participants.map((candidate) => candidate.playerId),
+        encounterIndex: this.state.encounterIndex,
+        securedRewards: false,
+      }],
+      simpleCombat: true,
+    };
+  }
+
   guard(args) { return this.#combat('guard', args); }
   interrupt(args) { return this.#combat('interrupt', args); }
   mend(args) { return this.#combat('mend', args); }
@@ -310,6 +420,11 @@ export class AdventureRun {
     this.state.runUpgradeOfferIds = [];
     this.state.selectedUpgrade = null;
     this.state.selectedUpgrades = [];
+    const defeatedEvent = events.find((event) => event.type === 'EnemyDefeated');
+    if (defeatedEvent && before.enemy) {
+      defeatedEvent.enemyName = before.enemy.name;
+      defeatedEvent.enemyMaxHp = before.enemy.maxHp;
+    }
     for (const participant of this.state.participants) resetSimpleParticipant(participant);
 
     // CombatDungeonRun historically pauses before the boss in an upgrade phase. The
@@ -336,17 +451,32 @@ export class AdventureRun {
       });
     }
 
-    const defeatedEnemy = events.some((event) => event.type === 'EnemyDefeated');
-    if (defeatedEnemy && ['combat', 'boss'].includes(this.state.phase) && before.enemy?.id !== this.state.enemy?.id) {
-      const recovered = recoverBetweenEncounters(this.state.participants);
-      if (recovered.length) {
-        events.push({
-          type: 'DungeonRecoveryApplied',
-          runId: this.state.id,
-          dungeonId: this.state.dungeonId,
-          recovered,
-        });
-      }
+    const defeatedEnemy = events.find((event) => event.type === 'EnemyDefeated');
+    if (defeatedEnemy && !defeatedEnemy.isBoss && this.state.enemy && before.enemy?.id !== this.state.enemy?.id) {
+      const next = structuredClone(this.state.enemy);
+      events = events.filter((event) => event.type !== 'BossEncounterStarted');
+      this.state.nextEncounter = {
+        phase: next.isBoss ? 'boss' : 'combat',
+        encounterIndex: this.state.encounterIndex,
+        enemy: next,
+      };
+      this.state.phase = 'between_encounter';
+      this.state.enemy = null;
+      this.state.enemyIntent = null;
+      this.state.attacksSinceIntent = 0;
+      this.state.intentCount = 0;
+      events.push({
+        type: 'DungeonRoomCleared',
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        encounterIndex: this.state.encounterIndex,
+        nextEnemyId: next.id,
+        nextEnemyName: next.name,
+        nextEnemyHp: next.hp,
+        nextEnemyMaxHp: next.maxHp,
+        nextEnemyIsBoss: Boolean(next.isBoss),
+        participantIds: this.state.participants.map((candidate) => candidate.playerId),
+      });
     }
 
     return {
@@ -355,6 +485,21 @@ export class AdventureRun {
       state: this.toJSON(),
       simpleCombat: true,
     };
+  }
+
+  #activateNextEncounter() {
+    const pending = this.state.nextEncounter;
+    this.state.phase = pending.phase;
+    this.state.encounterIndex = pending.encounterIndex;
+    this.state.enemy = structuredClone(pending.enemy);
+    this.state.nextEncounter = null;
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+    this.state.runAttackBonus = 0;
+    this.state.reactionStyle = null;
+    for (const participant of this.state.participants) resetSimpleParticipant(participant);
+    return { phase: this.state.phase, enemy: structuredClone(this.state.enemy) };
   }
 
   #runUpgradeOffers() {

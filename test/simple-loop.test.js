@@ -29,6 +29,11 @@ function attackUntilTransition(run, attackPower, max = 20) {
   throw new Error('Simple dungeon did not transition in the expected number of attacks.');
 }
 
+function continueIfPaused(run) {
+  if (run.toJSON().phase !== 'between_encounter') return null;
+  return run.continueEncounter({ playerId: 'p1' });
+}
+
 test('hunt resolves one enemy in one command using permanent stats', () => {
   const weak = resolveHunt({ attackPower: 6, maxHealth: 40, enemyRoll: 0.99 });
   const strong = resolveHunt({ attackPower: 10, maxHealth: 40, enemyRoll: 0.99 });
@@ -81,6 +86,13 @@ test('new simple dungeon has Attack only and never enters buffs, events, Focus, 
   let state = run.toJSON();
   let transitions = 0;
   while (!['complete', 'failed'].includes(state.phase) && transitions < 8) {
+    if (state.phase === 'between_encounter') {
+      const hpBefore = state.participants[0].hp;
+      const continued = continueIfPaused(run);
+      state = continued.state;
+      assert.equal(state.participants[0].hp, hpBefore, 'Continue must not heal persistent Dungeon HP');
+      continue;
+    }
     const outcome = attackUntilTransition(run, attackPower);
     state = outcome.state;
     transitions += 1;
@@ -96,16 +108,47 @@ test('new simple dungeon has Attack only and never enters buffs, events, Focus, 
   assert.equal(state.enemy, null);
 });
 
+test('simple Dungeon pauses between rooms for explicit Continue, Potion, or Leave decisions', () => {
+  const { run, attackPower } = startSimple({ attackPower: 9, maxHealth: 40 });
+  let state = run.toJSON();
+  while (state.phase !== 'between_encounter') state = run.attack({ playerId: 'p1', attackPower, equipmentEffect: 'none' }).state;
+
+  assert.equal(state.participants[0].hp, 34);
+  assert.equal(state.nextEncounter?.enemy?.id, 'hollow-stalker');
+  assert.equal(state.enemy, null);
+  assert.equal(state.phase, 'between_encounter');
+
+  const potion = run.usePotionBetweenEncounters({ playerId: 'p1', healed: 12 });
+  assert.equal(potion.healed, 6);
+  assert.equal(potion.state.participants[0].hp, 40);
+  assert.equal(potion.state.phase, 'combat');
+  assert.equal(potion.state.enemy.id, 'hollow-stalker');
+
+  const retreatRun = startSimple({ attackPower: 9, maxHealth: 40 }).run;
+  state = retreatRun.toJSON();
+  while (state.phase !== 'between_encounter') state = retreatRun.attack({ playerId: 'p1', attackPower: 9, equipmentEffect: 'none' }).state;
+  const retreat = retreatRun.retreat({ playerId: 'p1', now: '2026-09-10T00:02:00.000Z' });
+  assert.equal(retreat.state.phase, 'retreated');
+  assert.equal(retreat.state.enemy, null);
+  assert.equal(retreat.state.rewardsGranted, false);
+  assert.equal(retreat.events[0].securedRewards, false);
+});
+
 test('base Attack can clear rooms but fails the harder boss while recommended Attack survives', () => {
-  const simulate = (attackPower) => {
+  const simulate = (attackPower, usePotion = false) => {
     const { run } = startSimple({ attackPower, maxHealth: 40 });
     let state = run.toJSON();
+    let potionAvailable = usePotion;
     for (let action = 0; action < 40 && !['complete', 'failed'].includes(state.phase); action += 1) {
-      state = run.attack({ playerId: 'p1', attackPower, equipmentEffect: 'none', now: `2026-09-10T00:01:${String(action).padStart(2, '0')}.000Z` }).state;
+      state = state.phase === 'between_encounter'
+        ? (potionAvailable
+          ? (potionAvailable = false, run.usePotionBetweenEncounters({ playerId: 'p1', healed: 12 }).state)
+          : run.continueEncounter({ playerId: 'p1' }).state)
+        : run.attack({ playerId: 'p1', attackPower, equipmentEffect: 'none', now: `2026-09-10T00:01:${String(action).padStart(2, '0')}.000Z` }).state;
     }
     return state;
   };
 
   assert.equal(simulate(6).phase, 'failed');
-  assert.equal(simulate(9).phase, 'complete');
+  assert.equal(simulate(9, true).phase, 'complete');
 });

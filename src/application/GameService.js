@@ -2,10 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { Character } from '../domain/Character.js';
 import { publicCombatSkills } from '../domain/CombatSkillCatalog.js';
 import { AdventureRun as DungeonRun, DUNGEONS, RUN_UPGRADES } from '../domain/AdventureRun.js';
+import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
+import { DUNGEON_REWARD_RULES, projectDungeonRisk } from '../domain/DungeonRiskPolicy.js';
+import { resolveDungeonPotionAction } from '../domain/HealingPolicy.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
+import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
@@ -20,13 +24,14 @@ function healthRecovery(row, now = Date.now()) {
 }
 
 export class GameService {
-  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, equipmentRepository = null, fightBuffRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
+  constructor({ repository, eventBus, arcManifestService = null, progressionRepository = null, equipmentRepository = null, fightBuffRepository = null, bankRepository = null, itemGenerator = new ItemGenerator(), idFactory = randomUUID }) {
     this.repository = repository;
     this.eventBus = eventBus;
     this.arcManifestService = arcManifestService;
     this.progressionRepository = progressionRepository || new SQLitePlayerProgressionRepository({ database: repository.db });
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.fightBuffRepository = fightBuffRepository || new SQLiteFightBuffRepository({ database: repository.db });
+    this.bankRepository = bankRepository || new SQLiteBankRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.idFactory = idFactory;
   }
@@ -151,6 +156,9 @@ export class GameService {
       dungeonId,
       ownerType,
       ownerId,
+      simpleCombat: Boolean(persisted.simpleCombat),
+      dungeonName: persisted.dungeonDefinition?.name || null,
+      recommendedAttack: persisted.dungeonDefinition?.recommendedAttack || null,
       enemyId: persisted.enemy?.id || null,
       enemyName: persisted.enemy?.name || null,
       enemyHp: persisted.enemy?.hp ?? null,
@@ -171,6 +179,55 @@ export class GameService {
       attunementCode: equipped?.effect?.attunementCode ?? null,
     });
     return this.#persistCombatOutcome(playerId, run, outcome, 'attack');
+  }
+
+  continueDungeon(playerId, runId) {
+    const { run, state } = this.#simpleDecisionContext(playerId, runId);
+    const outcome = run.continueEncounter({ playerId });
+    outcome.state = this.repository.saveRun(outcome.state);
+    this.eventBus.publishAll(outcome.events.map((event) => ({
+      ...event,
+      playerId,
+      participantIds: outcome.state.participants.map((participant) => participant.playerId),
+    })));
+    return { run: this.#decorateRun(outcome.state, playerId), continued: true, previousPhase: state.phase };
+  }
+
+  useDungeonPotion(playerId, runId) {
+    const { run } = this.#simpleDecisionContext(playerId, runId);
+    const participant = run.participant(playerId);
+    const player = this.repository.getPlayer(playerId);
+    const plan = resolveDungeonPotionAction({
+      activeRun: run.state,
+      currentHealth: participant.hp,
+      maxHealth: participant.maxHp,
+      healthPotions: player.healthPotions,
+    });
+    const outcome = run.usePotionBetweenEncounters({ playerId, healed: plan.healed });
+    const persisted = this.repository.saveRunWithPotion(outcome.state, playerId);
+    outcome.state = persisted.state;
+    const event = {
+      ...outcome.events[0],
+      healthPotions: persisted.healthPotions,
+      participantIds: outcome.state.participants.map((candidate) => candidate.playerId),
+    };
+    this.eventBus.publish(event);
+    return {
+      run: this.#decorateRun(outcome.state, playerId),
+      recovery: { ...plan, healthPotions: persisted.healthPotions },
+    };
+  }
+
+  retreatDungeon(playerId, runId) {
+    const { run } = this.#simpleDecisionContext(playerId, runId);
+    const outcome = run.retreat({ playerId });
+    outcome.state = this.repository.saveRun(outcome.state);
+    this.eventBus.publishAll(outcome.events.map((event) => ({
+      ...event,
+      playerId,
+      participantIds: outcome.state.participants.map((participant) => participant.playerId),
+    })));
+    return { run: this.#decorateRun(outcome.state, playerId), retreated: true };
   }
 
   guard(playerId, runId) {
@@ -248,6 +305,19 @@ export class GameService {
     return { run, player, equipped, character: new Character({ ...player, equippedItem: equipped, equipment }) };
   }
 
+  #simpleDecisionContext(playerId, runId) {
+    const state = this.repository.getRun(runId);
+    if (!state) throw new Error('Run not found.');
+    if (state.simpleCombat !== true) {
+      const error = new Error('This decision is only available for a simple Dungeon run.');
+      error.code = 'simple_dungeon_decision_only';
+      throw error;
+    }
+    const run = new DungeonRun(state);
+    if (!run.hasParticipant(playerId)) throw new Error('Run not found.');
+    return { run, state };
+  }
+
   #publishResolvedAction(playerId, action, outcome) {
     const state = outcome.state;
     const actor = state.participants.find((participant) => participant.playerId === playerId) || null;
@@ -312,7 +382,14 @@ export class GameService {
       } : null,
       runEvent: state.runEvent ? structuredClone(state.runEvent) : null,
       defeatedEnemyId: defeated?.enemyId || null,
+      defeatedEnemyName: defeated?.enemyName || null,
       defeatedBoss: Boolean(defeated?.isBoss),
+      roomCleared: Boolean(outcome.events.find((event) => event.type === 'DungeonRoomCleared')),
+      nextEnemyId: state.nextEncounter?.enemy?.id || null,
+      nextEnemyName: state.nextEncounter?.enemy?.name || null,
+      nextEnemyHp: state.nextEncounter?.enemy?.hp ?? null,
+      nextEnemyMaxHp: state.nextEncounter?.enemy?.maxHp ?? null,
+      nextEnemyIsBoss: Boolean(state.nextEncounter?.enemy?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
       enemyIntent: state.enemyIntent ? structuredClone(state.enemyIntent) : null,
       phase: state.phase,
@@ -321,7 +398,25 @@ export class GameService {
   }
 
   #persistCombatOutcome(playerId, run, outcome, action) {
-    outcome.state = this.repository.saveRun(outcome.state);
+    if (outcome.state.phase === 'failed') {
+      const penaltiesByPlayer = Object.fromEntries((outcome.state.participants || []).map((participant) => {
+        const balance = this.bankRepository.getBalance(participant.playerId);
+        return [participant.playerId, resolveNormalDeathPenalty({ carriedGold: balance.carriedGold })];
+      }));
+      const failed = this.repository.saveFailedRunWithPenalty(outcome.state, penaltiesByPlayer);
+      outcome.state = failed.state;
+      outcome.events = outcome.events.map((event) => event.type === 'DungeonFailed'
+        ? {
+            ...event,
+            deathPenalties: failed.penalties,
+            goldLost: failed.penalties[playerId]?.goldLost || 0,
+            carriedGold: failed.penalties[playerId]?.carriedGoldAfter ?? null,
+            bankedGold: failed.penalties[playerId]?.bankedGold ?? null,
+          }
+        : event);
+    } else {
+      outcome.state = this.repository.saveRun(outcome.state);
+    }
     this.eventBus.publishAll(outcome.events);
     this.#publishResolvedAction(playerId, action, outcome);
 
@@ -343,7 +438,7 @@ export class GameService {
         ? configuredUnlock
         : null;
       const completion = this.repository.completeRunWithRewards(completedRun.toJSON(), rewardsByPlayer, {
-        threadDust: 15,
+        threadDust: DUNGEON_REWARD_RULES.completionGold,
         worldProgressKey: generatedArcId ? `arc:${generatedArcId}:${outcome.state.dungeonId}:clears` : 'arc-1-frayed-hollow-clears',
         areaUnlockNumber,
       });
@@ -402,6 +497,7 @@ export class GameService {
       ...runState,
       participants,
       viewer: participants.find((participant) => participant.playerId === viewerPlayerId) || null,
+      risk: projectDungeonRisk({ carriedGold: this.bankRepository.getBalance(viewerPlayerId).carriedGold }),
       isLeader: runState.ownerType === 'player'
         ? runState.startedByPlayerId === viewerPlayerId
         : this.repository.getParty(runState.ownerId)?.leaderPlayerId === viewerPlayerId,

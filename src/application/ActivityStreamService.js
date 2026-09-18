@@ -97,12 +97,17 @@ export class ActivityStreamService {
   recordDomainEvent(event) {
     const projected = this.#project(event);
     if (!projected) return null;
+    const metadata = {
+      ...event,
+      ...(projected.metadata || {}),
+    };
+    if (event.playerId) metadata.playerName = this.#playerName(event.playerId);
     return this.streamRepository.append({
       kind: 'system',
       eventType: event.type,
       runId: event.runId || null,
       dungeonId: event.dungeonId || null,
-      metadata: { ...event },
+      metadata,
       ...projected,
     });
   }
@@ -150,9 +155,11 @@ export class ActivityStreamService {
     let result;
     if (action === 'attack') {
       if (event.defeatedEnemyId) {
-        const defeated = titleize(event.defeatedEnemyId);
+        const defeated = event.defeatedEnemyName || titleize(event.defeatedEnemyId);
         result = `${actorName} attacked ${defeated} for ${event.damage} and defeated it.`;
-        if (event.enemyHp !== null && event.enemyHp !== undefined && !['complete', 'event'].includes(event.phase)) result += ` Next: ${enemyHp}.`;
+        if (event.roomCleared || event.phase === 'between_encounter') {
+          result += ` Room cleared. Continue, use a Health Potion, or leave the Dungeon${event.nextEnemyName ? ` · Next: ${event.nextEnemyName} ${event.nextEnemyHp}/${event.nextEnemyMaxHp} HP` : ''}.`;
+        } else if (event.enemyHp !== null && event.enemyHp !== undefined && !['complete', 'event'].includes(event.phase)) result += ` Next: ${enemyHp}.`;
       } else result = `${actorName} attacked ${enemyName} for ${event.damage} damage${retaliation}.`;
     } else if (action === 'guard') {
       if (protectedName) {
@@ -174,7 +181,7 @@ export class ActivityStreamService {
     } else result = `${actorName} used ${titleize(action)}.`;
 
     const bossPhase = !simple && event.bossBattlePhase ? ` · PHASE ${event.bossBattlePhase}${event.bossPhaseName ? ` ${event.bossPhaseName.toUpperCase()}` : ''}` : '';
-    const state = [actorHp, actorFocus, ['upgrade', 'complete', 'event'].includes(event.phase) ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
+    const state = [actorHp, actorFocus, ['upgrade', 'complete', 'event', 'between_encounter'].includes(event.phase) ? '' : `${enemyHp}${exposed}${bossPhase}`].filter(Boolean).join(' · ');
     return `${result}${state ? ` ${state}.` : ''}${relic}${phaseChange}${intent}${phase}`;
   }
 
@@ -198,6 +205,7 @@ export class ActivityStreamService {
         const cooldown = event.nextAdventureReadyAt ? ` · Next Adventure ${event.nextAdventureReadyAt}` : '';
         const levelUp = event.leveledUp ? ` · LEVEL UP → ${event.level}` : '';
         return {
+          actorPlayerId: event.playerId || null,
           actorName: 'THREADBOUND',
           body: `${actorName || 'Adventurer'} Adventured in ${event.areaName || `Area ${event.areaNumber}`} and ${outcome} ${event.enemyName || enemyName || 'an enemy'}. −${event.damageTaken || 0} HP · ${health}${rewards}${levelUp}${loot}${loss}${story}${cooldown}.`,
         };
@@ -222,14 +230,34 @@ export class ActivityStreamService {
         const copy = event.simpleCombat
           ? `${actorName} entered ${dungeonName}.${enemyState}${playerState} Recommended Attack ${event.recommendedAttack || 9}+. Attack until the room is clear.`
           : `${actorName} entered ${dungeonName}.${enemyState}${playerState} Choose your first action.`;
-        return { actorPlayerId: event.simpleCombat ? null : event.playerId, actorName: event.simpleCombat ? 'THREADBOUND' : actorName, body: copy };
+        return { actorPlayerId: event.playerId || null, actorName: event.simpleCombat ? 'THREADBOUND' : actorName, body: copy };
       }
       case 'CombatActionResolved': {
         const simple = this.#isSimpleRun(event.runId);
-        return { actorPlayerId: simple ? null : event.playerId, actorName: simple ? 'THREADBOUND' : actorName, body: this.#combatResult(event, actorName) };
+        if (simple && event.phase === 'failed') return null;
+        return { actorPlayerId: event.playerId || null, actorName: simple ? 'THREADBOUND' : actorName, body: this.#combatResult(event, actorName) };
       }
+      case 'DungeonEncounterContinued':
+        return {
+          actorPlayerId: event.playerId || null,
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'A Weaver'} continued ${dungeonName || 'the Dungeon'}. ${event.enemyName || enemyName || 'The next enemy'} enters — ${event.enemyHp}/${event.enemyMaxHp} HP. Party HP persists; Attack is ready.`,
+        };
+      case 'DungeonPotionUsed':
+        return {
+          actorPlayerId: event.playerId || null,
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'A Weaver'} used a Health Potion between encounters. +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · ${event.healthPotions ?? 0} left. ${event.enemyName || enemyName || 'The next enemy'} is waiting.`,
+        };
+      case 'DungeonRetreated':
+        return {
+          actorPlayerId: event.playerId || null,
+          actorName: 'THREADBOUND',
+          body: `${actorName || 'The party'} left ${dungeonName || 'the Dungeon'} between encounters. Carried Gold is safe; the clear reward was not secured.`,
+        };
       case 'BossEncounterStarted':
         return { actorName: 'THREADBOUND', body: `${event.enemyName || enemyName || 'The boss'} enters — ${event.enemyHp}/${event.enemyMaxHp} HP.` };
+      case 'DungeonRoomCleared':
       case 'DungeonRecoveryApplied':
         return null;
       case 'CriticalStrikeLanded':
@@ -304,7 +332,8 @@ export class ActivityStreamService {
       }
       case 'DungeonFailed': {
         const names = (event.participantIds || []).map((id) => this.#playerName(id));
-        return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} fell in ${dungeonName}.` };
+        const loss = Number(event.goldLost || 0) > 0 ? ` −${event.goldLost} carried Gold · Bank safe.` : ' Carried Gold loss: 0 · Bank safe.';
+        return { actorName: 'SYSTEM', body: `${names.join(', ') || 'The party'} fell in ${dungeonName}.${loss}` };
       }
       case 'DungeonCompleted': {
         if (event.playerId) return null;
