@@ -174,6 +174,8 @@ function InventorySharedCard({ entry, viewerId, assets }) {
   );
 }
 
+const SHARED_RICH_EVENT_TYPES = new Set(['HuntResolved', 'BlackjackPlayed', 'CoinflipPlayed', 'SlotsPlayed', 'InventoryViewed']);
+
 function SharedEntryCard({ entry, viewerId, assets }) {
   if (entry.eventType === 'HuntResolved') return <HuntSharedCard entry={entry} viewerId={viewerId} />;
   if (['BlackjackPlayed', 'CoinflipPlayed', 'SlotsPlayed'].includes(entry.eventType)) return <GamblingSharedCard entry={entry} viewerId={viewerId} />;
@@ -208,7 +210,9 @@ export function AdventureStream({ entries = [], activeCard = null, onLoadMore = 
         {hasMore && onLoadMore ? <button className="stream-load-more" type="button" onClick={onLoadMore}>Load earlier receipts</button> : null}
         {entries.length ? entries.map((entry) => {
           const kind = entryKind(entry);
-          const sharedCard = kind === 'system' ? <SharedEntryCard entry={entry} viewerId={viewerId} assets={assets} /> : null;
+          const sharedCard = kind === 'system' && SHARED_RICH_EVENT_TYPES.has(entry.eventType)
+            ? <SharedEntryCard entry={entry} viewerId={viewerId} assets={assets} />
+            : null;
           return (
             <article className={`stream-entry stream-${kind}-entry${sharedCard ? ' stream-entry--rich' : ''}`} key={entryKey(entry)} data-entry-id={entry.id || undefined} data-testid={`stream-${kind}-entry`}>
               <span className={`stream-entry__avatar stream-entry__avatar--${kind}`} aria-hidden="true">{String(sharedCard ? actorLabel(entry) : entry.actorName || (kind === 'chat' ? 'W' : '✦')).slice(0, 1)}</span>
