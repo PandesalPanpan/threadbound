@@ -52,3 +52,67 @@ test('React battle simulation replays the authoritative Figma 3v3 event stream',
   await expect(page.getByRole('link', { name: 'Arc Workshop' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 });
+
+test('Hunt Watch Battle replays the committed roster and never falls back to the showcase', async ({ page }) => {
+  await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByTestId('local-login-d').click();
+  await page.context().request.post('/api/party/leave');
+
+  const huntResponse = await page.context().request.post('/api/hunt');
+  expect(huntResponse.ok()).toBe(true);
+  const huntPayload = await huntResponse.json();
+  const hunt = huntPayload.hunt;
+  const player = hunt.battle.combatants.find((combatant) => combatant.team === 'players');
+  const enemy = hunt.battle.combatants.find((combatant) => combatant.team === 'enemies');
+  expect(player?.displayName).toBeTruthy();
+  expect(enemy?.displayName).toBe(hunt.enemy.name);
+  expect(hunt.battleLoadout).toBeDefined();
+
+  await page.goto('/game');
+  await page.reload();
+  const sharedHunt = page.getByTestId('stream-hunt-rich-card').last();
+  await expect(sharedHunt).toBeVisible();
+  await expect(sharedHunt).toContainText(hunt.enemy.name);
+  await expect(sharedHunt).toContainText(`${hunt.battle.turns.length}`);
+  await expect(sharedHunt.getByTestId('stream-watch-hunt-battle')).toBeVisible();
+
+  const simulationRequests = [];
+  const huntRequests = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/battle-simulation')) simulationRequests.push(request.url());
+    if (request.url().endsWith('/api/hunt') && request.method() === 'POST') huntRequests.push(request.url());
+  });
+  await sharedHunt.getByTestId('stream-watch-hunt-battle').click();
+  await expect(page).toHaveURL(/view=battle&source=stream/);
+  const replay = page.getByTestId('battle-pre-battle');
+  await expect(replay).toBeVisible();
+  await expect(replay).toContainText(player.displayName);
+  await expect(replay).toContainText(enemy.displayName);
+  await expect(replay).toContainText('1 Weaver face 1 threat');
+  await expect(replay.locator('[data-visual-asset-id]')).toHaveCount(2);
+  expect(simulationRequests).toEqual([]);
+  expect(huntRequests).toEqual([]);
+
+  await page.getByTestId('battle-start').click();
+  await expect.poll(async () => page.getByTestId('battle-card').getAttribute('data-battle-phase'), { timeout: 15000 }).toBe('result');
+  await expect(page.getByTestId('battle-result-receipt')).toContainText(hunt.enemy.name);
+  await expect(page.getByTestId('battle-details').locator('summary')).toContainText(`${hunt.battle.turns.length} turns`);
+});
+
+test('a missing Hunt replay does not render the unrelated 3v3 showcase', async ({ page }) => {
+  await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByTestId('local-login-d').click();
+  await page.context().request.post('/api/party/leave');
+  await page.goto('/game?view=battle&source=stream');
+
+  const unavailable = page.getByTestId('battle-replay-unavailable');
+  await expect(unavailable).toBeVisible();
+  await expect(unavailable).toContainText('committed battle is not available');
+  await expect(unavailable).toContainText('Adventure Stream');
+  await expect(unavailable).not.toContainText('3 Weaver');
+  await expect(page.getByTestId('battle-card')).toHaveCount(0);
+});

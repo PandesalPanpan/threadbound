@@ -12,7 +12,20 @@ const replaySource = new URLSearchParams(window.location.search).get('source');
 function storedBattleReplay() {
   if (!replaySource) return null;
   try {
-    return JSON.parse(window.sessionStorage.getItem('threadbound:battle-replay') || 'null');
+    const payload = JSON.parse(window.sessionStorage.getItem('threadbound:battle-replay') || 'null');
+    const battle = payload?.battle;
+    const receipt = payload?.receipt;
+    if (
+      payload?.mode !== 'hunt-replay'
+      || payload?.source !== 'hunt'
+      || payload?.authoritative !== true
+      || payload?.replayable !== true
+      || battle?.context?.activity !== 'hunt'
+      || !Array.isArray(battle?.combatants)
+      || !Array.isArray(battle?.turns)
+      || !receipt?.headline
+    ) return null;
+    return payload;
   } catch {
     return null;
   }
@@ -88,7 +101,7 @@ export function BattlePrototypeApp() {
       getDashboard(),
       getVisualAssets(),
       getStream({ limit: 30 }),
-      storedReplay ? Promise.resolve(storedReplay) : api('/api/battle-simulation'),
+      replaySource ? Promise.resolve(storedReplay) : api('/api/battle-simulation'),
     ]);
     if (cancelledRef.current) return;
     setDashboard(nextDashboard);
@@ -98,7 +111,7 @@ export function BattlePrototypeApp() {
     const key = replaySource ? null : storageKey(battlePayload);
     const resumed = key && window.sessionStorage.getItem(key);
     setDisplay({ phase: resumed ? 'result' : 'preBattle', frame: resumed ? resultFrame(battlePayload) : initialFrame(battlePayload) });
-    if (replaySource && !storedReplay) setError('That battle replay is no longer available. Showing the Battle Simulation demo instead.');
+    if (replaySource && !storedReplay) setError('That committed Hunt replay is no longer available. Return to the Adventure Stream and open the original result again.');
   }, []);
 
   useEffect(() => {
@@ -177,6 +190,16 @@ export function BattlePrototypeApp() {
   }, [busy, payload]);
 
   const goToStream = () => { window.location.href = '/game'; };
+  if (replaySource && !payload) {
+    return (
+      <main className="battle-loading battle-loading--unavailable" data-testid="battle-replay-unavailable">
+        <span className="battle-card__eyebrow">HUNT REPLAY UNAVAILABLE</span>
+        <h1>This committed battle is not available here.</h1>
+        <p role="alert" data-testid="battle-error">{error || 'Return to the Adventure Stream and open the original Hunt result again.'}</p>
+        <a className="back-button" href="/game">Return to the Adventure Stream</a>
+      </main>
+    );
+  }
   if (!dashboard || !payload) return <main className="battle-loading"><span className="loading-orbit" />Loading the battle thread…</main>;
 
   return (

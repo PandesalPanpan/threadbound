@@ -1,4 +1,4 @@
-export function RichCard({ kind, kicker = 'THREAD REPLY', title, subtitle, children, actions = null, testId, className = '' }) {
+export function RichCard({ kind, kicker = 'SHARED THREAD', title, subtitle, children, actions = null, testId, className = '' }) {
   return (
     <article className={`shell-rich-card shell-rich-card--${kind || 'default'} ${className}`.trim()} data-rich-card-kind={kind || 'default'} data-testid={testId || 'stream-command-card'}>
       <header className="shell-rich-card__header">

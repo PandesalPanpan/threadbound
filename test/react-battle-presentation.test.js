@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { battleViewModel, phaseFromRun, projectCombatOutcome, resolveVisualAsset, selectSkill } from '../frontend/src/battle/presentation.js';
+import { presentBattleTeams } from '../frontend/src/battle/visuals.js';
 
 const run = {
   id: 'run-1',
@@ -58,4 +59,17 @@ test('skill selection only exposes a server-provided affordable off-cooldown ski
   assert.equal(selectSkill(skills, run).id, 'piercing-stitch');
   assert.equal(selectSkill(skills, { ...run, viewer: { ...run.viewer, focus: 1 } }), null);
   assert.equal(resolveVisualAsset({ id: 'rot-toad' }, 'mob', [{ id: 'mob.rot-toad.v1', kind: 'mob', src: '/toad.webp' }]).id, 'mob.rot-toad.v1');
+});
+
+test('battle presentation preserves arbitrary rosters and falls back cleanly for unknown visuals', () => {
+  const teams = presentBattleTeams([
+    { id: 'player-a', displayName: 'Aster', team: 'players', hp: 12, maxHp: 12, visualAssetId: 'character.rune-bard-figma.v1' },
+    { id: 'enemy-a', displayName: 'Thread Wolf', team: 'enemies', hp: 9, maxHp: 9, visualAssetId: 'mob.not-yet-catalogued.v1' },
+  ], [{ id: 'character.rune-bard-figma.v1', kind: 'character', src: '/rune-bard.webp' }]);
+
+  assert.deepEqual(teams.players.map((unit) => unit.label), ['Aster']);
+  assert.deepEqual(teams.enemies.map((unit) => unit.label), ['Thread Wolf']);
+  assert.equal(teams.players[0].asset.id, 'character.rune-bard-figma.v1');
+  assert.equal(teams.enemies[0].visualAssetId, 'mob.not-yet-catalogued.v1');
+  assert.equal(teams.enemies[0].asset, null);
 });
