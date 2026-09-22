@@ -105,15 +105,15 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
   const moments = useMemo(() => replayMoments(replay), [replay]);
   const frame = usePlayback(replay, createdAt);
   const arenaRef = useRef(null);
-  const unitRefs = useRef(new Map());
+  const artRefs = useRef(new Map());
   const [trajectory, setTrajectory] = useState(null);
   const completionNotifiedRef = useRef(false);
   const { players, enemy } = normalizeCombatants(replay, metadata);
 
-  const setUnitRef = useCallback((id, node) => {
+  const setArtRef = useCallback((id, node) => {
     const key = String(id);
-    if (node) unitRefs.current.set(key, node);
-    else unitRefs.current.delete(key);
+    if (node) artRefs.current.set(key, node);
+    else artRefs.current.delete(key);
   }, []);
 
   const measureTrajectory = useCallback(() => {
@@ -121,19 +121,40 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
       setTrajectory(null);
       return;
     }
-    const source = unitRefs.current.get(String(frame.currentActorId));
-    const target = unitRefs.current.get(String(frame.currentTargetId));
-    if (!source || !target) return;
+    const source = artRefs.current.get(String(frame.currentActorId));
+    const target = artRefs.current.get(String(frame.currentTargetId));
+    if (!source || !target) {
+      setTrajectory(null);
+      return;
+    }
     const arenaBox = arenaRef.current.getBoundingClientRect();
     const sourceBox = source.getBoundingClientRect();
     const targetBox = target.getBoundingClientRect();
+    const x1 = sourceBox.left + sourceBox.width / 2 - arenaBox.left;
+    const y1 = sourceBox.top + sourceBox.height / 2 - arenaBox.top;
+    const x2 = targetBox.left + targetBox.width / 2 - arenaBox.left;
+    const y2 = targetBox.top + targetBox.height / 2 - arenaBox.top;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distance = Math.hypot(dx, dy) || 1;
+    const lungeDistance = Math.min(20, Math.max(12, distance * 0.12));
+    const recoilDistance = Math.min(8, Math.max(4, lungeDistance * 0.35));
     setTrajectory({
+      actorId: String(frame.currentActorId),
+      targetId: String(frame.currentTargetId),
       width: arenaBox.width,
       height: arenaBox.height,
-      x1: sourceBox.left + sourceBox.width / 2 - arenaBox.left,
-      y1: sourceBox.top + sourceBox.height / 2 - arenaBox.top,
-      x2: targetBox.left + targetBox.width / 2 - arenaBox.left,
-      y2: targetBox.top + targetBox.height / 2 - arenaBox.top,
+      x1,
+      y1,
+      x2,
+      y2,
+      lungeX: (dx / distance) * lungeDistance,
+      lungeY: (dy / distance) * lungeDistance,
+      recoilX: (dx / distance) * -recoilDistance,
+      recoilY: (dy / distance) * -recoilDistance,
+      recoilReturnX: (dx / distance) * recoilDistance * 0.4,
+      recoilReturnY: (dy / distance) * recoilDistance * 0.4,
+      damageY: targetBox.top + targetBox.height * 0.24 - arenaBox.top,
     });
   }, [frame.complete, frame.currentActorId, frame.currentTargetId, frame.phase, frame.momentIndex, players.length]);
 
@@ -167,7 +188,8 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
   const currentSummary = moment?.summary || (frame.complete ? replayTitle : 'The battle is resolving…');
   const allUnits = [...players, enemy];
   const impactVisible = frame.phase === 'impact';
-  const damagePosition = impactVisible && trajectory ? { left: trajectory.x2, top: trajectory.y2 } : undefined;
+  const trajectoryVisible = !frame.complete && (frame.phase === 'trajectory' || impactVisible);
+  const damagePosition = impactVisible && trajectory ? { left: trajectory.x2, top: trajectory.damageY } : undefined;
 
   const renderUnit = (unit, role, labelOverride = null) => {
     const id = entityId(unit, role);
@@ -177,10 +199,23 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
     const hp = currentHp(unit, replay, moments, frame);
     const active = !frame.complete && String(moment?.actorId) === id;
     const targeted = !frame.complete && String(moment?.targetId) === id;
-    const unitClass = [`shared-battle-unit`, isEnemy ? 'shared-battle-unit--enemy' : 'shared-battle-unit--player', active ? 'is-active' : '', targeted ? 'is-targeted' : ''].filter(Boolean).join(' ');
-    return <div className={unitClass} key={id} ref={(node) => setUnitRef(id, node)} data-combatant-id={id} data-testid={isEnemy ? 'shared-battle-enemy' : 'shared-battle-player'}>
-      <Asset entity={unit} assets={assets} kinds={isEnemy ? (unit.isBoss ? ['boss', 'mob'] : ['mob', 'boss']) : ['character']} alt={label} />
-      <div className="shared-battle-unit__copy"><strong>{label}</strong><div className={`shared-battle-hp ${isEnemy ? 'shared-battle-hp--enemy' : ''}`}><span style={{ width: `${percentage(hp, maxHp)}%` }} /><b>{hp}/{maxHp} HP</b></div></div>
+    const unitClass = [`shared-battle-unit`, isEnemy ? 'shared-battle-unit--enemy' : 'shared-battle-unit--player'].join(' ');
+    const stageClass = ['shared-battle-character-stage', active ? 'is-active' : '', targeted ? 'is-targeted' : ''].filter(Boolean).join(' ');
+    const motionStyle = {
+      '--attack-x': `${active && trajectory?.actorId === id ? trajectory.lungeX : 0}px`,
+      '--attack-y': `${active && trajectory?.actorId === id ? trajectory.lungeY : 0}px`,
+      '--recoil-x': `${targeted && trajectory?.targetId === id ? trajectory.recoilX : 0}px`,
+      '--recoil-y': `${targeted && trajectory?.targetId === id ? trajectory.recoilY : 0}px`,
+      '--recoil-return-x': `${targeted && trajectory?.targetId === id ? trajectory.recoilReturnX : 0}px`,
+      '--recoil-return-y': `${targeted && trajectory?.targetId === id ? trajectory.recoilReturnY : 0}px`,
+    };
+    return <div className={unitClass} key={id} data-combatant-id={id} data-acting={active ? 'true' : 'false'} data-targeted={targeted ? 'true' : 'false'} data-testid={isEnemy ? 'shared-battle-enemy' : 'shared-battle-player'}>
+      <div className={stageClass} ref={(node) => setArtRef(id, node)} data-combatant-id={id} data-testid={`shared-battle-character-${id}`}>
+        <div className="shared-battle-character-motion" style={motionStyle} data-combatant-id={id} data-acting={active ? 'true' : 'false'} data-targeted={targeted ? 'true' : 'false'} data-testid={`shared-battle-character-motion-${id}`}>
+          <Asset entity={unit} assets={assets} kinds={isEnemy ? (unit.isBoss ? ['boss', 'mob'] : ['mob', 'boss']) : ['character']} alt={label} />
+        </div>
+      </div>
+      <div className="shared-battle-unit__copy" data-combatant-id={id} data-testid={`shared-battle-unit-copy-${id}`}><strong>{label}</strong><div className={`shared-battle-hp ${isEnemy ? 'shared-battle-hp--enemy' : ''}`}><span style={{ width: `${percentage(hp, maxHp)}%` }} /><b>{hp}/{maxHp} HP</b></div></div>
     </div>;
   };
 
@@ -191,10 +226,10 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
         <span className="shared-battle-sync">{frame.complete ? 'SYNCED' : `PLAYING · ${frame.phase.toUpperCase()}`}</span>
       </div>
       <div className="shared-battle-arena" ref={arenaRef}>
-        <svg className="shared-battle-trajectory" viewBox={`0 0 ${trajectory?.width || 1} ${trajectory?.height || 1}`} aria-hidden="true" focusable="false">
-          {trajectory && !frame.complete ? <>
-            <line className="trajectory__beam" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
-            <line className="trajectory__core" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
+        <svg className="shared-battle-trajectory" data-testid="shared-battle-trajectory" viewBox={`0 0 ${trajectory?.width || 1} ${trajectory?.height || 1}`} aria-hidden="true" focusable="false">
+          {trajectory && trajectoryVisible ? <>
+            <line className="trajectory__beam" pathLength="1" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
+            <line className="trajectory__core" pathLength="1" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
             {impactVisible ? <><circle className="trajectory__burst" cx={trajectory.x2} cy={trajectory.y2} r="12" /><circle className="trajectory__ring" cx={trajectory.x2} cy={trajectory.y2} r="18" /></> : null}
           </> : null}
         </svg>
