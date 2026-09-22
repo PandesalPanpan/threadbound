@@ -26,7 +26,7 @@ import { TownService } from './application/TownService.js';
 import { QuestService } from './application/QuestService.js';
 import { RunCommandIdempotencyService } from './application/RunCommandIdempotencyService.js';
 import { QUEST_CATALOG } from './content/QuestCatalog.js';
-import { VISUAL_ASSETS, VISUAL_ASSET_CATALOG_VERSION } from './content/VisualAssetCatalog.js';
+import { isModernCharacterAsset, VISUAL_ASSETS, VISUAL_ASSET_CATALOG_VERSION } from './content/VisualAssetCatalog.js';
 import { decorateRunUpgradeOffers } from './domain/RunUpgradeOfferPolicy.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
@@ -374,7 +374,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.get('/api/arc-workshop/manifests', requireWorkshop, (_request, response) => response.json({ manifests: arcManifestService.list() }));
   app.get('/api/arc-workshop/visual-assets', requireWorkshop, (_request, response) => response.json({
     version: VISUAL_ASSET_CATALOG_VERSION,
-    assets: VISUAL_ASSETS.map(({ id, kind, label, description, family, role, tags, sourceMaster }) => ({
+    assets: VISUAL_ASSETS.filter((asset) => !['character', 'mob', 'boss'].includes(asset.kind) || isModernCharacterAsset(asset, asset.kind)).map(({ id, kind, label, description, family, role, tags, sourceMaster }) => ({
       id,
       kind,
       label,

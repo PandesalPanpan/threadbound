@@ -63,6 +63,10 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await expect(page.getByTestId('stream-hunt-rich-card').last().getByTestId('shared-battle-surface')).toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 960 });
+  await composer.fill('help');
+  await composer.press('Enter');
+  await expect(page.getByTestId('stream-command-card')).toBeVisible();
+  await expect(composer).toBeFocused();
   await expect(page.getByTestId('quick-dungeon')).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Live Context' })).toBeVisible();
   await expect(page.getByTestId('adventure-stream-log')).toHaveCSS('overflow-y', 'auto');

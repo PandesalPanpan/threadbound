@@ -4,6 +4,7 @@ import { access, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VISUAL_ASSETS, visualAsset } from '../public/visual-asset-catalog.js';
+import { isModernCharacterAsset, modernCharacterAssets, resolveThreadboundCharacterVisual } from '../public/character-asset-policy.js';
 import { CANONICAL_VISUAL_ASSET_IDS, compactVisualAssetCatalog } from '../src/content/VisualAssetCatalog.js';
 import { FIGMA_CHARACTER_LIBRARY } from '../src/content/FigmaCharacterLibrary.js';
 
@@ -51,6 +52,16 @@ test('catalog lookup enforces kind and canonical mappings resolve', () => {
   for (const [entityId, assetId] of Object.entries(CANONICAL_VISUAL_ASSET_IDS)) {
     assert.ok(visualAsset(assetId), `${entityId} mapping must resolve`);
   }
+});
+
+test('current living-character policy excludes first-generation Figma art and resolves legacy identities into the library', () => {
+  assert.equal(modernCharacterAssets('character').length, 42);
+  assert.equal(modernCharacterAssets('mob').length, 100);
+  assert.equal(modernCharacterAssets('boss').length, 10);
+  assert.equal(isModernCharacterAsset(visualAsset('character.rune-bard-figma.v1'), 'character'), false);
+  assert.equal(isModernCharacterAsset(visualAsset('mob.rot-toad-figma.v1'), 'mob'), false);
+  assert.equal(resolveThreadboundCharacterVisual({ id: 'thread-wolf', visualAssetId: 'mob.gray-wolf.v1' }, 'mob')?.id, 'mob.ridge-wolf.v1');
+  assert.equal(resolveThreadboundCharacterVisual({ id: 'first-needle', visualAssetId: 'boss.void-knight.v1' }, 'boss')?.id, 'boss.black-banner-captain.v1');
 });
 
 test('compact authoring catalog omits runtime and provenance details', () => {

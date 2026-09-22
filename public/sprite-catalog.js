@@ -1,19 +1,5 @@
 import { VISUAL_ASSETS, visualAsset } from './visual-asset-catalog.js';
-
-const WEAVER_SPRITES = Object.freeze([
-  '/sprites/kenney/weaver-arcane.png',
-  '/sprites/kenney/weaver-fighter.png',
-  '/sprites/kenney/weaver-delver.png',
-  '/sprites/kenney/weaver-rover.png',
-  '/sprites/kenney/weaver-mystic.png',
-  '/sprites/kenney/weaver-warden.png',
-]);
-
-const ENEMY_SPRITES = Object.freeze({
-  'frayed-wisp': '/sprites/kenney/frayed-wisp.png',
-  'hollow-stalker': '/sprites/kenney/hollow-stalker.png',
-  'silkbound-guard': '/sprites/kenney/silkbound-guard.png',
-});
+import { isCharacterKind, resolveThreadboundCharacterVisual } from './character-asset-policy.js';
 
 // Generated image sheets intentionally stay as single source assets. Presentation
 // code crops stable frames with CSS background positioning instead of duplicating
@@ -53,42 +39,13 @@ export const GENERATED_SPRITE_ATLASES = Object.freeze({
   }),
 });
 
-// Named mappings keep the current authored enemies visually stable. Unknown/generated
-// ArcManifest enemies still receive a deterministic frame through the hash fallback.
-const GENERATED_ENEMY_FRAMES = Object.freeze({
-  'frayed-mite': 0,
-  'hollow-crow': 1,
-  'thread-wolf': 2,
-  'frayed-wisp': 3,
-  'hollow-stalker': 4,
-  'silkbound-guard': 5,
-  ashling: 6,
-  'first-needle': 12,
-  'ember-loomkeeper': 13,
-});
-
-const CANONICAL_VISUAL_ASSET_IDS = Object.freeze({
-  'frayed-mite': 'mob.small-spider.v1',
-  'hollow-crow': 'mob.lantern-wraith.v1',
-  'thread-wolf': 'mob.gray-wolf.v1',
-  'frayed-wisp': 'mob.void-wisp.v1',
-  'hollow-stalker': 'mob.shadow-beast.v1',
-  'silkbound-guard': 'mob.silver-knight.v1',
-  'first-needle': 'boss.void-knight.v1',
-  'glass-skulker': 'mob.ice-wolf.v1',
-  'stitch-leech': 'mob.giant-mantis.v1',
-  'mirror-warden': 'mob.black-knight.v1',
-  'shard-choir': 'mob.many-eyed-horror.v1',
-  'hollow-mirror': 'boss.void-singularity.v1',
-});
-
 export const BATTLE_FIGMA_VISUAL_ASSET_IDS = Object.freeze({
-  'bramble-druid': 'character.bramble-druid-figma.v1',
-  'iron-vanguard': 'character.iron-vanguard-figma.v1',
-  'rune-bard': 'character.rune-bard-figma.v1',
-  'cinder-imp': 'mob.cinder-imp-figma.v1',
-  'rot-toad': 'mob.rot-toad-figma.v1',
-  'gloom-hound': 'mob.gloom-hound-figma.v1',
+  'bramble-druid': 'character.road-sellsword.v1',
+  'iron-vanguard': 'character.mine-breaker.v1',
+  'rune-bard': 'character.wayfarer-healer.v1',
+  'cinder-imp': 'mob.mold-mite.v1',
+  'rot-toad': 'mob.frost-blob.v1',
+  'gloom-hound': 'mob.ridge-wolf.v1',
 });
 
 let viewerPlayerId = null;
@@ -160,11 +117,9 @@ function runtimeAssetFrame(asset) {
 }
 
 function resolvedAsset(entity, kind, fallbackSeed) {
+  if (isCharacterKind(kind)) return resolveThreadboundCharacterVisual({ ...entity, id: entity?.id || fallbackSeed }, kind);
   const explicit = visualAsset(entity?.visualAssetId, kind);
   if (explicit) return explicit;
-  const canonicalId = CANONICAL_VISUAL_ASSET_IDS[String(entity?.id || entity?.enemyId || entity?.definitionId || '')];
-  const canonical = visualAsset(canonicalId, kind);
-  if (canonical) return canonical;
   if (kind === 'item') {
     const name = String(entity?.name || '').toLowerCase();
     const inferredId = name.includes('threadblade') || name.includes('sword') ? 'item.steel-sword.v1'
@@ -175,34 +130,28 @@ function resolvedAsset(entity, kind, fallbackSeed) {
     const inferred = visualAsset(inferredId, kind);
     if (inferred) return inferred;
   }
-  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind && asset.provenance?.sourceCollection !== 'figma-character-library-v1');
+  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind);
   return candidates[stableIndex(fallbackSeed, candidates.length)] || null;
 }
 
 export function weaverSprite(seed) {
-  const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === 'character' && asset.provenance?.sourceCollection !== 'figma-character-library-v1');
-  return candidates[stableIndex(effectiveWeaverSeed(seed), candidates.length)]?.src
-    || WEAVER_SPRITES[stableIndex(effectiveWeaverSeed(seed), WEAVER_SPRITES.length)];
+  return resolveThreadboundCharacterVisual({ id: effectiveWeaverSeed(seed) }, 'character')?.src || null;
 }
 
 export function enemySprite(enemy = {}) {
   const kind = enemy.isBoss ? 'boss' : 'mob';
-  return resolvedAsset(enemy, kind, enemy.id || enemy.enemyId || enemy.name || 'unknown-enemy')?.src
-    || (enemy.isBoss ? '/sprites/kenney/boss.png' : ENEMY_SPRITES[String(enemy.id || '')] || '/sprites/kenney/frayed-wisp.png');
+  return resolvedAsset(enemy, kind, enemy.id || enemy.enemyId || enemy.name || 'unknown-enemy')?.src || null;
 }
 
 export function weaverSpriteFrame(seed, { variant = 'male' } = {}) {
-  const prefix = variant === 'female' ? 'character.female-' : 'character.male-';
-  const candidates = VISUAL_ASSETS.filter((asset) => asset.id.startsWith(prefix));
-  const asset = candidates[stableIndex(effectiveWeaverSeed(seed), candidates.length)];
+  const asset = resolveThreadboundCharacterVisual({ id: effectiveWeaverSeed(seed) }, 'character');
   if (asset) return runtimeAssetFrame(asset);
-  const atlas = variant === 'female' ? GENERATED_SPRITE_ATLASES.femaleWeavers : GENERATED_SPRITE_ATLASES.maleWeavers;
-  return atlasFrame(atlas, stableIndex(effectiveWeaverSeed(seed), atlas.columns * atlas.rows));
+  return null;
 }
 
 export function characterSpriteFrame(entity = {}, { variant = 'male', seed = null } = {}) {
   const normalized = typeof entity === 'string' ? { id: entity } : entity;
-  const explicit = visualAsset(normalized?.visualAssetId, 'character');
+  const explicit = resolveThreadboundCharacterVisual(normalized, 'character');
   if (explicit) return runtimeAssetFrame(explicit);
   return weaverSpriteFrame(seed || normalized?.id || normalized?.npcId || normalized?.name || 'threadbound-character', { variant });
 }
@@ -210,15 +159,7 @@ export function characterSpriteFrame(entity = {}, { variant = 'male', seed = nul
 export function enemySpriteFrame(enemy = {}) {
   const runtime = resolvedAsset(enemy, enemy.isBoss ? 'boss' : 'mob', enemy.id || enemy.enemyId || enemy.name || 'unknown-enemy');
   if (runtime) return runtimeAssetFrame(runtime);
-  const id = String(enemy.id || enemy.enemyId || enemy.defeatedEnemyId || 'unknown-enemy');
-  const mapped = GENERATED_ENEMY_FRAMES[id];
-  if (Number.isInteger(mapped)) return atlasFrame(GENERATED_SPRITE_ATLASES.enemies, mapped);
-  // Reserve the final four frames for boss fallbacks so bosses remain visually
-  // distinct from ordinary generated enemies even when an Arc has no curated map yet.
-  const index = enemy.isBoss
-    ? 12 + stableIndex(id, 4)
-    : stableIndex(id, 12);
-  return atlasFrame(GENERATED_SPRITE_ATLASES.enemies, index);
+  return null;
 }
 
 export function itemSpriteFrame(item = {}) {
@@ -281,7 +222,9 @@ if (globalThis.document) {
 }
 
 export function battleSpriteFrame(unit = {}) {
-  const id = String(unit.visualAssetId || BATTLE_FIGMA_VISUAL_ASSET_IDS[String(unit.id || unit.unitId || '').trim()] || '');
-  const asset = visualAsset(id);
+  const key = String(unit.id || unit.unitId || '').trim();
+  const mappedId = BATTLE_FIGMA_VISUAL_ASSET_IDS[key];
+  const kind = unit.team === 'players' ? 'character' : unit.isBoss ? 'boss' : 'mob';
+  const asset = resolveThreadboundCharacterVisual({ ...unit, visualAssetId: unit.visualAssetId || mappedId }, kind);
   return asset ? runtimeAssetFrame(asset) : null;
 }

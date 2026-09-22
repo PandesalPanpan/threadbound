@@ -1,8 +1,10 @@
+import { isModernCharacterAsset } from '../../../public/character-asset-policy.js';
+
 const CANONICAL_ENEMY_ASSETS = Object.freeze({
-  'frayed-wisp': 'mob.void-wisp.v1',
-  'hollow-stalker': 'mob.shadow-beast.v1',
-  'silkbound-guard': 'mob.silver-knight.v1',
-  'first-needle': 'boss.void-knight.v1',
+  'frayed-wisp': 'mob.grave-wisp.v1',
+  'hollow-stalker': 'mob.shade-drifter.v1',
+  'silkbound-guard': 'mob.town-watcher.v1',
+  'first-needle': 'boss.black-banner-captain.v1',
 });
 
 const PHASE_LABELS = Object.freeze({
@@ -41,9 +43,12 @@ export function phaseFromRun(run) {
 }
 
 export function resolveVisualAsset(entity, kind, assets = []) {
-  const candidates = assets.filter((asset) => asset.kind === kind);
+  const candidates = assets.filter((asset) => asset.kind === kind && (!['character', 'mob', 'boss'].includes(kind) || isModernCharacterAsset(asset, kind)));
   const explicitId = entity?.visualAssetId || (kind === 'mob' || kind === 'boss' ? CANONICAL_ENEMY_ASSETS[entity?.id] : null);
-  if (explicitId) return assets.find((asset) => asset.id === explicitId) || null;
+  if (explicitId) {
+    const explicit = candidates.find((asset) => asset.id === explicitId);
+    if (explicit) return explicit;
+  }
   return candidates[stableIndex(entity?.id || entity?.playerId || entity?.name, candidates.length)] || null;
 }
 

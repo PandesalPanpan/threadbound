@@ -25,9 +25,9 @@ test('codex documents Hunt enemies plus the actual hardened dungeon values', () 
 
   assert.equal(enemies.entries.length, HUNT_ENEMIES.length + hardened.encounters.length);
   assert.ok(enemies.entries.some((entry) => entry.id === 'thread-wolf' && entry.tags.includes('hunt')));
-  assert.equal(enemies.entries.find((entry) => entry.id === 'thread-wolf').visualAssetId, 'mob.rot-toad-figma.v1');
+  assert.equal(enemies.entries.find((entry) => entry.id === 'thread-wolf').visualAssetId, 'mob.ridge-wolf.v1');
   assert.equal(bosses.entries.length, 1);
-  assert.equal(bosses.entries[0].visualAssetId, 'boss.void-knight.v1');
+  assert.equal(bosses.entries[0].visualAssetId, 'boss.black-banner-captain.v1');
   assert.equal(bosses.entries[0].mechanics.hp, hardened.boss.hp);
   assert.equal(bosses.entries[0].mechanics.retaliation, hardened.boss.retaliation);
   assert.equal(bosses.entries[0].mechanics.recommendedAttack, 9);

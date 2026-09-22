@@ -42,7 +42,7 @@ function stableIndex(value, length) {
 }
 
 function playerVisualAssetId(playerId) {
-  return SIMPLE_PLAYER_VISUALS[stableIndex(playerId, SIMPLE_PLAYER_VISUALS.length)] || null;
+  return SIMPLE_PLAYER_VISUALS[stableIndex(playerId, SIMPLE_PLAYER_VISUALS.length)] || resolveVisualAssetId({ id: playerId }, 'character');
 }
 
 function participantProjection(repository, participant) {
@@ -114,7 +114,15 @@ function simpleBattleBeat({ repository, before, outcome, actorId }) {
     targetMaxHp: Number(beforeEnemy?.maxHp || enemy.maxHp || 1),
     damage,
     retaliation,
+    retaliationActorId: retaliation ? enemy.id : null,
+    retaliationActorName: retaliation ? enemy.name : null,
+    retaliationActorVisualAssetId: retaliation ? resolveVisualAssetId(enemy, enemy.isBoss ? 'boss' : 'mob') : null,
     retaliationTargetId: playerDamage?.playerId || null,
+    retaliationTargetName: playerDamage ? participantProjection(repository, before.participants.find((participant) => participant.playerId === playerDamage.playerId) || {}).displayName : null,
+    retaliationTargetVisualAssetId: playerDamage ? playerVisualAssetId(playerDamage.playerId) : null,
+    retaliationActorHpBefore: retaliation ? Number(afterEnemy?.hp ?? beforeEnemy?.hp ?? 0) : null,
+    retaliationActorHpAfter: retaliation ? Number(afterEnemy?.hp ?? beforeEnemy?.hp ?? 0) : null,
+    retaliationTargetHpBefore: playerDamage ? Number(before.participants.find((participant) => participant.playerId === playerDamage.playerId)?.hp || 0) : null,
     retaliationTargetHpAfter: playerDamage ? Number(outcome.state.participants.find((participant) => participant.playerId === playerDamage.playerId)?.hp || 0) : null,
     actorHpBefore: Number(beforeActor?.hp || actor.hp),
     actorHpAfter: Number(afterActor?.hp ?? actor.hp),
@@ -217,6 +225,7 @@ export class GameService {
       character: {
         id: character.id,
         displayName: character.displayName,
+        visualAssetId: playerVisualAssetId(playerId),
         baseAttack: character.baseAttack,
         stats,
         attack: stats.attack,
@@ -759,11 +768,16 @@ export class GameService {
     const participants = runState.participants.map((participant) => ({
       ...participant,
       displayName: this.repository.getPlayer(participant.playerId)?.displayName || 'Unknown Weaver',
+      visualAssetId: playerVisualAssetId(participant.playerId),
     }));
     return {
       ...runState,
       participants,
       viewer: participants.find((participant) => participant.playerId === viewerPlayerId) || null,
+      enemy: runState.enemy ? {
+        ...runState.enemy,
+        visualAssetId: resolveVisualAssetId(runState.enemy, runState.enemy.isBoss ? 'boss' : 'mob'),
+      } : null,
       risk: projectDungeonRisk({ carriedGold: this.bankRepository.getBalance(viewerPlayerId).carriedGold }),
       isLeader: runState.ownerType === 'player'
         ? runState.startedByPlayerId === viewerPlayerId

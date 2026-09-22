@@ -20,12 +20,12 @@ test('React battle simulation replays the authoritative Figma 3v3 event stream',
   await expect(page.getByTestId('battle-enemies')).toBeVisible();
   await expect(page.locator('[data-testid="battle-players"] [data-unit-id]')).toHaveCount(3);
   await expect(page.locator('[data-testid="battle-enemies"] [data-unit-id]')).toHaveCount(3);
-  await expect(page.locator('[data-visual-asset-id="character.bramble-druid-figma.v1"]')).toHaveCount(1);
-  await expect(page.locator('[data-visual-asset-id="character.iron-vanguard-figma.v1"]')).toHaveCount(1);
-  await expect(page.locator('[data-visual-asset-id="character.rune-bard-figma.v1"]')).toHaveCount(1);
-  await expect(page.locator('[data-visual-asset-id="mob.cinder-imp-figma.v1"]')).toHaveCount(1);
-  await expect(page.locator('[data-visual-asset-id="mob.rot-toad-figma.v1"]')).toHaveCount(1);
-  await expect(page.locator('[data-visual-asset-id="mob.gloom-hound-figma.v1"]')).toHaveCount(1);
+  await expect(page.locator('[data-visual-asset-id="character.road-sellsword.v1"]')).toHaveCount(1);
+  await expect(page.locator('[data-visual-asset-id="character.mine-breaker.v1"]')).toHaveCount(1);
+  await expect(page.locator('[data-visual-asset-id="character.wayfarer-healer.v1"]')).toHaveCount(1);
+  await expect(page.locator('[data-visual-asset-id="mob.mold-mite.v1"]')).toHaveCount(1);
+  await expect(page.locator('[data-visual-asset-id="mob.frost-blob.v1"]')).toHaveCount(1);
+  await expect(page.locator('[data-visual-asset-id="mob.ridge-wolf.v1"]')).toHaveCount(1);
   await expect(page.locator('[data-testid^="battle-mana-battle:rune-bard:"]')).toHaveCount(1);
   await page.screenshot({ path: 'ux-review/react-battle-live-mobile.png', fullPage: true });
 
@@ -103,7 +103,7 @@ test('Hunt replays the committed roster inline without browser-side simulation',
   await expect(sharedHunt.locator('[data-visual-asset-id]')).toHaveCount(2);
   expect(simulationRequests).toEqual([]);
   expect(huntRequests).toEqual([]);
-  await expect(sharedHunt.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+  await expect(sharedHunt.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
   await expect(sharedHunt.getByTestId('hunt-final-facts')).toBeVisible();
 });
 

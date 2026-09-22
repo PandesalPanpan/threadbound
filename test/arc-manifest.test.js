@@ -190,9 +190,9 @@ test('publishing projects lore/history and exposes runtime dungeon plus manifest
   const runtime = service.resolveDungeon('test-cinder-vault');
   assert.equal(runtime.arcId, 'ashen-thread-test');
   assert.equal(runtime.encounters[0].hp, 8);
-  assert.equal(runtime.encounters[0].visualAssetId, 'mob.fire-elemental.v1');
+  assert.equal(runtime.encounters[0].visualAssetId, 'mob.root-ant.v1');
   assert.equal(runtime.boss.hp, 18);
-  assert.equal(runtime.boss.visualAssetId, 'boss.lava-titan.v1');
+  assert.equal(runtime.boss.visualAssetId, 'boss.veil-executioner.v1');
 
   const run = DungeonRun.start({
     id: 'manifest-visual-run',
@@ -203,7 +203,7 @@ test('publishing projects lore/history and exposes runtime dungeon plus manifest
     dungeonId: runtime.id,
     dungeonDefinition: runtime,
   });
-  assert.equal(run.toJSON().enemy.visualAssetId, 'mob.fire-elemental.v1');
+  assert.equal(run.toJSON().enemy.visualAssetId, 'mob.root-ant.v1');
 
   const reward = service.generateReward('test-cinder-vault');
   assert.equal(reward.definitionId, 'test-ember-needle');

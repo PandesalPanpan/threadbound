@@ -74,13 +74,14 @@ export function GameShellApp() {
           : parsed.name === 'shop'
             ? await postShopView()
             : await postStreamMessage(text);
+      applyPayload(payload);
       mergeEntry(payload?.entry);
       return payload?.entry || null;
     } catch (caught) {
       setError(caught.message);
       return null;
     }
-  }, [mergeEntry]);
+  }, [applyPayload, mergeEntry]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +121,11 @@ export function GameShellApp() {
       const payload = await api(path, options);
       applyPayload(payload);
       await refresh({ includeStream: true });
+      if (path.startsWith('/api/shop/purchases/')) {
+        const shopSnapshot = await postShopView();
+        applyPayload(shopSnapshot);
+        mergeEntry(shopSnapshot?.entry);
+      }
       return payload;
     } catch (caught) {
       setError(caught.message);
@@ -129,7 +135,7 @@ export function GameShellApp() {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [applyPayload, refresh]);
+  }, [applyPayload, mergeEntry, refresh]);
 
   const openResource = useCallback(async (kind, command, loader, setter) => {
     if (busyRef.current) return;
@@ -226,7 +232,8 @@ export function GameShellApp() {
         break;
       }
       case 'shop':
-        await openResource('shop', parsed.raw, getShop, setShop);
+        await request(parsed.raw, '/api/stream/shop-view', { method: 'POST' });
+        setPanel(null);
         break;
       case 'bank':
         await openResource('bank', parsed.raw, getShop, setShop);

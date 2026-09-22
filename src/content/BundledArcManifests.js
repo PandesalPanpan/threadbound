@@ -25,13 +25,13 @@ export const GLASSWAKE_ARC_MANIFEST = Object.freeze({
     }),
   ]),
   enemies: Object.freeze([
-    Object.freeze({ id: 'glass-skulker', name: 'Glass Skulker', baseHp: 11, retaliation: 2, abilities: Object.freeze(['ally_hunter']), intentCadence: 1, visualAssetId: 'mob.ice-wolf.v1' }),
-    Object.freeze({ id: 'stitch-leech', name: 'Stitch Leech', baseHp: 13, retaliation: 2, abilities: Object.freeze(['self_mend']), intentCadence: 2, visualAssetId: 'mob.giant-mantis.v1' }),
-    Object.freeze({ id: 'mirror-warden', name: 'Mirror Warden', baseHp: 14, retaliation: 2, abilities: Object.freeze(['ally_hunter', 'heavy_pressure']), intentCadence: 1, visualAssetId: 'mob.black-knight.v1' }),
-    Object.freeze({ id: 'shard-choir', name: 'Shard Choir', baseHp: 12, retaliation: 2, abilities: Object.freeze(['ally_hunter', 'self_mend']), intentCadence: 1, visualAssetId: 'mob.many-eyed-horror.v1' }),
+    Object.freeze({ id: 'glass-skulker', name: 'Glass Skulker', baseHp: 11, retaliation: 2, abilities: Object.freeze(['ally_hunter']), intentCadence: 1, visualAssetId: 'mob.frost-blob.v1' }),
+    Object.freeze({ id: 'stitch-leech', name: 'Stitch Leech', baseHp: 13, retaliation: 2, abilities: Object.freeze(['self_mend']), intentCadence: 2, visualAssetId: 'mob.bloom-leech.v1' }),
+    Object.freeze({ id: 'mirror-warden', name: 'Mirror Warden', baseHp: 14, retaliation: 2, abilities: Object.freeze(['ally_hunter', 'heavy_pressure']), intentCadence: 1, visualAssetId: 'mob.iron-husk.v1' }),
+    Object.freeze({ id: 'shard-choir', name: 'Shard Choir', baseHp: 12, retaliation: 2, abilities: Object.freeze(['ally_hunter', 'self_mend']), intentCadence: 1, visualAssetId: 'mob.watcher-prime.v1' }),
   ]),
   bosses: Object.freeze([
-    Object.freeze({ id: 'hollow-mirror', name: 'The Hollow Mirror', baseHp: 30, retaliation: 4, abilities: Object.freeze(['ally_hunter', 'heavy_pressure', 'self_mend']), intentCadence: 1, visualAssetId: 'boss.void-singularity.v1' }),
+    Object.freeze({ id: 'hollow-mirror', name: 'The Hollow Mirror', baseHp: 30, retaliation: 4, abilities: Object.freeze(['ally_hunter', 'heavy_pressure', 'self_mend']), intentCadence: 1, visualAssetId: 'boss.watcher-prime.v1' }),
   ]),
   runEvents: Object.freeze([
     Object.freeze({

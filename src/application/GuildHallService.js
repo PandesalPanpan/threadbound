@@ -1,4 +1,5 @@
 import { guildHallPopulationForTown } from '../content/FoundationGuildHallCatalog.js';
+import { resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
 import { Character } from '../domain/Character.js';
 import { rankLeaderboardEntries } from '../domain/LeaderboardRankingPolicy.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
@@ -60,6 +61,7 @@ function projectEntry(entry, state, duelRecord = null, recentHistory = Object.fr
     strongRival: entry.strongRival,
     note: entry.note,
     spriteVariant: entry.spriteVariant,
+    visualAssetId: resolveVisualAssetId(adventurer, 'character'),
     history: Object.freeze({
       huntCount: adventurer.huntCount,
       adventureCount: adventurer.adventureCount,

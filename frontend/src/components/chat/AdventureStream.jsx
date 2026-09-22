@@ -4,6 +4,7 @@ import { entryBody, entryKey, entryKind, formatEntryTime, resolveShellAsset } fr
 import { PanelButton, RichCard } from '../common/RichCard.jsx';
 import { BlackjackSurface } from '../games/BlackjackSurface.jsx';
 import { SharedBattleSurface } from './SharedBattleSurface.jsx';
+import { ShopSurface } from './ShopSurface.jsx';
 
 function actorLabel(entry) {
   const metadata = entry?.metadata || {};
@@ -166,11 +167,10 @@ function StatusSharedCard({ entry, viewerId }) {
   return <RichCard kind="profile" kicker={sharedKicker(entry, viewerId, 'status')} title={`${character.displayName || actorLabel(entry)} · Status`} subtitle="A public snapshot from the same authoritative character state." className={`stream-shared-card ${owner ? 'is-owner' : 'is-observer'}`} testId="stream-player-status"><div className="stream-status-hero"><span className="shell-profile-avatar">{String(character.displayName || actorLabel(entry) || 'W').slice(0, 1)}</span><div><span className="shell-kicker">LEVEL {character.level || 1}</span><strong>{character.currentHealth ?? 0}/{character.maxHealth ?? 1} HP</strong><small>{character.experience ?? 0} XP · {character.gold ?? 0} Gold</small></div></div><div className="shell-stat-grid"><div className="shell-stat"><span>Attack</span><strong>{stats.attack ?? 0}</strong></div><div className="shell-stat"><span>Defense</span><strong>{stats.defense ?? 0}</strong></div><div className="shell-stat"><span>Speed</span><strong>{stats.speed ?? 0}</strong></div><div className="shell-stat"><span>Crit</span><strong>{stats.critChancePercent ?? 0}%</strong></div></div><div className="stream-status-equipment">{['weapon', 'head', 'chest', 'boots', 'accessory'].map((slot) => <div key={slot}><span>{slot}</span><strong>{equipment[slot]?.name || 'Empty'}</strong></div>)}</div>{metadata.activeBuffs?.length ? <div className="stream-card-detail"><strong>Active buffs</strong> · {metadata.activeBuffs.map((buff) => buff.name).join(' · ')}</div> : null}</RichCard>;
 }
 
-function ShopSharedCard({ entry, viewerId, assets, onRequest, busy }) {
+function ShopSharedCard({ entry, viewerId, assets, onRequest, onCommand, busy }) {
   const metadata = entry.metadata || {};
-  const offers = Array.isArray(metadata.offers) ? metadata.offers : [];
   const owner = isOwner(entry, viewerId);
-  return <RichCard kind="shop" kicker={sharedKicker(entry, viewerId, 'shop')} title={metadata.vendor?.name || 'Shop'} subtitle={`${metadata.currency?.balance ?? 0} Gold available · public catalog snapshot`} className={`stream-shared-card ${owner ? 'is-owner' : 'is-observer'}`} testId="stream-shop-rich-card"><div className="stream-shop-heading"><strong>{metadata.vendor?.tagline || 'Supplies and Equipment for the next thread.'}</strong>{metadata.unavailableReason ? <span>{metadata.unavailableReason}</span> : null}</div>{offers.length ? <div className="stream-item-grid">{offers.map((offer) => <ItemTile key={offer.sku} item={offer} assets={assets} owner={owner} onRequest={onRequest} busy={busy} offer tooltipPrefix={entry.id || 'shop'} />)}</div> : <p className="shell-muted-copy">No shop offers are available in this snapshot.</p>}{!owner ? <p className="stream-card-detail">Only {actorLabel(entry)} can purchase from this shared catalog.</p> : null}</RichCard>;
+  return <ShopSurface shop={{ vendor: metadata.vendor, currency: metadata.currency, available: metadata.available, unavailableReason: metadata.unavailableReason, offers: metadata.offers }} assets={assets} owner={owner} actorName={actorLabel(entry)} onRequest={onRequest} onCommand={onCommand} kicker={sharedKicker(entry, viewerId, 'shop')} className={`stream-shared-card ${owner ? 'is-owner' : 'is-observer'}`} testId="stream-shop-rich-card" />;
 }
 
 function DungeonSharedCard({ entry, viewerId, assets, onRequest, busy, dashboard, interactive = true }) {
@@ -219,7 +219,7 @@ function SharedEntryCard({ entry, viewerId, assets, onRequest, onCommand, busy, 
   if (['BlackjackPlayed', 'CoinflipPlayed', 'SlotsPlayed'].includes(entry.eventType)) return <GamblingSharedCard entry={entry} viewerId={viewerId} onCommand={onCommand} busy={busy} latestBlackjack={latestBlackjack} />;
   if (entry.eventType === 'InventoryViewed') return <InventorySharedCard entry={entry} viewerId={viewerId} assets={assets} onRequest={onRequest} busy={busy} />;
   if (entry.eventType === 'StatusViewed') return <StatusSharedCard entry={entry} viewerId={viewerId} />;
-  if (entry.eventType === 'ShopViewed') return <ShopSharedCard entry={entry} viewerId={viewerId} assets={assets} onRequest={onRequest} busy={busy} />;
+  if (entry.eventType === 'ShopViewed') return <ShopSharedCard entry={entry} viewerId={viewerId} assets={assets} onRequest={onRequest} onCommand={onCommand} busy={busy} />;
   if (['DungeonStarted', 'CombatActionResolved', 'DungeonEncounterContinued', 'DungeonPotionUsed', 'DungeonRetreated', 'DungeonFailed'].includes(entry.eventType)) return <DungeonSharedCard entry={entry} viewerId={viewerId} assets={assets} onRequest={onRequest} busy={busy} dashboard={dashboard} interactive={interactiveDungeon} />;
   return null;
 }

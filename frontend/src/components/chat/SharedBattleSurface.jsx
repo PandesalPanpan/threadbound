@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { replayBeats, replayFrameAt, sharedReplayKind } from '../../battle/sharedReplay.js';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { replayFrameAt, replayMoments, sharedReplayKind } from '../../battle/sharedReplay.js';
 import { resolveShellAsset } from '../../shell/presentation.js';
 
 function useReducedMotion() {
@@ -18,13 +18,13 @@ function useReducedMotion() {
 function usePlayback(replay, createdAt) {
   const reducedMotion = useReducedMotion();
   const [, setTick] = useState(0);
-  const beats = useMemo(() => replayBeats(replay), [replay]);
+  const moments = useMemo(() => replayMoments(replay), [replay]);
 
   useEffect(() => {
-    if (reducedMotion || !beats.length) return undefined;
-    const timer = window.setInterval(() => setTick((current) => current + 1), 80);
+    if (reducedMotion || !moments.length) return undefined;
+    const timer = window.setInterval(() => setTick((current) => current + 1), 50);
     return () => window.clearInterval(timer);
-  }, [beats.length, createdAt, reducedMotion]);
+  }, [moments.length, createdAt, reducedMotion]);
 
   return replayFrameAt(replay, createdAt, Date.now(), { reducedMotion });
 }
@@ -39,6 +39,10 @@ function percentage(value, max) {
   return Math.max(0, Math.min(100, (numberOr(value) / safeMax) * 100));
 }
 
+function entityId(entity, fallback) {
+  return String(entity?.id || entity?.playerId || entity?.enemyId || fallback);
+}
+
 function battleAsset(entity, assets, kinds) {
   return resolveShellAsset(entity || {}, assets, kinds);
 }
@@ -49,45 +53,13 @@ function Asset({ entity, assets, kinds, alt, className = '' }) {
   return <span className={`shared-battle-asset shared-battle-asset--fallback ${className}`.trim()} aria-hidden="true">✦</span>;
 }
 
-function initialPlayerHp(replay, player, beat) {
-  if (player.startingHp != null) return numberOr(player.startingHp);
-  if (beat?.actorId === player.id && beat.actorHpBefore != null) return numberOr(beat.actorHpBefore);
-  if (beat?.participants) return numberOr(beat.participants.find((candidate) => candidate.id === player.id)?.hp);
-  return numberOr(player.hp ?? player.maxHp);
-}
-
-function finalPlayerHp(replay, player) {
-  if (player.endingHp != null) return numberOr(player.endingHp);
-  const projected = replay?.battle?.combatants?.find((candidate) => candidate.id === player.id);
-  return numberOr(projected?.hp ?? player.hp ?? player.maxHp);
-}
-
-function initialEnemyHp(replay, beat) {
-  return numberOr(replay?.enemy?.startingHp ?? beat?.targetHpBefore ?? replay?.battle?.combatants?.find((candidate) => candidate.team === 'enemies')?.hp);
-}
-
-function finalEnemyHp(replay, beat) {
-  return numberOr(replay?.enemy?.endingHp ?? beat?.targetHpAfter ?? replay?.battle?.combatants?.find((candidate) => candidate.team === 'enemies')?.hp);
-}
-
-function currentPlayerHp(replay, player, beat, complete) {
-  if (complete) return finalPlayerHp(replay, player);
-  if (beat?.participants) return numberOr(beat.participants.find((candidate) => candidate.id === player.id)?.hp, initialPlayerHp(replay, player, beat));
-  if (beat?.actorId === player.id && beat.actorHpAfter != null) return numberOr(beat.actorHpAfter);
-  return initialPlayerHp(replay, player, beat);
-}
-
-function currentEnemyHp(replay, beat, complete) {
-  return complete ? finalEnemyHp(replay, beat) : numberOr(beat?.targetHpAfter, initialEnemyHp(replay, beat));
-}
-
 function normalizeCombatants(replay, metadata = {}) {
   const simplePlayers = Array.isArray(replay?.players) ? replay.players : [];
-  const battleCombatants = replay?.battle?.combatants || [];
-  const projectedPlayers = simplePlayers.length
-    ? simplePlayers
-    : battleCombatants.filter((candidate) => candidate.team === 'players');
-  const players = projectedPlayers.length ? projectedPlayers : [{ id: metadata.playerId || 'player', displayName: metadata.playerName || 'Weaver', visualAssetId: metadata.playerVisualAssetId || null }];
+  const battleCombatants = Array.isArray(replay?.battle?.combatants) ? replay.battle.combatants : [];
+  const projectedPlayers = simplePlayers.length ? simplePlayers : battleCombatants.filter((candidate) => candidate.team === 'players');
+  const players = projectedPlayers.length
+    ? projectedPlayers
+    : [{ id: metadata.playerId || 'player', displayName: metadata.playerName || 'Weaver', visualAssetId: metadata.playerVisualAssetId || null }];
   const battleEnemy = battleCombatants.find((candidate) => candidate.team === 'enemies') || null;
   const enemy = replay?.enemy || {
     id: battleEnemy?.id || metadata.enemyId || 'enemy',
@@ -98,56 +70,145 @@ function normalizeCombatants(replay, metadata = {}) {
   return { players, enemy };
 }
 
+function initialHp(entity, replay, firstMoment) {
+  if (entity.startingHp != null) return numberOr(entity.startingHp);
+  if (firstMoment?.actorId === entity.id && firstMoment.actorHpBefore != null) return numberOr(firstMoment.actorHpBefore);
+  if (firstMoment?.targetId === entity.id && firstMoment.targetHpBefore != null) return numberOr(firstMoment.targetHpBefore);
+  const participant = firstMoment?.participants?.find((candidate) => candidate.id === entity.id);
+  return numberOr(participant?.hp ?? entity.hp ?? entity.maxHp, 0);
+}
+
+function hpAfterForMoment(moment, id) {
+  if (String(moment.targetId) === String(id) && moment.targetHpAfter != null) return numberOr(moment.targetHpAfter);
+  if (String(moment.actorId) === String(id) && moment.actorHpAfter != null) return numberOr(moment.actorHpAfter);
+  return null;
+}
+
+function currentHp(entity, replay, moments, frame) {
+  const id = entityId(entity, 'combatant');
+  if (frame.complete && entity.endingHp != null) return numberOr(entity.endingHp);
+  let hp = initialHp(entity, replay, moments[0]);
+  const lastMoment = frame.complete ? moments.length - 1 : frame.momentIndex - (frame.phase === 'windup' || frame.phase === 'trajectory' ? 1 : 0);
+  for (let index = 0; index <= lastMoment; index += 1) {
+    const next = hpAfterForMoment(moments[index], id);
+    if (next != null && (moments[index].damage > 0 || moments[index].retaliation)) hp = next;
+  }
+  return hp;
+}
+
+function formatDamage(damage) {
+  return damage > 0 ? `−${damage} HP` : 'MISS';
+}
+
 export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets = [], className = '', finalTitle = '', finalDetail = '', onComplete = null }) {
   const kind = sharedReplayKind(replay);
-  const beats = useMemo(() => replayBeats(replay), [replay]);
+  const moments = useMemo(() => replayMoments(replay), [replay]);
   const frame = usePlayback(replay, createdAt);
+  const arenaRef = useRef(null);
+  const unitRefs = useRef(new Map());
+  const [trajectory, setTrajectory] = useState(null);
   const completionNotifiedRef = useRef(false);
+  const { players, enemy } = normalizeCombatants(replay, metadata);
+
+  const setUnitRef = useCallback((id, node) => {
+    const key = String(id);
+    if (node) unitRefs.current.set(key, node);
+    else unitRefs.current.delete(key);
+  }, []);
+
+  const measureTrajectory = useCallback(() => {
+    if (frame.complete || !arenaRef.current || !frame.currentActorId || !frame.currentTargetId) {
+      setTrajectory(null);
+      return;
+    }
+    const source = unitRefs.current.get(String(frame.currentActorId));
+    const target = unitRefs.current.get(String(frame.currentTargetId));
+    if (!source || !target) return;
+    const arenaBox = arenaRef.current.getBoundingClientRect();
+    const sourceBox = source.getBoundingClientRect();
+    const targetBox = target.getBoundingClientRect();
+    setTrajectory({
+      width: arenaBox.width,
+      height: arenaBox.height,
+      x1: sourceBox.left + sourceBox.width / 2 - arenaBox.left,
+      y1: sourceBox.top + sourceBox.height / 2 - arenaBox.top,
+      x2: targetBox.left + targetBox.width / 2 - arenaBox.left,
+      y2: targetBox.top + targetBox.height / 2 - arenaBox.top,
+    });
+  }, [frame.complete, frame.currentActorId, frame.currentTargetId, frame.phase, frame.momentIndex, players.length]);
+
+  useLayoutEffect(() => {
+    measureTrajectory();
+    if (!arenaRef.current || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measureTrajectory);
+    observer.observe(arenaRef.current);
+    return () => observer.disconnect();
+  }, [measureTrajectory]);
+
   useEffect(() => {
     completionNotifiedRef.current = false;
   }, [replay?.battleId, replay?.runId, createdAt]);
+
   useEffect(() => {
     if (frame.complete && !completionNotifiedRef.current) {
       completionNotifiedRef.current = true;
       onComplete?.();
     }
   }, [frame.complete, onComplete]);
+
   if (!replay || !kind) return null;
 
-  const beat = beats[Math.max(0, frame.visibleIndex)] || null;
-  const { players, enemy } = normalizeCombatants(replay, metadata);
-  const liveEnemyHp = currentEnemyHp(replay, beat, frame.complete);
+  const moment = moments[Math.max(0, frame.momentIndex)] || null;
   const status = replay.status || (replay.receipt?.outcome === 'victory' ? 'victory' : 'defeat');
   const statusLabel = status === 'victory' ? 'VICTORY' : status === 'defeat' ? 'DEFEAT' : status === 'room_clear' ? 'ROOM CLEAR' : 'LIVE BATTLE';
   const enemyName = enemy.name || 'Enemy';
-  const leadPlayer = players[0];
   const replayTitle = finalTitle || (status === 'victory' ? `Defeated ${enemyName}` : status === 'defeat' ? `Fell to ${enemyName}` : `Cleared ${enemyName}`);
   const replayDetail = finalDetail || (status === 'victory' ? 'The clear is secured.' : status === 'defeat' ? 'Recover before the next battle.' : 'Choose the next room action.');
-  const currentSummary = beat?.summary || (frame.complete ? replayTitle : 'The battle is resolving…');
+  const currentSummary = moment?.summary || (frame.complete ? replayTitle : 'The battle is resolving…');
+  const allUnits = [...players, enemy];
+  const impactVisible = frame.phase === 'impact';
+  const damagePosition = impactVisible && trajectory ? { left: trajectory.x2, top: trajectory.y2 } : undefined;
+
+  const renderUnit = (unit, role, labelOverride = null) => {
+    const id = entityId(unit, role);
+    const isEnemy = role === 'enemy';
+    const label = labelOverride || unit.displayName || unit.label || unit.name || (isEnemy ? 'Enemy' : 'Weaver');
+    const maxHp = numberOr(unit.maxHp ?? unit.maxHealth, numberOr(moment?.targetMaxHp, 1));
+    const hp = currentHp(unit, replay, moments, frame);
+    const active = !frame.complete && String(moment?.actorId) === id;
+    const targeted = !frame.complete && String(moment?.targetId) === id;
+    const unitClass = [`shared-battle-unit`, isEnemy ? 'shared-battle-unit--enemy' : 'shared-battle-unit--player', active ? 'is-active' : '', targeted ? 'is-targeted' : ''].filter(Boolean).join(' ');
+    return <div className={unitClass} key={id} ref={(node) => setUnitRef(id, node)} data-combatant-id={id} data-testid={isEnemy ? 'shared-battle-enemy' : 'shared-battle-player'}>
+      <Asset entity={unit} assets={assets} kinds={isEnemy ? (unit.isBoss ? ['boss', 'mob'] : ['mob', 'boss']) : ['character']} alt={label} />
+      <div className="shared-battle-unit__copy"><strong>{label}</strong><div className={`shared-battle-hp ${isEnemy ? 'shared-battle-hp--enemy' : ''}`}><span style={{ width: `${percentage(hp, maxHp)}%` }} /><b>{hp}/{maxHp} HP</b></div></div>
+    </div>;
+  };
 
   return (
-    <section className={`shared-battle-surface shared-battle-surface--${kind} ${frame.complete ? 'is-complete' : 'is-playing'} ${className}`.trim()} data-testid="shared-battle-surface" data-replay-state={frame.complete ? 'complete' : 'playing'} data-replay-index={frame.visibleIndex} data-replay-progress={frame.progress.toFixed(3)} data-replay-battle-id={replay.battleId || replay.runId || undefined}>
+    <section className={`shared-battle-surface shared-battle-surface--${kind} ${frame.complete ? 'is-complete' : 'is-playing'} ${className}`.trim()} data-testid="shared-battle-surface" data-replay-state={frame.complete ? 'complete' : 'playing'} data-replay-phase={frame.phase} data-replay-index={frame.visibleIndex} data-replay-moment-index={frame.momentIndex} data-replay-progress={frame.progress.toFixed(3)} data-current-actor-id={frame.currentActorId || undefined} data-current-target-id={frame.currentTargetId || undefined} data-replay-battle-id={replay.battleId || replay.runId || undefined}>
       <div className="shared-battle-header">
         <div><span className="shell-kicker">{frame.complete ? statusLabel : 'LIVE FROM THE SHARED THREAD'}</span><strong>{kind === 'dungeon' ? `Room ${numberOr(replay.roomIndex) + 1}` : 'Automatic battle'}</strong></div>
-        <span className="shared-battle-sync">{frame.complete ? 'SYNCED' : 'PLAYING'}</span>
+        <span className="shared-battle-sync">{frame.complete ? 'SYNCED' : `PLAYING · ${frame.phase.toUpperCase()}`}</span>
       </div>
-      <div className="shared-battle-arena">
+      <div className="shared-battle-arena" ref={arenaRef}>
+        <svg className="shared-battle-trajectory" viewBox={`0 0 ${trajectory?.width || 1} ${trajectory?.height || 1}`} aria-hidden="true" focusable="false">
+          {trajectory && !frame.complete ? <>
+            <line className="trajectory__beam" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
+            <line className="trajectory__core" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
+            {impactVisible ? <><circle className="trajectory__burst" cx={trajectory.x2} cy={trajectory.y2} r="12" /><circle className="trajectory__ring" cx={trajectory.x2} cy={trajectory.y2} r="18" /></> : null}
+          </> : null}
+        </svg>
         <div className="shared-battle-combatants">
-          <div className="shared-battle-party">
-            {players.map((player) => {
-              const hp = currentPlayerHp(replay, player, beat, frame.complete);
-              const maxHp = numberOr(player.maxHp ?? player.maxHealth, 1);
-              const label = player.displayName || player.label || player.name || 'Weaver';
-              return <div className="shared-battle-unit shared-battle-unit--player" key={player.id || label} data-testid="shared-battle-player"><Asset entity={{ ...player, visualAssetId: player.visualAssetId || (player.id === metadata.playerId ? metadata.playerVisualAssetId : null) }} assets={assets} kinds={['character']} alt={label} /><div className="shared-battle-unit__copy"><strong>{label}</strong><div className="shared-battle-hp"><span style={{ width: `${percentage(hp, maxHp)}%` }} /><b>{hp}/{maxHp} HP</b></div></div></div>;
-            })}
-          </div>
+          <div className="shared-battle-party">{players.map((player) => renderUnit({ ...player, visualAssetId: player.visualAssetId || (player.id === metadata.playerId ? metadata.playerVisualAssetId : null) }, 'player'))}</div>
           <span className="shared-battle-versus" aria-hidden="true">VS</span>
-          <div className="shared-battle-unit shared-battle-unit--enemy" data-testid="shared-battle-enemy"><Asset entity={enemy} assets={assets} kinds={enemy.isBoss ? ['boss', 'mob'] : ['mob', 'boss']} alt={enemyName} /><div className="shared-battle-unit__copy"><strong>{enemyName}</strong><div className="shared-battle-hp shared-battle-hp--enemy"><span style={{ width: `${percentage(liveEnemyHp, numberOr(enemy.maxHp, beat?.targetMaxHp || 1))}%` }} /><b>{liveEnemyHp}/{numberOr(enemy.maxHp, beat?.targetMaxHp || 1)} HP</b></div></div></div>
+          {renderUnit(enemy, 'enemy', enemyName)}
         </div>
+        {impactVisible && moment?.damage > 0 ? <span className={`damage-float ${moment.critical ? 'damage-float--critical' : ''}`} style={damagePosition} data-testid="shared-battle-floating-damage">{formatDamage(moment.damage)}</span> : null}
         <div className="shared-battle-progress" aria-label="Battle replay progress"><span style={{ width: `${Math.round(frame.progress * 100)}%` }} /></div>
       </div>
-      <div className="shared-battle-feed" aria-live="polite"><span className="shell-kicker">{frame.complete ? 'FINAL RECEIPT' : `BEAT ${Math.max(1, frame.visibleIndex + 1)} / ${beats.length}`}</span><p>{currentSummary}</p>{beat?.critical ? <strong className="shared-battle-critical">CRITICAL</strong> : null}</div>
+      <div className="shared-battle-feed" aria-live="polite"><span className="shell-kicker">{frame.complete ? 'FINAL RECEIPT' : `MOMENT ${Math.max(1, frame.momentIndex + 1)} / ${moments.length}`}</span><p>{currentSummary}</p>{moment?.critical && !frame.complete ? <strong className="shared-battle-critical">CRITICAL</strong> : null}</div>
       {frame.complete ? <div className={`shared-battle-result shared-battle-result--${status}`}><span>{statusLabel}</span><strong>{replayTitle}</strong><b>{replayDetail}</b></div> : null}
+      <span className="sr-only">{allUnits.map((unit) => `${unit.displayName || unit.name || 'Combatant'} ${currentHp(unit, replay, moments, frame)} HP`).join('. ')}</span>
     </section>
   );
 }

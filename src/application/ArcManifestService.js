@@ -6,7 +6,7 @@ import { normalizeArcEquipmentTemplate, publicArcEquipmentTemplateContract } fro
 import { selectEncounterSequence } from '../domain/RunVariationPolicy.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { BUNDLED_ARC_MANIFESTS } from '../content/BundledArcManifests.js';
-import { authoringVisualAssetCollections, compactVisualAssetCatalog, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
+import { authoringVisualAssetCollections, compactVisualAssetCatalog, resolveVisualAssetId, VISUAL_ASSET_CATALOG_VERSION } from '../content/VisualAssetCatalog.js';
 import { validateArcTownShopStocks } from '../content/ArcTownShopCatalog.js';
 import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 import { ArcEquipmentTemplateValidator } from './ArcEquipmentTemplateValidator.js';
@@ -197,13 +197,14 @@ export class ArcManifestService {
       const enemies = new Map(manifest.enemies.map((enemy) => [enemy.id, enemy]));
       const bosses = new Map(manifest.bosses.map((boss) => [boss.id, boss]));
       const runEvents = new Map((manifest.runEvents || []).map((event) => [event.id, event]));
-      const materializeEnemy = (enemy) => ({
+      const materializeEnemy = (enemy, { isBoss = false } = {}) => ({
         id: enemy.id,
         name: enemy.name,
         hp: enemy.baseHp,
         retaliation: enemy.retaliation,
         abilities: [...enemy.abilities],
-        ...(enemy.visualAssetId ? { visualAssetId: enemy.visualAssetId } : {}),
+        visualAssetId: resolveVisualAssetId({ ...enemy, isBoss }, isBoss ? 'boss' : 'mob'),
+        ...(isBoss ? { isBoss: true } : {}),
         ...(Number.isInteger(enemy.intentCadence) ? { intentCadence: enemy.intentCadence } : {}),
       });
       for (const dungeon of manifest.dungeons) {
@@ -224,7 +225,7 @@ export class ArcManifestService {
           encounters: materializeSequence(dungeon.encounters),
           encounterVariants: (dungeon.encounterVariants || []).map(materializeSequence),
           runEventSchedule: schedule,
-          boss: materializeEnemy({ ...boss, intentCadence: boss.intentCadence }),
+          boss: materializeEnemy({ ...boss, intentCadence: boss.intentCadence }, { isBoss: true }),
           arcId: manifest.arc.id,
           arcTitle: manifest.arc.title,
           rewardPoolId: dungeon.rewardPoolId,
@@ -268,16 +269,17 @@ export class ArcManifestService {
       for (const town of manifest.towns) {
         const area = areas.get(town.areaId);
         if (!area) continue;
-        const townNpcs = (npcsByTown.get(town.id) || []).map((npc) => ({
+        const authoredNpcs = npcsByTown.get(town.id) || [];
+        const townNpcs = authoredNpcs.map((npc) => ({
           id: npc.id,
           name: npc.name,
           role: npc.role,
           service: serviceByRole[npc.role] || 'special',
           spriteVariant: npc.spriteVariant || 'male',
           dialogue: npc.dialogue || `${npc.name} is available in ${town.name}.`,
-          ...(npc.visualAssetId ? { visualAssetId: npc.visualAssetId } : {}),
+          visualAssetId: resolveVisualAssetId(npc, 'character'),
         }));
-        if (onlyWithExplicitNpcVisual && !townNpcs.some((npc) => npc.visualAssetId)) continue;
+        if (onlyWithExplicitNpcVisual && !authoredNpcs.some((npc) => npc.visualAssetId)) continue;
         if (areaNumber !== null && Number(area.number) !== Number(areaNumber)) continue;
         const services = [...new Set([
           ...townNpcs.map((npc) => npc.service),

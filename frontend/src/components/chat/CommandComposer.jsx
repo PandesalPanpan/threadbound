@@ -1,20 +1,36 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { COMMAND_SUGGESTIONS } from '../../shell/presentation.js';
 
 export function CommandComposer({ onSubmit, busy = false, contextualActions = [] }) {
   const [value, setValue] = useState('');
+  const inputRef = useRef(null);
   const suggestions = useMemo(() => {
     const query = value.trim().replace(/^\//, '').toLowerCase();
     if (!query) return [];
     return COMMAND_SUGGESTIONS.filter((command) => command.startsWith(query)).slice(0, 4);
   }, [value]);
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     const next = value.trim();
     if (!next || busy) return;
+    const submitter = event.nativeEvent?.submitter || null;
+    const canRestoreDesktopFocus = window.matchMedia?.('(pointer: fine) and (hover: hover)').matches;
+    const startedWithComposerFocus = document.activeElement === inputRef.current;
+    const startedWithSendFocus = document.activeElement === submitter;
     setValue('');
-    onSubmit(next);
+    try {
+      await onSubmit(next);
+    } finally {
+      if (!canRestoreDesktopFocus) {
+        inputRef.current?.blur();
+      } else if (startedWithComposerFocus || startedWithSendFocus) {
+        const active = document.activeElement;
+        if (active === document.body || active === submitter || active === inputRef.current) {
+          inputRef.current?.focus({ preventScroll: true });
+        }
+      }
+    }
   };
 
   return (
@@ -31,13 +47,13 @@ export function CommandComposer({ onSubmit, busy = false, contextualActions = []
       <form className="shell-composer" onSubmit={submit} data-testid="stream-composer">
         <span className="shell-composer__mark" aria-hidden="true">›</span>
         <input
+          ref={inputRef}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder="Message party or type /command…"
           aria-label="Adventure Stream command"
           autoComplete="off"
           data-testid="stream-message"
-          disabled={busy}
         />
         <button type="submit" className="shell-composer__send" aria-label="Send command" disabled={!value.trim() || busy} data-testid="stream-send">↗</button>
       </form>

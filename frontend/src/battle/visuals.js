@@ -1,13 +1,15 @@
+import { isModernCharacterAsset } from '../../../public/character-asset-policy.js';
+
 export const FIGMA_BATTLE_FILE_KEY = 'xfAbc94dv0LxhxhC9q9BhK';
 export const FIGMA_BATTLE_PAGE_NODE_ID = '91:2';
 
 export const BATTLE_FIGMA_ASSET_IDS = Object.freeze({
-  'bramble-druid': 'character.bramble-druid-figma.v1',
-  'iron-vanguard': 'character.iron-vanguard-figma.v1',
-  'rune-bard': 'character.rune-bard-figma.v1',
-  'cinder-imp': 'mob.cinder-imp-figma.v1',
-  'rot-toad': 'mob.rot-toad-figma.v1',
-  'gloom-hound': 'mob.gloom-hound-figma.v1',
+  'bramble-druid': 'character.road-sellsword.v1',
+  'iron-vanguard': 'character.mine-breaker.v1',
+  'rune-bard': 'character.wayfarer-healer.v1',
+  'cinder-imp': 'mob.mold-mite.v1',
+  'rot-toad': 'mob.frost-blob.v1',
+  'gloom-hound': 'mob.ridge-wolf.v1',
 });
 
 export const BATTLE_FIGMA_NODE_IDS = Object.freeze({
@@ -32,29 +34,30 @@ function registryKey(unit) {
   const visualAssetId = String(unit?.visualAssetId || '');
   const byAsset = Object.entries(BATTLE_FIGMA_ASSET_IDS).find(([, assetId]) => assetId === visualAssetId);
   if (byAsset) return byAsset[0];
-  const value = String(unit?.name || unit?.id || '').toLowerCase();
+  const value = String(unit?.name || unit?.id || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return Object.keys(BATTLE_UNIT_REGISTRY).find((key) => value.includes(key)) || null;
 }
 
 export function battleVisualAsset(unit, assets = []) {
   const key = registryKey(unit);
-  const expectedId = String(unit?.visualAssetId || (key ? BATTLE_FIGMA_ASSET_IDS[key] : '')).trim();
-  if (!expectedId) return null;
-  return assets.find((asset) => asset.id === expectedId) || null;
+  const expectedIds = [unit?.visualAssetId, key ? BATTLE_FIGMA_ASSET_IDS[key] : null].filter(Boolean).map((value) => String(value).trim());
+  if (!expectedIds.length) return null;
+  return assets.find((asset) => expectedIds.includes(asset.id) && (!['character', 'mob', 'boss'].includes(asset.kind) || isModernCharacterAsset(asset, asset.kind))) || null;
 }
 
 export function presentBattleUnit(unit, assets = []) {
   if (!unit) return null;
   const key = registryKey(unit);
   const definition = key ? BATTLE_UNIT_REGISTRY[key] : null;
+  const asset = battleVisualAsset(unit, assets);
   return {
     ...unit,
     id: unit.id,
     label: unit.displayName || unit.name || definition?.name || unit.id,
     role: definition?.role || (unit.team === 'enemies' ? 'ENEMY' : 'WEAVER'),
-    visualAssetId: unit.visualAssetId || definition?.assetId || null,
+    visualAssetId: asset?.id || definition?.assetId || null,
     sourceNodeId: definition?.sourceNodeId || null,
-    asset: battleVisualAsset(unit, assets),
+    asset,
   };
 }
 

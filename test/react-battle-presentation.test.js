@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { battleViewModel, phaseFromRun, projectCombatOutcome, resolveVisualAsset, selectSkill } from '../frontend/src/battle/presentation.js';
-import { presentBattleTeams } from '../frontend/src/battle/visuals.js';
+import { presentBattleTeams, presentBattleUnit } from '../frontend/src/battle/visuals.js';
 
 const run = {
   id: 'run-1',
@@ -22,13 +22,13 @@ test('phase projection follows the authoritative run state', () => {
 
 test('battle view model keeps arbitrary attacker and target data intact', () => {
   const assets = [
-    { id: 'character.male-wizard.v1', kind: 'character', src: '/wizard.webp' },
-    { id: 'mob.rot-toad.v1', kind: 'mob', src: '/toad.webp' },
+    { id: 'character.road-sellsword.v1', kind: 'character', src: '/wizard.webp', provenance: { sourceCollection: 'figma-character-library-v1' } },
+    { id: 'mob.frost-blob.v1', kind: 'mob', src: '/toad.webp', provenance: { sourceCollection: 'figma-character-library-v1' } },
   ];
   const model = battleViewModel({ dashboard: { character: { id: 'player-1', displayName: 'Rune Bard' } }, assets, outcome: { state: run } });
   assert.equal(model.attacker.name, 'Rune Bard');
   assert.equal(model.target.name, 'Rot Toad');
-  assert.equal(model.target.asset.id, 'mob.rot-toad.v1');
+  assert.equal(model.target.asset.id, 'mob.frost-blob.v1');
 });
 
 test('combat outcome projection reads damage and critical facts without recalculating them', () => {
@@ -58,18 +58,24 @@ test('skill selection only exposes a server-provided affordable off-cooldown ski
   const skills = [{ id: 'piercing-stitch', kind: 'damage', cost: 2 }, { id: 'slow', kind: 'damage', cost: 3 }];
   assert.equal(selectSkill(skills, run).id, 'piercing-stitch');
   assert.equal(selectSkill(skills, { ...run, viewer: { ...run.viewer, focus: 1 } }), null);
-  assert.equal(resolveVisualAsset({ id: 'rot-toad' }, 'mob', [{ id: 'mob.rot-toad.v1', kind: 'mob', src: '/toad.webp' }]).id, 'mob.rot-toad.v1');
+  assert.equal(resolveVisualAsset({ id: 'rot-toad' }, 'mob', [{ id: 'mob.frost-blob.v1', kind: 'mob', src: '/toad.webp', provenance: { sourceCollection: 'figma-character-library-v1' } }]).id, 'mob.frost-blob.v1');
 });
 
 test('battle presentation preserves arbitrary rosters and falls back cleanly for unknown visuals', () => {
   const teams = presentBattleTeams([
-    { id: 'player-a', displayName: 'Aster', team: 'players', hp: 12, maxHp: 12, visualAssetId: 'character.rune-bard-figma.v1' },
+    { id: 'player-a', displayName: 'Aster', team: 'players', hp: 12, maxHp: 12, visualAssetId: 'character.road-sellsword.v1' },
     { id: 'enemy-a', displayName: 'Thread Wolf', team: 'enemies', hp: 9, maxHp: 9, visualAssetId: 'mob.not-yet-catalogued.v1' },
-  ], [{ id: 'character.rune-bard-figma.v1', kind: 'character', src: '/rune-bard.webp' }]);
+  ], [
+    { id: 'character.road-sellsword.v1', kind: 'character', src: '/rune-bard.webp', provenance: { sourceCollection: 'figma-character-library-v1' } },
+    { id: 'mob.frost-blob.v1', kind: 'mob', src: '/frost-blob.webp', provenance: { sourceCollection: 'figma-character-library-v1' } },
+  ]);
 
   assert.deepEqual(teams.players.map((unit) => unit.label), ['Aster']);
   assert.deepEqual(teams.enemies.map((unit) => unit.label), ['Thread Wolf']);
-  assert.equal(teams.players[0].asset.id, 'character.rune-bard-figma.v1');
-  assert.equal(teams.enemies[0].visualAssetId, 'mob.not-yet-catalogued.v1');
+  assert.equal(teams.players[0].asset.id, 'character.road-sellsword.v1');
+  assert.equal(teams.enemies[0].visualAssetId, null);
   assert.equal(teams.enemies[0].asset, null);
+  assert.equal(presentBattleUnit({ id: 'rot-toad', name: 'Rot Toad', team: 'enemies', visualAssetId: 'mob.rot-toad-figma.v1' }, [
+    { id: 'mob.frost-blob.v1', kind: 'mob', src: '/frost-blob.webp', provenance: { sourceCollection: 'figma-character-library-v1' } },
+  ]).asset.id, 'mob.frost-blob.v1');
 });

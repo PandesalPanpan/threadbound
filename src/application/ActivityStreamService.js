@@ -204,6 +204,7 @@ export class ActivityStreamService {
           name: shop.vendor.name,
           tagline: shop.vendor.tagline || null,
           characterVariant: shop.vendor.characterVariant || null,
+          visualAssetId: shop.vendor.visualAssetId || null,
         } : null,
         currency: {
           code: 'gold',

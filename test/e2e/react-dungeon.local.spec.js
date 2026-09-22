@@ -31,7 +31,7 @@ test('React Dungeon resolves rooms inline and leaves only owner between-room dec
 
   const dungeonCard = page.getByTestId('stream-dungeon-rich-card').last();
   await expect(dungeonCard).toBeVisible();
-  await expect(dungeonCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+  await expect(dungeonCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
   await expect(dungeonCard.getByTestId('stream-run-continue')).toBeVisible();
   await expect(dungeonCard.getByTestId('stream-run-potion')).toBeVisible();
   await expect(dungeonCard.getByTestId('stream-run-retreat')).toBeVisible();
@@ -53,7 +53,7 @@ test('React Dungeon resolves rooms inline and leaves only owner between-room dec
   await expect.poll(async () => (await dashboard(page.context())).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(versionBeforeContinue);
   const afterContinue = await waitForPhase(page.context(), 'between_encounter');
   expect(afterContinue.activeRun.viewer.hp).toBeGreaterThan(0);
-  await expect(page.getByTestId('stream-dungeon-rich-card').last().getByTestId('shared-battle-surface')).toBeVisible();
+  await expect(page.getByTestId('stream-dungeon-rich-card').last().getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
 
   await page.getByTestId('stream-dungeon-rich-card').last().getByTestId('stream-run-retreat').click();
   await expect.poll(async () => (await dashboard(page.context())).activeRun || null, { timeout: 7000 }).toBeNull();

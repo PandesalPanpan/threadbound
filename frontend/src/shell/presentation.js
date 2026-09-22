@@ -1,3 +1,5 @@
+import { isCharacterKind, isModernCharacterAsset } from '../../../public/character-asset-policy.js';
+
 const COMMAND_ALIASES = Object.freeze({
   '/help': 'help',
   '/status': 'status',
@@ -110,9 +112,14 @@ export function formatEntryTime(value) {
 
 export function resolveShellAsset(entity, assets = [], preferredKinds = []) {
   const explicitId = entity?.visualAssetId || entity?.assetId;
-  if (explicitId) return assets.find((asset) => asset.id === explicitId) || null;
+  const characterPresentation = preferredKinds.some((kind) => isCharacterKind(kind));
+  if (explicitId) {
+    const explicit = assets.find((asset) => asset.id === explicitId) || null;
+    if (explicit && (!characterPresentation || isModernCharacterAsset(explicit))) return explicit;
+  }
   const kinds = preferredKinds.length ? preferredKinds : ['item', 'icon', 'character', 'npc', 'mob'];
-  const candidates = assets.filter((asset) => kinds.includes(asset.kind));
+  const candidates = assets.filter((asset) => kinds.includes(asset.kind)
+    && (!isCharacterKind(asset.kind) || isModernCharacterAsset(asset, asset.kind)));
   return candidates[stableIndex(entity?.id || entity?.playerId || entity?.name, candidates.length)] || null;
 }
 

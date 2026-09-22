@@ -2,9 +2,9 @@ import { simulateAutomaticBattle } from './AutomaticBattleSimulator.js';
 import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
 
 export const HUNT_ENEMIES = Object.freeze([
-  Object.freeze({ id: 'frayed-mite', name: 'Frayed Mite', hp: 8, attack: 4, defense: 0, speed: 10, critChance: 0, retaliation: 2, gold: 1, experience: 10, dropChance: 0.24, visualAssetId: 'mob.cinder-imp-figma.v1' }),
-  Object.freeze({ id: 'hollow-crow', name: 'Hollow Crow', hp: 12, attack: 5, defense: 0, speed: 10, critChance: 0, retaliation: 3, gold: 2, experience: 15, dropChance: 0.30, visualAssetId: 'mob.gloom-hound-figma.v1' }),
-  Object.freeze({ id: 'thread-wolf', name: 'Thread Wolf', hp: 18, attack: 6, defense: 0, speed: 10, critChance: 0, retaliation: 4, gold: 3, experience: 20, dropChance: 0.36, visualAssetId: 'mob.rot-toad-figma.v1' }),
+  Object.freeze({ id: 'frayed-mite', name: 'Frayed Mite', hp: 8, attack: 4, defense: 0, speed: 10, critChance: 0, retaliation: 2, gold: 1, experience: 10, dropChance: 0.24, visualAssetId: 'mob.mold-mite.v1' }),
+  Object.freeze({ id: 'hollow-crow', name: 'Hollow Crow', hp: 12, attack: 5, defense: 0, speed: 10, critChance: 0, retaliation: 3, gold: 2, experience: 15, dropChance: 0.30, visualAssetId: 'mob.ash-raven.v1' }),
+  Object.freeze({ id: 'thread-wolf', name: 'Thread Wolf', hp: 18, attack: 6, defense: 0, speed: 10, critChance: 0, retaliation: 4, gold: 3, experience: 20, dropChance: 0.36, visualAssetId: 'mob.ridge-wolf.v1' }),
 ]);
 
 function clampRoll(value) {

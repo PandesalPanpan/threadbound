@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { commandKey } from '../../api/client.js';
 import { compactText, findDungeon, resolveShellAsset } from '../../shell/presentation.js';
 import { PanelButton, RichCard, StateMessage } from '../common/RichCard.jsx';
+import { ShopSurface } from '../chat/ShopSurface.jsx';
 
 function AssetThumb({ entity, assets, kinds, alt = '', className = '' }) {
   const asset = resolveShellAsset(entity, assets, kinds);
@@ -47,13 +48,11 @@ export function HelpPanel({ onCommand }) {
 
 export function ShopPanel({ shop, assets, onRequest, onCommand, busy = false, bankOnly = false }) {
   if (!shop) return <RichCard kind="shop" kicker="SHOP"><StateMessage title="Shop unavailable" copy="The vendor could not be reached yet." /></RichCard>;
-  const offers = shop.offers || [];
+  if (!bankOnly) return <ShopSurface shop={shop} assets={assets} owner onRequest={onRequest} onCommand={onCommand} busy={busy} kicker="YOUR VIEW · /shop" className="shop-panel" testId="shop-rich-card" />;
   const bank = shop.bank || {};
-  return <RichCard kind={bankOnly ? 'bank' : 'shop'} kicker={bankOnly ? 'BANK · /bank' : 'SHARED STREAM · /shop'} title={bankOnly ? 'Bank' : shop.vendor?.name || 'Town Shop'} subtitle={bankOnly ? 'Gold transport stays server-authoritative.' : `${shop.currency?.balance ?? 0} Gold available`} testId={bankOnly ? 'bank-rich-card' : 'shop-rich-card'}>
+  return <RichCard kind="bank" kicker="BANK · /bank" title="Bank" subtitle="Gold transport stays server-authoritative." testId="bank-rich-card">
     <div className="shell-bank-balance"><div><span>Carried</span><strong>{bank.carriedGold ?? shop.currency?.balance ?? 0} Gold</strong></div><div><span>Banked</span><strong>{bank.bankedGold ?? 0} Gold</strong></div></div>
-    {bankOnly ? <BankActions bank={bank} onRequest={onRequest} busy={busy} /> : null}
-    {!bankOnly ? <div className="shell-offer-list">{offers.map((offer) => <article className="shell-offer-row" key={offer.sku} data-testid="shop-offer" data-sku={offer.sku}><AssetThumb entity={offer} assets={assets} kinds={['item', 'icon']} alt="" /><div><div className="shell-item-heading"><strong>{offer.name}</strong><span>{offer.cost} Gold</span></div><small>{offer.description || `${offer.quantity || 1} available`}</small></div><PanelButton primary disabled={busy || !offer.available || !offer.affordable} onClick={() => onRequest(`buy ${offer.name}`, `/api/shop/purchases/${encodeURIComponent(offer.sku)}`, { method: 'POST' })} testId={`shop-buy-${offer.sku}`}>{offer.affordable ? 'Buy' : 'Need Gold'}</PanelButton></article>)}</div> : null}
-    {!bankOnly ? <div className="shell-card-actions"><span className="shell-muted-copy">Gold is authoritative.</span><PanelButton onClick={() => onCommand('bank')}>Open Bank</PanelButton></div> : null}
+    <BankActions bank={bank} onRequest={onRequest} busy={busy} />
   </RichCard>;
 }
 

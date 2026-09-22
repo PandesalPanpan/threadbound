@@ -3,6 +3,7 @@ export const SHOP_VENDOR = Object.freeze({
   name: 'Mara',
   tagline: 'Gear up, patch up, get back out there.',
   characterVariant: 'female',
+  visualAssetId: 'character.market-guard.v1',
 });
 
 export const SHOP_OFFERS = Object.freeze([

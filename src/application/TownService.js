@@ -65,7 +65,6 @@ export class TownService {
       role: npc.role,
       service: npc.service,
       dialogue: npc.dialogue,
-      ...(npc.visualAssetId ? { visualAssetId: npc.visualAssetId } : {}),
     });
 
     this.eventBus.publish({
