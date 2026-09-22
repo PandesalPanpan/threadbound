@@ -38,7 +38,7 @@ function builtInProgressionDefinition(dungeonId) {
 /**
  * New player-facing dungeon use case. The legacy start path remains temporarily
  * available for migration/old acceptance fixtures, while this path creates the
- * new attack-only stat-check run. Progression Adventures reuse this run boundary
+ * new automatic stat-check run. Progression Adventures reuse this run boundary
  * but add an authoritative two-human party gate before any run is persisted.
  */
 export class SimpleDungeonService {
@@ -105,7 +105,7 @@ export class SimpleDungeonService {
     };
   }
 
-  startDungeon(playerId, dungeonId) {
+  startDungeon(playerId, dungeonId, { sharedSurface = true } = {}) {
     if (this.repository.getActiveRun(playerId)) throw new Error('Finish or fail the active run before starting another.');
     const player = this.repository.getPlayer(playerId);
     if (!player) throw new Error('Player not found.');
@@ -160,6 +160,7 @@ export class SimpleDungeonService {
       participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth })),
       dungeonId,
       dungeonDefinition,
+      sharedSurface,
     });
     const persisted = this.repository.createRun(run.toJSON());
     const actor = persisted.participants.find((participant) => participant.playerId === playerId);
@@ -177,6 +178,7 @@ export class SimpleDungeonService {
       ownerType,
       ownerId,
       simpleCombat: true,
+      sharedSurface: Boolean(sharedSurface),
       progressionAdventure: Boolean(dungeonDefinition.progressionAdventure),
       progressionEnrage: enrage,
       requiredHumanPlayers: progressionRequirement?.requiredHumanPlayers || null,

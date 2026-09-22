@@ -67,7 +67,12 @@ export class ActivityStreamService {
       slot: item.slot || null,
       rarity: item.rarity || 'common',
       attackBonus: Number(item.attackBonus || 0),
-      effect: item.effect ? { name: item.effect.name || null } : null,
+      defenseBonus: Number(item.defenseBonus || 0),
+      effect: item.effect ? {
+        code: item.effect.code || item.effectCode || null,
+        name: item.effect.name || null,
+        description: item.effect.description || null,
+      } : null,
       visualAssetId: item.visualAssetId || null,
     } : null;
     const equipmentSnapshot = Object.fromEntries(Object.entries(equipment).map(([slot, item]) => [slot, compactItem(item)]));
@@ -80,6 +85,7 @@ export class ActivityStreamService {
       body: `${player.displayName} opened Inventory · ${inventorySnapshot.length} item${inventorySnapshot.length === 1 ? '' : 's'} · ${Number(character.gold ?? character.threadDust ?? 0)} Gold.`,
       metadata: {
         playerId: player.id,
+        publicSnapshot: true,
         character: {
           id: character.id || player.id,
           displayName: character.displayName || player.displayName,
@@ -94,7 +100,125 @@ export class ActivityStreamService {
     });
   }
 
+  recordStatusView({ playerId, dashboard }) {
+    const player = this.gameRepository.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    const character = dashboard?.character || {};
+    const equipment = character.equipment || {};
+    const compactItem = (item) => item ? {
+      id: item.id,
+      name: item.name,
+      slot: item.slot || null,
+      rarity: item.rarity || 'common',
+      attackBonus: Number(item.attackBonus || 0),
+      defenseBonus: Number(item.defenseBonus || 0),
+      effect: item.effect ? {
+        name: item.effect.name || null,
+        description: item.effect.description || null,
+      } : null,
+      visualAssetId: item.visualAssetId || null,
+    } : null;
+
+    return this.streamRepository.append({
+      kind: 'system',
+      eventType: 'StatusViewed',
+      actorPlayerId: player.id,
+      actorName: player.displayName,
+      body: `${player.displayName} opened Status · Level ${Number(character.level || 1)} · ${Number(character.gold ?? character.threadDust ?? 0)} Gold.`,
+      metadata: {
+        playerId: player.id,
+        playerName: player.displayName,
+        publicSnapshot: true,
+        character: {
+          id: character.id || player.id,
+          displayName: character.displayName || player.displayName,
+          level: Number(character.level || 1),
+          experience: Number(character.experience ?? character.xp ?? 0),
+          levelProgression: character.levelProgression || null,
+          currentHealth: Number(character.currentHealth || 0),
+          maxHealth: Number(character.maxHealth ?? character.maxHp ?? 1),
+          stats: character.stats ? {
+            attack: Number(character.stats.attack || 0),
+            defense: Number(character.stats.defense || 0),
+            speed: Number(character.stats.speed || 0),
+            critChancePercent: Number(character.stats.critChancePercent || 0),
+          } : {
+            attack: Number(character.attack ?? character.attackPower ?? 0),
+            defense: Number(character.defense || 0),
+            speed: Number(character.speed || 0),
+            critChancePercent: Number(character.critChancePercent || 0),
+          },
+          gold: Number(character.gold ?? character.threadDust ?? 0),
+          healthPotions: Number(character.healthPotions || 0),
+        },
+        equipment: Object.fromEntries(Object.entries(equipment).map(([slot, item]) => [slot, compactItem(item)])),
+        activeBuffs: (dashboard?.activeFightBuffs || []).map((buff) => ({
+          code: buff.code,
+          name: buff.name,
+          description: buff.description,
+          remainingFights: Number(buff.remainingFights || 0),
+        })),
+      },
+    });
+  }
+
+  recordShopView({ playerId, shop }) {
+    const player = this.gameRepository.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    const offers = Array.isArray(shop?.offers) ? shop.offers : [];
+    const compactOffer = (offer) => ({
+      sku: offer.sku,
+      kind: offer.kind,
+      name: offer.name,
+      description: offer.description || null,
+      visualAssetId: offer.visualAssetId || offer.item?.visualAssetId || offer.itemTemplate?.visualAssetId || null,
+      cost: Number(offer.cost || 0),
+      quantity: Number(offer.quantity || 1),
+      affordable: Boolean(offer.affordable),
+      available: Boolean(offer.available),
+      item: offer.item || offer.itemTemplate ? {
+        slot: (offer.item || offer.itemTemplate).slot || null,
+        rarity: (offer.item || offer.itemTemplate).rarity || 'common',
+        attackBonus: Number((offer.item || offer.itemTemplate).attackBonus || 0),
+        defenseBonus: Number((offer.item || offer.itemTemplate).defenseBonus || 0),
+        effect: (offer.item || offer.itemTemplate).effect ? {
+          code: (offer.item || offer.itemTemplate).effect.code || (offer.item || offer.itemTemplate).effectCode || null,
+          name: (offer.item || offer.itemTemplate).effect.name || null,
+          description: (offer.item || offer.itemTemplate).effect.description || null,
+        } : null,
+      } : null,
+    });
+
+    return this.streamRepository.append({
+      kind: 'system',
+      eventType: 'ShopViewed',
+      actorPlayerId: player.id,
+      actorName: player.displayName,
+      body: `${player.displayName} opened ${shop?.vendor?.name || 'the Shop'} · ${offers.length} offer${offers.length === 1 ? '' : 's'} · ${Number(shop?.currency?.balance || 0)} Gold available.`,
+      metadata: {
+        playerId: player.id,
+        playerName: player.displayName,
+        publicSnapshot: true,
+        vendor: shop?.vendor ? {
+          id: shop.vendor.id,
+          name: shop.vendor.name,
+          tagline: shop.vendor.tagline || null,
+          characterVariant: shop.vendor.characterVariant || null,
+        } : null,
+        currency: {
+          code: 'gold',
+          label: 'Gold',
+          balance: Number(shop?.currency?.balance || 0),
+        },
+        available: shop?.available !== false,
+        unavailableReason: shop?.unavailableReason || null,
+        offers: offers.map(compactOffer),
+      },
+    });
+  }
+
   recordDomainEvent(event) {
+    if (event?.silentStream) return null;
     const projected = this.#project(event);
     if (!projected) return null;
     const metadata = {
@@ -123,6 +247,16 @@ export class ActivityStreamService {
   #combatResult(event, actorName) {
     const action = String(event.action || 'action').toLowerCase();
     const simple = this.#isSimpleRun(event.runId);
+    if (simple && event.battleReplay) {
+      const replay = event.battleReplay;
+      const enemyName = replay.enemy?.name || event.enemyName || 'the enemy';
+      const recovery = event.recovery?.healed > 0 ? ` · +${event.recovery.healed} HP` : '';
+      const unlock = replay.areaUnlocks?.find((candidate) => candidate.playerId === event.playerId) || replay.areaUnlocks?.[0] || null;
+      const unlockCopy = unlock?.areaNumber ? ` · Area ${unlock.areaNumber} unlocked` : '';
+      if (replay.status === 'defeat') return `${actorName || 'The party'} fell to ${enemyName}.${recovery}`;
+      if (replay.status === 'victory') return `${actorName || 'The party'} cleared the Dungeon by defeating ${enemyName}.${recovery}${unlockCopy}`;
+      return `${actorName || 'The party'} cleared ${enemyName}.${recovery} Continue, use a Health Potion, or leave the Dungeon.`;
+    }
     const actorHp = event.actorHp === null || event.actorHp === undefined ? '' : `❤️ ${event.actorHp}/${event.actorMaxHp}`;
     const actorFocus = simple || event.actorFocus === null || event.actorFocus === undefined ? '' : `🧵 Focus ${event.actorFocus}/${event.actorMaxFocus}`;
     const enemyName = event.enemyName || (event.enemyId ? titleize(event.enemyId) : 'enemy');
@@ -224,6 +358,7 @@ export class ActivityStreamService {
       case 'HealthPotionPurchased':
         return { actorName: 'THREADBOUND', body: `${actorName} bought ${event.quantity} health potion${event.quantity === 1 ? '' : 's'} · −${event.cost} Gold · ${event.healthPotions} left.` };
       case 'DungeonStarted': {
+        if (event.simpleCombat && event.sharedSurface) return null;
         const foe = event.enemyName || enemyName || 'an enemy';
         const enemyState = event.enemyHp === null || event.enemyHp === undefined ? '' : ` 👾 ${foe} ${event.enemyHp}/${event.enemyMaxHp} HP.`;
         const playerState = event.actorHp === null || event.actorHp === undefined ? '' : ` ❤️ ${event.actorHp}/${event.actorMaxHp} HP.`;
@@ -234,20 +369,20 @@ export class ActivityStreamService {
       }
       case 'CombatActionResolved': {
         const simple = this.#isSimpleRun(event.runId);
-        if (simple && event.phase === 'failed') return null;
+        if (simple && event.phase === 'failed' && !event.battleReplay) return null;
         return { actorPlayerId: event.playerId || null, actorName: simple ? 'THREADBOUND' : actorName, body: this.#combatResult(event, actorName) };
       }
       case 'DungeonEncounterContinued':
         return {
           actorPlayerId: event.playerId || null,
           actorName: 'THREADBOUND',
-          body: `${actorName || 'A Weaver'} continued ${dungeonName || 'the Dungeon'}. ${event.enemyName || enemyName || 'The next enemy'} enters — ${event.enemyHp}/${event.enemyMaxHp} HP. Party HP persists; Attack is ready.`,
+          body: `${actorName || 'A Weaver'} continued ${dungeonName || 'the Dungeon'}. ${event.enemyName || enemyName || 'The next room'} begins now — party HP persists.`,
         };
       case 'DungeonPotionUsed':
         return {
           actorPlayerId: event.playerId || null,
           actorName: 'THREADBOUND',
-          body: `${actorName || 'A Weaver'} used a Health Potion between encounters. +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · ${event.healthPotions ?? 0} left. ${event.enemyName || enemyName || 'The next enemy'} is waiting.`,
+          body: `${actorName || 'A Weaver'} used a Health Potion between encounters. +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · ${event.healthPotions ?? 0} left. ${event.enemyName || enemyName || 'The next room'} begins now.`,
         };
       case 'DungeonRetreated':
         return {

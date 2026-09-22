@@ -47,6 +47,14 @@ export function postInventoryView() {
   return api('/api/stream/inventory-view', { method: 'POST' });
 }
 
+export function postStatusView() {
+  return api('/api/stream/status-view', { method: 'POST' });
+}
+
+export function postShopView() {
+  return api('/api/stream/shop-view', { method: 'POST' });
+}
+
 export function getAreas() {
   return api('/api/areas');
 }

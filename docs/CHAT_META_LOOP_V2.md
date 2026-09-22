@@ -2,14 +2,21 @@
 
 ## Product outcome
 
+> Shared Game Surfaces v3 extends this contract: public Hunt, Dungeon,
+> Blackjack, Inventory, Shop, and Status state is rendered from the same
+> Adventure Stream entry for the acting Weaver and spectators. The older
+> private-panel wording below is retained only where it describes navigation
+> to non-authoritative help or legacy compatibility surfaces.
+
 Threadbound keeps the Adventure Stream as the primary play surface while making permanent progression and recovery reachable at the moment they matter. The player should not need a permanent tactical dashboard to discover the next useful action.
 
 The default loop is:
 
 ```text
-Hunt -> loot / Dust -> Inventory -> equip / Temper / salvage
+Hunt -> loot / Gold -> Inventory -> equip / Upgrade / Sell
      -> Shop / Recovery when wounded
-     -> Dungeon when strong enough -> reward -> Inventory -> repeat
+     -> Dungeon when strong enough -> automatic room replay
+     -> Continue / Potion / Leave -> reward -> Inventory -> repeat
 ```
 
 ## Contextual action policy
@@ -20,7 +27,8 @@ The composer may show at most two contextual actions outside a simple dungeon. E
 - Under recommended Attack with permanent gear available: **Hunt + Inventory**.
 - At or above recommended Attack with permanent gear available: **Dungeon + Inventory**.
 - At zero Hunt HP: **Recovery + Shop**.
-- Active simple dungeon: **Attack** only.
+- Active shared Dungeon: the room replay is the primary surface; after a clear,
+  only the acting Weaver receives **Continue**, **Use Potion**, and **Leave**.
 
 Inventory and Shop buttons do not implement progression rules. They submit the same `inventory` / `shop` commands handled by the Adventure Stream presentation model.
 
@@ -58,7 +66,7 @@ New consumables/materials or rotating offers should extend the server catalog/se
 - [x] **META-05:** Zero Hunt HP renders Recovery and Shop, with no dead-end Hunt action.
 - [x] **META-06:** Inventory from the contextual action opens the same Relic pouch used by the `inventory` / `gear` command path.
 - [x] **META-07:** Shop remains an illustrated in-thread merchant response and purchases update authoritative Dust/potion state.
-- [x] **META-08:** Simple dungeons expose Attack only; meta actions do not compete with the current combat command.
+- [x] **META-08:** Shared simple Dungeons resolve each entered room automatically; repeated Attack clicks are not required, and only the acting Weaver receives between-room decisions after replay.
 - [x] **META-09:** The 390x844 mobile viewport has no horizontal overflow and all contextual controls retain 44px minimum touch targets.
 - [x] **META-10:** Unit/contract tests and Chromium Playwright suites are green on the merged implementation.
 - [x] **META-11:** Shop offer price/quantity/availability are projected by the server catalog/service; changing browser presentation cannot change the authoritative purchase terms.

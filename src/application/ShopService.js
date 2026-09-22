@@ -55,6 +55,17 @@ export class ShopService {
         ...offer,
         affordable: gold >= offer.cost,
         available,
+        item: itemTemplate ? {
+          slot: itemTemplate.slot || null,
+          rarity: itemTemplate.rarity || 'common',
+          attackBonus: Number(itemTemplate.attackBonus || 0),
+          defenseBonus: Number(itemTemplate.defenseBonus || 0),
+          effect: itemTemplate.effect ? {
+            code: itemTemplate.effect.code || itemTemplate.effectCode || null,
+            name: itemTemplate.effect.name || null,
+            description: itemTemplate.effect.description || null,
+          } : null,
+        } : null,
       })),
     };
   }

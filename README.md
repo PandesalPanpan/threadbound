@@ -13,11 +13,12 @@ The canonical ordered product/execution checklist is **`docs/THREADBOUND_MASTER_
 The currently shipped player experience is intentionally smaller than the legacy tactical prototype:
 
 ```text
-Hunt -> earn Thread Dust / find permanent gear
-     -> Inventory: equip, Temper, or salvage
+Hunt -> earn Gold / find permanent Equipment
+     -> Inventory: equip, Upgrade, or Sell
      -> Shop / Recovery when wounded
      -> Dungeon when strong enough
-     -> Attack until clear or defeated
+     -> enter or continue a room; the server resolves the automatic battle
+        and the Adventure Stream replays the committed result
      -> reward -> Inventory -> repeat
 ```
 
@@ -31,7 +32,9 @@ Current contextual behavior:
 - gear exists but Attack is below the recommendation: **Hunt + Inventory**;
 - Attack meets the recommendation and gear exists: **Dungeon + Inventory**;
 - zero Hunt HP: **Recovery + Shop**;
-- active simple dungeon: **Attack** only.
+- active shared Dungeon: the latest Dungeon card owns the automatic replay and,
+  after a room clears, exposes **Continue**, **Use Potion**, and **Leave** only
+  to the acting Weaver; the composer does not expose repeated Attack clicks.
 
 Typed commands remain available even when they are not one of the two surfaced actions. See `docs/SIMPLE_GAMEPLAY_LOOP.md` and `docs/CHAT_META_LOOP_V2.md` for the current migration baseline.
 
@@ -62,7 +65,9 @@ New player-facing dungeons use the simplified combat path. Frayed Hollow is curr
 
 Simple dungeon rules intentionally remove the tactical dashboard:
 
-- Attack is the only combat command;
+- entering or continuing a room resolves the existing Attack transition until
+  the room reaches a terminal state; the browser does not require repeated
+  Attack commands;
 - no Focus;
 - no Guard or Interrupt;
 - no combat skills;

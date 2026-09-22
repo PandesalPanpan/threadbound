@@ -80,8 +80,8 @@ test('new simple dungeon has Attack only and never enters buffs, events, Focus, 
   assert.equal(start.enemy.maxHp, 24);
   assert.equal(start.participants[0].focus, 0);
   assert.equal(start.participants[0].mendCharges, 0);
-  assert.throws(() => run.guard({ playerId: 'p1' }), /Attack is the only combat action/);
-  assert.throws(() => run.interrupt({ playerId: 'p1' }), /Attack is the only combat action/);
+  assert.throws(() => run.guard({ playerId: 'p1' }), /resolves rooms automatically|Continue.*Health Potion.*Leave/i);
+  assert.throws(() => run.interrupt({ playerId: 'p1' }), /resolves rooms automatically|Continue.*Health Potion.*Leave/i);
 
   let state = run.toJSON();
   let transitions = 0;

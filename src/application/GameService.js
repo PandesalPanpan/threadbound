@@ -9,6 +9,7 @@ import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
+import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
 import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepository.js';
@@ -21,6 +22,153 @@ function healthRecovery(row, now = Date.now()) {
   const elapsedSeconds = Number.isFinite(timestamp) ? Math.max(0, Math.floor((now - timestamp) / 1000)) : 0;
   const nextHealthInSeconds = Math.max(1, 60 - (elapsedSeconds % 60));
   return { nextHealthInSeconds, fullHealthInSeconds: nextHealthInSeconds + Math.max(0, row.maxHealth - row.currentHealth - 1) * 60 };
+}
+
+const SIMPLE_AUTO_TURN_CAP = 120;
+const SIMPLE_PLAYER_VISUALS = Object.freeze([
+  BATTLE_FIGMA_VISUAL_ASSET_IDS['bramble-druid'],
+  BATTLE_FIGMA_VISUAL_ASSET_IDS['rune-bard'],
+  BATTLE_FIGMA_VISUAL_ASSET_IDS['iron-vanguard'],
+]);
+
+function stableIndex(value, length) {
+  if (!length) return 0;
+  let hash = 2166136261;
+  for (const character of String(value || 'threadbound')) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % length;
+}
+
+function playerVisualAssetId(playerId) {
+  return SIMPLE_PLAYER_VISUALS[stableIndex(playerId, SIMPLE_PLAYER_VISUALS.length)] || null;
+}
+
+function participantProjection(repository, participant) {
+  const player = repository.getPlayer(participant.playerId);
+  return {
+    id: participant.playerId,
+    playerId: participant.playerId,
+    displayName: player?.displayName || 'Weaver',
+    visualAssetId: playerVisualAssetId(participant.playerId),
+    hp: Number(participant.hp || 0),
+    maxHp: Number(participant.maxHp || 1),
+  };
+}
+
+function publicItemProjection(item) {
+  if (!item) return null;
+  return {
+    id: item.id || null,
+    name: item.name || null,
+    slot: item.slot || null,
+    rarity: item.rarity || 'common',
+    attackBonus: Number(item.attackBonus || 0),
+    defenseBonus: Number(item.defenseBonus || 0),
+    effect: item.effect ? {
+      code: item.effect.code || item.effectCode || null,
+      name: item.effect.name || null,
+      description: item.effect.description || null,
+    } : null,
+    visualAssetId: item.visualAssetId || null,
+  };
+}
+
+function simpleBattleBeat({ repository, before, outcome, actorId }) {
+  const defeated = outcome.events.find((event) => event.type === 'EnemyDefeated') || null;
+  const damageEvent = outcome.events.find((event) => event.type === 'EnemyDamaged') || null;
+  const playerDamage = outcome.events.find((event) => event.type === 'PlayerDamaged') || null;
+  const beforeActor = before.participants.find((participant) => participant.playerId === actorId);
+  const afterActor = outcome.state.participants.find((participant) => participant.playerId === actorId);
+  const beforeEnemy = before.enemy || null;
+  const afterEnemy = outcome.state.enemy || null;
+  const enemy = afterEnemy || {
+    id: defeated?.enemyId || beforeEnemy?.id || 'enemy',
+    name: defeated?.enemyName || beforeEnemy?.name || 'Enemy',
+    visualAssetId: defeated?.visualAssetId || beforeEnemy?.visualAssetId || null,
+    hp: 0,
+    maxHp: beforeEnemy?.maxHp || 1,
+    isBoss: Boolean(defeated?.isBoss || beforeEnemy?.isBoss),
+  };
+  const actor = participantProjection(repository, afterActor || beforeActor || { playerId: actorId, hp: 0, maxHp: 1 });
+  const damage = Number(outcome.damage || damageEvent?.damage || 0);
+  const retaliation = Number(outcome.retaliation || playerDamage?.damage || 0);
+  const critical = Boolean(outcome.critical || outcome.events.some((event) => event.type === 'CriticalStrikeLanded'));
+  const defeatedName = defeated?.enemyName || beforeEnemy?.name || enemy.name;
+  const summary = defeated
+    ? `${actor.displayName} defeated ${defeatedName}${damage ? ` for ${damage} damage` : ''}.`
+    : `${actor.displayName} hit ${enemy.name} for ${damage} damage${critical ? ' · Critical' : ''}${retaliation ? ` · −${retaliation} HP` : ''}.`;
+
+  return {
+    index: 0,
+    actorId,
+    actorName: actor.displayName,
+    actorVisualAssetId: actor.visualAssetId,
+    targetId: enemy.id,
+    targetName: enemy.name,
+    targetVisualAssetId: resolveVisualAssetId(enemy, enemy.isBoss ? 'boss' : 'mob') || enemy.visualAssetId || null,
+    targetIsBoss: Boolean(enemy.isBoss),
+    targetHpBefore: Number(beforeEnemy?.hp || 0),
+    targetHpAfter: Number(afterEnemy?.hp ?? (defeated ? 0 : beforeEnemy?.hp || 0)),
+    targetMaxHp: Number(beforeEnemy?.maxHp || enemy.maxHp || 1),
+    damage,
+    retaliation,
+    retaliationTargetId: playerDamage?.playerId || null,
+    retaliationTargetHpAfter: playerDamage ? Number(outcome.state.participants.find((participant) => participant.playerId === playerDamage.playerId)?.hp || 0) : null,
+    actorHpBefore: Number(beforeActor?.hp || actor.hp),
+    actorHpAfter: Number(afterActor?.hp ?? actor.hp),
+    critical,
+    defeated: Boolean(defeated),
+    phase: outcome.state.phase,
+    events: outcome.events.map((event) => event.type),
+    summary,
+    participants: outcome.state.participants.map((participant) => participantProjection(repository, participant)),
+  };
+}
+
+function simpleBattleReplay({ repository, initial, final, beats, runId, actorPlayerId }) {
+  const firstEnemy = initial.enemy || beats[0]?.target || null;
+  const lastEnemy = beats.at(-1) || null;
+  const initialParticipants = initial.participants.map((participant) => participantProjection(repository, participant));
+  const finalParticipants = final.participants.map((participant) => participantProjection(repository, participant));
+  const enemy = {
+    id: firstEnemy?.id || lastEnemy?.targetId || 'enemy',
+    name: firstEnemy?.name || lastEnemy?.targetName || 'Enemy',
+    visualAssetId: resolveVisualAssetId(firstEnemy || {}, firstEnemy?.isBoss ? 'boss' : 'mob') || firstEnemy?.visualAssetId || lastEnemy?.targetVisualAssetId || null,
+    isBoss: Boolean(firstEnemy?.isBoss || lastEnemy?.targetIsBoss),
+    startingHp: Number(firstEnemy?.hp || lastEnemy?.targetHpBefore || 0),
+    endingHp: Number(final.enemy?.hp ?? lastEnemy?.targetHpAfter ?? 0),
+    maxHp: Number(firstEnemy?.maxHp || lastEnemy?.targetMaxHp || 1),
+  };
+
+  return {
+    version: 1,
+    kind: 'simple-dungeon-battle',
+    battleId: `dungeon:${runId}:room:${Number(initial.encounterIndex || 0)}`,
+    runId,
+    actorPlayerId,
+    roomIndex: Number(initial.encounterIndex || 0),
+    status: final.phase === 'failed' ? 'defeat' : final.phase === 'complete' ? 'victory' : 'room_clear',
+    startedAt: null,
+    players: initialParticipants.map((participant) => ({
+      ...participant,
+      startingHp: participant.hp,
+      endingHp: finalParticipants.find((candidate) => candidate.id === participant.id)?.hp ?? participant.hp,
+    })),
+    enemy,
+    beats: beats.map((beat, index) => ({ ...beat, index })),
+    finalPhase: final.phase,
+    nextEncounter: final.nextEncounter ? {
+      id: final.nextEncounter.enemy?.id || null,
+      name: final.nextEncounter.enemy?.name || null,
+      visualAssetId: resolveVisualAssetId(final.nextEncounter.enemy || {}, final.nextEncounter.enemy?.isBoss ? 'boss' : 'mob') || final.nextEncounter.enemy?.visualAssetId || null,
+      hp: final.nextEncounter.enemy?.hp ?? null,
+      maxHp: final.nextEncounter.enemy?.maxHp ?? null,
+      isBoss: Boolean(final.nextEncounter.enemy?.isBoss),
+    } : null,
+    rewards: [],
+  };
 }
 
 export class GameService {
@@ -173,6 +321,7 @@ export class GameService {
 
   attack(playerId, runId) {
     const { run, character, equipped } = this.#combatContext(playerId, runId);
+    if (run.state.simpleCombat && run.state.sharedSurface) return this.resolveSimpleEncounter(playerId, runId);
     const outcome = run.attack({
       playerId,
       attackPower: character.attackPower,
@@ -180,6 +329,86 @@ export class GameService {
       attunementCode: equipped?.effect?.attunementCode ?? null,
     });
     return this.#persistCombatOutcome(playerId, run, outcome, 'attack');
+  }
+
+  resolveSimpleEncounter(playerId, runId, { recovery = null } = {}) {
+    const { run } = this.#combatContext(playerId, runId);
+    if (!run.state.simpleCombat) return this.attack(playerId, runId);
+    if (!['combat', 'boss'].includes(run.state.phase)) {
+      return {
+        run: this.#decorateRun(run.toJSON(), playerId),
+        battleReplay: null,
+      };
+    }
+
+    const initial = run.toJSON();
+    const baseVersion = Number.isInteger(initial.version) ? initial.version : 0;
+    const beats = [];
+    const events = [];
+    let totalDamage = 0;
+    let totalRetaliation = 0;
+    let lastOutcome = null;
+    let actorCursor = 0;
+
+    for (let turn = 0; turn < SIMPLE_AUTO_TURN_CAP && ['combat', 'boss'].includes(run.state.phase); turn += 1) {
+      const alive = run.state.participants.filter((participant) => participant.hp > 0);
+      if (!alive.length) break;
+      const actor = alive[actorCursor % alive.length];
+      actorCursor += 1;
+      const player = this.repository.getPlayer(actor.playerId);
+      if (!player) throw new Error('Player not found.');
+      const equipment = this.equipmentRepository.getLoadout(actor.playerId);
+      const equipped = equipment.weapon;
+      const character = new Character({ ...player, equippedItem: equipped, equipment });
+      const before = run.toJSON();
+
+      // The persisted run is versioned once for the public command. Advancing the
+      // in-memory version between beats keeps deterministic critical-strike policy
+      // varied without pretending these internal beats were separate commands.
+      run.state.version = baseVersion + turn;
+      const outcome = run.attack({
+        playerId: actor.playerId,
+        attackPower: character.attackPower,
+        equipmentEffect: equipped?.effectCode ?? 'none',
+        attunementCode: equipped?.effect?.attunementCode ?? null,
+      });
+      lastOutcome = outcome;
+      totalDamage += Number(outcome.damage || 0);
+      totalRetaliation += Number(outcome.retaliation || 0);
+      beats.push(simpleBattleBeat({ repository: this.repository, before, outcome, actorId: actor.playerId }));
+      events.push(...outcome.events);
+
+      if (outcome.state.phase === 'failed' || !['combat', 'boss'].includes(outcome.state.phase)) break;
+    }
+
+    if (!lastOutcome) throw new Error('The simple Dungeon encounter could not resolve.');
+    if (['combat', 'boss'].includes(run.state.phase)) {
+      const error = new Error('The simple Dungeon encounter exceeded its safe auto-resolve limit.');
+      error.code = 'simple_dungeon_auto_turn_cap';
+      throw error;
+    }
+
+    run.state.version = baseVersion;
+    const final = run.toJSON();
+  const battleReplay = simpleBattleReplay({
+      repository: this.repository,
+      initial,
+      final,
+      beats,
+      runId,
+      actorPlayerId: playerId,
+  });
+  battleReplay.recovery = recovery ? structuredClone(recovery) : null;
+
+    return this.#persistCombatOutcome(playerId, run, {
+      ...lastOutcome,
+      state: final,
+      events,
+      damage: totalDamage,
+      retaliation: totalRetaliation,
+      battleReplay,
+      simpleCombat: true,
+    }, 'auto-attack');
   }
 
   continueDungeon(playerId, runId) {
@@ -190,8 +419,14 @@ export class GameService {
       ...event,
       playerId,
       participantIds: outcome.state.participants.map((participant) => participant.playerId),
+      silentStream: Boolean(state.sharedSurface),
     })));
-    return { run: this.#decorateRun(outcome.state, playerId), continued: true, previousPhase: state.phase };
+    if (!state.sharedSurface) {
+      const decoratedRun = this.#decorateRun(outcome.state, playerId);
+      return { run: decoratedRun, state: decoratedRun, battleReplay: null, continued: true, previousPhase: state.phase };
+    }
+    const resolved = this.resolveSimpleEncounter(playerId, runId);
+    return { ...resolved, continued: true, previousPhase: state.phase };
   }
 
   useDungeonPotion(playerId, runId) {
@@ -212,10 +447,16 @@ export class GameService {
       healthPotions: persisted.healthPotions,
       participantIds: outcome.state.participants.map((candidate) => candidate.playerId),
     };
-    this.eventBus.publish(event);
+    this.eventBus.publish({ ...event, silentStream: Boolean(run.state.sharedSurface) });
+    const recovery = { ...plan, healthPotions: persisted.healthPotions };
+    if (!run.state.sharedSurface) {
+      const decoratedRun = this.#decorateRun(outcome.state, playerId);
+      return { run: decoratedRun, state: decoratedRun, battleReplay: null, recovery };
+    }
+    const resolved = this.resolveSimpleEncounter(playerId, runId, { recovery });
     return {
-      run: this.#decorateRun(outcome.state, playerId),
-      recovery: { ...plan, healthPotions: persisted.healthPotions },
+      ...resolved,
+      recovery,
     };
   }
 
@@ -322,16 +563,18 @@ export class GameService {
   #publishResolvedAction(playerId, action, outcome) {
     const state = outcome.state;
     const actor = state.participants.find((participant) => participant.playerId === playerId) || null;
-    const damaged = outcome.events.find((event) => event.type === 'PlayerDamaged') || null;
+    const lastEvent = (type) => [...outcome.events].reverse().find((event) => event.type === type) || null;
+    const replay = outcome.battleReplay || null;
+    const damaged = lastEvent('PlayerDamaged');
     const damagedTarget = damaged ? state.participants.find((participant) => participant.playerId === damaged.playerId) || null : null;
-    const defeated = outcome.events.find((event) => event.type === 'EnemyDefeated') || null;
-    const healed = outcome.events.find((event) => event.type === 'PlayerHealed') || null;
-    const revived = outcome.events.find((event) => event.type === 'PlayerRevived') || null;
-    const interrupted = outcome.events.find((event) => event.type === 'EnemyInterrupted') || null;
-    const combo = outcome.events.find((event) => event.type === 'SkillComboTriggered') || null;
-    const protectedAlly = outcome.events.find((event) => event.type === 'PlayerProtected') || null;
-    const bossPhaseChanged = outcome.events.find((event) => event.type === 'BossPhaseChanged') || null;
-    const relicTrigger = outcome.events.find((event) => event.type === 'RelicAttunementTriggered') || null;
+    const defeated = lastEvent('EnemyDefeated');
+    const healed = lastEvent('PlayerHealed');
+    const revived = lastEvent('PlayerRevived');
+    const interrupted = lastEvent('EnemyInterrupted');
+    const combo = lastEvent('SkillComboTriggered');
+    const protectedAlly = lastEvent('PlayerProtected');
+    const bossPhaseChanged = lastEvent('BossPhaseChanged');
+    const relicTrigger = lastEvent('RelicAttunementTriggered');
     const prevented = protectedAlly
       ? Number(protectedAlly.prevented || 0)
       : damaged
@@ -345,6 +588,10 @@ export class GameService {
       runId: state.id,
       dungeonId: state.dungeonId,
       action,
+      autoResolved: Boolean(replay),
+      battleReplay: replay ? structuredClone(replay) : null,
+      recovery: outcome.recovery ? structuredClone(outcome.recovery) : replay?.recovery ? structuredClone(replay.recovery) : null,
+      rewards: outcome.rewards ? outcome.rewards.map((entry) => ({ playerId: entry.playerId, item: publicItemProjection(entry.item) })) : replay?.rewards ? structuredClone(replay.rewards) : [],
       skillId: outcome.skillId || null,
       combo: combo?.combo || null,
       comboBonus: Number(combo?.bonusDamage || 0),
@@ -369,11 +616,11 @@ export class GameService {
       actorSkillCooldowns: actor?.skillCooldowns ? structuredClone(actor.skillCooldowns) : {},
       targetHp: damagedTarget?.hp ?? null,
       targetMaxHp: damagedTarget?.maxHp ?? null,
-      enemyId: state.enemy?.id || defeated?.enemyId || null,
-      enemyName: state.enemy?.name || null,
-      enemyVisualAssetId: state.enemy?.visualAssetId || defeated?.visualAssetId || null,
-      enemyHp: state.enemy?.hp ?? null,
-      enemyMaxHp: state.enemy?.maxHp ?? null,
+      enemyId: state.enemy?.id || defeated?.enemyId || replay?.enemy?.id || null,
+      enemyName: state.enemy?.name || defeated?.enemyName || replay?.enemy?.name || null,
+      enemyVisualAssetId: state.enemy?.visualAssetId || defeated?.visualAssetId || replay?.enemy?.visualAssetId || null,
+      enemyHp: state.enemy?.hp ?? replay?.enemy?.endingHp ?? null,
+      enemyMaxHp: state.enemy?.maxHp ?? replay?.enemy?.maxHp ?? null,
       enemyStatuses: state.enemy?.statuses ? structuredClone(state.enemy.statuses) : {},
       bossBattlePhase: state.enemy?.isBoss ? Number(state.enemy.battlePhase || 1) : null,
       bossPhaseName: state.enemy?.isBoss ? state.enemy.phaseName || null : null,
@@ -387,13 +634,13 @@ export class GameService {
       defeatedEnemyName: defeated?.enemyName || null,
       defeatedEnemyVisualAssetId: defeated?.visualAssetId || null,
       defeatedBoss: Boolean(defeated?.isBoss),
-      roomCleared: Boolean(outcome.events.find((event) => event.type === 'DungeonRoomCleared')),
-      nextEnemyId: state.nextEncounter?.enemy?.id || null,
-      nextEnemyName: state.nextEncounter?.enemy?.name || null,
-      nextEnemyVisualAssetId: state.nextEncounter?.enemy?.visualAssetId || null,
-      nextEnemyHp: state.nextEncounter?.enemy?.hp ?? null,
-      nextEnemyMaxHp: state.nextEncounter?.enemy?.maxHp ?? null,
-      nextEnemyIsBoss: Boolean(state.nextEncounter?.enemy?.isBoss),
+      roomCleared: Boolean(lastEvent('DungeonRoomCleared') || replay?.status === 'room_clear'),
+      nextEnemyId: state.nextEncounter?.enemy?.id || replay?.nextEncounter?.id || null,
+      nextEnemyName: state.nextEncounter?.enemy?.name || replay?.nextEncounter?.name || null,
+      nextEnemyVisualAssetId: state.nextEncounter?.enemy?.visualAssetId || replay?.nextEncounter?.visualAssetId || null,
+      nextEnemyHp: state.nextEncounter?.enemy?.hp ?? replay?.nextEncounter?.hp ?? null,
+      nextEnemyMaxHp: state.nextEncounter?.enemy?.maxHp ?? replay?.nextEncounter?.maxHp ?? null,
+      nextEnemyIsBoss: Boolean(state.nextEncounter?.enemy?.isBoss || replay?.nextEncounter?.isBoss),
       interruptedIntentId: interrupted?.intentId || null,
       enemyIntent: state.enemyIntent ? structuredClone(state.enemyIntent) : null,
       phase: state.phase,
@@ -421,9 +668,6 @@ export class GameService {
     } else {
       outcome.state = this.repository.saveRun(outcome.state);
     }
-    this.eventBus.publishAll(outcome.events);
-    this.#publishResolvedAction(playerId, action, outcome);
-
     let rewards = null;
     if (outcome.state.phase === 'complete' && !outcome.state.rewardsGranted) {
       const rewardsByPlayer = {};
@@ -450,20 +694,29 @@ export class GameService {
       outcome.state = completion.state;
       if (completion.applied) {
         rewards = Object.entries(rewardsByPlayer).map(([participantId, item]) => ({ playerId: participantId, item }));
+        if (outcome.battleReplay) {
+          outcome.battleReplay.rewards = rewards.map((entry) => ({ playerId: entry.playerId, item: publicItemProjection(entry.item) }));
+          outcome.battleReplay.areaUnlocks = (completion.areaUnlocks || []).map((unlock) => ({
+            playerId: unlock.playerId,
+            areaNumber: unlock.areaNumber,
+          }));
+        }
         const participantIds = completion.state.participants.map((participant) => participant.playerId);
         for (const participant of completion.state.participants) {
           this.eventBus.publish({
             type: 'DungeonCompleted',
+            silentStream: Boolean(outcome.battleReplay),
             playerId: participant.playerId,
             participantIds,
             runId: completion.state.id,
             dungeonId: completion.state.dungeonId,
           });
-          this.eventBus.publish({ type: 'ItemGenerated', playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
+          this.eventBus.publish({ type: 'ItemGenerated', silentStream: Boolean(outcome.battleReplay), playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
         }
         for (const unlock of completion.areaUnlocks || []) {
           this.eventBus.publish({
             type: 'AreaUnlocked',
+            silentStream: Boolean(outcome.battleReplay),
             playerId: unlock.playerId,
             participantIds,
             runId: completion.state.id,
@@ -474,9 +727,19 @@ export class GameService {
       }
     }
 
+    if (outcome.battleReplay && !rewards) outcome.battleReplay.rewards = [];
+    const eventsForStream = outcome.battleReplay
+      ? outcome.events.map((event) => ({ ...event, silentStream: true }))
+      : outcome.events;
+    this.eventBus.publishAll(eventsForStream);
+    outcome.rewards = rewards;
+    this.#publishResolvedAction(playerId, action, outcome);
+
+    const decoratedRun = this.#decorateRun(outcome.state, playerId);
     return {
       ...outcome,
-      state: this.#decorateRun(outcome.state, playerId),
+      state: decoratedRun,
+      run: decoratedRun,
       rewards,
       reward: rewards?.find((entry) => entry.playerId === playerId)?.item ?? null,
     };

@@ -331,6 +331,20 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     realtimeHub.broadcast({ type: 'stream_entry', entry });
     return response.status(201).json({ entry, dashboard });
   });
+  app.post('/api/stream/status-view', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const dashboard = gameService.dashboard(playerId);
+    const entry = activityStream.recordStatusView({ playerId, dashboard });
+    realtimeHub.broadcast({ type: 'stream_entry', entry });
+    return response.status(201).json({ entry });
+  });
+  app.post('/api/stream/shop-view', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const shop = shopService.browse(playerId);
+    const entry = activityStream.recordShopView({ playerId, shop });
+    realtimeHub.broadcast({ type: 'stream_entry', entry });
+    return response.status(201).json({ entry, shop });
+  });
 
   app.get('/api/codex', requireConnection, (request, response) => {
     const category = String(request.query.category || 'all').toLowerCase();
@@ -468,7 +482,17 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const purchase = shopService.purchase(playerId, String(request.body?.sku || 'single'));
     return response.json({ purchase, shop: shopService.browse(playerId), dashboard: gameService.dashboard(playerId) });
   });
-  app.post('/api/dungeons/:dungeonId/start-simple', requireConnection, (request, response) => response.status(201).json({ run: simpleDungeonService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
+  app.post('/api/dungeons/:dungeonId/start-simple', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const started = simpleDungeonService.startDungeon(playerId, request.params.dungeonId, { sharedSurface: false });
+    return response.status(201).json({ run: started });
+  });
+  app.post('/api/dungeons/:dungeonId/start-shared', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const started = simpleDungeonService.startDungeon(playerId, request.params.dungeonId, { sharedSurface: true });
+    const resolved = gameService.resolveSimpleEncounter(playerId, started.id);
+    return response.status(201).json({ run: resolved.run, battleReplay: resolved.battleReplay || null });
+  });
 
   // Legacy tactical start remains during migration so old persisted journeys and focused
   // regression fixtures can still exercise the former combat model. The player UI no

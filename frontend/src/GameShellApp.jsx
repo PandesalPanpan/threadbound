@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, commandKey, connectRealtime, getAreas, getDashboard, getGambling, getQuests, getShop, getStream, getVisualAssets, postInventoryView, postStreamMessage } from './api/client.js';
+import { api, commandKey, connectRealtime, getAreas, getDashboard, getGambling, getQuests, getShop, getStream, getVisualAssets, postInventoryView, postShopView, postStatusView, postStreamMessage } from './api/client.js';
 import { AdventureStream } from './components/chat/AdventureStream.jsx';
 import { CommandComposer } from './components/chat/CommandComposer.jsx';
 import { renderGameplayPanel } from './components/panels/GameplayPanels.jsx';
@@ -23,7 +23,7 @@ export function GameShellApp() {
   const [areas, setAreas] = useState(null);
   const [quests, setQuests] = useState(null);
   const [shop, setShop] = useState(null);
-  const [panel, setPanel] = useState({ kind: 'status' });
+  const [panel, setPanel] = useState(null);
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -67,7 +67,13 @@ export function GameShellApp() {
     if (!text) return null;
     try {
       const parsed = normalizeCommand(text);
-      const payload = parsed.name === 'inventory' ? await postInventoryView() : await postStreamMessage(text);
+      const payload = parsed.name === 'inventory'
+        ? await postInventoryView()
+        : parsed.name === 'status'
+          ? await postStatusView()
+          : parsed.name === 'shop'
+            ? await postShopView()
+            : await postStreamMessage(text);
       mergeEntry(payload?.entry);
       return payload?.entry || null;
     } catch (caught) {
@@ -111,7 +117,6 @@ export function GameShellApp() {
     setBusy(true);
     setError('');
     try {
-      await recordCommand(command);
       const payload = await api(path, options);
       applyPayload(payload);
       await refresh({ includeStream: true });
@@ -124,7 +129,7 @@ export function GameShellApp() {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [applyPayload, recordCommand, refresh]);
+  }, [applyPayload, refresh]);
 
   const openResource = useCallback(async (kind, command, loader, setter) => {
     if (busyRef.current) return;
@@ -149,9 +154,12 @@ export function GameShellApp() {
     if (!parsed.name || busyRef.current) return;
     setError('');
     switch (parsed.name) {
-      case 'help':
       case 'status':
       case 'inventory':
+        await recordCommand(parsed.raw);
+        setPanel(null);
+        break;
+      case 'help':
       case 'party':
       case 'dungeon':
       case 'world':
@@ -170,11 +178,15 @@ export function GameShellApp() {
         const game = ['blackjack', 'coinflip', 'slots'].includes(parsed.name) ? parsed.name : 'games';
         if ((parsed.name === 'blackjack' && parsed.args.length === 0) || (parsed.name === 'coinflip' && parsed.args.length < 2) || (parsed.name === 'slots' && parsed.args.length === 0) || parsed.name === 'gambling' || parsed.name === 'casino') {
           const payload = await request(parsed.raw, '/api/gambling/help', { method: 'POST', body: JSON.stringify({ game }) });
-          if (payload) setPanel({ kind: 'gambling', data: { game: payload.game || game, blackjack: payload.blackjack, entry: payload.entry } });
+          // An active Blackjack hand already exists as the public BlackjackPlayed
+          // surface in the Adventure Stream. Keep the help command ephemeral so
+          // it cannot create a second actor-only table underneath that snapshot.
+          if (payload && parsed.name !== 'blackjack') setPanel({ kind: 'gambling', data: { game: payload.game || game, blackjack: payload.blackjack, entry: payload.entry } });
+          else if (parsed.name === 'blackjack') setPanel(null);
           break;
         }
         if (parsed.name === 'hit' || parsed.name === 'stand') {
-          let round = panel.kind === 'gambling' ? panel.data?.blackjack?.round : null;
+          let round = panel?.kind === 'gambling' ? panel.data?.blackjack?.round : null;
           if (!round || round.status !== 'active') {
             try { round = (await getGambling()).blackjack?.round || null; } catch (caught) { setError(caught.message); break; }
           }
@@ -184,22 +196,22 @@ export function GameShellApp() {
             setError('No active Blackjack hand. Type blackjack <wager> to deal.');
             break;
           }
-          const payload = await request(parsed.raw, `/api/gambling/blackjack/${encodeURIComponent(round.id)}/${parsed.name}`, { method: 'POST', headers: { 'Idempotency-Key': commandKey(`shell-blackjack-${parsed.name}`) } });
-          if (payload) setPanel({ kind: 'gambling', data: { game: 'blackjack', blackjack: payload.blackjack, entry: payload.entry } });
+          await request(parsed.raw, `/api/gambling/blackjack/${encodeURIComponent(round.id)}/${parsed.name}`, { method: 'POST', headers: { 'Idempotency-Key': commandKey(`shell-blackjack-${parsed.name}`) } });
+          setPanel(null);
           break;
         }
         if (parsed.name === 'blackjack') {
-          const payload = await request(parsed.raw, '/api/gambling/blackjack', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-blackjack-deal') }, body: JSON.stringify({ wager: Number(parsed.args[0]) }) });
-          if (payload) setPanel({ kind: 'gambling', data: { game: 'blackjack', blackjack: payload.blackjack, entry: payload.entry } });
+          await request(parsed.raw, '/api/gambling/blackjack', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-blackjack-deal') }, body: JSON.stringify({ wager: Number(parsed.args[0]) }) });
+          setPanel(null);
           break;
         }
         if (parsed.name === 'coinflip') {
-          const payload = await request(parsed.raw, '/api/gambling/coinflip', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-coinflip') }, body: JSON.stringify({ wager: Number(parsed.args[0]), choice: parsed.args[1] }) });
-          if (payload) setPanel({ kind: 'gambling', data: { game: 'coinflip', coinflip: payload.coinflip, entry: payload.entry } });
+          await request(parsed.raw, '/api/gambling/coinflip', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-coinflip') }, body: JSON.stringify({ wager: Number(parsed.args[0]), choice: parsed.args[1] }) });
+          setPanel(null);
           break;
         }
-        const payload = await request(parsed.raw, '/api/gambling/slots', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-slots') }, body: JSON.stringify({ wager: Number(parsed.args[0]) }) });
-        if (payload) setPanel({ kind: 'gambling', data: { game: 'slots', slots: payload.slots, entry: payload.entry } });
+        await request(parsed.raw, '/api/gambling/slots', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-slots') }, body: JSON.stringify({ wager: Number(parsed.args[0]) }) });
+        setPanel(null);
         break;
       }
       case 'leaderboard':
@@ -227,12 +239,10 @@ export function GameShellApp() {
         break;
       case 'hunt': {
         const payload = await request(parsed.raw, '/api/hunt', { method: 'POST' });
-        if (payload) setPanel({ kind: 'hunt', data: payload.hunt });
         break;
       }
       case 'adventure': {
         const payload = await request(parsed.raw, '/api/adventure', { method: 'POST' });
-        if (payload) setPanel({ kind: 'adventure', data: payload.adventure });
         break;
       }
       case 'heal': {
@@ -241,7 +251,6 @@ export function GameShellApp() {
           ? `/api/runs/${encodeURIComponent(activeRun.id)}/potion`
           : '/api/recovery/potion';
         await request(parsed.raw, path, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-potion') } });
-        setPanel({ kind: 'inventory' });
         break;
       }
       case 'continue':
@@ -260,7 +269,6 @@ export function GameShellApp() {
         }
         const options = { method: 'POST', headers: { 'Idempotency-Key': commandKey(`shell-${parsed.name}`) } };
         const payload = await request(parsed.raw, `/api/runs/${encodeURIComponent(run.id)}/${parsed.name}`, options);
-        if (payload) setPanel({ kind: 'dungeon' });
         break;
       }
       default:
@@ -281,8 +289,7 @@ export function GameShellApp() {
   }, [entries]);
 
   const contextualActions = useMemo(() => {
-    if (dashboard?.activeRun?.phase === 'between_encounter') return [{ command: 'continue', label: 'Continue', hint: 'Enter next room' }, { command: 'heal', label: 'Use Potion', hint: 'Heal before risk' }, { command: 'retreat', label: 'Leave', hint: 'Keep carried Gold' }];
-    if (dashboard?.activeRun) return [{ command: 'attack', label: 'Attack', hint: 'Resolve the run' }, { command: 'status', label: 'Status', hint: 'Read your HP' }];
+    if (dashboard?.activeRun) return [{ command: 'status', label: 'Status', hint: 'Read the shared receipt' }];
     if (dashboard?.simpleLoop?.huntAvailable) return [{ command: 'hunt', label: 'Hunt', hint: 'Quick battle' }, { command: 'dungeon', label: 'Dungeon', hint: 'Persistent run' }];
     return [{ command: 'inventory', label: 'Inventory', hint: 'Open Equipment' }, { command: 'quest', label: 'Quest', hint: 'See objectives' }];
   }, [dashboard]);
@@ -291,14 +298,14 @@ export function GameShellApp() {
     return <main className="game-shell-loading"><span className="loading-orbit" /><span>Loading the Adventure Stream…</span>{error ? <p data-testid="stream-error">{error}</p> : null}</main>;
   }
 
-  const activeCard = renderGameplayPanel({ panel, dashboard, assets, areas, quests, shop, onRequest: request, onCommand: handleCommand, busy });
+  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas, quests, shop, onRequest: request, onCommand: handleCommand, busy });
   return (
     <div className="game-shell">
       <GameTopBar dashboard={dashboard} areas={areas} connected={connected} onOpen={handleCommand} />
       <div className="game-shell-layout">
         <QuickRail dashboard={dashboard} onCommand={handleCommand} />
         <main className="game-shell-center">
-          <AdventureStream entries={entries} activeCard={activeCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={dashboard?.character?.id} assets={assets} />
+          <AdventureStream entries={entries} ephemeralCard={ephemeralCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={dashboard?.character?.id} assets={assets} onRequest={request} onCommand={handleCommand} busy={busy} dashboard={dashboard} />
           <CommandComposer onSubmit={handleCommand} busy={busy} contextualActions={contextualActions} />
           {busy ? <span className="game-shell-busy" role="status" data-testid="stream-busy">Syncing authoritative state…</span> : null}
         </main>

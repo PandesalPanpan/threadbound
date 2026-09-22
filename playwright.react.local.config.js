@@ -23,6 +23,7 @@ export default defineConfig({
       SESSION_SECRET: 'threadbound-react-local-e2e-session-secret',
       THREADBOUND_DB_PATH: ':memory:',
       THREADBOUND_AUTH_MODE: 'local',
+      THREADBOUND_HUNT_COOLDOWN_SECONDS: '0',
       THREADBOUND_LEGACY_GAME: '0',
       THREADBOUND_LEGACY_CODEX: '0',
       THREADED_BASE_URL: '',

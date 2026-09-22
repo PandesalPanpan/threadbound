@@ -119,6 +119,8 @@ test('Slots and Blackjack routes expose Gold-only compact stream receipts', asyn
     assert.match(blackjackEntry.body, /You .* = \d+/);
     assert.match(blackjackEntry.body, /Dealer /);
     assert.equal(/PRIVATE THREAD REPLY/i.test(blackjackEntry.body), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(blackjackEntry.metadata.round, 'deck'), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(blackjackEntry.metadata.round, 'privateDeck'), false);
   } finally {
     await f.close();
   }

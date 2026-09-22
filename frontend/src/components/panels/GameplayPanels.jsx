@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { commandKey } from '../../api/client.js';
-import { compactText, findDungeon, goldValue, healthValue, resolveShellAsset } from '../../shell/presentation.js';
+import { compactText, findDungeon, resolveShellAsset } from '../../shell/presentation.js';
 import { PanelButton, RichCard, StateMessage } from '../common/RichCard.jsx';
 
 function AssetThumb({ entity, assets, kinds, alt = '', className = '' }) {
@@ -18,23 +18,6 @@ function ProgressBar({ value, max, label = 'Progress', tone = 'purple' }) {
   return <div className="shell-progress"><div className="shell-progress__label"><span>{label}</span><strong>{safeValue}/{safeMax}</strong></div><div className="shell-progress__track"><span className={`shell-progress__fill shell-progress__fill--${tone}`} style={{ width: `${Math.round((safeValue / safeMax) * 100)}%` }} /></div></div>;
 }
 
-function openHuntBattleReplay(hunt) {
-  if (!hunt?.battle || !hunt?.battleReplay) return;
-  const payload = {
-    mode: 'hunt-replay',
-    source: 'hunt',
-    authoritative: true,
-    replayable: true,
-    battleId: `hunt:${Date.now()}`,
-    battle: hunt.battle,
-    loadout: hunt.battleLoadout || {},
-    receipt: hunt.battleReplay.receipt,
-    details: hunt.battleReplay.details,
-  };
-  window.sessionStorage.setItem('threadbound:battle-replay', JSON.stringify(payload));
-  window.location.href = '/game?view=battle&source=hunt';
-}
-
 function gamblingDelta(record = {}) {
   return Number(record.payoutGold || 0) - Number(record.wager || 0);
 }
@@ -45,26 +28,11 @@ function GamblingOutcomeBanner({ outcome = 'resolved', delta = 0, active = false
   return <div className={`stream-outcome-banner shell-gambling-outcome ${tone}`}><span>{active ? 'LIVE' : String(outcome || 'resolved').toUpperCase()}</span><strong>{active ? 'Hand in progress' : delta > 0 ? 'YOU WON' : delta < 0 ? 'YOU LOST' : 'PUSH'}</strong><b>{active ? detail : deltaText}</b></div>;
 }
 
-export function StatusPanel({ dashboard, onCommand }) {
-  const character = dashboard?.character;
-  const health = healthValue(character);
-  const progression = character?.levelProgression || {};
-  return (
-    <RichCard kind="profile" kicker="YOUR VIEW · /status" title={character?.displayName || 'Weaver profile'} subtitle="Your authoritative player state, mirrored into the shared thread." testId="stream-player-status">
-      <div className="shell-profile-hero"><span className="shell-profile-avatar">{String(character?.displayName || 'W').slice(0, 1)}</span><div><span className="shell-kicker">LEVEL {character?.level || 1}</span><h3>Ready for the next thread.</h3><p>{dashboard?.activeRun ? 'A dungeon is active. Finish it before starting a Hunt.' : 'Choose a Quick Command or type a plain word below.'}</p></div></div>
-      <div className="shell-stat-grid"><Stat label="HP" value={`${health.current}/${health.max}`} tone="green" /><Stat label="Attack" value={character?.attack ?? character?.attackPower ?? '—'} tone="blue" /><Stat label="Defense" value={character?.defense ?? '—'} /><Stat label="Gold" value={goldValue(character)} tone="gold" /></div>
-      <ProgressBar value={progression.experienceIntoLevel || character?.experience || 0} max={progression.experienceNeededForLevel || 100} label="Experience" />
-      <div className="shell-inline-summary"><span>Health potions <strong>{character?.healthPotions ?? 0}</strong></span><span>Party <strong>{dashboard?.party ? `${dashboard.party.members?.length || 1} Weaver${dashboard.party.members?.length === 1 ? '' : 's'}` : 'Solo'}</strong></span></div>
-      <div className="shell-card-actions"><PanelButton primary onClick={() => onCommand('inventory')}>Open Inventory</PanelButton><PanelButton onClick={() => onCommand('quest')}>View Quest</PanelButton></div>
-    </RichCard>
-  );
-}
-
 export function HelpPanel({ onCommand }) {
   const commands = [
     ['hunt', 'Resolve one short automatic battle for Gold, XP, and possible gear.'],
     ['adventure', 'Take a larger automatic encounter in the current Area.'],
-    ['dungeon', 'Open the persistent attack-only run and keep HP across encounters.'],
+    ['dungeon', 'Enter a persistent Dungeon and watch each room resolve in the shared thread.'],
     ['inventory', 'Inspect Equipment, equip a piece, Upgrade, Sell, or Heal.'],
     ['shop', 'Buy supplies and Equipment with Gold.'],
     ['party', 'Create or join a cooperative party.'],
@@ -77,35 +45,11 @@ export function HelpPanel({ onCommand }) {
   return <RichCard kind="help" kicker="THREAD GUIDE · /help" title="Choose your next thread" subtitle="Common words and slash commands work the same way."><div className="shell-command-list">{commands.map(([command, description]) => <button type="button" key={command} onClick={() => onCommand(command)}><strong>/{command}</strong><span>{description}</span><b>›</b></button>)}</div><p className="shell-muted-copy">Battle details remain available in the focused Battle view when you want turn-by-turn animation.</p></RichCard>;
 }
 
-export function InventoryPanel({ dashboard, assets, onRequest, onCommand, busy = false }) {
-  const [confirming, setConfirming] = useState(null);
-  const character = dashboard?.character || {};
-  const equipment = character.equipment || {};
-  const items = dashboard?.inventory || [];
-  const health = healthValue(character);
-  const slots = ['weapon', 'head', 'chest', 'boots', 'accessory'];
-  return (
-    <RichCard kind="inventory" kicker="YOUR VIEW · /inventory" title="Inventory" subtitle={`${items.length} item${items.length === 1 ? '' : 's'} · ${goldValue(character)} Gold`} testId="inventory-rich-card">
-      <div className="shell-stat-grid shell-stat-grid--five">{slots.map((slot) => <div className="shell-slot" key={slot}><span>{slot}</span><strong>{equipment[slot]?.name || 'Empty'}</strong></div>)}</div>
-      <div className="shell-utility-row"><div><strong>Health potion</strong><small>Restore HP outside an active dungeon.</small></div><PanelButton onClick={() => onRequest('heal', '/api/recovery/potion', { method: 'POST' })} disabled={busy || !character.healthPotions || health.current >= health.max} primary>Heal · {character.healthPotions ?? 0} left</PanelButton></div>
-      {items.length ? <div className="shell-item-list">{items.map((item) => {
-        const equipped = Object.values(equipment).some((candidate) => candidate?.id === item.id);
-        const asset = resolveShellAsset(item, assets, ['item', 'icon']);
-        return <article className="shell-item-row" key={item.id} data-testid="inventory-rich-item" data-item-id={item.id}>
-          <AssetThumb entity={item} assets={assets} kinds={['item', 'icon']} alt="" />
-          <div className="shell-item-copy"><div className="shell-item-heading"><strong>{item.name}</strong><span className={`rarity-chip rarity-chip--${item.rarity || 'common'}`}>{item.rarity || 'Common'}</span></div><small>{item.slot || 'Equipment'} · +{item.attackBonus || 0} Attack · {item.effect?.name || 'Reliable'}{asset ? ` · ${asset.label}` : ''}</small>{equipped ? <span className="shell-equipped-badge">EQUIPPED</span> : null}</div>
-          <div className="shell-item-actions">{equipped ? <PanelButton disabled>Equipped</PanelButton> : <PanelButton primary disabled={busy} onClick={() => onRequest(`equip ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/equip`, { method: 'POST' })} testId={`inventory-rich-equip-${item.id}`}>Equip</PanelButton>}<PanelButton disabled={busy} onClick={() => onRequest(`upgrade ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/upgrade`, { method: 'POST' })} testId={`inventory-rich-upgrade-${item.id}`}>Upgrade</PanelButton>{equipped ? null : <PanelButton danger disabled={busy} onClick={() => { if (confirming === item.id) { setConfirming(null); onRequest(`sell ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/salvage`, { method: 'POST' }); } else setConfirming(item.id); }} testId={`inventory-rich-sell-${item.id}`}>{confirming === item.id ? 'Confirm Sell' : 'Sell'}</PanelButton>}</div>
-        </article>;
-      })}</div> : <StateMessage title="No Equipment yet" copy="Hunt or clear a Dungeon to find your first piece of Equipment." action={<PanelButton primary onClick={() => onCommand('hunt')}>Go Hunt</PanelButton>} />}
-    </RichCard>
-  );
-}
-
 export function ShopPanel({ shop, assets, onRequest, onCommand, busy = false, bankOnly = false }) {
   if (!shop) return <RichCard kind="shop" kicker="SHOP"><StateMessage title="Shop unavailable" copy="The vendor could not be reached yet." /></RichCard>;
   const offers = shop.offers || [];
   const bank = shop.bank || {};
-  return <RichCard kind={bankOnly ? 'bank' : 'shop'} kicker={bankOnly ? 'YOUR VIEW · /bank' : 'YOUR VIEW · /shop'} title={bankOnly ? 'Bank' : shop.vendor?.name || 'Town Shop'} subtitle={bankOnly ? 'Gold transport stays server-authoritative.' : `${shop.currency?.balance ?? 0} Gold available`} testId={bankOnly ? 'bank-rich-card' : 'shop-rich-card'}>
+  return <RichCard kind={bankOnly ? 'bank' : 'shop'} kicker={bankOnly ? 'BANK · /bank' : 'SHARED STREAM · /shop'} title={bankOnly ? 'Bank' : shop.vendor?.name || 'Town Shop'} subtitle={bankOnly ? 'Gold transport stays server-authoritative.' : `${shop.currency?.balance ?? 0} Gold available`} testId={bankOnly ? 'bank-rich-card' : 'shop-rich-card'}>
     <div className="shell-bank-balance"><div><span>Carried</span><strong>{bank.carriedGold ?? shop.currency?.balance ?? 0} Gold</strong></div><div><span>Banked</span><strong>{bank.bankedGold ?? 0} Gold</strong></div></div>
     {bankOnly ? <BankActions bank={bank} onRequest={onRequest} busy={busy} /> : null}
     {!bankOnly ? <div className="shell-offer-list">{offers.map((offer) => <article className="shell-offer-row" key={offer.sku} data-testid="shop-offer" data-sku={offer.sku}><AssetThumb entity={offer} assets={assets} kinds={['item', 'icon']} alt="" /><div><div className="shell-item-heading"><strong>{offer.name}</strong><span>{offer.cost} Gold</span></div><small>{offer.description || `${offer.quantity || 1} available`}</small></div><PanelButton primary disabled={busy || !offer.available || !offer.affordable} onClick={() => onRequest(`buy ${offer.name}`, `/api/shop/purchases/${encodeURIComponent(offer.sku)}`, { method: 'POST' })} testId={`shop-buy-${offer.sku}`}>{offer.affordable ? 'Buy' : 'Need Gold'}</PanelButton></article>)}</div> : null}
@@ -134,30 +78,12 @@ export function DungeonPanel({ dashboard, onRequest, onCommand, busy = false }) 
   const selected = findDungeon(dungeons, selectedDungeonId);
   const readiness = (dashboard?.simpleLoop?.dungeonReadiness || []).find((entry) => entry.dungeonId === (selected?.id || dungeons[0]?.id));
   if (run) {
+    if (run.simpleCombat) return null;
     const viewer = run.viewer || run.participants?.[0];
     const enemy = run.enemy;
-    const nextEncounter = run.nextEncounter?.enemy || null;
-    const risk = run.risk || {};
-    if (run.simpleCombat && run.phase === 'between_encounter') {
-      const potions = Number(dashboard?.character?.healthPotions || 0);
-      return <RichCard kind="dungeon" kicker="PERSISTENT RUN · ROOM CLEARED" title={run.dungeonDefinition?.name || 'Dungeon'} subtitle="Your HP persists. Choose the next risk before the server starts the next encounter." testId="shell-dungeon-card"><div data-testid="shell-dungeon-decision" className="shell-dungeon-decision"><div className="shell-run-state"><div><span className="shell-kicker">ROOM {Number(run.encounterIndex || 0) + 1} CLEARED</span><strong>Choose your next step</strong><small>Nothing heals automatically between encounters.</small></div><div className="shell-run-enemy"><span>NEXT</span><strong>{nextEncounter?.name || 'Unknown enemy'}</strong><small>{nextEncounter ? `${nextEncounter.hp}/${nextEncounter.maxHp} HP${nextEncounter.isBoss ? ' · BOSS' : ''}` : 'Waiting'}</small></div></div>{viewer ? <ProgressBar value={viewer.hp} max={viewer.maxHp} label={`${dashboard.character?.displayName || 'You'} HP`} tone="green" /> : null}<div className="shell-dungeon-risk"><span className="shell-kicker">RISK / REWARD</span><p>Clear reward: <strong>+{risk.completionReward?.gold ?? 15} Gold + Equipment</strong> · secured only when the Dungeon is cleared.</p><p>Death: <strong>−{risk.death?.goldLost ?? 0} carried Gold</strong> · Banked Gold stays safe. Leave keeps carried Gold but forfeits the clear reward.</p></div><div className="shell-card-actions"><PanelButton primary disabled={busy || !nextEncounter} onClick={() => onRequest('continue dungeon', `/api/runs/${encodeURIComponent(run.id)}/continue`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-continue') } })} testId="shell-run-continue">Continue</PanelButton><PanelButton disabled={busy || potions <= 0 || !viewer || viewer.hp >= viewer.maxHp} onClick={() => onRequest('use Health Potion in Dungeon', `/api/runs/${encodeURIComponent(run.id)}/potion`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-potion') } })} testId="shell-run-potion">Use Potion · {potions} left</PanelButton><PanelButton danger disabled={busy || !nextEncounter} onClick={() => onRequest('leave dungeon', `/api/runs/${encodeURIComponent(run.id)}/retreat`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-retreat') } })} testId="shell-run-retreat">Leave Dungeon</PanelButton></div></div></RichCard>;
-    }
-    return <RichCard kind="dungeon" kicker="PERSISTENT RUN · /dungeon" title={run.dungeonDefinition?.name || 'Dungeon'} subtitle={run.simpleCombat ? 'Attack is the only combat action in this Adventure.' : 'This run has tactical details in Battle view.'} testId="shell-dungeon-card"><div className="shell-run-state"><div><span className="shell-kicker">ROOM {Number(run.encounterIndex || 0) + 1}</span><strong>{enemy?.name || (run.phase === 'complete' ? 'Run complete' : 'Run state')}</strong><small>{run.phase} · HP persists between actions</small></div>{enemy ? <div className="shell-run-enemy"><span>ENEMY</span><strong>{enemy.hp}/{enemy.maxHp} HP</strong></div> : null}</div>{viewer ? <ProgressBar value={viewer.hp} max={viewer.maxHp} label={`${dashboard.character?.displayName || 'You'} HP`} tone="green" /> : null}{enemy ? <ProgressBar value={enemy.hp} max={enemy.maxHp} label={enemy.name} tone="red" /> : null}<div className="shell-card-actions">{run.simpleCombat ? <PanelButton primary disabled={busy || !enemy} onClick={() => onRequest(`attack ${enemy?.name || 'enemy'}`, `/api/runs/${encodeURIComponent(run.id)}/attack`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-attack') } })} testId="shell-run-attack">Attack</PanelButton> : <PanelButton primary onClick={() => { window.location.href = '/game?view=battle'; }}>Open Battle Details</PanelButton>}<PanelButton onClick={() => onCommand('status')}>View HP</PanelButton></div></RichCard>;
+    return <RichCard kind="dungeon" kicker="PERSISTENT RUN · /dungeon" title={run.dungeonDefinition?.name || 'Dungeon'} subtitle="This run has tactical details in Battle view." testId="shell-dungeon-card"><div className="shell-run-state"><div><span className="shell-kicker">ROOM {Number(run.encounterIndex || 0) + 1}</span><strong>{enemy?.name || (run.phase === 'complete' ? 'Run complete' : 'Run state')}</strong><small>{run.phase} · HP persists between actions</small></div>{enemy ? <div className="shell-run-enemy"><span>ENEMY</span><strong>{enemy.hp}/{enemy.maxHp} HP</strong></div> : null}</div>{viewer ? <ProgressBar value={viewer.hp} max={viewer.maxHp} label={`${dashboard.character?.displayName || 'You'} HP`} tone="green" /> : null}{enemy ? <ProgressBar value={enemy.hp} max={enemy.maxHp} label={enemy.name} tone="red" /> : null}<div className="shell-card-actions"><PanelButton primary onClick={() => { window.location.href = '/game?view=battle'; }}>Open Battle Details</PanelButton><PanelButton onClick={() => onCommand('status')}>View HP</PanelButton></div></RichCard>;
   }
-  return <RichCard kind="dungeon" kicker="YOUR VIEW · /dungeon" title="Choose a Dungeon" subtitle="Persistent HP, one clear Attack action, and server-resolved rewards." testId="shell-dungeon-card"><div className="shell-dungeon-list">{dungeons.map((dungeon) => <button type="button" key={dungeon.id} className={`shell-dungeon-choice${selected?.id === dungeon.id ? ' is-selected' : ''}`} onClick={() => setSelectedDungeonId(dungeon.id)}><span><strong>{dungeon.name}</strong><small>{dungeon.recommendedPlayers || 1} recommended Weaver{dungeon.recommendedPlayers === 1 ? '' : 's'} · recommended Attack {readiness?.recommendedAttack || 9}+</small></span><b>{selected?.id === dungeon.id ? 'SELECTED' : '›'}</b></button>)}</div>{selected ? <div className="shell-dungeon-ready"><span className={`shell-ready-dot${readiness?.ready ? ' is-ready' : ''}`} /><div><strong>{readiness?.ready ? 'Ready to enter' : 'Check readiness'}</strong><small>{readiness?.members?.map((member) => `${member.displayName}: ${member.ready ? 'ready' : 'needs more Attack/HP'}`).join(' · ') || 'Solo readiness is evaluated by the server.'}</small></div></div> : <StateMessage title="Pick a Dungeon" copy="The server will return the authoritative readiness check." />}{selected ? <PanelButton primary disabled={busy || readiness?.ready === false} onClick={() => onRequest(`start dungeon ${selected.name}`, `/api/dungeons/${encodeURIComponent(selected.id)}/start-simple`, { method: 'POST' })} testId={`dungeon-start-${selected.id}`}>Enter Dungeon</PanelButton> : null}</RichCard>;
-}
-
-export function HuntPanel({ result, dashboard, onRequest, onCommand, busy = false }) {
-  const hunt = result || {};
-  return <RichCard kind="hunt" kicker="YOUR VIEW · /hunt" title="Hunt" subtitle="One automatic encounter. The server commits the result, reward, HP, and exact replay." testId="hunt-rich-card">{result ? <div className="shell-result-summary"><span className={`shell-result-mark${hunt.victory ? ' is-good' : ''}`}>{hunt.victory ? '✓' : '!'}</span><div><strong>{hunt.victory ? `Defeated ${hunt.enemy?.name || 'the encounter'}` : `Fell to ${hunt.enemy?.name || 'the encounter'}`}</strong><p>{hunt.victory ? `+${hunt.gold || 0} Gold · +${hunt.experience || hunt.xp || 0} XP` : 'Recover before the next Hunt.'} · {hunt.character?.currentHealth ?? dashboard?.character?.currentHealth ?? 0}/{hunt.character?.maxHealth ?? dashboard?.character?.maxHealth ?? 0} HP</p>{hunt.item ? <small>Found {hunt.item.name}</small> : null}</div></div> : <StateMessage title="The next Hunt is ready" copy="Resolve a short automatic battle for a clear receipt." /> }<div className="shell-card-actions"><PanelButton primary disabled={busy || !dashboard?.simpleLoop?.huntAvailable} onClick={() => onRequest('hunt', '/api/hunt', { method: 'POST' })} testId="shell-hunt">{result ? 'Hunt Again' : 'Start Hunt'}</PanelButton>{result?.battle && result?.battleReplay ? <PanelButton onClick={() => openHuntBattleReplay(hunt)} testId="shell-hunt-watch-battle">Watch Battle</PanelButton> : null}<PanelButton onClick={() => onCommand('inventory')}>Inventory</PanelButton></div></RichCard>;
-}
-
-export function AdventurePanel({ result, dashboard, onRequest, onCommand, busy = false }) {
-  const adventure = result || {};
-  const rewards = adventure.rewards || {};
-  const currentHealth = adventure.remainingHp ?? dashboard?.character?.currentHealth ?? 0;
-  const maxHealth = adventure.maxHealth ?? dashboard?.character?.maxHealth ?? 1;
-  return <RichCard kind="adventure" kicker="YOUR VIEW · /adventure" title="Adventure" subtitle="One automatic Area encounter with a larger reward profile." testId="adventure-rich-card">{result ? <div className="shell-result-summary"><span className={`shell-result-mark${adventure.victory ? ' is-good' : ''}`}>{adventure.victory ? '✓' : '!'}</span><div><strong>{adventure.victory ? `Defeated ${adventure.enemy?.name || 'the encounter'}` : 'The encounter won'}</strong><p>{adventure.victory ? `+${rewards.gold || 0} Gold · +${rewards.experience || 0} XP` : 'Heal before starting another Adventure.'} · {currentHealth}/{maxHealth} HP</p>{rewards.item ? <small>Found {rewards.item.name}</small> : null}{rewards.storyEvent?.text ? <small>{rewards.storyEvent.text}</small> : null}</div></div> : <StateMessage title="The Area is ready" copy="Resolve one larger automatic encounter for Gold, XP, and a chance at Equipment." />}{adventure.cooldown ? <div className="shell-inline-summary"><span>Next Adventure <strong>{adventure.cooldown.nextReadyAt || 'recharging'}</strong></span><span>Cooldown <strong>{adventure.cooldown.remainingSeconds ?? '—'}s</strong></span></div> : null}<div className="shell-card-actions"><PanelButton primary disabled={busy || Boolean(dashboard?.activeRun)} onClick={() => onRequest('adventure', '/api/adventure', { method: 'POST' })} testId="shell-adventure">{result ? 'Adventure Again' : 'Start Adventure'}</PanelButton><PanelButton onClick={() => onCommand('inventory')}>Inventory</PanelButton></div></RichCard>;
+  return <RichCard kind="dungeon" kicker="DUNGEON ENTRY · /dungeon" title="Choose a Dungeon" subtitle="Persistent HP, a shared server replay, and owner-only room decisions." testId="shell-dungeon-card"><div className="shell-dungeon-list">{dungeons.map((dungeon) => <button type="button" key={dungeon.id} className={`shell-dungeon-choice${selected?.id === dungeon.id ? ' is-selected' : ''}`} onClick={() => setSelectedDungeonId(dungeon.id)}><span><strong>{dungeon.name}</strong><small>{dungeon.recommendedPlayers || 1} recommended Weaver{dungeon.recommendedPlayers === 1 ? '' : 's'} · recommended Attack {readiness?.recommendedAttack || 9}+</small></span><b>{selected?.id === dungeon.id ? 'SELECTED' : '›'}</b></button>)}</div>{selected ? <div className="shell-dungeon-ready"><span className={`shell-ready-dot${readiness?.ready ? ' is-ready' : ''}`} /><div><strong>{readiness?.ready ? 'Ready to enter' : 'Ready with risk'}</strong><small>{readiness?.members?.map((member) => `${member.displayName}: ${member.ready ? 'ready' : 'below recommendation'}`).join(' · ') || 'Readiness is a server projection; entering remains your choice.'}</small></div></div> : <StateMessage title="Pick a Dungeon" copy="The server will return the authoritative readiness check." />}{selected ? <PanelButton primary disabled={busy} onClick={() => onRequest(`start dungeon ${selected.name}`, `/api/dungeons/${encodeURIComponent(selected.id)}/start-shared`, { method: 'POST' })} testId={`dungeon-start-${selected.id}`}>Enter Dungeon</PanelButton> : null}</RichCard>;
 }
 
 export function WorldPanel({ dashboard, onCommand }) {
@@ -172,35 +98,6 @@ export function HoneyPanel({ dashboard, onRequest, busy = false }) {
   const local = dashboard?.authSource === 'local' || dashboard?.wallet?.unavailable;
   const balance = dashboard?.wallet?.balance ?? '—';
   return <RichCard kind="honey" kicker="YOUR VIEW · /honey" title="Honey Wallet" subtitle={local ? 'Owned by Threaded; unavailable in standalone local mode.' : 'Threaded-authoritative premium wallet.'} testId="honey-rich-card"><div className="shell-honey-balance"><span>BALANCE</span><strong data-testid="stream-honey-balance">{local ? '—' : balance}</strong><small>Honey stays outside local game economy rules.</small></div>{local ? <StateMessage title="Connect through Threaded" copy="Threadbound will not mint Honey locally. The wallet remains authoritative in Threaded." /> : <div className="shell-card-actions"><PanelButton primary disabled={busy} onClick={() => onRequest('buy training cache', '/api/honey/purchases/training-cache', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-honey') } })} testId="stream-buy-training-cache">Buy Training Cache · 25 Honey</PanelButton></div>}</RichCard>;
-}
-
-const CARD_SUITS = Object.freeze({ C: '♣', D: '♦', H: '♥', S: '♠' });
-
-function PlayingCard({ code, hidden = false, testId }) {
-  if (hidden) return <span className="shell-playing-card shell-playing-card--back" data-testid={testId} aria-label="Hidden dealer card">?</span>;
-  const value = String(code || '').trim().toUpperCase();
-  const rank = value.slice(0, -1) || '?';
-  const suit = CARD_SUITS[value.slice(-1)] || '•';
-  const red = value.endsWith('D') || value.endsWith('H');
-  return <span className={`shell-playing-card${red ? ' is-red' : ''}`} data-testid={testId} data-card-code={value} aria-label={`${rank} ${suit}`}>{rank}<small>{suit}</small></span>;
-}
-
-function BlackjackSurface({ state, onCommand, busy }) {
-  const round = state?.round;
-  if (!round) return <StateMessage title="Blackjack is ready" copy="Type blackjack <wager> to deal a hand. Wagers use carried Gold." />;
-  const active = round.status === 'active';
-  const dealerCards = round.dealerHand || [];
-  const delta = gamblingDelta(round);
-  return <section className={`shell-gambling-surface shell-blackjack-surface${active ? ' is-active' : ' is-result'}`} data-testid={active ? 'shell-blackjack-active' : 'shell-blackjack-result'}>
-    <div className="shell-gambling-balance"><span>BLACKJACK · {active ? 'OPEN HAND' : 'RESULT'}</span><strong>{state.carriedGold ?? 0} Gold carried</strong></div>
-    <GamblingOutcomeBanner outcome={round.outcome} delta={delta} active={active} detail={`${round.wager} GOLD WAGER`} />
-    <div className="shell-blackjack-hands">
-      <div className="shell-blackjack-hand"><div className="shell-gambling-label"><span>Dealer</span><strong>{round.dealerScore}{round.dealerHiddenCardCount ? '+' : ''}</strong></div><div className="shell-playing-card-row">{dealerCards.map((card, index) => <PlayingCard key={`${card}-${index}`} code={card} testId={`shell-dealer-card-${index}`} />)}{Array.from({ length: round.dealerHiddenCardCount || 0 }, (_, index) => <PlayingCard key={`hidden-${index}`} hidden testId={`shell-dealer-card-hidden-${index}`} />)}</div></div>
-      <div className="shell-blackjack-hand"><div className="shell-gambling-label"><span>You</span><strong>{round.playerScore}</strong></div><div className="shell-playing-card-row">{(round.playerHand || []).map((card, index) => <PlayingCard key={`${card}-${index}`} code={card} testId={`shell-player-card-${index}`} />)}</div></div>
-    </div>
-    <div className="shell-gambling-meta"><span>Wager <strong>{round.wager} Gold</strong></span>{active ? <span>Choose <strong>Hit</strong> or <strong>Stand</strong></span> : <span>Outcome <strong>{compactText(round.outcome, 'resolved')}</strong> · payout <strong>{round.payoutGold ?? 0} Gold</strong></span>}</div>
-    <div className="shell-card-actions">{active ? <><PanelButton primary disabled={busy} onClick={() => onCommand('hit')} testId="shell-blackjack-hit">Hit</PanelButton><PanelButton disabled={busy} onClick={() => onCommand('stand')} testId="shell-blackjack-stand">Stand</PanelButton></> : <PanelButton primary disabled={busy} onClick={() => onCommand('blackjack')} testId="shell-blackjack-play">Deal another hand</PanelButton>}</div>
-  </section>;
 }
 
 function GamblingResult({ data, type, onCommand, busy }) {
@@ -222,7 +119,7 @@ function GamblingResult({ data, type, onCommand, busy }) {
 export function GamblingPanel({ data, onCommand, busy = false }) {
   const game = data?.game || 'games';
   return <RichCard kind="gambling" kicker="YOUR VIEW · /gambling" title="Gold Games" subtitle="Every wager and result is resolved by the server; this card only renders the returned state." testId="gambling-rich-card">
-    {game === 'blackjack' ? <BlackjackSurface state={data?.blackjack} onCommand={onCommand} busy={busy} /> : null}
+    {game === 'blackjack' ? <StateMessage title="Blackjack lives in the shared thread" copy="The public table is rendered from the latest Blackjack receipt above. Only the hand owner receives Hit and Stand controls." /> : null}
     {game === 'coinflip' ? <GamblingResult data={data} type="coinflip" onCommand={onCommand} busy={busy} /> : null}
     {game === 'slots' ? <GamblingResult data={data} type="slots" onCommand={onCommand} busy={busy} /> : null}
     {game === 'games' ? <><div className="shell-gambling-intro"><span className="shell-gambling-mark">✦</span><div><strong>Choose a Gold game</strong><p>Blackjack, Coinflip, and Slots use only carried Gold. No separate game screen is required.</p></div></div><div className="shell-game-list"><button type="button" onClick={() => onCommand('blackjack')} disabled={busy}><strong>Blackjack</strong><span>Deal a hand · hit or stand</span><b>›</b></button><button type="button" onClick={() => onCommand('coinflip')} disabled={busy}><strong>Coinflip</strong><span>Call heads or tails</span><b>›</b></button><button type="button" onClick={() => onCommand('slots')} disabled={busy}><strong>Slots</strong><span>Spin three reels</span><b>›</b></button></div></> : null}
@@ -284,14 +181,14 @@ export function renderGameplayPanel({ panel, dashboard, assets, areas, quests, s
   const props = { dashboard, assets, areas, quests, shop, onRequest, onCommand, busy };
   switch (panel?.kind) {
     case 'help': return <HelpPanel {...props} />;
-    case 'status': return <StatusPanel {...props} />;
-    case 'inventory': return <InventoryPanel {...props} />;
-    case 'shop': return <ShopPanel {...props} />;
+    case 'status': return null;
+    case 'inventory': return null;
+    case 'shop': return null;
     case 'bank': return <ShopPanel {...props} bankOnly />;
     case 'party': return <PartyPanel {...props} />;
     case 'dungeon': return <DungeonPanel {...props} />;
-    case 'hunt': return <HuntPanel {...props} result={panel.data} />;
-    case 'adventure': return <AdventurePanel {...props} result={panel.data} />;
+    case 'hunt': return null;
+    case 'adventure': return null;
     case 'world': return <WorldPanel {...props} />;
     case 'honey': return <HoneyPanel {...props} />;
     case 'gambling': return <GamblingPanel {...props} data={panel.data} />;
@@ -299,6 +196,6 @@ export function renderGameplayPanel({ panel, dashboard, assets, areas, quests, s
     case 'quest': return <QuestPanel {...props} />;
     case 'area': return <AreaPanel {...props} areas={areas} />;
     case 'codex': return <CodexPanel {...props} />;
-    default: return <StatusPanel {...props} />;
+    default: return null;
   }
 }

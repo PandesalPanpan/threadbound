@@ -36,6 +36,47 @@ test('chat rejects empty and oversized messages', () => {
   assert.throws(() => service.postChat({ playerId: a.id, body: 'x'.repeat(MAX_CHAT_LENGTH + 1) }), (error) => error.code === 'invalid_chat_message');
 });
 
+test('status, inventory, and shop views are immutable public snapshots', () => {
+  const { service, a } = setup();
+  const status = service.recordStatusView({
+    playerId: a.id,
+    dashboard: {
+      character: {
+        id: a.id,
+        displayName: a.displayName,
+        level: 3,
+        experience: 125,
+        currentHealth: 28,
+        maxHealth: 40,
+        gold: 17,
+        healthPotions: 2,
+        stats: { attack: 9, defense: 4, speed: 10, critChancePercent: 5 },
+        equipment: { weapon: { id: 'sword-1', name: 'Thread Sword', slot: 'weapon', rarity: 'rare', attackBonus: 3, visualAssetId: 'item.test' } },
+      },
+      activeFightBuffs: [{ code: 'spiced-thread', name: 'Spiced Thread', description: 'A small edge.', remainingFights: 1 }],
+    },
+  });
+  const shop = service.recordShopView({
+    playerId: a.id,
+    shop: {
+      vendor: { id: 'shopkeeper', name: 'Shopkeeper', tagline: 'Keep the essentials close.' },
+      currency: { balance: 17 },
+      available: true,
+      offers: [{ sku: 'potion-1', kind: 'health_potion', name: 'Health Potion', description: 'Restore HP.', cost: 5, quantity: 1, affordable: true, available: true }],
+    },
+  });
+
+  assert.equal(status.eventType, 'StatusViewed');
+  assert.equal(status.metadata.publicSnapshot, true);
+  assert.equal(status.metadata.character.stats.attack, 9);
+  assert.equal(status.metadata.activeBuffs[0].remainingFights, 1);
+  assert.equal(shop.eventType, 'ShopViewed');
+  assert.equal(shop.metadata.publicSnapshot, true);
+  assert.equal(shop.metadata.offers[0].sku, 'potion-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(shop.metadata.offers[0], 'itemTemplate'), false);
+  assert.equal(service.recent().length, 2);
+});
+
 test('Hunt receipt projects canonical rewards, loot, level-up, and optional quest results in one entry', () => {
   const { service, a } = setup();
   const receipt = service.recordDomainEvent({

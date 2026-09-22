@@ -7,21 +7,25 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await page.context().request.post('/api/party/leave');
   await page.goto('/game');
 
-  await expect(page.getByTestId('stream-player-status')).toBeVisible();
   await expect(page.getByTestId('adventure-stream-log')).toBeVisible();
   await expect(page.getByTestId('stream-message')).toBeVisible();
   await expect(page.getByTestId('stream-connection')).toBeVisible();
   await expect(page.getByTestId('stream-context-hunt')).toBeVisible();
 
   const composer = page.getByTestId('stream-message');
+  await composer.fill('status');
+  await composer.press('Enter');
+  await expect(page.getByTestId('stream-player-status').last()).toBeVisible();
   await composer.fill('inventory');
   await composer.press('Enter');
-  await expect(page.getByTestId('inventory-rich-card')).toBeVisible();
+  await expect(page.getByTestId('stream-inventory-rich-card').last()).toBeVisible();
+  await expect(page.getByTestId('inventory-rich-card')).toHaveCount(0);
 
   await composer.fill('shop');
   await composer.press('Enter');
-  await expect(page.getByTestId('shop-rich-card')).toBeVisible();
-  await expect(page.getByTestId('shop-offer').first()).toBeVisible();
+  await expect(page.getByTestId('stream-shop-rich-card').last()).toBeVisible();
+  await expect(page.getByTestId('stream-shop-item').first()).toBeVisible();
+  await expect(page.getByTestId('shop-rich-card')).toHaveCount(0);
 
   await composer.fill('bank');
   await composer.press('Enter');
@@ -55,8 +59,8 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await expect(page.getByTestId('stream-command-card').getByText('Solo thread')).toBeVisible();
   await composer.fill('hunt');
   await composer.press('Enter');
-  await expect(page.getByTestId('hunt-rich-card')).toBeVisible();
-  await expect(page.locator('.stream-system-entry').last()).toContainText(/Hunt|hunted|defeated/i);
+  await expect(page.getByTestId('stream-hunt-rich-card').last()).toBeVisible();
+  await expect(page.getByTestId('stream-hunt-rich-card').last().getByTestId('shared-battle-surface')).toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 960 });
   await expect(page.getByTestId('quick-dungeon')).toBeVisible();

@@ -53,7 +53,7 @@ test('React battle simulation replays the authoritative Figma 3v3 event stream',
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 });
 
-test('Hunt Watch Battle replays the committed roster and never falls back to the showcase', async ({ page }) => {
+test('Hunt replays the committed roster inline without browser-side simulation', async ({ page }) => {
   await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -70,13 +70,28 @@ test('Hunt Watch Battle replays the committed roster and never falls back to the
   expect(enemy?.displayName).toBe(hunt.enemy.name);
   expect(hunt.battleLoadout).toBeDefined();
 
+  await page.route('**/api/stream*', async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json();
+    let latestHuntId = null;
+    for (const entry of payload.entries || []) {
+      if (entry.eventType === 'HuntResolved') latestHuntId = entry.id;
+    }
+    const now = new Date().toISOString();
+    const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId ? { ...entry, createdAt: now } : entry);
+    await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
+  });
   await page.goto('/game');
   await page.reload();
   const sharedHunt = page.getByTestId('stream-hunt-rich-card').last();
   await expect(sharedHunt).toBeVisible();
   await expect(sharedHunt).toContainText(hunt.enemy.name);
   await expect(sharedHunt).toContainText(`${hunt.battle.turns.length}`);
-  await expect(sharedHunt.getByTestId('stream-watch-hunt-battle')).toBeVisible();
+  await expect(sharedHunt.getByTestId('shared-battle-surface')).toBeVisible();
+  await expect(sharedHunt.getByTestId('shared-battle-enemy')).toContainText(hunt.enemy.name);
+  await expect(sharedHunt.getByTestId('stream-watch-hunt-battle')).toHaveCount(0);
+  await expect(sharedHunt.getByTestId('hunt-replay-pending')).toBeVisible();
+  await expect(sharedHunt.getByTestId('hunt-final-facts')).toHaveCount(0);
 
   const simulationRequests = [];
   const huntRequests = [];
@@ -84,21 +99,12 @@ test('Hunt Watch Battle replays the committed roster and never falls back to the
     if (request.url().includes('/api/battle-simulation')) simulationRequests.push(request.url());
     if (request.url().endsWith('/api/hunt') && request.method() === 'POST') huntRequests.push(request.url());
   });
-  await sharedHunt.getByTestId('stream-watch-hunt-battle').click();
-  await expect(page).toHaveURL(/view=battle&source=stream/);
-  const replay = page.getByTestId('battle-pre-battle');
-  await expect(replay).toBeVisible();
-  await expect(replay).toContainText(player.displayName);
-  await expect(replay).toContainText(enemy.displayName);
-  await expect(replay).toContainText('1 Weaver face 1 threat');
-  await expect(replay.locator('[data-visual-asset-id]')).toHaveCount(2);
+  await expect(sharedHunt.getByTestId('shared-battle-player')).toContainText(player.displayName);
+  await expect(sharedHunt.locator('[data-visual-asset-id]')).toHaveCount(2);
   expect(simulationRequests).toEqual([]);
   expect(huntRequests).toEqual([]);
-
-  await page.getByTestId('battle-start').click();
-  await expect.poll(async () => page.getByTestId('battle-card').getAttribute('data-battle-phase'), { timeout: 15000 }).toBe('result');
-  await expect(page.getByTestId('battle-result-receipt')).toContainText(hunt.enemy.name);
-  await expect(page.getByTestId('battle-details').locator('summary')).toContainText(`${hunt.battle.turns.length} turns`);
+  await expect(sharedHunt.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+  await expect(sharedHunt.getByTestId('hunt-final-facts')).toBeVisible();
 });
 
 test('a missing Hunt replay does not render the unrelated 3v3 showcase', async ({ page }) => {

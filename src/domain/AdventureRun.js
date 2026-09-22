@@ -40,7 +40,8 @@ function simpleEvent(event) {
  * Aggregate facade for the whole dungeon run lifecycle.
  *
  * Legacy runs still support the tactical systems while new player-facing simple
- * runs use a much smaller state machine: Attack -> next enemy -> boss -> reward.
+ * runs use a much smaller state machine: enter/continue -> automatic room
+ * replay -> next enemy -> boss -> reward.
  * The migration is explicit so persisted old runs can still hydrate safely.
  */
 export class AdventureRun {
@@ -93,7 +94,7 @@ export class AdventureRun {
     return new AdventureRun(state);
   }
 
-  static startSimple(args) {
+  static startSimple({ sharedSurface = true, ...args }) {
     const sourceDefinition = args.dungeonDefinition || DUNGEONS[args.dungeonId];
     const combat = CombatDungeonRun.start({
       ...args,
@@ -118,6 +119,7 @@ export class AdventureRun {
     state.attacksSinceIntent = 0;
     state.intentCount = 0;
     state.nextEncounter = null;
+    state.sharedSurface = Boolean(sharedSurface);
     for (const participant of state.participants) resetSimpleParticipant(participant);
     return new AdventureRun(state);
   }
@@ -392,7 +394,7 @@ export class AdventureRun {
 
   #simpleCombat(method, args) {
     if (method !== 'attack') {
-      const error = new Error('This dungeon uses the simple combat loop. Attack is the only combat action.');
+      const error = new Error('This dungeon resolves rooms automatically. Choose Continue, use a Health Potion, or Leave between rooms.');
       error.code = 'simple_combat_attack_only';
       throw error;
     }

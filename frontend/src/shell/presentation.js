@@ -46,7 +46,7 @@ const COMMAND_ALIASES = Object.freeze({
 
 export const QUICK_COMMANDS = Object.freeze([
   Object.freeze({ command: 'hunt', label: 'Hunt', icon: '✦', hint: 'Quick battle' }),
-  Object.freeze({ command: 'dungeon', label: 'Dungeon', icon: '⌁', hint: 'Attack-only run' }),
+  Object.freeze({ command: 'dungeon', label: 'Dungeon', icon: '⌁', hint: 'Shared room replay' }),
   Object.freeze({ command: 'inventory', label: 'Inventory', icon: '▣', hint: 'Gear and HP' }),
   Object.freeze({ command: 'quest', label: 'Quest', icon: '◇', hint: 'Current objectives' }),
   Object.freeze({ command: 'party', label: 'Party', icon: '◎', hint: 'Weaver group' }),

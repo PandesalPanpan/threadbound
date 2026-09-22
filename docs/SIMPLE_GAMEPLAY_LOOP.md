@@ -5,8 +5,9 @@
 Threadbound's default player loop is intentionally small and chat-first:
 
 ```text
-/hunt -> earn Thread Dust / find permanent gear -> equip or Temper gear
-     -> /dungeon when your stats are ready -> /attack until clear or defeated
+/hunt -> earn Gold / find permanent Equipment -> equip or Upgrade gear
+     -> /dungeon when your stats are ready
+     -> enter or continue a room -> automatic shared replay -> reward or defeat
 ```
 
 The goal is to keep the command vocabulary closer to a lightweight chat RPG. Depth comes from progression, loot, party composition, dungeon difficulty, and the evolving world rather than from showing a tactical action dashboard every turn.
@@ -15,9 +16,9 @@ The goal is to keep the command vocabulary closer to a lightweight chat RPG. Dep
 
 `hunt` (or `/hunt`) resolves one random solo encounter in one command. It uses the player's permanent Attack and persistent out-of-combat Health. Stronger Attack needs fewer exchanges and therefore takes less damage.
 
-Hunts award a small amount of Thread Dust and can drop permanent weapons. Hunt drops are capped at Rare so dungeon rewards and other progression sources can remain aspirational.
+Hunts award a small amount of Gold and can drop permanent Equipment. Hunt drops are capped at Rare so Dungeon rewards and other progression sources can remain aspirational.
 
-Hunt damage persists between encounters. Outside a dungeon, one HP regenerates per minute. New characters begin with one health potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. `rest` shows live next-HP and full-recovery countdowns. `shop` opens Mara's illustrated two-item shelf: one potion for 5 Thread Dust or three for 12. This health economy—not an arbitrary action cooldown—paces repeated Hunts without an unexplained dead end.
+Hunt damage persists between encounters. Outside a Dungeon, one HP regenerates per minute. New characters begin with one Health Potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. `rest` shows live next-HP and full-recovery countdowns. `shop` opens Mara's illustrated two-item shelf: one Potion for 5 Gold or three for 12. This health economy—not an arbitrary action cooldown—paces repeated Hunts without an unexplained dead end.
 
 ## Contextual chat navigation
 
@@ -27,7 +28,9 @@ The composer keeps at most two contextual actions visible. The expanding command
 - Gear exists but Attack is below the recommendation: **Hunt + Inventory**.
 - Gear exists and Attack meets the recommendation: **Dungeon + Inventory**.
 - Zero Hunt HP: **Recovery + Shop**.
-- Active simple dungeon: **Attack** only.
+- Active shared Dungeon: the latest room card replays the committed automatic
+  battle; after a room clears, only the acting Weaver receives **Continue**,
+  **Use Potion**, and **Leave** controls.
 
 Inventory and Shop buttons submit the same chat commands as typing `inventory` or `shop`; they do not create parallel browser-owned progression systems. See `docs/CHAT_META_LOOP_V2.md` for the acceptance contract.
 
@@ -42,8 +45,11 @@ Simple dungeon rules currently:
 - recommended Attack: 9+
 - enemy HP: 2x the source dungeon definition
 - enemy retaliation: 1.5x the source definition
-- 20% max-HP recovery between cleared rooms
-- Attack is the only combat command
+- no automatic recovery between cleared rooms; healing is an explicit Potion
+  decision
+- entering or continuing a room orchestrates the existing Attack transition
+  until the encounter reaches a terminal state; the new React surface does not
+  require repeated Attack clicks
 - no Focus
 - no Guard or Interrupt
 - no combat skills
@@ -62,12 +68,12 @@ This follows a strangler-style migration rather than deleting the old aggregate 
 
 Hunt and simple-dungeon results are projected into the same Adventure Stream as player chat. The stream remains a projection, not the source of truth.
 
-A Hunt result intentionally reads like a compact ledger receipt:
+A Hunt result intentionally reads like a compact shared receipt:
 
 ```text
 THREADBOUND
 HUNT CLEARED  Thread Wolf
-−8 HP   32/40 HP   +3 Dust
+−8 HP   32/40 HP   +3 Gold
 You got Bound Needle · +3 ATK
 ```
 
