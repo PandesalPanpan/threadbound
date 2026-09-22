@@ -49,6 +49,7 @@ function huntTurnBeat(turn, index) {
 
 export function replayBeats(replay) {
   if (!replay) return [];
+  if (Array.isArray(replay.actions)) return replay.actions.map((beat, index) => ({ ...beat, index }));
   if (Array.isArray(replay.beats)) return replay.beats.map((beat, index) => ({ ...beat, index }));
   return (replay.details?.turns || replay.turns || []).map(huntTurnBeat);
 }
@@ -56,14 +57,16 @@ export function replayBeats(replay) {
 function replayCombatants(replay) {
   const battleCombatants = Array.isArray(replay?.battle?.combatants) ? replay.battle.combatants : [];
   const players = replay?.players || replay?.battle?.players || battleCombatants.filter((entry) => entry.team === 'players');
-  const enemy = replay?.enemy || replay?.battle?.enemy || battleCombatants.find((entry) => entry.team === 'enemies') || null;
-  const entries = [...(Array.isArray(players) ? players : []), enemy].filter(Boolean);
-  return new Map(entries.map((entry) => [String(entry.id || entry.playerId || entry.enemyId || entry.name), entry]));
+  const enemies = Array.isArray(replay?.enemies) && replay.enemies.length
+    ? replay.enemies
+    : [replay?.enemy || replay?.battle?.enemy || battleCombatants.find((entry) => entry.team === 'enemies') || null];
+  const entries = [...(Array.isArray(players) ? players : []), ...enemies].filter(Boolean);
+  return new Map(entries.map((entry) => [String(entry.combatantId || entry.id || entry.playerId || entry.enemyId || entry.name), entry]));
 }
 
 function directMoment(beat, momentIndex, combatants) {
-  const actorId = beat.actorId || beat.actor?.id || null;
-  const targetId = beat.targetId || beat.target?.id || null;
+  const actorId = beat.actorCombatantId || beat.actorId || beat.actor?.id || null;
+  const targetId = beat.targetCombatantId || beat.targetId || beat.target?.id || null;
   if (!actorId || !targetId) return null;
 
   const actor = combatants.get(String(actorId));

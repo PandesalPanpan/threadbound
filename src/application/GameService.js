@@ -135,23 +135,120 @@ function simpleBattleBeat({ repository, before, outcome, actorId }) {
   };
 }
 
-function simpleBattleReplay({ repository, initial, final, beats, runId, actorPlayerId }) {
-  const firstEnemy = initial.enemy || beats[0]?.target || null;
-  const lastEnemy = beats.at(-1) || null;
+function simpleBattleReplay({ repository, initial, final, beats = [], actions = beats, runId, actorPlayerId }) {
   const initialParticipants = initial.participants.map((participant) => participantProjection(repository, participant));
   const finalParticipants = final.participants.map((participant) => participantProjection(repository, participant));
-  const enemy = {
-    id: firstEnemy?.id || lastEnemy?.targetId || 'enemy',
-    name: firstEnemy?.name || lastEnemy?.targetName || 'Enemy',
-    visualAssetId: resolveVisualAssetId(firstEnemy || {}, firstEnemy?.isBoss ? 'boss' : 'mob') || firstEnemy?.visualAssetId || lastEnemy?.targetVisualAssetId || null,
-    isBoss: Boolean(firstEnemy?.isBoss || lastEnemy?.targetIsBoss),
-    startingHp: Number(firstEnemy?.hp || lastEnemy?.targetHpBefore || 0),
-    endingHp: Number(final.enemy?.hp ?? lastEnemy?.targetHpAfter ?? 0),
-    maxHp: Number(firstEnemy?.maxHp || lastEnemy?.targetMaxHp || 1),
+  const hasAtomicActions = actions.some((action) => action?.phase === 'player' || action?.phase === 'enemy');
+  if (!hasAtomicActions) {
+    const firstEnemy = initial.enemy || initial.enemies?.[0] || beats[0]?.target || null;
+    const lastBeat = beats.at(-1) || null;
+    const enemy = {
+      id: firstEnemy?.id || lastBeat?.targetId || 'enemy',
+      name: firstEnemy?.name || lastBeat?.targetName || 'Enemy',
+      visualAssetId: resolveVisualAssetId(firstEnemy || {}, firstEnemy?.isBoss ? 'boss' : 'mob') || firstEnemy?.visualAssetId || lastBeat?.targetVisualAssetId || null,
+      isBoss: Boolean(firstEnemy?.isBoss || lastBeat?.targetIsBoss),
+      startingHp: Number(firstEnemy?.hp || lastBeat?.targetHpBefore || 0),
+      endingHp: Number(final.enemy?.hp ?? lastBeat?.targetHpAfter ?? 0),
+      maxHp: Number(firstEnemy?.maxHp || lastBeat?.targetMaxHp || 1),
+    };
+    return {
+      version: 1,
+      kind: 'simple-dungeon-battle',
+      battleId: `dungeon:${runId}:room:${Number(initial.encounterIndex || 0)}`,
+      runId,
+      actorPlayerId,
+      roomIndex: Number(initial.encounterIndex || 0),
+      status: final.phase === 'failed' ? 'defeat' : final.phase === 'complete' ? 'victory' : 'room_clear',
+      startedAt: null,
+      players: initialParticipants.map((participant) => ({
+        ...participant,
+        startingHp: participant.hp,
+        endingHp: finalParticipants.find((candidate) => candidate.id === participant.id)?.hp ?? participant.hp,
+      })),
+      enemy,
+      beats: beats.map((beat, index) => ({ ...beat, index })),
+      finalPhase: final.phase,
+      nextEncounter: final.nextEncounter ? {
+        id: final.nextEncounter.enemy?.id || null,
+        name: final.nextEncounter.enemy?.name || null,
+        visualAssetId: resolveVisualAssetId(final.nextEncounter.enemy || {}, final.nextEncounter.enemy?.isBoss ? 'boss' : 'mob') || final.nextEncounter.enemy?.visualAssetId || null,
+        hp: final.nextEncounter.enemy?.hp ?? null,
+        maxHp: final.nextEncounter.enemy?.maxHp ?? null,
+        isBoss: Boolean(final.nextEncounter.enemy?.isBoss),
+      } : null,
+      rewards: [],
+    };
+  }
+  const initialEnemies = Array.isArray(initial.enemies) && initial.enemies.length
+    ? initial.enemies
+    : (initial.enemy ? [initial.enemy] : []);
+  const finalEnemies = Array.isArray(final.enemies) ? final.enemies : (final.enemy ? [final.enemy] : []);
+  const lastActionByEnemy = new Map();
+  for (const action of actions) {
+    if (action.actorCombatantId && String(action.actorCombatantId).startsWith('room-')) lastActionByEnemy.set(String(action.actorCombatantId), action);
+    if (action.targetCombatantId && String(action.targetCombatantId).startsWith('room-')) lastActionByEnemy.set(String(action.targetCombatantId), action);
+  }
+  const enemies = initialEnemies.map((source) => {
+    const combatantId = String(source.combatantId || source.id || source.definitionId || 'enemy');
+    const ending = finalEnemies.find((candidate) => String(candidate.combatantId || candidate.id || candidate.definitionId) === combatantId);
+    const last = lastActionByEnemy.get(combatantId);
+    const endingHp = ending?.hp ?? last?.targetHpAfter ?? last?.actorHpAfter ?? 0;
+    const visualAssetId = resolveVisualAssetId(source, source.isBoss ? 'boss' : 'mob') || source.visualAssetId || null;
+    return {
+      id: combatantId,
+      combatantId,
+      definitionId: source.definitionId || source.id || null,
+      name: source.name || source.definitionId || source.id || 'Enemy',
+      visualAssetId,
+      isBoss: Boolean(source.isBoss),
+      targetingProfile: source.targetingProfile || 'random',
+      startingHp: Number(source.hp || source.maxHp || 0),
+      endingHp: Number(endingHp),
+      maxHp: Number(source.maxHp || 1),
+    };
+  });
+  const primaryEnemy = enemies[0] || {
+    id: 'enemy',
+    combatantId: 'enemy',
+    name: 'Enemy',
+    visualAssetId: null,
+    isBoss: false,
+    startingHp: 0,
+    endingHp: 0,
+    maxHp: 1,
   };
+  const replayBeats = actions.map((action, index) => {
+    const isPlayer = action.phase === 'player';
+    const actorPlayer = isPlayer
+      ? initialParticipants.find((participant) => participant.id === action.actorId)
+      : null;
+    const actorEnemy = !isPlayer ? enemies.find((enemy) => enemy.combatantId === action.actorId) : null;
+    const targetEnemy = isPlayer ? enemies.find((enemy) => enemy.combatantId === action.targetId) : null;
+    const targetPlayer = !isPlayer ? initialParticipants.find((participant) => participant.id === action.targetId) : null;
+    return {
+      ...action,
+      index,
+      actorId: action.actorId,
+      actorCombatantId: action.actorCombatantId || actorEnemy?.combatantId || null,
+      actorDefinitionId: action.actorDefinitionId || actorEnemy?.definitionId || null,
+      actorName: isPlayer ? (actorPlayer?.displayName || action.actorName || 'Weaver') : (actorEnemy?.name || action.actorName || 'Enemy'),
+      actorVisualAssetId: action.actorVisualAssetId || actorPlayer?.visualAssetId || actorEnemy?.visualAssetId || null,
+      targetId: action.targetId,
+      targetCombatantId: action.targetCombatantId || targetEnemy?.combatantId || null,
+      targetName: !isPlayer ? (targetPlayer?.displayName || action.targetName || 'Weaver') : (targetEnemy?.name || action.targetName || 'Enemy'),
+      targetVisualAssetId: action.targetVisualAssetId || targetPlayer?.visualAssetId || targetEnemy?.visualAssetId || null,
+      targetIsBoss: Boolean(targetEnemy?.isBoss),
+      damage: Number(action.damage || 0),
+      retaliation: 0,
+      summary: action.summary || `${action.actorName || actorPlayer?.displayName || actorEnemy?.name || 'Combatant'} acted.`,
+      participants: final.participants.map((participant) => participantProjection(repository, participant)),
+    };
+  });
+  const nextEnemies = final.nextEncounter?.enemies || (final.nextEncounter?.enemy ? [final.nextEncounter.enemy] : []);
+  const nextPrimary = nextEnemies[0] || null;
 
   return {
-    version: 1,
+    version: 2,
     kind: 'simple-dungeon-battle',
     battleId: `dungeon:${runId}:room:${Number(initial.encounterIndex || 0)}`,
     runId,
@@ -164,16 +261,22 @@ function simpleBattleReplay({ repository, initial, final, beats, runId, actorPla
       startingHp: participant.hp,
       endingHp: finalParticipants.find((candidate) => candidate.id === participant.id)?.hp ?? participant.hp,
     })),
-    enemy,
-    beats: beats.map((beat, index) => ({ ...beat, index })),
+    enemies,
+    // Keep the old singleton field as a readable first-enemy projection for
+    // clients that have not yet learned the roster shape.
+    enemy: primaryEnemy,
+    beats: replayBeats,
+    actions: replayBeats,
     finalPhase: final.phase,
     nextEncounter: final.nextEncounter ? {
-      id: final.nextEncounter.enemy?.id || null,
-      name: final.nextEncounter.enemy?.name || null,
-      visualAssetId: resolveVisualAssetId(final.nextEncounter.enemy || {}, final.nextEncounter.enemy?.isBoss ? 'boss' : 'mob') || final.nextEncounter.enemy?.visualAssetId || null,
-      hp: final.nextEncounter.enemy?.hp ?? null,
-      maxHp: final.nextEncounter.enemy?.maxHp ?? null,
-      isBoss: Boolean(final.nextEncounter.enemy?.isBoss),
+      id: nextPrimary?.id || null,
+      combatantId: nextPrimary?.combatantId || null,
+      name: nextPrimary?.name || null,
+      visualAssetId: resolveVisualAssetId(nextPrimary || {}, nextPrimary?.isBoss ? 'boss' : 'mob') || nextPrimary?.visualAssetId || null,
+      hp: nextPrimary?.hp ?? null,
+      maxHp: nextPrimary?.maxHp ?? null,
+      isBoss: Boolean(nextPrimary?.isBoss),
+      enemies: structuredClone(nextEnemies),
     } : null,
     rewards: [],
   };
@@ -348,6 +451,39 @@ export class GameService {
         run: this.#decorateRun(run.toJSON(), playerId),
         battleReplay: null,
       };
+    }
+
+    if (Number(run.state.simpleCombatVersion || 1) >= 2) {
+      const initial = run.toJSON();
+      const playerActions = {};
+      for (const participant of run.state.participants.filter((candidate) => candidate.hp > 0)) {
+        const player = this.repository.getPlayer(participant.playerId);
+        if (!player) throw new Error('Player not found.');
+        const equipment = this.equipmentRepository.getLoadout(participant.playerId);
+        const equipped = equipment.weapon;
+        const character = new Character({ ...player, equippedItem: equipped, equipment });
+        playerActions[participant.playerId] = {
+          attackPower: character.attackPower,
+          equipmentEffect: equipped?.effectCode ?? 'none',
+        };
+      }
+      const outcome = run.resolveSimpleEncounter({
+        playerActions,
+        now: new Date().toISOString(),
+      });
+      const battleReplay = simpleBattleReplay({
+        repository: this.repository,
+        initial,
+        final: outcome.state,
+        actions: outcome.actions,
+        runId,
+        actorPlayerId: playerId,
+      });
+      battleReplay.recovery = recovery ? structuredClone(recovery) : null;
+      return this.#persistCombatOutcome(playerId, run, {
+        ...outcome,
+        battleReplay,
+      }, 'auto-attack');
     }
 
     const initial = run.toJSON();
@@ -584,6 +720,13 @@ export class GameService {
     const protectedAlly = lastEvent('PlayerProtected');
     const bossPhaseChanged = lastEvent('BossPhaseChanged');
     const relicTrigger = lastEvent('RelicAttunementTriggered');
+    const enemyRoster = Array.isArray(state.enemies) && state.enemies.length
+      ? state.enemies
+      : (state.enemy ? [state.enemy] : []);
+    const resolvedEnemyRoster = enemyRoster.length ? enemyRoster : (replay?.enemies || []);
+    const nextEnemyRoster = Array.isArray(state.nextEncounter?.enemies)
+      ? state.nextEncounter.enemies
+      : (state.nextEncounter?.enemy ? [state.nextEncounter.enemy] : []);
     const prevented = protectedAlly
       ? Number(protectedAlly.prevented || 0)
       : damaged
@@ -642,6 +785,18 @@ export class GameService {
       defeatedEnemyId: defeated?.enemyId || null,
       defeatedEnemyName: defeated?.enemyName || null,
       defeatedEnemyVisualAssetId: defeated?.visualAssetId || null,
+      enemies: resolvedEnemyRoster.map((enemy) => ({
+        combatantId: enemy.combatantId || enemy.id || null,
+        id: enemy.id || enemy.definitionId || null,
+        definitionId: enemy.definitionId || enemy.id || null,
+        name: enemy.name || enemy.definitionId || 'Enemy',
+        visualAssetId: resolveVisualAssetId(enemy, enemy.isBoss ? 'boss' : 'mob') || enemy.visualAssetId || null,
+        hp: enemy.hp ?? null,
+        maxHp: enemy.maxHp ?? null,
+        isBoss: Boolean(enemy.isBoss),
+        targetingProfile: enemy.targetingProfile || 'random',
+      })),
+      enemyCount: resolvedEnemyRoster.length,
       defeatedBoss: Boolean(defeated?.isBoss),
       roomCleared: Boolean(lastEvent('DungeonRoomCleared') || replay?.status === 'room_clear'),
       nextEnemyId: state.nextEncounter?.enemy?.id || replay?.nextEncounter?.id || null,
@@ -650,6 +805,15 @@ export class GameService {
       nextEnemyHp: state.nextEncounter?.enemy?.hp ?? replay?.nextEncounter?.hp ?? null,
       nextEnemyMaxHp: state.nextEncounter?.enemy?.maxHp ?? replay?.nextEncounter?.maxHp ?? null,
       nextEnemyIsBoss: Boolean(state.nextEncounter?.enemy?.isBoss || replay?.nextEncounter?.isBoss),
+      nextEnemies: nextEnemyRoster.map((enemy) => ({
+        combatantId: enemy.combatantId || enemy.id || null,
+        id: enemy.id || enemy.definitionId || null,
+        name: enemy.name || enemy.definitionId || 'Enemy',
+        visualAssetId: resolveVisualAssetId(enemy, enemy.isBoss ? 'boss' : 'mob') || enemy.visualAssetId || null,
+        hp: enemy.hp ?? null,
+        maxHp: enemy.maxHp ?? null,
+        isBoss: Boolean(enemy.isBoss),
+      })),
       interruptedIntentId: interrupted?.intentId || null,
       enemyIntent: state.enemyIntent ? structuredClone(state.enemyIntent) : null,
       phase: state.phase,
@@ -770,13 +934,40 @@ export class GameService {
       displayName: this.repository.getPlayer(participant.playerId)?.displayName || 'Unknown Weaver',
       visualAssetId: playerVisualAssetId(participant.playerId),
     }));
+    const rawEnemies = Array.isArray(runState.enemies) && runState.enemies.length
+      ? runState.enemies
+      : (runState.enemy ? [runState.enemy] : []);
+    const enemies = rawEnemies.map((enemy) => ({
+      ...enemy,
+      visualAssetId: resolveVisualAssetId(enemy, enemy.isBoss ? 'boss' : 'mob'),
+    }));
+    const decoratedEnemy = runState.enemy
+      ? {
+          ...runState.enemy,
+          visualAssetId: resolveVisualAssetId(runState.enemy, runState.enemy.isBoss ? 'boss' : 'mob'),
+        }
+      : enemies[0] || null;
+    const nextEnemies = Array.isArray(runState.nextEncounter?.enemies)
+      ? runState.nextEncounter.enemies.map((enemy) => ({
+          ...enemy,
+          visualAssetId: resolveVisualAssetId(enemy, enemy.isBoss ? 'boss' : 'mob'),
+        }))
+      : runState.nextEncounter?.enemy
+        ? [{
+            ...runState.nextEncounter.enemy,
+            visualAssetId: resolveVisualAssetId(runState.nextEncounter.enemy, runState.nextEncounter.enemy.isBoss ? 'boss' : 'mob'),
+          }]
+        : [];
     return {
       ...runState,
       participants,
       viewer: participants.find((participant) => participant.playerId === viewerPlayerId) || null,
-      enemy: runState.enemy ? {
-        ...runState.enemy,
-        visualAssetId: resolveVisualAssetId(runState.enemy, runState.enemy.isBoss ? 'boss' : 'mob'),
+      enemies,
+      enemy: decoratedEnemy,
+      nextEncounter: runState.nextEncounter ? {
+        ...runState.nextEncounter,
+        enemies: nextEnemies,
+        enemy: nextEnemies[0] || null,
       } : null,
       risk: projectDungeonRisk({ carriedGold: this.bankRepository.getBalance(viewerPlayerId).carriedGold }),
       isLeader: runState.ownerType === 'player'

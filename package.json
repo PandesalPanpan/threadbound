@@ -6,6 +6,7 @@
   "description": "Persistent cooperative chat-first RPG integrated with Threaded through OAuth2 + versioned APIs.",
   "scripts": {
     "assets:generate": "node scripts/generate-visual-assets.mjs",
+    "simulate:simple-dungeon": "node scripts/simulate-simple-dungeon.mjs",
     "start": "node src/server.js",
     "build:frontend": "vite build --config frontend/vite.config.js",
     "check:battle": "node --check src/application/BattleSimulationService.js && node --check src/domain/AutomaticBattleSkillPolicy.js",

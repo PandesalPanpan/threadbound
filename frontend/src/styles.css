@@ -637,8 +637,9 @@ kbd { margin-left: 8px; padding: 2px 5px; color: rgba(23, 19, 31, .75); backgrou
 .shared-battle-sync { color: var(--tb-green); font-family: var(--tb-mono); font-size: 7px; letter-spacing: .12em; }
 .shared-battle-surface.is-playing .shared-battle-sync { color: var(--tb-gold); }
 .shared-battle-arena { position: relative; display: grid; gap: 9px; min-height: 143px; padding: 13px 10px 10px; overflow: hidden; background: linear-gradient(180deg, rgba(43, 45, 49, .68), rgba(15, 17, 23, .75)); border: 1px solid var(--tb-border); border-radius: 9px; }
-.shared-battle-combatants { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); gap: 7px; align-items: center; }
+.shared-battle-combatants { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); gap: 7px; align-items: start; }
 .shared-battle-party { display: grid; gap: 7px; min-width: 0; }
+.shared-battle-enemies { display: grid; gap: 7px; min-width: 0; }
 .shared-battle-unit { position: relative; display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; align-items: center; min-width: 0; min-height: 72px; border-radius: 8px; }
 .shared-battle-unit--enemy { grid-template-columns: minmax(0, 1fr) 62px; text-align: right; }
 .shared-battle-unit--enemy .shared-battle-character-stage { grid-column: 2; grid-row: 1; }
@@ -648,6 +649,8 @@ kbd { margin-left: 8px; padding: 2px 5px; color: rgba(23, 19, 31, .75); backgrou
 .shared-battle-character-stage.is-targeted::before { background: radial-gradient(circle, rgba(255, 92, 102, .24), transparent 68%); }
 .shared-battle-surface[data-replay-phase='windup'] .shared-battle-character-stage.is-active::before { animation: shared-character-halo 220ms ease-in-out both; }
 .shared-battle-character-motion { position: relative; display: grid; place-items: center; width: 100%; height: 100%; transform: translate3d(0, 0, 0); transform-origin: 50% 78%; will-change: transform, filter; }
+.shared-battle-unit.is-defeated { opacity: .48; filter: grayscale(.85); }
+.shared-battle-unit.is-defeated .shared-battle-character-stage::after { position: absolute; inset: 9px 5px; display: grid; place-items: center; content: '×'; color: var(--tb-red); font-family: var(--tb-mono); font-size: 22px; font-weight: 800; text-shadow: 0 0 8px rgba(255, 92, 102, .65); pointer-events: none; }
 .shared-battle-surface[data-replay-phase='windup'] .shared-battle-character-motion[data-acting='true'] { animation: shared-character-windup 220ms cubic-bezier(.2, .8, .35, 1) both; }
 .shared-battle-surface[data-replay-phase='trajectory'] .shared-battle-character-motion[data-acting='true'] { animation: shared-character-lunge 300ms cubic-bezier(.2, .9, .35, 1) both; }
 .shared-battle-surface[data-replay-phase='impact'] .shared-battle-character-motion[data-targeted='true'] { animation: shared-character-recoil 325ms cubic-bezier(.2, .8, .4, 1) both; }

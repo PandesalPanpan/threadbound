@@ -3,7 +3,12 @@ import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunE
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
 import { RUN_UPGRADES, runUpgrade } from './RunPowerCatalog.js';
 import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
-import { prepareSimpleDungeon } from './SimpleDungeonPolicy.js';
+import {
+  instantiateSimpleStage,
+  prepareSimpleDungeon,
+  simpleStageFor,
+} from './SimpleDungeonPolicy.js';
+import { resolveSimpleEncounter as resolveSimpleEncounterPolicy } from './SimpleEncounterBattle.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -36,6 +41,63 @@ function simpleEvent(event) {
   ]).has(event.type);
 }
 
+function compatibilityCombatant(enemy, encounterIndex = 0) {
+  if (!enemy) return null;
+  return {
+    ...structuredClone(enemy),
+    combatantId: enemy.combatantId || `legacy-room-${encounterIndex}:${enemy.id || enemy.definitionId || 'enemy'}:0`,
+    definitionId: enemy.definitionId || enemy.id,
+    targetingProfile: enemy.targetingProfile || 'random',
+  };
+}
+
+function simpleCompatibilityProjection(state, roster, encounterIndex = 0) {
+  const primary = roster.find((enemy) => Number(enemy.hp || 0) > 0) || roster[0] || null;
+  if (!primary) return null;
+  if (Number(state.simpleCombatVersion || 1) < 2) return primary;
+  const legacyDefinition = state.dungeonDefinition?.encounters?.[encounterIndex]
+    || (Number(encounterIndex) === Number(state.simpleStageCount) ? state.dungeonDefinition?.boss : null)
+    || primary;
+  const legacyMaxHp = Math.max(1, Number(legacyDefinition.maxHp || legacyDefinition.hp || primary.maxHp || 1));
+  const roomHp = roster.reduce((sum, enemy) => sum + Math.max(0, Number(enemy.hp || 0)), 0);
+  return {
+    ...structuredClone(primary),
+    hp: Math.min(legacyMaxHp, roomHp),
+    maxHp: legacyMaxHp,
+    // `enemy` is a compatibility room projection; the authoritative individual
+    // values remain in `enemies` and in replay actions.
+    combatantId: primary.combatantId,
+  };
+}
+
+function syncSimpleCompatibility(state) {
+  if (Array.isArray(state.enemies)) {
+    state.enemy = simpleCompatibilityProjection(state, state.enemies, state.encounterIndex || 0);
+  }
+  if (state.nextEncounter) {
+    if (Array.isArray(state.nextEncounter.enemies)) {
+      state.nextEncounter.enemy = simpleCompatibilityProjection(state, state.nextEncounter.enemies, state.nextEncounter.encounterIndex || 0);
+    } else if (state.nextEncounter.enemy) {
+      state.nextEncounter.enemies = [compatibilityCombatant(state.nextEncounter.enemy, state.nextEncounter.encounterIndex)];
+      state.nextEncounter.enemy = state.nextEncounter.enemies[0];
+    }
+  }
+  return state;
+}
+
+function simpleStage(state, encounterIndex) {
+  const normalStages = state.dungeonDefinition?.simpleStages || [];
+  if (encounterIndex < normalStages.length) return { stage: normalStages[encounterIndex], boss: false };
+  if (encounterIndex === normalStages.length && state.dungeonDefinition?.boss) {
+    return { stage: [state.dungeonDefinition.boss], boss: true };
+  }
+  return null;
+}
+
+function preparedSimpleStageCount(definition) {
+  return Array.isArray(definition?.simpleStages) ? definition.simpleStages.length : 0;
+}
+
 /**
  * Aggregate facade for the whole dungeon run lifecycle.
  *
@@ -60,6 +122,19 @@ export class AdventureRun {
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
     this.state.simpleCombat = state.simpleCombat === true;
     if (this.state.simpleCombat) {
+      // Runs created before multi-enemy combat only persisted `enemy`. Hydrate
+      // that singleton into a stable one-member roster without changing its
+      // old combat semantics; v2 runs always keep `enemies` authoritative.
+      if (!Array.isArray(this.state.enemies)) {
+        this.state.enemies = this.state.enemy
+          ? [compatibilityCombatant(this.state.enemy, this.state.encounterIndex || 0)]
+          : [];
+        this.state.simpleCombatVersion ??= 1;
+      }
+      if (this.state.nextEncounter && !Array.isArray(this.state.nextEncounter.enemies) && this.state.nextEncounter.enemy) {
+        this.state.nextEncounter.enemies = [compatibilityCombatant(this.state.nextEncounter.enemy, this.state.nextEncounter.encounterIndex || 0)];
+      }
+      this.state.simpleCombatVersion ??= 2;
       this.state.runPowerDraftsEnabled = false;
       this.state.runEventSchedule = null;
       this.state.runEvent = null;
@@ -74,6 +149,7 @@ export class AdventureRun {
       this.state.attacksSinceIntent = 0;
       this.state.intentCount = 0;
       for (const participant of this.state.participants || []) resetSimpleParticipant(participant);
+      syncSimpleCompatibility(this.state);
     }
   }
 
@@ -102,6 +178,7 @@ export class AdventureRun {
     });
     const state = combat.toJSON();
     state.simpleCombat = true;
+    state.simpleCombatVersion = 2;
     state.runEventSchedule = null;
     state.runEvent = null;
     state.runEventResume = null;
@@ -120,7 +197,26 @@ export class AdventureRun {
     state.intentCount = 0;
     state.nextEncounter = null;
     state.sharedSurface = Boolean(sharedSurface);
+    state.simpleRoundIndex = 0;
+    if (!sharedSurface) {
+      // `/start-simple` is a compatibility route for the former local surface.
+      // Keep its singleton semantics stable while the shared chat route uses the
+      // new v2 multi-enemy contract.
+      state.simpleCombatVersion = 1;
+      state.enemies = state.enemy ? [compatibilityCombatant(state.enemy, 0)] : [];
+      for (const participant of state.participants) resetSimpleParticipant(participant);
+      syncSimpleCompatibility(state);
+      return new AdventureRun(state);
+    }
+    state.simpleStageCount = preparedSimpleStageCount(state.dungeonDefinition);
+    state.enemies = instantiateSimpleStage({
+      definition: state.dungeonDefinition,
+      stage: simpleStageFor(state.dungeonDefinition, 0),
+      roomIndex: 0,
+      participantCount: state.participants.length,
+    });
     for (const participant of state.participants) resetSimpleParticipant(participant);
+    syncSimpleCompatibility(state);
     return new AdventureRun(state);
   }
 
@@ -134,6 +230,120 @@ export class AdventureRun {
 
   attack(args) { return this.#combat('attack', args); }
 
+  /**
+   * Resolve one public automatic battle command. Every living Weaver acts once
+   * per round, followed by every enemy still alive after that phase. The
+   * resulting atomic action list is retained for the shared replay projection.
+   */
+  resolveSimpleEncounter({ playerActions = {}, now = new Date().toISOString() } = {}) {
+    if (!this.state.simpleCombat || Number(this.state.simpleCombatVersion || 1) < 2) {
+      throw new Error('This run uses the legacy single-enemy combat resolver.');
+    }
+    if (!['combat', 'boss'].includes(this.state.phase)) {
+      throw new Error('The run is not currently in combat.');
+    }
+
+    const roomIndex = Number(this.state.encounterIndex || 0);
+    const result = resolveSimpleEncounterPolicy({
+      runId: this.state.id,
+      roomIndex,
+      participants: this.state.participants,
+      enemies: this.state.enemies,
+      playerActions,
+    });
+    this.state.participants = result.participants;
+    this.state.enemies = result.enemies;
+    this.state.simpleRoundIndex = Number(this.state.simpleRoundIndex || 0) + Number(result.rounds || 0);
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+    this.state.runAttackBonus = 0;
+    this.state.reactionStyle = null;
+    const events = [...result.events];
+
+    if (result.outcome === 'defeat') {
+      this.state.phase = 'failed';
+      this.state.completedAt = now;
+      this.state.nextEncounter = null;
+      events.push({
+        type: 'DungeonFailed',
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        participantIds: this.state.participants.map((participant) => participant.playerId),
+      });
+    } else if (result.outcome === 'room_clear') {
+      const current = simpleStage(this.state, roomIndex);
+      if (current?.boss) {
+        this.state.phase = 'complete';
+        this.state.enemies = [];
+        this.state.enemy = null;
+        this.state.nextEncounter = null;
+        this.state.completedAt = now;
+        events.push({
+          type: 'BossDefeated',
+          runId: this.state.id,
+          dungeonId: this.state.dungeonId,
+          enemyId: this.state.dungeonDefinition?.boss?.id || null,
+          enemyCombatantId: result.actions.find((action) => action.phase === 'player' && action.defeated)?.targetCombatantId || null,
+        });
+        events.push({
+          type: 'DungeonCompleted',
+          runId: this.state.id,
+          dungeonId: this.state.dungeonId,
+          participantIds: this.state.participants.map((participant) => participant.playerId),
+        });
+      } else {
+        const nextIndex = roomIndex + 1;
+        const next = simpleStage(this.state, nextIndex);
+        if (!next) throw new Error('The simple Dungeon has no next encounter stage.');
+        const nextEnemies = instantiateSimpleStage({
+          definition: this.state.dungeonDefinition,
+          stage: next.stage,
+          roomIndex: nextIndex,
+          participantCount: this.state.participants.length,
+          boss: next.boss,
+        });
+        this.state.nextEncounter = {
+          phase: next.boss ? 'boss' : 'combat',
+          encounterIndex: nextIndex,
+          enemies: nextEnemies,
+          enemy: nextEnemies[0],
+        };
+        this.state.phase = 'between_encounter';
+        this.state.enemies = [];
+        this.state.enemy = null;
+        for (const participant of this.state.participants) resetSimpleParticipant(participant);
+        const primary = nextEnemies[0] || null;
+        events.push({
+          type: 'DungeonRoomCleared',
+          runId: this.state.id,
+          dungeonId: this.state.dungeonId,
+          encounterIndex: roomIndex,
+          nextEncounterIndex: nextIndex,
+          nextEnemyId: primary?.id || null,
+          nextEnemyName: primary?.name || null,
+          nextEnemyVisualAssetId: primary?.visualAssetId || null,
+          nextEnemyHp: primary?.hp ?? null,
+          nextEnemyMaxHp: primary?.maxHp ?? null,
+          nextEnemyIsBoss: Boolean(primary?.isBoss),
+          nextEnemies: structuredClone(nextEnemies),
+          participantIds: this.state.participants.map((candidate) => candidate.playerId),
+        });
+      }
+    }
+
+    syncSimpleCompatibility(this.state);
+    return {
+      state: this.toJSON(),
+      events,
+      actions: structuredClone(result.actions),
+      rounds: result.rounds,
+      damage: result.actions.filter((action) => action.phase === 'player').reduce((sum, action) => sum + Number(action.damage || 0), 0),
+      retaliation: result.actions.filter((action) => action.phase === 'enemy').reduce((sum, action) => sum + Number(action.damage || 0), 0),
+      simpleCombat: true,
+    };
+  }
+
   continueEncounter({ playerId } = {}) {
     if (!this.state.simpleCombat) throw new Error('Continue is only available for a simple Dungeon run.');
     if (this.state.phase !== 'between_encounter' || !this.state.nextEncounter) {
@@ -146,6 +356,7 @@ export class AdventureRun {
     if (participant.hp <= 0) throw new Error('A downed player cannot continue the Dungeon.');
 
     const next = this.#activateNextEncounter();
+    const primaryNext = next.enemies.find((enemy) => Number(enemy.hp || 0) > 0) || next.enemies[0] || null;
     return {
       state: this.toJSON(),
       events: [{
@@ -155,12 +366,13 @@ export class AdventureRun {
         dungeonId: this.state.dungeonId,
         phase: this.state.phase,
         encounterIndex: this.state.encounterIndex,
-        enemyId: next.enemy.id,
-        enemyName: next.enemy.name,
-        enemyVisualAssetId: next.enemy.visualAssetId || null,
-        enemyHp: next.enemy.hp,
-        enemyMaxHp: next.enemy.maxHp,
-        enemyIsBoss: Boolean(next.enemy.isBoss),
+        enemyId: primaryNext?.id || null,
+        enemyName: primaryNext?.name || null,
+        enemyVisualAssetId: primaryNext?.visualAssetId || null,
+        enemyHp: primaryNext?.hp ?? null,
+        enemyMaxHp: primaryNext?.maxHp ?? null,
+        enemyIsBoss: Boolean(primaryNext?.isBoss),
+        enemies: structuredClone(next.enemies),
         participantIds: this.state.participants.map((candidate) => candidate.playerId),
         participants: this.state.participants.map((candidate) => ({
           playerId: candidate.playerId,
@@ -185,6 +397,7 @@ export class AdventureRun {
     const beforeHp = participant.hp;
     participant.hp = Math.min(participant.maxHp, participant.hp + amount);
     const next = this.#activateNextEncounter();
+    const primaryNext = next.enemies.find((enemy) => Number(enemy.hp || 0) > 0) || next.enemies[0] || null;
     return {
       state: this.toJSON(),
       events: [{
@@ -197,12 +410,13 @@ export class AdventureRun {
         actorMaxHp: participant.maxHp,
         phase: this.state.phase,
         encounterIndex: this.state.encounterIndex,
-        enemyId: next.enemy.id,
-        enemyName: next.enemy.name,
-        enemyVisualAssetId: next.enemy.visualAssetId || null,
-        enemyHp: next.enemy.hp,
-        enemyMaxHp: next.enemy.maxHp,
-        enemyIsBoss: Boolean(next.enemy.isBoss),
+        enemyId: primaryNext?.id || null,
+        enemyName: primaryNext?.name || null,
+        enemyVisualAssetId: primaryNext?.visualAssetId || null,
+        enemyHp: primaryNext?.hp ?? null,
+        enemyMaxHp: primaryNext?.maxHp ?? null,
+        enemyIsBoss: Boolean(primaryNext?.isBoss),
+        enemies: structuredClone(next.enemies),
         participantIds: this.state.participants.map((candidate) => candidate.playerId),
         participants: this.state.participants.map((candidate) => ({
           playerId: candidate.playerId,
@@ -225,6 +439,7 @@ export class AdventureRun {
     if (!this.hasParticipant(playerId)) throw new Error('Run not found.');
     this.state.phase = 'retreated';
     this.state.enemy = null;
+    this.state.enemies = [];
     this.state.nextEncounter = null;
     this.state.enemyIntent = null;
     this.state.completedAt = now;
@@ -400,6 +615,18 @@ export class AdventureRun {
     }
     if (!['combat', 'boss'].includes(this.state.phase)) throw new Error('The run is not currently in combat.');
 
+    if (Number(this.state.simpleCombatVersion || 1) >= 2) {
+      return this.resolveSimpleEncounter({
+        playerActions: {
+          [args.playerId]: {
+            attackPower: args.attackPower,
+            equipmentEffect: args.equipmentEffect,
+          },
+        },
+        now: args.now,
+      });
+    }
+
     this.state.enemyIntent = null;
     this.state.attacksSinceIntent = 0;
     this.state.intentCount = 0;
@@ -485,6 +712,17 @@ export class AdventureRun {
       });
     }
 
+    // Keep the migration roster projection synchronized for legacy persisted
+    // simple runs whose authoritative state is still the singleton `enemy`.
+    if (Number(this.state.simpleCombatVersion || 1) < 2) {
+      this.state.enemies = this.state.enemy
+        ? [compatibilityCombatant(this.state.enemy, this.state.encounterIndex || 0)]
+        : [];
+      if (this.state.nextEncounter?.enemy) {
+        this.state.nextEncounter.enemies = [compatibilityCombatant(this.state.nextEncounter.enemy, this.state.nextEncounter.encounterIndex || 0)];
+      }
+    }
+
     return {
       ...outcome,
       events,
@@ -497,7 +735,10 @@ export class AdventureRun {
     const pending = this.state.nextEncounter;
     this.state.phase = pending.phase;
     this.state.encounterIndex = pending.encounterIndex;
-    this.state.enemy = structuredClone(pending.enemy);
+    this.state.enemies = Array.isArray(pending.enemies)
+      ? structuredClone(pending.enemies)
+      : [compatibilityCombatant(pending.enemy, pending.encounterIndex)];
+    this.state.enemy = this.state.enemies[0] || null;
     this.state.nextEncounter = null;
     this.state.enemyIntent = null;
     this.state.attacksSinceIntent = 0;
@@ -505,7 +746,8 @@ export class AdventureRun {
     this.state.runAttackBonus = 0;
     this.state.reactionStyle = null;
     for (const participant of this.state.participants) resetSimpleParticipant(participant);
-    return { phase: this.state.phase, enemy: structuredClone(this.state.enemy) };
+    syncSimpleCompatibility(this.state);
+    return { phase: this.state.phase, enemy: structuredClone(this.state.enemy), enemies: structuredClone(this.state.enemies) };
   }
 
   #runUpgradeOffers() {

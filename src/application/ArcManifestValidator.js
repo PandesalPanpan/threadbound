@@ -5,6 +5,7 @@ import { QUEST_OBJECTIVE_TYPES, normalizeQuestObjective } from '../domain/QuestO
 import { ACHIEVEMENTS } from './AchievementProjector.js';
 import { allCanonicalNarrativeEntries } from '../content/CanonicalContent.js';
 import { visualAsset } from '../content/VisualAssetCatalog.js';
+import { TARGETING_PROFILES } from '../domain/SimpleEncounterBattle.js';
 
 export const MANIFEST_VERSION = 1;
 export const ALLOWED_ENEMY_ABILITIES = Object.freeze(Object.keys(ENEMY_ABILITY_CATALOG));
@@ -16,6 +17,8 @@ export const BALANCE_BUDGETS = Object.freeze({
   bossRetaliation: Object.freeze({ min: 0, max: 75 }),
   itemAttackBonus: Object.freeze({ min: 0, max: 10 }),
   maxDungeonEncounters: 12,
+  maxEnemiesPerEncounter: 3,
+  maxEnemiesPerStage: 3,
   maxStoryQuestObjectives: 12,
 });
 
@@ -27,6 +30,7 @@ const PROGRESSION_METRICS = new Set(['dungeon_clears', 'boss_kills', 'enemy_kill
 const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legendary']);
 const STORY_QUEST_FIELDS = new Set(['id', 'title', 'description', 'areaNumber', 'objectives']);
 const QUEST_OBJECTIVE_FIELDS = new Set(['id', 'type', 'targetId', 'targetLabel', 'count']);
+const ENEMY_FIELDS = new Set(['id', 'name', 'baseHp', 'retaliation', 'abilities', 'intentCadence', 'visualAssetId', 'targetingProfile', 'resistances']);
 
 function canonicalIds() {
   const ids = new Set(allCanonicalNarrativeEntries().map((entry) => entry.id));
@@ -42,6 +46,12 @@ function canonicalIds() {
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value); }
 function text(value) { return typeof value === 'string' && value.trim().length > 0; }
 function integer(value) { return Number.isInteger(value); }
+
+export function normalizeManifestEncounterStages(value) {
+  if (!Array.isArray(value)) return [];
+  if (value.every((entry) => typeof entry === 'string')) return value.map((entry) => [entry]);
+  return value.map((entry) => Array.isArray(entry) ? entry : [entry]);
+}
 
 export class ArcManifestValidator {
   validate(manifest) {
@@ -100,12 +110,14 @@ export class ArcManifestValidator {
     manifest.enemies.forEach((entry, index) => {
       const path = `enemies[${index}]`;
       if (!object(entry)) return addError(path, 'invalid_enemy', 'Enemy must be an object.');
+      for (const field of Object.keys(entry)) if (!ENEMY_FIELDS.has(field)) addError(`${path}.${field}`, 'unsupported_enemy_field', `Unsupported enemy field "${field}".`);
       registerId(entry.id, `${path}.id`);
       if (text(entry.id)) enemyIds.add(entry.id);
       if (!text(entry.name)) addError(`${path}.name`, 'name_required', 'Enemy name is required.');
       this.#range(entry.baseHp, BALANCE_BUDGETS.enemyBaseHp, `${path}.baseHp`, 'enemy_hp_budget', addError);
       this.#range(entry.retaliation, BALANCE_BUDGETS.enemyRetaliation, `${path}.retaliation`, 'enemy_retaliation_budget', addError);
       this.#abilities(entry.abilities, `${path}.abilities`, addError);
+      if (entry.targetingProfile !== undefined && !TARGETING_PROFILES.includes(entry.targetingProfile)) addError(`${path}.targetingProfile`, 'unsupported_targeting_profile', `Unsupported targeting profile "${entry.targetingProfile}".`);
       this.#visualAsset(entry.visualAssetId, 'mob', `${path}.visualAssetId`, addError);
     });
 
@@ -113,12 +125,14 @@ export class ArcManifestValidator {
     manifest.bosses.forEach((entry, index) => {
       const path = `bosses[${index}]`;
       if (!object(entry)) return addError(path, 'invalid_boss', 'Boss must be an object.');
+      for (const field of Object.keys(entry)) if (!ENEMY_FIELDS.has(field)) addError(`${path}.${field}`, 'unsupported_boss_field', `Unsupported boss field "${field}".`);
       registerId(entry.id, `${path}.id`);
       if (text(entry.id)) bossIds.add(entry.id);
       if (!text(entry.name)) addError(`${path}.name`, 'name_required', 'Boss name is required.');
       this.#range(entry.baseHp, BALANCE_BUDGETS.bossBaseHp, `${path}.baseHp`, 'boss_hp_budget', addError);
       this.#range(entry.retaliation, BALANCE_BUDGETS.bossRetaliation, `${path}.retaliation`, 'boss_retaliation_budget', addError);
       this.#abilities(entry.abilities, `${path}.abilities`, addError);
+      if (entry.targetingProfile !== undefined && !TARGETING_PROFILES.includes(entry.targetingProfile)) addError(`${path}.targetingProfile`, 'unsupported_targeting_profile', `Unsupported targeting profile "${entry.targetingProfile}".`);
       this.#visualAsset(entry.visualAssetId, 'boss', `${path}.visualAssetId`, addError);
     });
 
@@ -152,8 +166,33 @@ export class ArcManifestValidator {
       if (!integer(entry.recommendedPlayers) || entry.recommendedPlayers < 1 || entry.recommendedPlayers > 4) addError(`${path}.recommendedPlayers`, 'invalid_recommended_players', 'recommendedPlayers must be 1–4.');
       if (!Array.isArray(entry.encounters) || entry.encounters.length < 1) addError(`${path}.encounters`, 'encounters_required', 'Dungeon must contain encounters.');
       else {
-        if (entry.encounters.length > BALANCE_BUDGETS.maxDungeonEncounters) addError(`${path}.encounters`, 'too_many_encounters', `A dungeon may contain at most ${BALANCE_BUDGETS.maxDungeonEncounters} encounters.`);
-        entry.encounters.forEach((enemyId, encounterIndex) => { if (!enemyIds.has(enemyId)) addError(`${path}.encounters[${encounterIndex}]`, 'unknown_enemy_reference', `Unknown enemy ID "${enemyId}".`); });
+        const stages = normalizeManifestEncounterStages(entry.encounters);
+        if (stages.length > BALANCE_BUDGETS.maxDungeonEncounters) addError(`${path}.encounters`, 'too_many_encounters', `A dungeon may contain at most ${BALANCE_BUDGETS.maxDungeonEncounters} encounters.`);
+        stages.forEach((stage, encounterIndex) => {
+          if (!Array.isArray(stage) || stage.length < 1 || stage.length > BALANCE_BUDGETS.maxEnemiesPerEncounter) {
+            addError(`${path}.encounters[${encounterIndex}]`, 'invalid_encounter_group', `Each encounter must contain between 1 and ${BALANCE_BUDGETS.maxEnemiesPerEncounter} enemy IDs.`);
+            return;
+          }
+          stage.forEach((enemyId, enemyIndex) => {
+            if (!enemyIds.has(enemyId)) addError(`${path}.encounters[${encounterIndex}][${enemyIndex}]`, 'unknown_enemy_reference', `Unknown enemy ID "${enemyId}".`);
+          });
+        });
+      }
+      if (entry.encounterVariants !== undefined) {
+        if (!Array.isArray(entry.encounterVariants)) addError(`${path}.encounterVariants`, 'encounter_variants_array_required', 'encounterVariants must be an array when provided.');
+        else entry.encounterVariants.forEach((variant, variantIndex) => {
+          const stages = normalizeManifestEncounterStages(variant);
+          if (!stages.length || stages.length > BALANCE_BUDGETS.maxDungeonEncounters) addError(`${path}.encounterVariants[${variantIndex}]`, 'invalid_encounter_variant', `Each encounter variant must contain between 1 and ${BALANCE_BUDGETS.maxDungeonEncounters} encounters.`);
+          stages.forEach((stage, encounterIndex) => {
+            if (!Array.isArray(stage) || stage.length < 1 || stage.length > BALANCE_BUDGETS.maxEnemiesPerEncounter) {
+              addError(`${path}.encounterVariants[${variantIndex}][${encounterIndex}]`, 'invalid_encounter_group', `Each encounter must contain between 1 and ${BALANCE_BUDGETS.maxEnemiesPerEncounter} enemy IDs.`);
+              return;
+            }
+            stage.forEach((enemyId, enemyIndex) => {
+              if (!enemyIds.has(enemyId)) addError(`${path}.encounterVariants[${variantIndex}][${encounterIndex}][${enemyIndex}]`, 'unknown_enemy_reference', `Unknown enemy ID "${enemyId}".`);
+            });
+          });
+        });
       }
       if (!bossIds.has(entry.bossId)) addError(`${path}.bossId`, 'unknown_boss_reference', `Unknown boss ID "${entry.bossId}".`);
       if (!poolIds.has(entry.rewardPoolId)) addError(`${path}.rewardPoolId`, 'unknown_reward_pool_reference', `Unknown reward pool ID "${entry.rewardPoolId}".`);

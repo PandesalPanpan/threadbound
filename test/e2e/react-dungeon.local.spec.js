@@ -53,7 +53,7 @@ function rectDistance(first, second) {
   return Math.max(Math.abs(first.left - second.left), Math.abs(first.top - second.top), Math.abs(first.width - second.width), Math.abs(first.height - second.height));
 }
 
-test('Dungeon retaliation reverses the artwork direction without moving combatant rows', async ({ page }) => {
+test('Multi-enemy replay moves the committed actor and target without moving combatant rows', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
@@ -61,10 +61,12 @@ test('Dungeon retaliation reverses the artwork direction without moving combatan
 
   await page.route('**/api/stream*', async (route) => {
     const response = await route.fetch();
+    const status = response.status();
+    const headers = response.headers();
     const payload = await response.json();
     const latestDungeon = [...(payload.entries || [])].reverse().find((entry) => entry.metadata?.battleReplay?.kind === 'simple-dungeon-battle');
     const entries = (payload.entries || []).map((entry) => entry.id === latestDungeon?.id ? { ...entry, createdAt: new Date().toISOString() } : entry);
-    await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
+    await route.fulfill({ status, headers, body: JSON.stringify({ ...payload, entries }) });
   });
   await page.goto('/game');
   await page.getByTestId('stream-message').fill('dungeon');
@@ -77,8 +79,10 @@ test('Dungeon retaliation reverses the artwork direction without moving combatan
   expect(started.ok()).toBe(true);
   const startedPayload = await started.json();
   const replay = startedPayload.battleReplay;
-  const retaliation = replay.beats.find((beat) => Number(beat.retaliation) > 0 && beat.retaliationActorId && beat.retaliationTargetId);
-  expect(retaliation).toBeTruthy();
+  const enemyAction = replay.beats.find((beat) => beat.phase === 'enemy');
+  expect(enemyAction).toBeTruthy();
+  expect(replay.enemies.length).toBeGreaterThanOrEqual(2);
+  expect(new Set(replay.enemies.map((enemy) => enemy.combatantId)).size).toBe(replay.enemies.length);
 
   const surface = page.getByTestId('stream-dungeon-rich-card').last().getByTestId('shared-battle-surface');
   await expect(surface).toBeVisible();
@@ -93,23 +97,98 @@ test('Dungeon retaliation reverses the artwork direction without moving combatan
   expect(firstPosition.units[firstBeat.actorId].animationName).toBe('none');
 
   await expect.poll(async () => surface.getAttribute('data-replay-moment-index'), { timeout: 2500, intervals: [50] }).toBe('1');
-  let retaliationPosition;
+  let enemyPosition;
   await expect.poll(async () => {
     const position = await dungeonBattlePosition(surface);
-    if (position.phase !== 'trajectory' || position.actorId !== retaliation.retaliationActorId || position.targetId !== retaliation.retaliationTargetId || motionToward(position, retaliation.retaliationActorId, retaliation.retaliationTargetId) <= 1) return false;
-    retaliationPosition = position;
+    if (position.phase !== 'trajectory' || position.actorId !== enemyAction.actorId || position.targetId !== enemyAction.targetId || motionToward(position, enemyAction.actorId, enemyAction.targetId) <= 1) return false;
+    enemyPosition = position;
     return true;
   }, { timeout: 1800, intervals: [50] }).toBe(true);
 
-  expect(retaliationPosition.units[retaliation.retaliationActorId].animationName).toBe('none');
+  expect(enemyPosition.units[enemyAction.actorId].animationName).toBe('none');
   for (const id of Object.keys(firstPosition.units)) {
-    expect(rectDistance(firstPosition.units[id].unit, retaliationPosition.units[id].unit)).toBeLessThan(0.5);
+    expect(rectDistance(firstPosition.units[id].unit, enemyPosition.units[id].unit)).toBeLessThan(0.5);
   }
   await page.context().request.post(`/api/runs/${encodeURIComponent(startedPayload.run.id)}/retreat`);
 });
 
+test('Two-Weaver shared Dungeon keeps the same three-mob roster across browsers', async ({ browser }) => {
+  const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const partnerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const leader = await leaderContext.newPage();
+  const partner = await partnerContext.newPage();
+
+  try {
+    await leader.emulateMedia({ reducedMotion: 'reduce' });
+    await partner.emulateMedia({ reducedMotion: 'reduce' });
+    await leader.goto('/');
+    await partner.goto('/');
+    await leader.getByTestId('local-login-c').click();
+    await partner.getByTestId('local-login-d').click();
+    await leader.goto('/game');
+    await partner.goto('/game');
+    await leaderContext.request.post('/api/party/leave');
+    await partnerContext.request.post('/api/party/leave');
+
+    const created = await leaderContext.request.post('/api/party/create');
+    expect(created.ok()).toBe(true);
+    const joinCode = (await created.json()).party.joinCode;
+    const joined = await partnerContext.request.post('/api/party/join', { data: { joinCode } });
+    expect(joined.ok()).toBe(true);
+    const ready = await partnerContext.request.post('/api/party/ready', { data: { ready: true } });
+    expect(ready.ok()).toBe(true);
+
+    const started = await leaderContext.request.post('/api/dungeons/frayed-hollow/start-shared');
+    expect(started.ok()).toBe(true);
+    const startedPayload = await started.json();
+    expect(startedPayload.run.participants).toHaveLength(2);
+    expect(startedPayload.battleReplay.enemies).toHaveLength(2);
+    const runId = startedPayload.run.id;
+
+    await leader.reload();
+    await partner.reload();
+    const firstLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
+    const firstPartnerCard = partner.getByTestId('stream-dungeon-rich-card').last();
+    await expect(firstLeaderCard.getByTestId('shared-battle-enemy')).toHaveCount(2);
+    await expect(firstPartnerCard.getByTestId('shared-battle-enemy')).toHaveCount(2);
+    const firstIds = await firstLeaderCard.getByTestId('shared-battle-enemy').evaluateAll((nodes) => nodes.map((node) => node.dataset.combatantId));
+    const partnerFirstIds = await firstPartnerCard.getByTestId('shared-battle-enemy').evaluateAll((nodes) => nodes.map((node) => node.dataset.combatantId));
+    expect(partnerFirstIds).toEqual(firstIds);
+    await expect(firstLeaderCard.getByTestId('stream-run-continue')).toBeVisible();
+
+    const firstVersion = (await dashboard(leaderContext)).activeRun.version;
+    await firstLeaderCard.getByTestId('stream-run-continue').click();
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(firstVersion);
+    const secondLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
+    await expect(secondLeaderCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    await expect(secondLeaderCard.getByTestId('shared-battle-enemy')).toHaveCount(2);
+
+    const secondVersion = (await dashboard(leaderContext)).activeRun.version;
+    await secondLeaderCard.getByTestId('stream-run-continue').click();
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(secondVersion);
+    const thirdLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
+    await expect(thirdLeaderCard.getByTestId('shared-battle-enemy')).toHaveCount(3);
+    await expect(thirdLeaderCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    const thirdIds = await thirdLeaderCard.getByTestId('shared-battle-enemy').evaluateAll((nodes) => nodes.map((node) => node.dataset.combatantId));
+    expect(new Set(thirdIds).size).toBe(3);
+
+    await partner.reload();
+    const thirdPartnerCard = partner.getByTestId('stream-dungeon-rich-card').last();
+    await expect(thirdPartnerCard.getByTestId('shared-battle-enemy')).toHaveCount(3);
+    const partnerThirdIds = await thirdPartnerCard.getByTestId('shared-battle-enemy').evaluateAll((nodes) => nodes.map((node) => node.dataset.combatantId));
+    expect(partnerThirdIds).toEqual(thirdIds);
+    await leaderContext.request.post(`/api/runs/${encodeURIComponent(runId)}/retreat`);
+  } finally {
+    await leaderContext.request.post('/api/party/leave').catch(() => {});
+    await partnerContext.request.post('/api/party/leave').catch(() => {});
+    await leaderContext.close();
+    await partnerContext.close();
+  }
+});
+
 test('React Dungeon resolves rooms inline and leaves only owner between-room decisions', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
   await page.context().request.post('/api/party/leave');
@@ -125,32 +204,37 @@ test('React Dungeon resolves rooms inline and leaves only owner between-room dec
   const startedPayload = await started.json();
   expect(startedPayload.run.phase).toBe('between_encounter');
   expect(startedPayload.battleReplay).toBeDefined();
+  expect(startedPayload.battleReplay.enemies.length).toBeGreaterThanOrEqual(2);
+  expect(new Set(startedPayload.battleReplay.enemies.map((enemy) => enemy.combatantId)).size).toBe(startedPayload.battleReplay.enemies.length);
 
   const dungeonCard = page.getByTestId('stream-dungeon-rich-card').last();
   await expect(dungeonCard).toBeVisible();
-  await expect(dungeonCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
+  await expect(dungeonCard.getByTestId('shared-battle-enemy')).toHaveCount(startedPayload.battleReplay.enemies.length);
+  await expect(dungeonCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
   await expect(dungeonCard.getByTestId('stream-run-continue')).toBeVisible();
   await expect(dungeonCard.getByTestId('stream-run-potion')).toBeVisible();
   await expect(dungeonCard.getByTestId('stream-run-retreat')).toBeVisible();
   await expect(page.getByTestId('shell-run-attack')).toHaveCount(0);
 
   const paused = await waitForPhase(page.context(), 'between_encounter');
-  const hpBefore = paused.activeRun.viewer.hp;
   const versionBeforePotion = paused.activeRun.version;
   await dungeonCard.getByTestId('stream-run-potion').click();
   await expect.poll(async () => (await dashboard(page.context())).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(versionBeforePotion);
   const afterPotion = await waitForPhase(page.context(), 'between_encounter');
   expect(afterPotion.activeRun.viewer.hp).toBeGreaterThan(0);
   expect(afterPotion.activeRun.viewer.hp).toBeLessThanOrEqual(afterPotion.activeRun.viewer.maxHp);
-  expect(afterPotion.activeRun.viewer.hp).toBeLessThanOrEqual(hpBefore + 1);
-  await expect(page.getByTestId('stream-dungeon-rich-card').last().getByTestId('shared-battle-surface')).toBeVisible();
+  // v2 potions top off before the next automatic room; that room may deal
+  // less damage than the recovery amount, so HP can legitimately exceed the
+  // pre-potion value while remaining capped at max HP.
+  const potionCard = page.getByTestId('stream-dungeon-rich-card').last();
+  await expect(potionCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
 
   const versionBeforeContinue = afterPotion.activeRun.version;
-  await page.getByTestId('stream-dungeon-rich-card').last().getByTestId('stream-run-continue').click();
+  await potionCard.getByTestId('stream-run-continue').click();
   await expect.poll(async () => (await dashboard(page.context())).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(versionBeforeContinue);
   const afterContinue = await waitForPhase(page.context(), 'between_encounter');
   expect(afterContinue.activeRun.viewer.hp).toBeGreaterThan(0);
-  await expect(page.getByTestId('stream-dungeon-rich-card').last().getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
+  await expect(page.getByTestId('stream-dungeon-rich-card').last().getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
 
   await page.getByTestId('stream-dungeon-rich-card').last().getByTestId('stream-run-retreat').click();
   await expect.poll(async () => (await dashboard(page.context())).activeRun || null, { timeout: 7000 }).toBeNull();

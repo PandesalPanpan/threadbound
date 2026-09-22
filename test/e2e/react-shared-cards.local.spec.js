@@ -195,8 +195,8 @@ test('owner and spectator share the same Blackjack table and public Dungeon repl
     expect(startPayload.battleReplay).toBeTruthy();
     const ownerDungeon = owner.getByTestId('stream-dungeon-rich-card').last();
     const observerDungeon = observer.getByTestId('stream-dungeon-rich-card').last();
-    await expect(ownerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 12000 });
-    await expect(observerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 12000 });
+    await expect(ownerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
+    await expect(observerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
     await expect(ownerDungeon.getByTestId('stream-run-continue')).toBeVisible();
     await expect(ownerDungeon.getByTestId('stream-run-potion')).toBeVisible();
     await expect(ownerDungeon.getByTestId('stream-run-retreat')).toBeVisible();

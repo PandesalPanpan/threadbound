@@ -40,7 +40,7 @@ function percentage(value, max) {
 }
 
 function entityId(entity, fallback) {
-  return String(entity?.id || entity?.playerId || entity?.enemyId || fallback);
+  return String(entity?.combatantId || entity?.id || entity?.playerId || entity?.enemyId || fallback);
 }
 
 function battleAsset(entity, assets, kinds) {
@@ -60,14 +60,20 @@ function normalizeCombatants(replay, metadata = {}) {
   const players = projectedPlayers.length
     ? projectedPlayers
     : [{ id: metadata.playerId || 'player', displayName: metadata.playerName || 'Weaver', visualAssetId: metadata.playerVisualAssetId || null }];
-  const battleEnemy = battleCombatants.find((candidate) => candidate.team === 'enemies') || null;
-  const enemy = replay?.enemy || {
-    id: battleEnemy?.id || metadata.enemyId || 'enemy',
-    name: battleEnemy?.name || metadata.enemyName || 'Enemy',
-    visualAssetId: metadata.enemyVisualAssetId || battleEnemy?.visualAssetId || null,
-    maxHp: battleEnemy?.maxHp || replay?.receipt?.hp?.find((candidate) => candidate.id === battleEnemy?.id)?.maxHp || 1,
-  };
-  return { players, enemy };
+  const battleEnemies = battleCombatants.filter((candidate) => candidate.team === 'enemies');
+  const replayEnemies = Array.isArray(replay?.enemies) && replay.enemies.length
+    ? replay.enemies
+    : (replay?.enemy ? [replay.enemy] : battleEnemies);
+  const enemies = replayEnemies.length
+    ? replayEnemies
+    : [{
+        id: metadata.enemyId || 'enemy',
+        combatantId: metadata.enemyCombatantId || metadata.enemyId || 'enemy',
+        name: metadata.enemyName || 'Enemy',
+        visualAssetId: metadata.enemyVisualAssetId || null,
+        maxHp: 1,
+      }];
+  return { players, enemies };
 }
 
 function initialHp(entity, replay, firstMoment) {
@@ -108,7 +114,7 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
   const artRefs = useRef(new Map());
   const [trajectory, setTrajectory] = useState(null);
   const completionNotifiedRef = useRef(false);
-  const { players, enemy } = normalizeCombatants(replay, metadata);
+  const { players, enemies } = normalizeCombatants(replay, metadata);
 
   const setArtRef = useCallback((id, node) => {
     const key = String(id);
@@ -156,7 +162,7 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
       recoilReturnY: (dy / distance) * recoilDistance * 0.4,
       damageY: targetBox.top + targetBox.height * 0.24 - arenaBox.top,
     });
-  }, [frame.complete, frame.currentActorId, frame.currentTargetId, frame.phase, frame.momentIndex, players.length]);
+  }, [frame.complete, frame.currentActorId, frame.currentTargetId, frame.phase, frame.momentIndex, players.length, enemies.length]);
 
   useLayoutEffect(() => {
     measureTrajectory();
@@ -182,11 +188,11 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
   const moment = moments[Math.max(0, frame.momentIndex)] || null;
   const status = replay.status || (replay.receipt?.outcome === 'victory' ? 'victory' : 'defeat');
   const statusLabel = status === 'victory' ? 'VICTORY' : status === 'defeat' ? 'DEFEAT' : status === 'room_clear' ? 'ROOM CLEAR' : 'LIVE BATTLE';
-  const enemyName = enemy.name || 'Enemy';
+  const enemyName = enemies.map((enemy) => enemy.name || 'Enemy').join(' + ');
   const replayTitle = finalTitle || (status === 'victory' ? `Defeated ${enemyName}` : status === 'defeat' ? `Fell to ${enemyName}` : `Cleared ${enemyName}`);
   const replayDetail = finalDetail || (status === 'victory' ? 'The clear is secured.' : status === 'defeat' ? 'Recover before the next battle.' : 'Choose the next room action.');
   const currentSummary = moment?.summary || (frame.complete ? replayTitle : 'The battle is resolving…');
-  const allUnits = [...players, enemy];
+  const allUnits = [...players, ...enemies];
   const impactVisible = frame.phase === 'impact';
   const trajectoryVisible = !frame.complete && (frame.phase === 'trajectory' || impactVisible);
   const damagePosition = impactVisible && trajectory ? { left: trajectory.x2, top: trajectory.damageY } : undefined;
@@ -199,7 +205,8 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
     const hp = currentHp(unit, replay, moments, frame);
     const active = !frame.complete && String(moment?.actorId) === id;
     const targeted = !frame.complete && String(moment?.targetId) === id;
-    const unitClass = [`shared-battle-unit`, isEnemy ? 'shared-battle-unit--enemy' : 'shared-battle-unit--player'].join(' ');
+    const defeated = isEnemy && hp <= 0;
+    const unitClass = [`shared-battle-unit`, isEnemy ? 'shared-battle-unit--enemy' : 'shared-battle-unit--player', defeated ? 'is-defeated' : ''].filter(Boolean).join(' ');
     const stageClass = ['shared-battle-character-stage', active ? 'is-active' : '', targeted ? 'is-targeted' : ''].filter(Boolean).join(' ');
     const motionStyle = {
       '--attack-x': `${active && trajectory?.actorId === id ? trajectory.lungeX : 0}px`,
@@ -209,7 +216,7 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
       '--recoil-return-x': `${targeted && trajectory?.targetId === id ? trajectory.recoilReturnX : 0}px`,
       '--recoil-return-y': `${targeted && trajectory?.targetId === id ? trajectory.recoilReturnY : 0}px`,
     };
-    return <div className={unitClass} key={id} data-combatant-id={id} data-acting={active ? 'true' : 'false'} data-targeted={targeted ? 'true' : 'false'} data-testid={isEnemy ? 'shared-battle-enemy' : 'shared-battle-player'}>
+    return <div className={unitClass} key={id} data-combatant-id={id} data-defeated={defeated ? 'true' : 'false'} data-acting={active ? 'true' : 'false'} data-targeted={targeted ? 'true' : 'false'} data-testid={isEnemy ? 'shared-battle-enemy' : 'shared-battle-player'}>
       <div className={stageClass} ref={(node) => setArtRef(id, node)} data-combatant-id={id} data-testid={`shared-battle-character-${id}`}>
         <div className="shared-battle-character-motion" style={motionStyle} data-combatant-id={id} data-acting={active ? 'true' : 'false'} data-targeted={targeted ? 'true' : 'false'} data-testid={`shared-battle-character-motion-${id}`}>
           <Asset entity={unit} assets={assets} kinds={isEnemy ? (unit.isBoss ? ['boss', 'mob'] : ['mob', 'boss']) : ['character']} alt={label} />
@@ -236,7 +243,7 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
         <div className="shared-battle-combatants">
           <div className="shared-battle-party">{players.map((player) => renderUnit({ ...player, visualAssetId: player.visualAssetId || (player.id === metadata.playerId ? metadata.playerVisualAssetId : null) }, 'player'))}</div>
           <span className="shared-battle-versus" aria-hidden="true">VS</span>
-          {renderUnit(enemy, 'enemy', enemyName)}
+          <div className="shared-battle-enemies">{enemies.map((enemy) => renderUnit(enemy, 'enemy', enemy.name || 'Enemy'))}</div>
         </div>
         {impactVisible && moment?.damage > 0 ? <span className={`damage-float ${moment.critical ? 'damage-float--critical' : ''}`} style={damagePosition} data-testid="shared-battle-floating-damage">{formatDamage(moment.damage)}</span> : null}
         <div className="shared-battle-progress" aria-label="Battle replay progress"><span style={{ width: `${Math.round(frame.progress * 100)}%` }} /></div>

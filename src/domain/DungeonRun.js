@@ -11,11 +11,29 @@ export const DUNGEONS = Object.freeze({
     minPlayers: 1,
     maxPlayers: 4,
     encounters: Object.freeze([
-      Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2, abilities: Object.freeze(['self_mend']), intentCadence: 1 }),
-      Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure']), intentCadence: 1 }),
-      Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, abilities: Object.freeze(['heavy_pressure', 'self_mend', 'ally_hunter']), intentCadence: 1 }),
+      Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2, visualAssetId: 'mob.grave-wisp.v1', targetingProfile: 'random', abilities: Object.freeze(['self_mend']), intentCadence: 1 }),
+      Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, visualAssetId: 'mob.shade-drifter.v1', targetingProfile: 'hunter', abilities: Object.freeze(['heavy_pressure']), intentCadence: 1 }),
+      Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, visualAssetId: 'mob.town-watcher.v1', targetingProfile: 'bruiser', abilities: Object.freeze(['heavy_pressure', 'self_mend', 'ally_hunter']), intentCadence: 1 }),
     ]),
-    boss: Object.freeze({ id: 'first-needle', name: 'The First Needle', hp: 24, retaliation: 4, abilities: Object.freeze(['basic_retaliation']), intentCadence: 3 }),
+    // The flat encounters above remain the legacy tactical projection. Simple
+    // runs use these deterministic groups and assign each member a unique
+    // combatantId at runtime.
+    simpleStages: Object.freeze([
+      Object.freeze([
+        Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2, visualAssetId: 'mob.grave-wisp.v1', targetingProfile: 'random' }),
+        Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, visualAssetId: 'mob.shade-drifter.v1', targetingProfile: 'hunter' }),
+      ]),
+      Object.freeze([
+        Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, visualAssetId: 'mob.shade-drifter.v1', targetingProfile: 'hunter' }),
+        Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, visualAssetId: 'mob.town-watcher.v1', targetingProfile: 'bruiser' }),
+      ]),
+      Object.freeze([
+        Object.freeze({ id: 'frayed-wisp', name: 'Frayed Wisp', hp: 12, retaliation: 2, visualAssetId: 'mob.grave-wisp.v1', targetingProfile: 'random' }),
+        Object.freeze({ id: 'hollow-stalker', name: 'Hollow Stalker', hp: 12, retaliation: 2, visualAssetId: 'mob.shade-drifter.v1', targetingProfile: 'hunter' }),
+        Object.freeze({ id: 'silkbound-guard', name: 'Silkbound Guard', hp: 12, retaliation: 2, visualAssetId: 'mob.town-watcher.v1', targetingProfile: 'bruiser' }),
+      ]),
+    ]),
+    boss: Object.freeze({ id: 'first-needle', name: 'The First Needle', hp: 24, retaliation: 4, visualAssetId: 'boss.black-banner-captain.v1', targetingProfile: 'tactical', abilities: Object.freeze(['basic_retaliation']), intentCadence: 3 }),
   }),
 });
 
@@ -49,8 +67,10 @@ function cloneEnemy(definition, playerCount, isBoss = false) {
   const hp = Math.ceil(definition.hp * scaling.enemyHealthMultiplier);
   return {
     id: definition.id,
+    definitionId: definition.id,
     name: definition.name,
     ...(definition.visualAssetId ? { visualAssetId: definition.visualAssetId } : {}),
+    ...(definition.targetingProfile ? { targetingProfile: definition.targetingProfile } : {}),
     hp,
     maxHp: hp,
     retaliation: Math.ceil(definition.retaliation * scaling.retaliationMultiplier),

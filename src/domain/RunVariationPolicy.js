@@ -16,14 +16,23 @@ function selectionIndex(seed, candidateCount) {
 }
 
 export function selectEncounterSequence(dungeonDefinition, seed) {
-  const base = Array.isArray(dungeonDefinition?.encounters) ? dungeonDefinition.encounters : [];
-  const variants = Array.isArray(dungeonDefinition?.encounterVariants) ? dungeonDefinition.encounterVariants : [];
+  const normalize = (sequence) => {
+    if (!Array.isArray(sequence)) return [];
+    if (sequence.every((entry) => !Array.isArray(entry))) return sequence.map((entry) => [entry]);
+    return sequence.map((entry) => Array.isArray(entry) ? entry : [entry]);
+  };
+  const base = normalize(dungeonDefinition?.encounterStages || dungeonDefinition?.encounters);
+  const variants = Array.isArray(dungeonDefinition?.encounterVariantStages)
+    ? dungeonDefinition.encounterVariantStages
+    : (Array.isArray(dungeonDefinition?.encounterVariants) ? dungeonDefinition.encounterVariants : []);
   const candidates = [base, ...variants].filter((sequence) => Array.isArray(sequence) && sequence.length > 0);
   if (candidates.length === 0) throw new Error('Dungeon definition requires at least one encounter sequence.');
   const variantIndex = selectionIndex(seed, candidates.length);
+  const stages = normalize(candidates[variantIndex]);
   return {
     variantIndex,
-    encounters: structuredClone(candidates[variantIndex]),
+    stages: structuredClone(stages),
+    encounters: structuredClone(stages.map((stage) => stage[0])),
   };
 }
 

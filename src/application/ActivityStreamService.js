@@ -250,7 +250,7 @@ export class ActivityStreamService {
     const simple = this.#isSimpleRun(event.runId);
     if (simple && event.battleReplay) {
       const replay = event.battleReplay;
-      const enemyName = replay.enemy?.name || event.enemyName || 'the enemy';
+      const enemyName = (replay.enemies || [replay.enemy]).filter(Boolean).map((enemy) => enemy.name || 'the enemy').join(' + ') || event.enemyName || 'the enemy';
       const recovery = event.recovery?.healed > 0 ? ` · +${event.recovery.healed} HP` : '';
       const unlock = replay.areaUnlocks?.find((candidate) => candidate.playerId === event.playerId) || replay.areaUnlocks?.[0] || null;
       const unlockCopy = unlock?.areaNumber ? ` · Area ${unlock.areaNumber} unlocked` : '';

@@ -84,7 +84,12 @@ export function resolveDungeonPotionAction({
     throw error;
   }
 
-  const nextHealth = Math.min(maximum, current + HEALING_RULES.healthPotionHeal);
+  // Multi-enemy rooms create more granular incoming action pressure than the
+  // former singleton loop. A v2 Dungeon potion tops off the persistent room
+  // HP once between rooms; legacy simple runs retain the bounded v1 amount.
+  const nextHealth = Number(activeRun.simpleCombatVersion || 1) >= 2
+    ? maximum
+    : Math.min(maximum, current + HEALING_RULES.healthPotionHeal);
   return Object.freeze({
     method: 'dungeon_health_potion',
     consumeHealthPotions: 1,

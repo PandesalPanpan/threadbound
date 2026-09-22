@@ -1,3 +1,4 @@
+import { normalizeManifestEncounterStages } from './ArcManifestValidator.js';
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]{2,63}$/;
 const EVENT_EFFECT_BUDGETS = Object.freeze({
   healAll: Object.freeze({ min: 0, max: 40 }),
@@ -97,12 +98,19 @@ export class ArcManifestReplayabilityValidator {
       }
       for (const [variantIndex, sequence] of (Array.isArray(variants) ? variants : []).entries()) {
         const variantPath = `${path}.encounterVariants[${variantIndex}]`;
-        if (!Array.isArray(sequence) || sequence.length < 1 || sequence.length > 12) {
-          addError(variantPath, 'invalid_encounter_variant', 'Each encounter variant must contain between 1 and 12 enemy IDs.');
+        const stages = normalizeManifestEncounterStages(sequence);
+        if (!stages.length || stages.length > 12) {
+          addError(variantPath, 'invalid_encounter_variant', 'Each encounter variant must contain between 1 and 12 encounter stages.');
           continue;
         }
-        sequence.forEach((enemyId, enemyIndex) => {
-          if (!knownEnemyIds.has(enemyId)) addError(`${variantPath}[${enemyIndex}]`, 'unknown_enemy_reference', `Unknown enemy ID "${enemyId}".`);
+        stages.forEach((stage, enemyIndex) => {
+          if (!Array.isArray(stage) || stage.length < 1 || stage.length > 3) {
+            addError(`${variantPath}[${enemyIndex}]`, 'invalid_encounter_group', 'Each encounter stage must contain between 1 and 3 enemy IDs.');
+            return;
+          }
+          stage.forEach((enemyId, memberIndex) => {
+            if (!knownEnemyIds.has(enemyId)) addError(`${variantPath}[${enemyIndex}][${memberIndex}]`, 'unknown_enemy_reference', `Unknown enemy ID "${enemyId}".`);
+          });
         });
       }
 
@@ -113,8 +121,8 @@ export class ArcManifestReplayabilityValidator {
         continue;
       }
       const sequenceLengths = [dungeon.encounters, ...(Array.isArray(variants) ? variants : [])]
-        .filter(Array.isArray)
-        .map((sequence) => sequence.length);
+        .map((sequence) => normalizeManifestEncounterStages(sequence).length)
+        .filter((length) => length > 0);
       const minimumLength = sequenceLengths.length ? Math.min(...sequenceLengths) : 0;
       if (!Number.isInteger(schedule.afterEncounterIndex) || schedule.afterEncounterIndex < 0 || schedule.afterEncounterIndex >= Math.max(0, minimumLength - 1)) {
         addError(`${path}.runEventSchedule.afterEncounterIndex`, 'invalid_run_event_position', 'Run events must occur after an encounter that is followed by another normal encounter in every variant.');

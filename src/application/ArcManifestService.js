@@ -11,6 +11,7 @@ import { validateArcTownShopStocks } from '../content/ArcTownShopCatalog.js';
 import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, ArcManifestValidator, MANIFEST_VERSION } from './ArcManifestValidator.js';
 import { ArcEquipmentTemplateValidator } from './ArcEquipmentTemplateValidator.js';
 import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
+import { TARGETING_PROFILES } from '../domain/SimpleEncounterBattle.js';
 
 function serializableEquipmentEffect(definition, equipmentTemplate) {
   return {
@@ -51,7 +52,7 @@ export class ArcManifestService {
     const equipmentTemplates = publicArcEquipmentTemplateContract();
     const visualAssetCollections = authoringVisualAssetCollections();
     return {
-      contextVersion: 1,
+      contextVersion: 2,
       manifestVersion: MANIFEST_VERSION,
       exportedAt: new Date().toISOString(),
       currentWorld: this.gameRepository.getWorldState(),
@@ -59,6 +60,7 @@ export class ArcManifestService {
       canonicalDungeons: structuredClone(DUNGEONS),
       allowedMechanics: {
         enemyAbilities: [...ALLOWED_ENEMY_ABILITIES],
+        targetingProfiles: [...TARGETING_PROFILES],
         questObjectives: [...ALLOWED_QUEST_OBJECTIVES],
         itemEffects: Object.values(ITEM_EFFECTS).map((effect) => ({ ...effect })),
         equipmentTemplates,
@@ -66,6 +68,8 @@ export class ArcManifestService {
         replayability: {
           intentCadence: { min: 1, max: 6 },
           encounterVariants: true,
+          maxEnemiesPerEncounter: BALANCE_BUDGETS.maxEnemiesPerEncounter,
+          targetingProfiles: [...TARGETING_PROFILES],
           manifestRunEvents: true,
         },
       },
@@ -97,6 +101,8 @@ export class ArcManifestService {
         'Do not invent executable code or mechanics outside this context.',
         'Keep all numeric values inside the supplied balance budgets.',
         'Encounter variants must reference enemies from the same manifest.',
+        'Use one to three enemy IDs per encounter stage; choose complementary targeting profiles instead of repeating an identical damage sponge.',
+        'Targeting profiles are constrained data tendencies only; do not add formulas, scripts, or executable targeting rules.',
         'Run event schedules may only reference runEvents from the same manifest.',
         'All dungeon encounter, boss, and reward-pool references must resolve within the same manifest.',
         'Choose an exact visualAssetId from the allowlisted catalog for every new enemy, boss, and item template.',
@@ -199,17 +205,28 @@ export class ArcManifestService {
       const runEvents = new Map((manifest.runEvents || []).map((event) => [event.id, event]));
       const materializeEnemy = (enemy, { isBoss = false } = {}) => ({
         id: enemy.id,
+        definitionId: enemy.id,
         name: enemy.name,
         hp: enemy.baseHp,
         retaliation: enemy.retaliation,
         abilities: [...enemy.abilities],
+        ...(TARGETING_PROFILES.includes(enemy.targetingProfile) ? { targetingProfile: enemy.targetingProfile } : {}),
+        ...(enemy.resistances ? { resistances: structuredClone(enemy.resistances) } : {}),
         visualAssetId: resolveVisualAssetId({ ...enemy, isBoss }, isBoss ? 'boss' : 'mob'),
         ...(isBoss ? { isBoss: true } : {}),
         ...(Number.isInteger(enemy.intentCadence) ? { intentCadence: enemy.intentCadence } : {}),
       });
       for (const dungeon of manifest.dungeons) {
         const boss = bosses.get(dungeon.bossId);
-        const materializeSequence = (sequence) => sequence.map((enemyId) => materializeEnemy(enemies.get(enemyId)));
+        const materializeStages = (sequence) => {
+          if (!Array.isArray(sequence)) return [];
+          const stages = sequence.every((entry) => !Array.isArray(entry))
+            ? sequence.map((enemyId) => [enemyId])
+            : sequence.map((stage) => Array.isArray(stage) ? stage : [stage]);
+          return stages.map((stage) => stage.map((enemyId) => materializeEnemy(enemies.get(enemyId))));
+        };
+        const encounterStages = materializeStages(dungeon.encounters);
+        const encounterVariantStages = (dungeon.encounterVariants || []).map(materializeStages);
         const schedule = dungeon.runEventSchedule
           ? {
               afterEncounterIndex: dungeon.runEventSchedule.afterEncounterIndex,
@@ -222,8 +239,12 @@ export class ArcManifestService {
           recommendedPlayers: dungeon.recommendedPlayers,
           minPlayers: 1,
           maxPlayers: 4,
-          encounters: materializeSequence(dungeon.encounters),
-          encounterVariants: (dungeon.encounterVariants || []).map(materializeSequence),
+          // Preserve flat v1 read fields while exposing grouped stages beside
+          // them for simple multi-enemy runs.
+          encounters: encounterStages.map((stage) => stage[0]),
+          encounterStages,
+          encounterVariants: encounterVariantStages.map((variant) => variant.map((stage) => stage[0])),
+          encounterVariantStages,
           runEventSchedule: schedule,
           boss: materializeEnemy({ ...boss, intentCadence: boss.intentCadence }, { isBoss: true }),
           arcId: manifest.arc.id,
@@ -319,6 +340,7 @@ export class ArcManifestService {
     return {
       ...structuredClone(dungeon),
       encounters: selection.encounters,
+      encounterStages: selection.stages,
       encounterVariantIndex: selection.variantIndex,
     };
   }
