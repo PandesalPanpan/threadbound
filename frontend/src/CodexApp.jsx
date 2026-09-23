@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCodex, getVisualAssets } from './api/client.js';
+import { resolveShellAsset } from './shell/presentation.js';
 
 const CATEGORIES = Object.freeze([
   ['all', 'All'],
@@ -20,6 +21,7 @@ function iconFor(category) {
 }
 
 function assetForEntry(entry, assets) {
+  if (entry?.category === 'items') return resolveShellAsset(entry, assets, ['item', 'icon']);
   if (!entry?.visualAssetId) return null;
   return assets.find((asset) => asset.id === entry.visualAssetId) || null;
 }

@@ -20,6 +20,10 @@ if (stream) {
     .thread-area-row button { min-width:88px; min-height:44px; margin:0 !important; }
     .thread-area-row button[disabled] { opacity:.72; }
     .thread-area-note { margin:0; color:var(--muted); font-size:.7rem; line-height:1.45; }
+    .thread-area-unlock { display:grid; gap:6px; padding:12px; border:1px solid rgba(255,198,104,.24); border-radius:11px; background:rgba(255,198,104,.055); }
+    .thread-area-unlock > span { color:#ffd27a; font-size:.62rem; font-weight:900; letter-spacing:.07em; text-transform:uppercase; }
+    .thread-area-unlock > strong { font-size:.84rem; }
+    .thread-area-unlock > small { color:var(--muted); font-size:.69rem; line-height:1.45; }
     @media (max-width:420px) {
       .thread-area-summary { grid-template-columns:1fr 1fr; }
       .thread-area-row { grid-template-columns:1fr; }
@@ -89,6 +93,13 @@ if (stream) {
     return cell;
   }
 
+  function recommendedLevel(range) {
+    const minimum = Number(range?.min);
+    const maximum = Number(range?.max);
+    if (!Number.isInteger(minimum) || !Number.isInteger(maximum)) return 'Not specified';
+    return minimum === maximum ? `Level ${minimum}` : `Levels ${minimum}–${maximum}`;
+  }
+
   function renderArea(data) {
     const card = stream.querySelector('[data-testid="stream-command-card"]');
     if (!card) return;
@@ -105,6 +116,9 @@ if (stream) {
       summaryCell('Current Area', data.currentArea.name, 'area-current'),
       summaryCell('Unlocked Through', data.highestUnlockedArea.name, 'area-highest-unlocked'),
     );
+    if (data.currentAreaContent?.recommendedLevel) {
+      summary.append(summaryCell('Recommended Level', recommendedLevel(data.currentAreaContent.recommendedLevel), 'area-recommended-level'));
+    }
     card.append(summary);
 
     const list = document.createElement('div');
@@ -144,9 +158,41 @@ if (stream) {
     }
     card.append(list);
 
+    if (data.nextLockedArea) {
+      const locked = data.nextLockedArea;
+      const challenge = locked.progressionChallenge;
+      const unlock = document.createElement('article');
+      unlock.className = 'thread-area-unlock';
+      unlock.dataset.testid = 'next-locked-area';
+      unlock.dataset.areaNumber = String(locked.number);
+
+      const status = document.createElement('span');
+      status.textContent = `Area ${locked.number} · Locked`;
+      const name = document.createElement('strong');
+      name.textContent = locked.name;
+      const recommendation = document.createElement('small');
+      recommendation.dataset.testid = 'area-next-recommended-level';
+      recommendation.textContent = `Recommended ${recommendedLevel(locked.recommendedLevel)}.`;
+      const reason = document.createElement('small');
+      reason.dataset.testid = 'area-next-lock-reason';
+      reason.textContent = locked.lockReason || 'Complete the progression challenge to open this Area.';
+      unlock.append(status, name, recommendation, reason);
+
+      if (challenge) {
+        const challengeName = document.createElement('strong');
+        challengeName.dataset.testid = 'area-progression-challenge';
+        challengeName.textContent = challenge.name;
+        const requirement = document.createElement('small');
+        requirement.dataset.testid = 'area-progression-requirement';
+        requirement.textContent = `Clear this challenge in ${challenge.areaName || data.highestUnlockedArea.name} with ${challenge.requiredHumanPlayers} ready human players.`;
+        unlock.append(challengeName, requirement);
+      }
+      card.append(unlock);
+    }
+
     const note = document.createElement('p');
     note.className = 'thread-area-note';
-    note.textContent = 'Only unlocked Areas are shown. Travel is persisted by Threadbound; this card never decides unlocks in the browser.';
+    note.textContent = 'Only unlocked Areas are travel options. Threadbound persists travel and decides unlocks.';
     card.append(note);
     card.scrollIntoView({ block: 'start', inline: 'nearest' });
   }

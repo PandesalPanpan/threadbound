@@ -1,4 +1,5 @@
 import { isCharacterKind, isModernCharacterAsset } from '../../../public/character-asset-policy.js';
+import { isLegacyGenericItemAsset, legacyItemVisualAssetId } from '../../../public/item-asset-policy.js';
 
 export const COMMAND_ALIASES = Object.freeze({
   help: 'help',
@@ -40,6 +41,8 @@ export const COMMAND_ALIASES = Object.freeze({
   area: 'area',
   ar: 'area',
   town: 'area',
+  talk: 'talk',
+  speak: 'speak',
   quest: 'quest',
   quests: 'quest',
   gambling: 'gambling',
@@ -74,7 +77,7 @@ export const QUICK_COMMANDS = Object.freeze([
 ]);
 
 export const COMMAND_SUGGESTIONS = Object.freeze([
-  'help', 'status', 'st', 'hunt', 'adventure', 'adv', 'dungeon', 'dg', 'inventory', 'inv', 'shop', 'sh', 'bank', 'bk', 'party', 'pt', 'area', 'ar', 'quest', 'leaderboard', 'lb', 'gambling', 'blackjack', 'bj', 'coinflip', 'cf', 'slots', 'sl', 'heal', 'pot', 'continue', 'cont', 'retreat', 'lv', 'world', 'honey', 'codex', 'cx',
+  'help', 'status', 'st', 'hunt', 'adventure', 'adv', 'dungeon', 'dg', 'inventory', 'inv', 'shop', 'sh', 'bank', 'bk', 'party', 'pt', 'area', 'ar', 'talk', 'speak', 'quest', 'leaderboard', 'lb', 'gambling', 'blackjack', 'bj', 'coinflip', 'cf', 'slots', 'sl', 'heal', 'pot', 'continue', 'cont', 'retreat', 'lv', 'world', 'honey', 'codex', 'cx',
 ]);
 
 function stableIndex(value, length) {
@@ -130,14 +133,33 @@ export function formatEntryTime(value) {
 export function resolveShellAsset(entity, assets = [], preferredKinds = []) {
   const explicitId = entity?.visualAssetId || entity?.assetId;
   const characterPresentation = preferredKinds.some((kind) => isCharacterKind(kind));
+  const kinds = preferredKinds.length ? preferredKinds : ['item', 'icon', 'character', 'npc', 'mob'];
   if (explicitId) {
     const explicit = assets.find((asset) => asset.id === explicitId) || null;
-    if (explicit && (!characterPresentation || isModernCharacterAsset(explicit))) return explicit;
+    const retiredGenericItem = isLegacyGenericItemAsset(explicit) && kinds.includes('item');
+    if (explicit && !retiredGenericItem && (!characterPresentation || isModernCharacterAsset(explicit))) return explicit;
   }
-  const kinds = preferredKinds.length ? preferredKinds : ['item', 'icon', 'character', 'npc', 'mob'];
   const candidates = assets.filter((asset) => kinds.includes(asset.kind)
     && (!isCharacterKind(asset.kind) || isModernCharacterAsset(asset, asset.kind)));
+  if (kinds.includes('item') || kinds.includes('icon')) {
+    const fallback = legacyItemAsset(entity, assets);
+    if (fallback && kinds.includes(fallback.kind)) return fallback;
+  }
   return candidates[stableIndex(entity?.id || entity?.playerId || entity?.name, candidates.length)] || null;
+}
+
+function legacyItemAsset(entity, assets) {
+  const compatibleId = legacyItemVisualAssetId(entity);
+  if (compatibleId) {
+    const match = assets.find((asset) => asset.id === compatibleId);
+    if (match) return match;
+  }
+  const name = String(entity?.name || entity?.label || entity?.title || '').replace(/^(worn|sturdy|gleaming|runed|royal|mythic|old)\s+/i, '').trim().toLowerCase();
+  if (name) {
+    const byName = assets.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1' && String(asset.label || '').trim().toLowerCase() === name);
+    if (byName) return byName;
+  }
+  return assets.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1') || null;
 }
 
 export function goldValue(character) {

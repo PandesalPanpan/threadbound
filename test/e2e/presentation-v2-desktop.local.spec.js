@@ -17,8 +17,12 @@ test.describe('presentation v2 desktop player shell', () => {
     await expect(page.getByTestId('desktop-live-context')).toBeVisible();
     await expect(page.getByTestId('desktop-context-note')).toHaveText('Read-only context. Actions happen in the shared Adventure Stream.');
     await expect(page.getByTestId('desktop-command-rail')).toContainText('Guild Hall');
-    await expect(page.getByTestId('desktop-current-area-card')).toContainText('Area 1');
-    await expect(page.getByTestId('desktop-active-quest-card')).toContainText('Guild Field Check');
+    await expect(page.getByTestId('desktop-current-area-card')).toContainText('Bellbloom Meadows');
+    const questsResponse = await page.context().request.get('/api/quests');
+    expect(questsResponse.ok()).toBe(true);
+    const quests = await questsResponse.json();
+    const activeQuest = quests.quests.find((quest) => ['active', 'claimable'].includes(quest.state)) || quests.quests[0];
+    await expect(page.getByTestId('desktop-active-quest-card')).toContainText(activeQuest.title);
     await expect(page.getByTestId('desktop-guild-snapshot-card')).toContainText('Guild Hall');
 
     const metrics = await page.evaluate(() => {

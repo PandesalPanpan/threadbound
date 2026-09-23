@@ -68,6 +68,9 @@ test('React battle simulation replays the authoritative Figma 3v3 event stream',
   await page.getByTestId('local-login-d').click();
   await page.context().request.post('/api/party/leave');
   await page.goto('/game?view=battle');
+  const battlePreviewResponse = await page.context().request.get('/api/battle-simulation');
+  expect(battlePreviewResponse.ok()).toBe(true);
+  const expectedTurnCount = (await battlePreviewResponse.json()).details.turns.length;
 
   await expect(page.getByTestId('battle-card')).toHaveAttribute('data-battle-phase', 'preBattle');
   await expect(page.getByTestId('battle-pre-battle')).toContainText('Watch the threads fight');
@@ -97,7 +100,7 @@ test('React battle simulation replays the authoritative Figma 3v3 event stream',
   await expect(page.getByTestId('battle-result-receipt')).toContainText('turns');
   await expect(page.getByTestId('battle-details')).toBeVisible();
   await page.getByTestId('battle-details').locator('summary').click();
-  await expect(page.getByTestId('battle-details-turns').locator('.battle-details-turn')).toHaveCount(38);
+  await expect(page.getByTestId('battle-details-turns').locator('.battle-details-turn')).toHaveCount(expectedTurnCount);
   await page.screenshot({ path: 'ux-review/react-battle-result-mobile.png', fullPage: true });
 
   const receiptText = await page.getByTestId('battle-result-receipt').innerText();

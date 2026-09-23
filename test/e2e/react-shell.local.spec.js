@@ -13,9 +13,13 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await expect(page.getByTestId('stream-context-hunt')).toBeVisible();
 
   const composer = page.getByTestId('stream-message');
+  const dashboard = await (await page.context().request.get('/api/dashboard')).json();
   await composer.fill('status');
   await composer.press('Enter');
-  await expect(page.getByTestId('stream-player-status').last()).toBeVisible();
+  const status = page.getByTestId('stream-player-status').last();
+  await expect(status).toBeVisible();
+  await expect(status.getByTestId('status-signature-skill')).toContainText(dashboard.character.signatureSkill.name);
+  await expect(status.getByTestId('status-signature-skill')).toContainText(`${dashboard.character.signatureSkill.manaCost} Mana`);
   await composer.fill('inventory');
   await composer.press('Enter');
   await expect(page.getByTestId('stream-inventory-rich-card').last()).toBeVisible();
@@ -39,7 +43,17 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
 
   await composer.fill('area');
   await composer.press('Enter');
-  await expect(page.getByTestId('area-rich-card')).toBeVisible();
+  const areaCard = page.getByTestId('area-rich-card');
+  await expect(areaCard).toBeVisible();
+  const areaPayload = await (await page.context().request.get('/api/areas')).json();
+  await expect(areaCard.getByTestId('area-recommended-level')).toContainText(String(areaPayload.area.currentAreaContent.recommendedLevel.min));
+  const nextLocked = areaPayload.area.nextLockedArea;
+  await expect(areaCard.getByTestId('next-locked-area')).toContainText(nextLocked.name);
+  await expect(areaCard.getByTestId('next-locked-area')).toContainText(nextLocked.progressionChallenge.name);
+  await expect(areaCard.getByTestId('next-locked-area')).toContainText(nextLocked.lockReason);
+  await expect(areaCard.getByTestId('next-area-recommended-level')).toContainText(String(nextLocked.recommendedLevel.min));
+  await areaCard.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await page.screenshot({ path: 'ux-review/react-area-rich-card-mobile.png' });
 
   await composer.fill('quest');
   await composer.press('Enter');
@@ -63,6 +77,13 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await expect(page.getByTestId('stream-hunt-rich-card').last().getByTestId('shared-battle-surface')).toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 960 });
+  await composer.fill('area');
+  await composer.press('Enter');
+  const desktopAreaCard = page.getByTestId('area-rich-card');
+  await expect(desktopAreaCard.getByTestId('area-recommended-level')).toContainText(String(areaPayload.area.currentAreaContent.recommendedLevel.min));
+  await desktopAreaCard.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await page.screenshot({ path: 'ux-review/react-area-rich-card-desktop.png' });
+
   await composer.fill('help');
   await composer.press('Enter');
   await expect(page.getByTestId('stream-command-card')).toBeVisible();

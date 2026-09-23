@@ -16,6 +16,16 @@ function sortEntries(entries) {
   });
 }
 
+function terminalDungeonReplayId(entries = []) {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    const replay = entry?.metadata?.battleReplay;
+    if (replay?.kind !== 'simple-dungeon-battle' || !['victory', 'defeat'].includes(replay.status)) continue;
+    return replay.battleId || replay.runId || entry.id || null;
+  }
+  return null;
+}
+
 export function GameShellApp() {
   const [dashboard, setDashboard] = useState(null);
   const [assets, setAssets] = useState([]);
@@ -24,12 +34,15 @@ export function GameShellApp() {
   const [quests, setQuests] = useState(null);
   const [shop, setShop] = useState(null);
   const [panel, setPanel] = useState(null);
+  const [completedTerminalReplayIds, setCompletedTerminalReplayIds] = useState(() => new Set());
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const busyRef = useRef(false);
+  const connectedRef = useRef(false);
 
   useEffect(() => { busyRef.current = busy; }, [busy]);
+  useEffect(() => { connectedRef.current = connected; }, [connected]);
 
   const mergeEntry = useCallback((entry) => {
     if (!entry) return;
@@ -38,6 +51,11 @@ export function GameShellApp() {
       byId.set(entry.id || `${entry.createdAt}-${entry.body}`, entry);
       return sortEntries([...byId.values()]).slice(-50);
     });
+  }, []);
+
+  const markDungeonReplayComplete = useCallback((replayId) => {
+    if (!replayId) return;
+    setCompletedTerminalReplayIds((current) => current.has(replayId) ? current : new Set([...current, replayId]));
   }, []);
 
   const applyPayload = useCallback((payload) => {
@@ -60,6 +78,12 @@ export function GameShellApp() {
     setDashboard(nextDashboard);
     if (nextStream?.entries) setEntries(sortEntries(nextStream.entries));
     return { dashboard: nextDashboard, stream: nextStream };
+  }, []);
+
+  const refreshWorld = useCallback(async () => {
+    const [areaPayload, questPayload] = await Promise.all([getAreas(), getQuests()]);
+    setAreas(areaPayload?.area || null);
+    setQuests(questPayload || null);
   }, []);
 
   const recordCommand = useCallback(async (command) => {
@@ -102,15 +126,23 @@ export function GameShellApp() {
   useEffect(() => {
     let closed = false;
     let closeSocket = () => {};
-    connectRealtime((message) => {
+    closeSocket = connectRealtime((message) => {
       if (closed) return;
-      setConnected(true);
       if (message.type === 'stream_entry') mergeEntry(message.entry);
-      if (message.type === 'state_changed' && !busyRef.current) refresh({ includeStream: true }).catch(() => {});
-    }).then((close) => { if (!closed) { closeSocket = close; setConnected(true); } }).catch(() => { if (!closed) setConnected(false); });
-    const fallback = window.setInterval(() => { if (!busyRef.current) refresh({ includeStream: false }).catch(() => {}); }, 5000);
+      if (message.type === 'state_changed' && !busyRef.current) {
+        refresh({ includeStream: true }).catch(() => {});
+        if (['AreaUnlocked', 'AreaTraveled', 'QuestAccepted', 'QuestProgressed', 'QuestCompleted', 'QuestClaimed', 'DungeonCompleted', 'NpcInteracted'].includes(message.eventType)) refreshWorld().catch(() => {});
+      }
+    }, (nextConnected) => {
+      if (closed) return;
+      setConnected(nextConnected);
+      if (nextConnected && !busyRef.current) refresh({ includeStream: true }).catch(() => {});
+    });
+    const fallback = window.setInterval(() => {
+      if (!busyRef.current) refresh({ includeStream: !connectedRef.current }).catch(() => {});
+    }, 5000);
     return () => { closed = true; closeSocket(); window.clearInterval(fallback); };
-  }, [mergeEntry, refresh]);
+  }, [mergeEntry, refresh, refreshWorld]);
 
   const request = useCallback(async (command, path, options = {}) => {
     if (busyRef.current) return null;
@@ -121,6 +153,9 @@ export function GameShellApp() {
       const payload = await api(path, options);
       applyPayload(payload);
       await refresh({ includeStream: true });
+      if (/^\/api\/(?:hunt|adventure|runs\/|dungeons\/|areas\/|quests\/|towns\/)/.test(path)) {
+        await refreshWorld();
+      }
       if (path.startsWith('/api/shop/purchases/')) {
         const shopSnapshot = await postShopView();
         applyPayload(shopSnapshot);
@@ -135,7 +170,7 @@ export function GameShellApp() {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [applyPayload, mergeEntry, refresh]);
+  }, [applyPayload, mergeEntry, refresh, refreshWorld]);
 
   const openResource = useCallback(async (kind, command, loader, setter) => {
     if (busyRef.current) return;
@@ -243,6 +278,39 @@ export function GameShellApp() {
       case 'area':
         await openResource('area', parsed.raw, getAreas, (payload) => setAreas(payload?.area || payload));
         break;
+      case 'talk':
+      case 'speak': {
+        const targetName = parsed.args.join(' ').replace(/^(to|with)\s+/i, '').trim();
+        if (!targetName) {
+          setPanel({ kind: 'area' });
+          setError('Type talk <NPC name> to speak with someone in this Town.');
+          break;
+        }
+        let townData = areas;
+        if (!townData?.towns) {
+          try {
+            const payload = await getAreas();
+            townData = payload?.area || payload;
+            setAreas(townData);
+          } catch (caught) {
+            setError(caught.message);
+            break;
+          }
+        }
+        const normalizeName = (value) => String(value || '').normalize('NFKC').trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
+        const requested = normalizeName(targetName);
+        const candidates = (townData?.towns || []).flatMap((town) => (town.npcs || []).map((npc) => ({ town, npc })));
+        const match = candidates.find(({ npc }) => normalizeName(npc.name) === requested || normalizeName(npc.id) === requested)
+          || candidates.find(({ npc }) => normalizeName(npc.name).startsWith(requested));
+        if (!match) {
+          setPanel({ kind: 'area' });
+          setError(`No Town resident named “${targetName}” is available here. Open Area to see who you can talk to.`);
+          break;
+        }
+        await request(parsed.raw, `/api/towns/${encodeURIComponent(match.town.id)}/npcs/${encodeURIComponent(match.npc.id)}/interact`, { method: 'POST' });
+        setPanel(null);
+        break;
+      }
       case 'quest':
         await openResource('quest', parsed.raw, getQuests, setQuests);
         break;
@@ -290,7 +358,7 @@ export function GameShellApp() {
         setError(`Unknown command “${parsed.name}”. Try help.`);
         break;
     }
-  }, [dashboard, openResource, panel, recordCommand, request]);
+  }, [areas, dashboard, openResource, panel, recordCommand, request]);
 
   const loadEarlier = useCallback(async () => {
     const before = entries[0]?.id;
@@ -311,14 +379,16 @@ export function GameShellApp() {
     return <main className="game-shell-loading"><span className="loading-orbit" /><span>Loading the Adventure Stream…</span>{error ? <p data-testid="stream-error">{error}</p> : null}</main>;
   }
 
-  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas, quests, shop, onRequest: request, onCommand: handleCommand, busy });
+  const terminalReplayId = terminalDungeonReplayId(entries);
+  const terminalReplayPending = Boolean(terminalReplayId && !completedTerminalReplayIds.has(terminalReplayId));
+  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas, quests, shop, onRequest: request, onCommand: handleCommand, onClose: () => setPanel(null), dungeonChooserDisabled: terminalReplayPending, busy });
   return (
     <div className="game-shell">
       <GameTopBar dashboard={dashboard} areas={areas} connected={connected} onOpen={handleCommand} />
       <div className="game-shell-layout">
         <QuickRail dashboard={dashboard} onCommand={handleCommand} />
         <main className="game-shell-center">
-          <AdventureStream entries={entries} ephemeralCard={ephemeralCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={dashboard?.character?.id} assets={assets} onRequest={request} onCommand={handleCommand} busy={busy} dashboard={dashboard} />
+          <AdventureStream entries={entries} ephemeralCard={ephemeralCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={dashboard?.character?.id} assets={assets} areas={areas} onRequest={request} onCommand={handleCommand} onDungeonReplayComplete={markDungeonReplayComplete} busy={busy} dashboard={dashboard} />
           <CommandComposer onSubmit={handleCommand} busy={busy} contextualActions={contextualActions} />
           {busy ? <span className="game-shell-busy" role="status" data-testid="stream-busy">Syncing authoritative state…</span> : null}
         </main>

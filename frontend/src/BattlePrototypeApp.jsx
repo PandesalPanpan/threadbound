@@ -123,7 +123,7 @@ export function BattlePrototypeApp() {
   useEffect(() => {
     let closed = false;
     let closeSocket = () => {};
-    connectRealtime((message) => {
+    closeSocket = connectRealtime((message) => {
       if (closed) return;
       setConnected(true);
       if (message.type === 'stream_entry' && message.entry) {
@@ -132,7 +132,7 @@ export function BattlePrototypeApp() {
       if (message.type === 'state_changed' && !playing) {
         getDashboard().then((nextDashboard) => { if (!closed) setDashboard(nextDashboard); }).catch(() => {});
       }
-    }).then((close) => { if (!closed) { closeSocket = close; setConnected(true); } }).catch(() => { if (!closed) setConnected(false); });
+    }, (nextConnected) => { if (!closed) setConnected(nextConnected); });
     return () => { closed = true; closeSocket(); };
   }, [playing]);
 

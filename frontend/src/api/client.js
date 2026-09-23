@@ -77,17 +77,52 @@ export function getCodex({ category = 'all', query = '' } = {}) {
   return api(`/api/codex?${params.toString()}`);
 }
 
-export async function connectRealtime(onMessage) {
-  if (!('WebSocket' in globalThis)) return () => {};
-  try {
-    const tokenPayload = await api('/api/realtime-token');
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${location.host}/ws?token=${encodeURIComponent(tokenPayload.token)}`);
-    socket.addEventListener('message', (event) => {
-      try { onMessage(JSON.parse(event.data)); } catch { /* Ignore malformed projections. */ }
-    });
-    return () => socket.close();
-  } catch {
-    return () => {};
-  }
+export function connectRealtime(onMessage, onStatus = () => {}) {
+  let stopped = false;
+  let socket = null;
+  let retryTimer = null;
+  let attempts = 0;
+
+  const scheduleReconnect = () => {
+    onStatus(false);
+    if (stopped || retryTimer != null) return;
+    const delay = Math.min(20_000, 500 * (2 ** Math.min(attempts, 5)));
+    attempts += 1;
+    retryTimer = window.setTimeout(() => {
+      retryTimer = null;
+      void connect();
+    }, delay);
+  };
+
+  const connect = async () => {
+    if (stopped || !('WebSocket' in globalThis)) {
+      onStatus(false);
+      return;
+    }
+    try {
+      const tokenPayload = await api('/api/realtime-token');
+      if (stopped) return;
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket = new WebSocket(`${protocol}//${location.host}/ws?token=${encodeURIComponent(tokenPayload.token)}`);
+      socket.addEventListener('open', () => {
+        attempts = 0;
+        onStatus(true);
+      });
+      socket.addEventListener('message', (event) => {
+        try { onMessage(JSON.parse(event.data)); } catch { /* Ignore malformed projections. */ }
+      });
+      socket.addEventListener('close', scheduleReconnect);
+      socket.addEventListener('error', () => socket?.close());
+    } catch {
+      scheduleReconnect();
+    }
+  };
+
+  onStatus(false);
+  void connect();
+  return () => {
+    stopped = true;
+    if (retryTimer != null) window.clearTimeout(retryTimer);
+    socket?.close();
+  };
 }

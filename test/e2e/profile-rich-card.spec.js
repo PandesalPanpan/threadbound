@@ -38,7 +38,7 @@ test('Profile rich card summarizes progression, resources, stats, loadout, Area 
   await expect(card.getByTestId('profile-xp')).toContainText(`Level ${state.character.level}`);
   await expect(card.getByTestId('profile-gold')).toHaveText(String(state.character.gold));
   await expect(card.getByTestId('profile-banked-gold')).toHaveText('0');
-  await expect(card.getByTestId('profile-area')).toHaveText('Not established');
+  await expect(card.getByTestId('profile-area')).toHaveText(state.area.name);
   await expect(card.getByTestId('profile-achievement-count')).toHaveText(String(state.achievements.length));
   await expect(card.getByTestId('profile-active-buffs')).toContainText('No active fight buffs.');
 

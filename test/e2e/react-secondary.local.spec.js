@@ -27,14 +27,59 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   await command(page, 'profile guild-rook');
   await expect(card.getByTestId('shell-simulated-profile')).toBeVisible();
   await expect(card.getByTestId('shell-profile-name')).toContainText('Rook');
+  await expect(card.getByTestId('shell-simulated-profile-equipment-weapon').locator('img')).toHaveAttribute('data-visual-asset-id', 'item.threadsteel-longsword.v1');
+  await expect(card.getByTestId('shell-simulated-profile-equipment-armor').locator('img')).toHaveAttribute('data-visual-asset-id', 'item.ironroot-cuirass.v1');
+  await expect(card.locator('[data-testid^="shell-simulated-profile-equipment-"]')).toHaveCount(5);
   await rival.getByRole('button', { name: 'Profile' }).click();
   await expect(card.getByTestId('shell-simulated-profile')).toBeVisible();
   await expect(card.getByTestId('shell-profile-name')).toContainText('Rook');
 
   await rival.getByRole('button', { name: /Duel/ }).click();
-  await expect(card.getByTestId('shell-duel-result')).toBeVisible();
-  await expect(page.getByTestId('stream-system-entry').last()).toContainText(/Duel|duel/i);
+  const duelCard = page.getByTestId('stream-duel-rich-card').last();
+  await expect(duelCard).toBeVisible();
+  const duelEntries = (await (await page.context().request.get('/api/stream')).json()).entries;
+  const duelEntry = duelEntries.find((entry) => entry.eventType === 'DuelResolved');
+  const rivalCombatant = duelEntry?.metadata?.battleReplay?.details?.combatants?.find((combatant) => combatant.id === 'guild-rook');
+  expect(rivalCombatant?.equipment?.weapon?.name).toBe('Veteran Blade');
+  expect(rivalCombatant?.equipment?.weapon?.visualAssetId).toBe('item.threadsteel-longsword.v1');
+  expect(rivalCombatant?.equipment?.armor?.visualAssetId).toBe('item.ironroot-cuirass.v1');
+  const replay = duelCard.getByTestId('shared-battle-surface');
+  await expect(replay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+  await expect(replay.getByTestId('shared-battle-result')).toHaveCount(0);
+  await expect(duelCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(1);
+  await expect(duelCard.locator('[data-testid^="shared-battle-enemy"]')).toHaveCount(1);
+  await expect(duelCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+  await expect(duelCard.locator('[data-testid^="duel-loadout-"]')).not.toHaveCount(0);
+  await expect(duelCard).toContainText('Veteran Blade');
+  await expect(duelCard.locator('[data-testid^="duel-loadout-guild-rook-weapon"] img')).toHaveAttribute('data-visual-asset-id', 'item.threadsteel-longsword.v1');
+  await expect(duelCard.locator('[data-testid^="duel-loadout-guild-rook-armor"] img')).toHaveAttribute('data-visual-asset-id', 'item.ironroot-cuirass.v1');
+  await expect(replay).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
+  await expect(replay.getByTestId('shared-battle-result')).toContainText(/VICTORY|DEFEAT|DRAW/);
+  await expect(page.getByTestId('stream-system-entry').last()).not.toContainText(/Duel result/i);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('plain talk and speak commands resolve current-Town NPCs into shared receipts', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, 'b');
+  const areaResponse = await page.context().request.get('/api/areas');
+  expect(areaResponse.ok()).toBe(true);
+  const area = (await areaResponse.json()).area;
+  const npcs = area.towns.flatMap((town) => town.npcs.map((npc) => ({ town, npc })));
+  expect(npcs.length).toBeGreaterThanOrEqual(2);
+
+  await command(page, `talk to ${npcs[0].npc.name}`);
+  const firstReceipt = page.getByTestId('stream-npc-rich-card').last();
+  await expect(firstReceipt).toBeVisible();
+  await expect(firstReceipt).toContainText(npcs[0].npc.name);
+  const firstStream = await (await page.context().request.get('/api/stream')).json();
+  expect(firstStream.entries.some((entry) => entry.eventType === 'NpcInteracted' && entry.metadata?.npcId === npcs[0].npc.id)).toBe(true);
+
+  await command(page, `speak ${npcs[1].npc.name}`);
+  const secondReceipt = page.getByTestId('stream-npc-rich-card').last();
+  await expect(secondReceipt).toContainText(npcs[1].npc.name);
+  const secondStream = await (await page.context().request.get('/api/stream')).json();
+  expect(secondStream.entries.some((entry) => entry.eventType === 'NpcInteracted' && entry.metadata?.npcId === npcs[1].npc.id)).toBe(true);
 });
 
 test('React shell embeds Gold games and server-backed Blackjack state', async ({ page }) => {

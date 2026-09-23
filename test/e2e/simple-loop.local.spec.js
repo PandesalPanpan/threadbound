@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-const NAMES = { a: 'Local Weaver A', b: 'Local Weaver B' };
+const NAMES = {
+  a: 'Local Weaver A',
+  b: 'Local Weaver B',
+  g: 'Local Weaver G',
+  h: 'Local Weaver H',
+  i: 'Local Weaver I',
+};
 
 async function login(page, slot) {
   await page.goto('/');
@@ -21,7 +27,7 @@ test('command results scroll fully into view as their content grows', async ({ b
   const page = await context.newPage();
 
   try {
-    await login(page, 'a');
+    await login(page, 'g');
     await expect(page.getByTestId('thread-dust').locator('..')).toContainText('Gold');
     await page.getByTestId('stream-message').fill('help');
     await page.getByTestId('stream-send').click();
@@ -54,7 +60,7 @@ test('command results scroll fully into view as their content grows', async ({ b
     const beforeHeal = await dashboard(context);
     await page.getByTestId('stream-message').fill('heal');
     await page.getByTestId('stream-send').click();
-    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible();
+    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used Minor Health Potion/i }).last()).toBeVisible();
     await expect(page.getByTestId('stream-heal')).toHaveCount(0);
     await expect.poll(async () => (await dashboard(context)).character.currentHealth).toBeGreaterThan(beforeHeal.character.currentHealth);
     await expect.poll(async () => (await dashboard(context)).character.healthPotions).toBe(beforeHeal.character.healthPotions - 1);
@@ -82,8 +88,8 @@ test('party members share the same hard attack-only dungeon and live stream', as
   const partner = await partnerContext.newPage();
 
   try {
-    await login(leader, 'a');
-    await login(partner, 'b');
+    await login(leader, 'h');
+    await login(partner, 'i');
 
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);

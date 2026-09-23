@@ -6,6 +6,8 @@ const NAMES = {
   b: 'Local Weaver B',
   c: 'Local Weaver C',
   d: 'Local Weaver D',
+  e: 'Local Weaver E',
+  f: 'Local Weaver F',
 };
 
 async function login(page, slot) {
@@ -240,8 +242,8 @@ test('party dungeon updates both browsers, preserves drafts, reconnects, and exp
   const partnerIdentity = { context: partnerContext, playerId: null };
 
   try {
-    await login(leader, 'c');
-    await login(partner, 'd');
+    await login(leader, 'e');
+    await login(partner, 'f');
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
     const joinCode = (await created.json()).party.joinCode;
@@ -339,7 +341,7 @@ test('a failed simple run leaves one failure receipt and makes authoritative hea
     await expect(page.getByTestId('simple-recovery-use-potion')).toBeVisible();
     const beforeHeal = await dashboard(context);
     await page.getByTestId('simple-recovery-use-potion').click();
-    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used a health potion/i }).last()).toBeVisible({ timeout: 7000 });
+    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /used Minor Health Potion/i }).last()).toBeVisible({ timeout: 7000 });
     await expect.poll(async () => (await dashboard(context)).character.currentHealth).toBeGreaterThan(beforeHeal.character.currentHealth);
   } finally {
     await context.close();

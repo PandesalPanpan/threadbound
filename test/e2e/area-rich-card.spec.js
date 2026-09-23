@@ -57,17 +57,25 @@ test('Area rich card keeps travel in the Adventure Stream and only offers author
   const areaResponse = await context.request.get('/api/areas');
   expect(areaResponse.ok()).toBe(true);
   const initial = await areaResponse.json();
-  expect(initial.area.currentArea.name).toBe('Area 1');
-  expect(initial.area.highestUnlockedArea.name).toBe('Area 1');
+  const { currentArea, highestUnlockedArea, currentAreaContent, nextLockedArea } = initial.area;
+  expect(currentArea.name).toBeTruthy();
+  expect(highestUnlockedArea.name).toBe(currentArea.name);
   expect(initial.area.areas).toHaveLength(1);
 
   const card = await openArea(page);
-  await expect(card.getByTestId('area-current')).toHaveText('Area 1');
-  await expect(card.getByTestId('area-highest-unlocked')).toHaveText('Area 1');
+  await expect(card.getByTestId('area-current')).toHaveText(currentArea.name);
+  await expect(card.getByTestId('area-highest-unlocked')).toHaveText(highestUnlockedArea.name);
+  await expect(card.getByTestId('area-recommended-level')).toContainText(String(currentAreaContent.recommendedLevel.min));
   await expect(card.getByTestId('area-row-1')).toContainText('You are here now.');
   await expect(card.getByTestId('area-travel-1')).toHaveText('Current');
   await expect(card.getByTestId('area-travel-1')).toBeDisabled();
   await expect(card.getByTestId('area-row-2')).toHaveCount(0);
+  const nextLockedCard = card.getByTestId('next-locked-area');
+  await expect(nextLockedCard).toContainText(nextLockedArea.name);
+  await expect(nextLockedCard.getByTestId('area-next-recommended-level')).toContainText(String(nextLockedArea.recommendedLevel.min));
+  await expect(nextLockedCard.getByTestId('area-next-lock-reason')).toContainText(nextLockedArea.lockReason);
+  await expect(nextLockedCard.getByTestId('area-progression-challenge')).toHaveText(nextLockedArea.progressionChallenge.name);
+  await expect(nextLockedCard.getByTestId('area-progression-requirement')).toContainText(`${nextLockedArea.progressionChallenge.requiredHumanPlayers} ready human players`);
   await expect(card).not.toContainText(/Thread Dust|Relic Pouch|Temper/);
 
   const bypass = await context.request.post('/api/areas/2/travel');
@@ -76,7 +84,7 @@ test('Area rich card keeps travel in the Adventure Stream and only offers author
 
   const after = await context.request.get('/api/areas');
   expect(after.ok()).toBe(true);
-  expect((await after.json()).area.currentArea.name).toBe('Area 1');
+  expect((await after.json()).area.currentArea.name).toBe(currentArea.name);
 
   const metrics = await page.evaluate(() => {
     const cardElement = document.querySelector('[data-testid="stream-command-card"]');
@@ -150,27 +158,25 @@ test('Town command renders authoritative NPCs and Talk creates one shared Advent
   const areaResponse = await context.request.get('/api/areas');
   expect(areaResponse.ok()).toBe(true);
   const initial = await areaResponse.json();
+  const town = initial.area.towns[0];
   expect(initial.area.towns).toHaveLength(1);
-  expect(initial.area.towns[0].id).toBe('area-1-town');
-  expect(initial.area.towns[0].npcs).toHaveLength(4);
+  expect(town.id).toBeTruthy();
+  expect(town.npcs.length).toBeGreaterThan(0);
 
   const card = await openTown(page);
-  await expect(card.getByTestId('town-name')).toHaveText('Area 1 Town');
+  await expect(card.getByTestId('town-name')).toHaveText(town.name);
   await expect(card.getByTestId('town-services')).toContainText('shop');
   await expect(card.getByTestId('town-services')).toContainText('upgrade');
-  await expect(card.getByTestId('town-npcs')).toContainText('Shopkeeper');
-  await expect(card.getByTestId('town-npcs')).toContainText('Blacksmith');
-  await expect(card.getByTestId('town-npcs')).toContainText('Banker');
-  await expect(card.getByTestId('town-npcs')).toContainText('Healer');
-  await expect(card.locator('[data-testid^="town-npc-sprite-"]')).toHaveCount(4);
-  await expect(card.locator('[data-testid^="town-talk-"]')).toHaveCount(4);
+  for (const npc of town.npcs) await expect(card.getByTestId('town-npcs')).toContainText(npc.name);
+  await expect(card.locator('[data-testid^="town-npc-sprite-"]')).toHaveCount(town.npcs.length);
+  await expect(card.locator('[data-testid^="town-talk-"]')).toHaveCount(town.npcs.length);
   await expect(card.locator('[data-testid^="town-npc-sprite-"]').first()).toHaveAttribute('data-visual-asset-id', /character\./);
   await expect(card).not.toContainText(/Thread Dust|Relic Pouch|Temper/);
 
   const metrics = await page.evaluate(() => {
     const cardElement = document.querySelector('[data-testid="stream-command-card"]');
     const dismiss = cardElement?.querySelector('[data-rich-card-dismiss="true"]');
-    const talk = cardElement?.querySelector('[data-testid="town-talk-area-1-shopkeeper"]');
+    const talk = cardElement?.querySelector('[data-testid^="town-talk-"]');
     const nav = document.querySelector('.threadbound-topnav');
     const cardRect = cardElement?.getBoundingClientRect();
     const dismissRect = dismiss?.getBoundingClientRect();
@@ -195,19 +201,24 @@ test('Town command renders authoritative NPCs and Talk creates one shared Advent
 
   const log = page.getByTestId('adventure-stream-log');
   const entriesBefore = await log.locator('.stream-entry').count();
-  await card.getByTestId('town-talk-area-1-shopkeeper').click();
-  await expect(log).toContainText('spoke with Shopkeeper in Area 1 Town');
-  await expect(log).toContainText('Need supplies? I keep the essentials close and the prices clear.');
+  const firstNpc = town.npcs[0];
+  await card.getByTestId(`town-talk-${firstNpc.id}`).click();
+  await expect(log).toContainText(`spoke with ${firstNpc.name} in ${town.name}`);
+  const interactionResponse = await context.request.get('/api/stream?limit=20');
+  expect(interactionResponse.ok()).toBe(true);
+  const interactionStream = await interactionResponse.json();
+  const interaction = interactionStream.entries.find((entry) => entry.eventType === 'NpcInteracted');
+  expect(interaction?.metadata).toMatchObject({ townId: town.id, npcId: firstNpc.id, townName: town.name, npcName: firstNpc.name });
+  await expect(log).toContainText(interaction.metadata.dialogue);
   await expect(log.locator('.stream-entry')).toHaveCount(entriesBefore + 1);
 
-  const rejected = await context.request.post('/api/towns/area-1-town/npcs/not-a-resident/interact');
+  const rejected = await context.request.post(`/api/towns/${town.id}/npcs/not-a-resident/interact`);
   expect(rejected.status()).toBe(409);
   expect(await rejected.json()).toMatchObject({ error: 'npc_unavailable' });
 
-  await page.getByTestId('stream-message').fill('talk Banker');
+  await page.getByTestId('stream-message').fill(`talk ${town.npcs.at(-1).name}`);
   await page.getByTestId('stream-send').click();
-  await expect(log).toContainText('spoke with Banker in Area 1 Town');
-  await expect(log).toContainText('Gold in the Bank stays safe when an Adventure goes badly.');
+  await expect(log).toContainText(`spoke with ${town.npcs.at(-1).name} in ${town.name}`);
 
   mkdirSync(REVIEW_DIR, { recursive: true });
   await page.screenshot({ path: `${REVIEW_DIR}/town-rich-card-mobile.png`, fullPage: true });

@@ -101,12 +101,19 @@ test('Arc Workshop previews and validates a vNext world package clearly', async 
   const authoredTown = areaPayload.area.towns.find((town) => town.id === 'petalrest');
   expect(authoredTown?.npcs[0]).toMatchObject({ visualAssetId: 'character.road-sellsword.v1' });
 
-  await page.getByTestId('stream-message').fill('town');
+  // The legacy /game route keeps compatibility controls, while the main
+  // chat-first NPC journey lives in the React shell.
+  await page.goto('/game-react');
+  await expect(page.getByTestId('stream-message')).toBeVisible();
+  await page.getByTestId('stream-message').fill(`talk to ${authoredTown.npcs[0].name}`);
   await page.getByTestId('stream-send').click();
-  await expect(page.getByTestId('town-npc-sprite-mina-smith')).toHaveAttribute('data-visual-asset-id', 'character.road-sellsword.v1');
+  const npcReceipt = page.getByTestId('stream-npc-rich-card').last();
+  await expect(npcReceipt.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', 'character.road-sellsword.v1');
   await page.screenshot({ path: 'ux-review/figma-character-library-town-mobile.png', fullPage: true });
-  await page.getByTestId('town-npc-mina-smith').screenshot({ path: 'ux-review/figma-character-library-town-npc-mobile.png' });
+  await npcReceipt.screenshot({ path: 'ux-review/figma-character-library-town-npc-mobile.png' });
 
+  await page.goto('/game');
+  await expect(page.getByTestId('app-status')).toHaveText('Ready');
   const startResponse = await page.request.post('/api/dungeons/sunpetal-trial/start-simple');
   expect(startResponse.status()).toBe(201);
   await page.reload();

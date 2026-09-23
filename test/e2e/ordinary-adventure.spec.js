@@ -18,39 +18,43 @@ test('ordinary Adventure resolves from the mobile Adventure Stream with authorit
   expect(beforeResponse.ok()).toBe(true);
   const before = await beforeResponse.json();
   expect(before.character.currentHealth).toBeGreaterThan(0);
+  const areaResponse = await context.request.get('/api/areas');
+  expect(areaResponse.ok()).toBe(true);
+  const currentArea = (await areaResponse.json()).area.currentArea;
 
   const adventureResponse = page.waitForResponse((response) => response.url().endsWith('/api/adventure') && response.request().method() === 'POST');
   await page.getByTestId('stream-message').fill('adventure');
   await page.getByTestId('stream-send').click();
   expect((await adventureResponse).ok()).toBe(true);
 
-  const receipt = page.locator('[data-testid="adventure-stream-log"] .stream-entry-system').filter({ hasText: 'Adventured in Area 1' }).last();
+  const streamResponse = await context.request.get('/api/stream?limit=20');
+  expect(streamResponse.ok()).toBe(true);
+  const stream = await streamResponse.json();
+  const event = stream.entries.find((entry) => entry.eventType === 'AdventureResolved');
+  expect(event).toBeTruthy();
+  expect(event.metadata.areaId).toBe(currentArea.id);
+  expect(event.metadata.areaNumber).toBe(currentArea.number);
+  expect(event.metadata.areaName).toBe(currentArea.name);
+  expect(event.metadata.enemyId).toBeTruthy();
+  expect(event.metadata.enemyName).toBeTruthy();
+  expect(event.metadata.victory).toBe(true);
+  expect(event.metadata.gold).toBeGreaterThan(0);
+  expect(event.metadata.experienceGained).toBeGreaterThan(0);
+  expect(event.metadata.adventureCooldownSeconds).toBeGreaterThan(0);
+  expect(event.metadata.nextAdventureReadyAt).toMatch(/Z$/);
+
+  const receipt = page.locator('[data-testid="adventure-stream-log"] .stream-entry-system').filter({ hasText: `Adventured in ${currentArea.name}` }).last();
   await expect(receipt).toBeVisible();
-  await expect(receipt).toContainText('Thread Wolf');
-  await expect(receipt).toContainText(/\d+\/\d+ HP/);
-  await expect(receipt).toContainText('+30 XP');
-  await expect(receipt).toContainText('+6 Gold');
+  await expect(receipt).toContainText(event.metadata.enemyName);
+  await expect(receipt).toContainText(`${event.metadata.remainingHp}/${event.metadata.maxHp} HP`);
+  await expect(receipt).toContainText(`+${event.metadata.experienceGained} XP`);
+  await expect(receipt).toContainText(`+${event.metadata.gold} Gold`);
   await expect(receipt).toContainText('Next Adventure');
 
   const afterResponse = await context.request.get('/api/dashboard');
   expect(afterResponse.ok()).toBe(true);
   const after = await afterResponse.json();
   expect(after.character.currentHealth).toBeLessThanOrEqual(before.character.currentHealth);
-
-  const streamResponse = await context.request.get('/api/stream?limit=20');
-  expect(streamResponse.ok()).toBe(true);
-  const stream = await streamResponse.json();
-  const event = stream.entries.find((entry) => entry.eventType === 'AdventureResolved');
-  expect(event).toBeTruthy();
-  expect(event.metadata).toMatchObject({
-    areaId: 'area-1',
-    areaNumber: 1,
-    enemyId: 'thread-wolf',
-    gold: 6,
-    experienceGained: 30,
-    adventureCooldownSeconds: 45,
-  });
-  expect(event.metadata.nextAdventureReadyAt).toMatch(/Z$/);
 
   const repeatResponsePromise = page.waitForResponse((response) => response.url().endsWith('/api/adventure') && response.request().method() === 'POST');
   await page.getByTestId('stream-message').fill('adventure');
