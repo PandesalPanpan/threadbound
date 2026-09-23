@@ -159,7 +159,7 @@ function legacyItemAsset(entity, assets) {
     const byName = assets.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1' && String(asset.label || '').trim().toLowerCase() === name);
     if (byName) return byName;
   }
-  return assets.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1') || null;
+  return null;
 }
 
 export function goldValue(character) {

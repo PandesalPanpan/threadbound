@@ -9,6 +9,8 @@ import {
   skillDefinitionForCode,
 } from '../src/content/AreaContentCatalog.js';
 import { visualAsset } from '../src/content/VisualAssetCatalog.js';
+import { ItemGenerator } from '../src/domain/ItemGenerator.js';
+import { rarityTier } from '../src/domain/ItemRarityPolicy.js';
 
 test('Area 1–4 content has valid Hunt and Adventure rosters, skills, and semantic visuals', () => {
   assert.deepEqual(AREA_CONTENT.map((area) => [area.number, area.name]), [
@@ -53,6 +55,36 @@ test('each Area item reward profile resolves all five slots to official matching
     }
     assert.ok(Object.values(profile.rarityWeights).some((weight) => weight > 0));
   }
+});
+
+test('Areas 1 through 4 steadily improve encounter and reward quality', () => {
+  for (let index = 1; index < AREA_CONTENT.length; index += 1) {
+    const prior = AREA_CONTENT[index - 1];
+    const next = AREA_CONTENT[index];
+    const priorHunts = prior.huntEncounters;
+    const nextHunts = next.huntEncounters;
+    for (const [field, values] of Object.entries({
+      hp: [Math.max(...priorHunts.map((enemy) => enemy.hp)), Math.min(...nextHunts.map((enemy) => enemy.hp))],
+      attack: [Math.max(...priorHunts.map((enemy) => enemy.attack)), Math.min(...nextHunts.map((enemy) => enemy.attack))],
+      experience: [Math.max(...priorHunts.map((enemy) => enemy.experience)), Math.min(...nextHunts.map((enemy) => enemy.experience))],
+      gold: [Math.max(...priorHunts.map((enemy) => enemy.gold)), Math.min(...nextHunts.map((enemy) => enemy.gold))],
+      dropChance: [Math.max(...priorHunts.map((enemy) => enemy.dropChance)), Math.min(...nextHunts.map((enemy) => enemy.dropChance))],
+    })) assert.ok(values[1] > values[0], `Area ${next.number} minimum ${field} should exceed Area ${prior.number} maximum`);
+    assert.ok(next.adventureRewards.gold > prior.adventureRewards.gold);
+    assert.ok(next.adventureRewards.experience > prior.adventureRewards.experience);
+    assert.ok(next.adventureRewards.dropChance > prior.adventureRewards.dropChance);
+    const priorRarePlus = Object.entries(prior.rarityWeights).filter(([rarity]) => rarityTier(rarity) >= 3).reduce((sum, [, weight]) => sum + weight, 0);
+    const nextRarePlus = Object.entries(next.rarityWeights).filter(([rarity]) => rarityTier(rarity) >= 3).reduce((sum, [, weight]) => sum + weight, 0);
+    assert.ok(nextRarePlus > priorRarePlus, `Area ${next.number} should improve rare-or-better odds`);
+  }
+
+  const generator = new ItemGenerator({ rng: () => 0.5, idFactory: () => 'quality-comparison' });
+  const areaOne = generator.generateReward({ source: 'area-quality-check', slot: 'weapon', ...itemRewardProfileForArea(1) });
+  const areaFour = generator.generateReward({ source: 'area-quality-check', slot: 'weapon', ...itemRewardProfileForArea(4) });
+  assert.equal(areaOne.rarity, 'common');
+  assert.equal(areaFour.rarity, 'rare');
+  assert.ok(areaFour.attackBonus > areaOne.attackBonus);
+  assert.ok(areaFour.equipmentBudget.limit > areaOne.equipmentBudget.limit);
 });
 
 test('progression challenges form the authored two-human Brightbell chain from Areas 1 through 4', () => {

@@ -126,10 +126,6 @@ function resolvedAsset(entity, kind, fallbackSeed) {
     const compatible = compatibleId ? visualAsset(compatibleId, kind) : null;
     if (compatible) return compatible;
     if (explicit && !isLegacyGenericItemAsset(explicit)) return explicit;
-    if (explicit?.provenance?.sourceSheet === 'items_sheets.png') {
-      const figmaFallback = VISUAL_ASSETS.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1');
-      if (figmaFallback) return figmaFallback;
-    }
   }
   if (explicit) return explicit;
   const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind);

@@ -1,5 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+import { SHARED_REPLAY_BEAT_MS, replayMoments } from '../../frontend/src/battle/sharedReplay.js';
+import { resolveShellAsset } from '../../frontend/src/shell/presentation.js';
+import { VISUAL_ASSETS } from '../../public/visual-asset-catalog.js';
 import { AREA_CONTENT } from '../../src/content/AreaContentCatalog.js';
 
 const REVIEW_DIR = 'ux-review';
@@ -50,6 +53,11 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     questCard = leader.getByTestId('quest-rich-card');
     await questCard.getByTestId('quest-claim-welcome-to-bellbloom').click();
     await expect(leader.getByTestId('stream-quest-reward').last()).toContainText('Welcome to Bellbloom');
+    await command(leader, 'quest');
+    questCard = leader.getByTestId('quest-rich-card');
+    const replacementOffers = questCard.locator('[data-testid="quest-row"][data-quest-id]:has(.quest-state--available)');
+    await expect(replacementOffers).toHaveCount(3);
+    expect(await replacementOffers.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-quest-id')))).not.toContain('welcome-to-bellbloom');
     const beforeLevelHunt = await dashboard(leaderContext);
     expect(beforeLevelHunt.character.level).toBe(1);
     await command(leader, 'hunt');
@@ -71,6 +79,11 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await leader.reload();
     await partner.reload();
 
+    await command(partner, 'area');
+    const partnerAreaBeforeChallenge = partner.getByTestId('area-rich-card');
+    await expect(partnerAreaBeforeChallenge.getByTestId('area-recommended-level')).toContainText('Recommended Level 1–6');
+    await expect(partnerAreaBeforeChallenge.getByTestId('next-area-recommended-level')).toContainText('Recommended Level 7–12');
+
     await command(leader, 'dungeon');
     const chooser = leader.getByTestId('shell-dungeon-card');
     await expect(chooser).toBeVisible();
@@ -84,6 +97,38 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     runId = run.id;
     expect(run.simpleCombat).toBe(true);
     expect(result.battleReplay.actions.some((action) => action.actionType === 'skill' && action.manaBefore === 100 && action.manaAfter === 0)).toBe(true);
+    const skillMomentIndex = replayMoments(result.battleReplay).findIndex((moment) => moment.actionType === 'skill');
+    expect(skillMomentIndex).toBeGreaterThanOrEqual(0);
+    const battleStream = await (await leaderContext.request.get('/api/stream')).json();
+    const battleEntry = battleStream.entries.find((entry) => entry.metadata?.battleReplay?.battleId === result.battleReplay.battleId);
+    expect(battleEntry).toBeTruthy();
+
+    await leader.reload();
+    await expect(leader.getByTestId('stream-connection')).toHaveText(/LIVE/);
+    const reconnectCard = leader.getByTestId('stream-dungeon-rich-card').last();
+    const reconnectReplay = reconnectCard.getByTestId('shared-battle-surface');
+    await expect(reconnectReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+    expect(await reconnectReplay.getAttribute('data-replay-battle-id')).toContain(runId);
+    await expect(reconnectCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(2);
+    await expect(reconnectCard.locator('[data-testid^="shared-battle-enemy"]')).toHaveCount(2);
+    await expect(reconnectCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+    const skillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill');
+    const skillActorId = skillAction.actorId;
+    const playbackAtSkill = Date.parse(battleEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
+    await leader.evaluate((timestamp) => {
+      window.__threadboundNativeDateNow = Date.now.bind(Date);
+      Date.now = () => timestamp;
+    }, playbackAtSkill);
+    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
+    await expect(reconnectCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', '0');
+    await leader.evaluate(() => { if (window.__threadboundNativeDateNow) Date.now = window.__threadboundNativeDateNow; });
+    const partnerLiveCard = partner.getByTestId('stream-dungeon-rich-card').last();
+    const partnerLiveReplay = partnerLiveCard.getByTestId('shared-battle-surface');
+    await expect(partnerLiveReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+    expect(await partnerLiveReplay.getAttribute('data-replay-battle-id')).toBe(await reconnectReplay.getAttribute('data-replay-battle-id'));
+    expect(await reconnectCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.getAttribute('data-combatant-id')))).toEqual(
+      await partnerLiveCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.getAttribute('data-combatant-id'))),
+    );
 
     let replaySkillSeen = result.battleReplay.actions.some((action) => action.actionType === 'skill');
     let terminalReplay = null;
@@ -135,7 +180,21 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await expect(gatedChooser.getByTestId('dungeon-start-brightbell-trial')).toHaveCount(0);
     await expect(finalCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
     await expect(finalCard.getByTestId('dungeon-replay-rewards')).toBeVisible();
+    const rewardArt = finalCard.getByTestId('dungeon-replay-rewards').locator('img[data-visual-asset-id]');
+    await expect(rewardArt).toHaveCount(2);
+    expect(await rewardArt.evaluateAll((images) => images.map((image) => image.getAttribute('data-visual-asset-id')).sort())).toEqual(
+      terminalReplay.rewards.map(({ item }) => resolveShellAsset(item, VISUAL_ASSETS, ['item'])?.id).sort(),
+    );
     await expect(leader.getByTestId('shell-dungeon-card').locator('[data-testid^="dungeon-start-"]').first()).toBeVisible();
+
+    const unlockedAreaOnOpenPartnerCard = partnerAreaBeforeChallenge.locator('.shell-area-row').filter({ hasText: 'Emberglass Orchard' });
+    await expect(unlockedAreaOnOpenPartnerCard.getByRole('button', { name: 'Travel' })).toBeEnabled({ timeout: 10000 });
+    await partner.reload();
+    await expect(partner.getByTestId('stream-connection')).toHaveText(/LIVE/);
+    const reconnectedTerminalCard = partner.getByTestId('stream-dungeon-rich-card').last();
+    await expect(reconnectedTerminalCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    await expect(reconnectedTerminalCard.getByTestId('dungeon-replay-rewards').locator('img[data-visual-asset-id]')).toHaveCount(2);
+    await expect(reconnectedTerminalCard.getByTestId('shared-battle-result')).toContainText('VICTORY');
 
     await command(leader, 'area');
     const areaCard = leader.getByTestId('area-rich-card');
@@ -169,6 +228,15 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     expect(AREA_CONTENT[0].huntEncounters.some((encounter) => encounter.id === huntEntry?.metadata?.enemyId)).toBe(false);
     await expect(huntCard).toContainText(huntEntry.metadata.enemyName);
     expect(await leader.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+    await leader.goto('/codex');
+    await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
+    await leader.getByTestId('codex-tab-items').click();
+    await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
+    await expect(leader.getByTestId('codex-detail')).toHaveAttribute('data-category', 'items');
+    await expect(leader.getByTestId('codex-entry').first()).toBeVisible();
+    await expect(leader.getByTestId('codex-entry-art').first()).toHaveAttribute('data-visual-asset-id', /^item\./);
+    await expect(leader.getByTestId('codex-detail-art')).toHaveAttribute('data-visual-asset-id', /^item\./);
   } finally {
     for (const context of [leaderContext, partnerContext]) {
       try {

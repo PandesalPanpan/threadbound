@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventBus } from '../src/application/EventBus.js';
+import { AreaService } from '../src/application/AreaService.js';
+import { GameService } from '../src/application/GameService.js';
 import { PartyService } from '../src/application/PartyService.js';
 import { AREA_ONE_PROGRESSION_DUNGEON_ID, SimpleDungeonService } from '../src/application/SimpleDungeonService.js';
 import { areaContentForDungeon, AREA_CONTENT } from '../src/content/AreaContentCatalog.js';
@@ -234,5 +236,69 @@ test('canonical Brightbell challenges preserve mapped skills, exact human gate, 
     });
   } finally {
     splitParty.repository.close();
+  }
+});
+
+test('ready human pairs can clear the Area 2 and Area 3 gates and unlock Areas 3 and 4', () => {
+  let nextPlayer = 0;
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => `chain-player-${++nextPlayer}` });
+  const eventBus = new EventBus();
+  const areaRepository = new SQLiteAreaRepository({ database: repository.db });
+  let nextRun = 0;
+  const arcManifestService = {
+    generateReward() { return null; },
+    resolveDungeon(dungeonId) {
+      const area = areaContentForDungeon(dungeonId);
+      if (!area) return null;
+      const rows = Object.entries(area.dungeonSkillCodes);
+      const enemy = ([id, skillCode]) => ({ id, definitionId: id, name: id, hp: 18, retaliation: 2, visualAssetId: 'mob.green-slime.v1', skillCode });
+      return {
+        id: dungeonId,
+        name: area.progressionChallenge?.name || `Area ${area.number} challenge`,
+        recommendedPlayers: 2,
+        encounters: rows.slice(0, -1).map(enemy),
+        simpleStages: rows.slice(0, -1).map((row) => [enemy(row)]),
+        boss: { ...enemy(rows.at(-1)), isBoss: true },
+      };
+    },
+  };
+  const dungeons = new SimpleDungeonService({ repository, eventBus, areaRepository, arcManifestService, idFactory: () => `chain-run-${++nextRun}` });
+  const game = new GameService({ repository, eventBus, arcManifestService });
+  const areas = new AreaService({ repository, eventBus, areaRepository });
+  const leader = repository.getOrCreatePlayer({ threadedUserId: 'chain-human:leader', displayName: 'Gate Leader' });
+  const partner = repository.getOrCreatePlayer({ threadedUserId: 'chain-human:partner', displayName: 'Gate Partner' });
+  for (const participant of [leader, partner]) {
+    repository.db.prepare('UPDATE players SET base_attack = 1000, max_health = 1000, current_health = 1000 WHERE id = ?').run(participant.id);
+  }
+  const party = new PartyService({ repository, eventBus, idFactory: () => 'chain-party', joinCodeFactory: () => 'CHAIN' });
+  const pair = party.createParty(leader.id);
+  party.joinParty(partner.id, pair.joinCode);
+  party.setReady(partner.id, true);
+
+  try {
+    for (const challenge of AREA_CONTENT.slice(0, 3).map((area) => area.progressionChallenge)) {
+      party.setReady(partner.id, true);
+      assert.equal(dungeons.readiness(leader.id, challenge.dungeonId).ready, true, `pair should be ready for ${challenge.id}`);
+      const run = dungeons.startDungeon(leader.id, challenge.dungeonId);
+      let outcome = game.resolveSimpleEncounter(leader.id, run.id);
+      let completedRun = outcome.run;
+      for (let step = 0; step < 8 && completedRun.phase !== 'complete'; step += 1) {
+        assert.equal(completedRun.phase, 'between_encounter', `challenge ${challenge.id} should pause only between cleared rooms`);
+        outcome = game.continueDungeon(leader.id, run.id);
+        completedRun = outcome.run;
+      }
+      assert.equal(completedRun.phase, 'complete', `challenge ${challenge.id} should clear all authored rooms and its boss`);
+      assert.deepEqual([leader.id, partner.id].map((id) => areaRepository.get(id).highestUnlockedAreaNumber), [challenge.unlocksAreaNumber, challenge.unlocksAreaNumber]);
+      if (challenge.unlocksAreaNumber < 4) {
+        areas.travel(leader.id, challenge.unlocksAreaNumber);
+        areas.travel(partner.id, challenge.unlocksAreaNumber);
+      }
+    }
+    assert.equal(areaRepository.get(leader.id).currentAreaNumber, 3);
+    assert.equal(areaRepository.get(leader.id).highestUnlockedAreaNumber, 4);
+    assert.equal(areaRepository.get(partner.id).currentAreaNumber, 3);
+    assert.equal(areaRepository.get(partner.id).highestUnlockedAreaNumber, 4);
+  } finally {
+    repository.close();
   }
 });

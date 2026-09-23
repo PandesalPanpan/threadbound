@@ -66,6 +66,9 @@ test('shared Hunt, Inventory, and Gambling cards survive reload and stay read-on
     await expect(inventoryCard).toBeVisible();
     await expect(inventoryCard).toHaveClass(/is-observer/);
     await expect(inventoryCard.locator('.stream-item-tile__actions')).toHaveCount(0);
+    if (huntPayload.hunt.item?.visualAssetId) {
+      await expect(inventoryCard.locator(`[data-testid="stream-inventory-item"][data-item-id="${huntPayload.hunt.item.id}"] img[data-visual-asset-id]`)).toHaveAttribute('data-visual-asset-id', huntPayload.hunt.item.visualAssetId);
+    }
     await expect(gamblingCard).toBeVisible();
     await expect(gamblingCard).toHaveClass(/is-observer/);
     await expect(gamblingCard).toContainText('Coinflip');
@@ -178,6 +181,8 @@ test('owner and spectator share the same Blackjack table and public Dungeon repl
     await expect(observerShop.getByTestId('stream-shop-item').first()).toBeVisible();
     const ownerShopItem = ownerShop.getByTestId('stream-shop-item').first();
     const observerShopItem = observerShop.getByTestId('stream-shop-item').first();
+    await expect(ownerShopItem.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', /^item\./);
+    await expect(observerShopItem.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', /^item\./);
     const ownerInspectButton = ownerShopItem.getByRole('button', { name: /Inspect/ });
     const observerInspectButton = observerShopItem.getByRole('button', { name: /Inspect/ });
     await ownerInspectButton.focus();

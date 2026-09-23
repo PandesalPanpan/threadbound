@@ -99,6 +99,24 @@ test('legacy Needle and dagger item names resolve to an official semantic item a
   assert.equal(resolveShellAsset({ title: 'Old Needle' }, VISUAL_ASSETS, ['item'])?.id, 'item.violet-needle.v1');
 });
 
+test('legacy item aliases retain their object family across React and sprite renderers', () => {
+  const cases = [
+    ['item.iron-helmet.v1', 'item.bonecrest-helm.v1'],
+    ['item.silver-medallion.v1', 'item.goldleaf-charm.v1'],
+    ['item.mana-potion.v1', 'item.mana-vial.v1'],
+    ['item.quest-scroll.v1', 'item.quest-scroll.v2'],
+    ['item.gold-coin.v1', 'item.gold-coin.v2'],
+    ['item.iron-treasure-chest.v1', 'item.ancient-relic.v1'],
+    ['unknown-legacy-object', 'item.ancient-relic.v1'],
+  ];
+  for (const [legacyId, expectedId] of cases) {
+    const entity = { visualAssetId: legacyId, id: legacyId };
+    assert.equal(itemSpriteFrame(entity).visualAssetId, expectedId, `sprite resolver: ${legacyId}`);
+    assert.equal(resolveShellAsset(entity, VISUAL_ASSETS, ['item'])?.id, expectedId, `React resolver: ${legacyId}`);
+    assert.equal(visualAsset(expectedId, 'item')?.provenance?.sourceCollection, 'figma-item-library-v1');
+  }
+});
+
 test('current living-character policy excludes first-generation Figma art and resolves legacy identities into the library', () => {
   assert.equal(modernCharacterAssets('character').length, 42);
   assert.equal(modernCharacterAssets('mob').length, 100);

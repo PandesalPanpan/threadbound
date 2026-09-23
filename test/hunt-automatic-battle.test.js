@@ -5,6 +5,9 @@ import { resolveAutomaticHunt } from '../src/domain/HuntEncounter.js';
 import { itemRewardProfileForArea } from '../src/content/AreaContentCatalog.js';
 import { SQLitePlayerProgressionRepository } from '../src/infrastructure/SQLitePlayerProgressionRepository.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
+import { SQLiteAreaRepository } from '../src/infrastructure/SQLiteAreaRepository.js';
+import { AreaProgression } from '../src/domain/AreaProgression.js';
+import { ItemGenerator } from '../src/domain/ItemGenerator.js';
 
 test('automatic Hunt preserves the familiar baseline while shared simulator owns turn history and HP', () => {
   const result = resolveAutomaticHunt({
@@ -157,5 +160,30 @@ test('Hunt item drops use the current Area official equipment profile and report
   assert.ok(profile.equipmentOptions[item.slot].some((option) => option.visualAssetId === item.visualAssetId));
   assert.equal(receipt.itemSlot, item.slot);
   assert.deepEqual(receipt.itemStats, expectedStats);
+  repository.close();
+});
+
+test('Area 4 Hunt resolves an authored enemy and generates rare gear from the Area 4 profile', () => {
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'hunt-area-four-player' });
+  const player = repository.getOrCreatePlayer({ threadedUserId: 'hunt-area-four', displayName: 'Mirrorfen Hunter' });
+  repository.db.prepare('UPDATE players SET base_attack = 1000 WHERE id = ?').run(player.id);
+  const areaRepository = new SQLiteAreaRepository({ database: repository.db });
+  areaRepository.save(player.id, new AreaProgression({ currentAreaNumber: 4, highestUnlockedAreaNumber: 4 }));
+  const service = new HuntService({
+    repository,
+    eventBus: { publish() {} },
+    huntCooldownSeconds: 0,
+    rng: () => 0.1,
+    itemGenerator: new ItemGenerator({ rng: () => 0.5, idFactory: () => 'area-four-generated-item' }),
+  });
+
+  const result = service.hunt(player.id);
+  const profile = itemRewardProfileForArea(4);
+  assert.equal(result.enemy.id, 'glass-skulker');
+  assert.ok(result.victory);
+  assert.equal(result.item?.rarity, 'rare');
+  assert.equal(result.item?.areaNumber, 4);
+  assert.ok(profile.equipmentOptions[result.item.slot].some((option) => option.visualAssetId === result.item.visualAssetId
+    && option.materialFamily === result.item.materialFamily));
   repository.close();
 });

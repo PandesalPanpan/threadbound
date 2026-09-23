@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SHARED_REPLAY_BEAT_MS, replayMoments } from '../../frontend/src/battle/sharedReplay.js';
 
 async function login(page, slot = 'd') {
   await page.goto('/');
@@ -40,6 +41,9 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   const duelEntries = (await (await page.context().request.get('/api/stream')).json()).entries;
   const duelEntry = duelEntries.find((entry) => entry.eventType === 'DuelResolved');
   const rivalCombatant = duelEntry?.metadata?.battleReplay?.details?.combatants?.find((combatant) => combatant.id === 'guild-rook');
+  const duelTurns = duelEntry?.metadata?.battleReplay?.details?.turns || [];
+  const duelSkillTurnIndex = duelTurns.findIndex((turn) => turn.actionType === 'skill' && turn.actorMana.before === 100 && turn.actorMana.after === 0);
+  expect(duelSkillTurnIndex).toBeGreaterThanOrEqual(0);
   expect(rivalCombatant?.equipment?.weapon?.name).toBe('Veteran Blade');
   expect(rivalCombatant?.equipment?.weapon?.visualAssetId).toBe('item.threadsteel-longsword.v1');
   expect(rivalCombatant?.equipment?.armor?.visualAssetId).toBe('item.ironroot-cuirass.v1');
@@ -49,14 +53,30 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   await expect(duelCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(1);
   await expect(duelCard.locator('[data-testid^="shared-battle-enemy"]')).toHaveCount(1);
   await expect(duelCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+  await expect(duelCard.locator('.shared-battle-signature')).toHaveCount(2);
   await expect(duelCard.locator('[data-testid^="duel-loadout-"]')).not.toHaveCount(0);
   await expect(duelCard).toContainText('Veteran Blade');
   await expect(duelCard.locator('[data-testid^="duel-loadout-guild-rook-weapon"] img')).toHaveAttribute('data-visual-asset-id', 'item.threadsteel-longsword.v1');
   await expect(duelCard.locator('[data-testid^="duel-loadout-guild-rook-armor"] img')).toHaveAttribute('data-visual-asset-id', 'item.ironroot-cuirass.v1');
+  const duelReplay = duelEntry.metadata.battleReplay;
+  const skillMomentIndex = replayMoments(duelReplay).findIndex((moment) => moment.actionType === 'skill');
+  expect(skillMomentIndex).toBeGreaterThanOrEqual(0);
+  const skillTurn = duelTurns[duelSkillTurnIndex];
+  const playbackAtSkill = Date.parse(duelEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
+  await page.evaluate((timestamp) => {
+    window.__threadboundNativeDateNow = Date.now.bind(Date);
+    Date.now = () => timestamp;
+  }, playbackAtSkill);
+  await expect(replay.locator('.shared-battle-action-label')).toContainText(skillTurn.skillName || skillTurn.skillId);
+  await expect(replay.getByTestId(`shared-battle-mana-${skillTurn.actor.id}`)).toHaveAttribute('data-mana', '0');
+  await page.evaluate(() => { if (window.__threadboundNativeDateNow) Date.now = window.__threadboundNativeDateNow; });
   await expect(replay).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
   await expect(replay.getByTestId('shared-battle-result')).toContainText(/VICTORY|DEFEAT|DRAW/);
-  await expect(page.getByTestId('stream-system-entry').last()).not.toContainText(/Duel result/i);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1440, height: 960 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
+  await page.screenshot({ path: 'ux-review/react-duel-replay-desktop.png' });
+  await expect(page.getByTestId('stream-system-entry').last()).not.toContainText(/Duel result/i);
 });
 
 test('plain talk and speak commands resolve current-Town NPCs into shared receipts', async ({ page }) => {
