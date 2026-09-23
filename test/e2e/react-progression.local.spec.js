@@ -51,6 +51,15 @@ async function replayUnitState(card) {
   })));
 }
 
+async function readVisibleStats(card) {
+  const statRows = card.locator('.shell-stat-grid--five .shell-stat');
+  await expect(statRows.first()).toBeVisible();
+  return statRows.evaluateAll((rows) => Object.fromEntries(rows.map((row) => [
+    row.querySelector('span')?.textContent?.trim(),
+    row.querySelector('strong')?.textContent?.trim(),
+  ])));
+}
+
 test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 Hunt', async ({ browser }) => {
   test.setTimeout(180_000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -63,6 +72,8 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await login(leader, 'l');
     await login(partner, 'm');
 
+    await command(leader, 'inventory');
+    await expect(leader.getByTestId('stream-inventory-rich-card').last()).toBeVisible();
     await command(leader, 'quest');
     let questCard = leader.getByTestId('quest-rich-card');
     const initialQuestBoardResponse = await leaderContext.request.get('/api/quests');
@@ -101,6 +112,40 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     })));
     expect(renderedReplacementCopy.every((replacement) => replacement.title !== welcomeDefinition.title)).toBe(true);
     expect(renderedReplacementCopy.every((replacement) => JSON.stringify(replacement.objectives) !== JSON.stringify(welcomeDefinition.objectives.map((objective) => objective.label)))).toBe(true);
+
+    const beforeArmor = await dashboard(leaderContext);
+    expect(beforeArmor.character.gold).toBeGreaterThanOrEqual(8);
+    await command(leader, 'status');
+    const statusBeforeArmor = leader.getByTestId('stream-player-status').last();
+    const visibleBeforeArmor = await readVisibleStats(statusBeforeArmor);
+    await command(leader, 'shop');
+    const shop = leader.getByTestId('stream-shop-rich-card').last();
+    const armorOffer = shop.locator('[data-testid="stream-shop-item"][data-item-id="bronzeweave-coat"]');
+    await expect(armorOffer.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
+    await armorOffer.getByRole('button', { name: 'Inspect Bronzeweave Coat' }).click();
+    await armorOffer.getByRole('button', { name: 'Buy' }).click();
+    await expect.poll(async () => (await dashboard(leaderContext)).inventory.some((item) => item.source === 'shop:bronzeweave-coat')).toBe(true);
+    const purchasedArmor = (await dashboard(leaderContext)).inventory.find((item) => item.source === 'shop:bronzeweave-coat');
+    expect(purchasedArmor).toMatchObject({ slot: 'armor', defenseBonus: 1, maxHpBonus: 4, visualAssetId: 'item.bronzeweave-coat.v1' });
+    await command(leader, 'inventory');
+    const inventoryCard = leader.getByTestId('stream-inventory-rich-card').last();
+    const armorTile = inventoryCard.locator(`[data-testid="stream-inventory-item"][data-item-id="${purchasedArmor.id}"]`);
+    await expect(armorTile.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
+    await armorTile.getByRole('button', { name: 'Inspect Bronzeweave Coat' }).click();
+    await armorTile.getByRole('button', { name: 'Equip' }).click();
+    await expect.poll(async () => (await dashboard(leaderContext)).character.equipment.armor?.id).toBe(purchasedArmor.id);
+    await command(leader, 'inventory');
+    const equippedInventory = leader.getByTestId('stream-inventory-rich-card').last();
+    await expect(equippedInventory.getByTestId('equipment-slot-armor')).toContainText('Bronzeweave Coat');
+    await expect(equippedInventory.getByTestId('equipment-slot-armor').locator('img')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
+    await command(leader, 'status');
+    const statusAfterArmor = leader.getByTestId('stream-player-status').last();
+    const visibleAfterArmor = await readVisibleStats(statusAfterArmor);
+    expect(Number(visibleAfterArmor.Attack)).toBe(Number(visibleBeforeArmor.Attack));
+    expect(Number(visibleAfterArmor.Defense)).toBe(Number(visibleBeforeArmor.Defense) + 1);
+    expect(Number(visibleAfterArmor['Max HP'])).toBe(Number(visibleBeforeArmor['Max HP']) + 4);
+    await expect(statusAfterArmor.getByTestId('equipment-slot-armor')).toContainText('Bronzeweave Coat');
+
     const beforeLevelHunt = await dashboard(leaderContext);
     expect(beforeLevelHunt.character.level).toBe(1);
     await command(leader, 'hunt');
@@ -297,6 +342,13 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     mkdirSync(REVIEW_DIR, { recursive: true });
     await questCard.screenshot({ path: `${REVIEW_DIR}/react-progression-area-2-mobile.png` });
 
+    await command(leader, 'area');
+    const orchardTownCard = leader.getByTestId('area-rich-card').last();
+    const orchardGuide = orchardTownCard.locator('[data-npc-id="area-2-guide"]');
+    await expect(orchardGuide).toBeVisible();
+    await orchardGuide.getByRole('button', { name: 'Talk' }).click();
+    await expect(leader.getByTestId('stream-npc-rich-card').last()).toContainText(/festival road|orchard path/);
+
     const leaderBeforeAreaTwoHunt = await dashboard(leaderContext);
     if (leaderBeforeAreaTwoHunt.character.currentHealth <= 0) {
       await command(leader, 'inventory');
@@ -317,9 +369,14 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     const huntEntry = stream.entries.filter((entry) => entry.eventType === 'HuntResolved').at(-1);
     const areaOneHp = AREA_CONTENT[0].huntEncounters.map((encounter) => encounter.hp);
     const areaTwoHp = AREA_CONTENT[1].huntEncounters.map((encounter) => encounter.hp);
+    const areaOneEncounter = AREA_CONTENT[0].huntEncounters.find((encounter) => encounter.id === levelHuntEntry?.metadata?.enemyId);
+    const areaTwoEncounter = AREA_CONTENT[1].huntEncounters.find((encounter) => encounter.id === huntEntry?.metadata?.enemyId);
     expect(Math.min(...areaTwoHp)).toBeGreaterThan(Math.max(...areaOneHp));
     expect(AREA_CONTENT[1].huntEncounters.some((encounter) => encounter.id === huntEntry?.metadata?.enemyId)).toBe(true);
     expect(AREA_CONTENT[0].huntEncounters.some((encounter) => encounter.id === huntEntry?.metadata?.enemyId)).toBe(false);
+    expect(areaTwoEncounter.gold).toBeGreaterThan(areaOneEncounter.gold);
+    expect(areaTwoEncounter.dropChance).toBeGreaterThan(areaOneEncounter.dropChance);
+    expect(AREA_CONTENT[1].rarityWeights.rare).toBeGreaterThan(AREA_CONTENT[0].rarityWeights.rare);
     await expect(huntCard).toContainText(huntEntry.metadata.enemyName);
     expect(await leader.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 

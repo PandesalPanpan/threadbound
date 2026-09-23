@@ -217,6 +217,10 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     expect(claimed.phase).toBe('between_encounter');
     expect(claimed.intermissionPotionClaimedWindowId).toBeTruthy();
     expect(claimed.intermissionPotionClaimedByPlayerId).toBe(claimantId);
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.intermissionPotionClaimedByPlayerId || null, { timeout: 7000 }).toBe(claimantId);
+    await expect(firstLeaderCard.getByTestId('stream-run-potion')).toBeDisabled({ timeout: 7000 });
+    await expect(firstLeaderCard.getByTestId('intermission-heal-status')).toContainText('Shared intermission Heal used');
+    await expect(firstPartnerCard.getByTestId('stream-run-potion')).toBeDisabled({ timeout: 7000 });
     const losingHeal = await leaderContext.request.post(`/api/runs/${encodeURIComponent(runId)}/potion`);
     expect(losingHeal.status()).toBe(409);
     expect(await losingHeal.json()).toMatchObject({ error: 'dungeon_potion_intermission_already_claimed' });

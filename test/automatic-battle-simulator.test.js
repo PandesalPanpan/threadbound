@@ -288,3 +288,35 @@ test('Mana thresholds auto-cast the first ready skill and expose authoritative s
   assert.equal(result.turns.find((turn) => turn.metadata.actionType === 'skill').actorManaAfter, 0);
   assert.ok(result.events.some((event) => event.type === 'ManaChanged' && event.reason === 'skill-cast'));
 });
+
+test('combat ends on the turn a damaging skill defeats the final enemy', () => {
+  const result = simulateAutomaticBattle(
+    {
+      resolveAction: ({ actionType }) => ({ targetDamage: actionType === 'skill' ? 5 : 1 }),
+    },
+    {
+      players: [{
+        id: 'mage',
+        hp: 20,
+        maxHp: 20,
+        speed: 10,
+        mana: 100,
+        maxMana: 100,
+        skills: [{ id: 'threadsong', name: 'Threadsong', manaCost: 100 }],
+      }],
+      enemies: [{ id: 'last-toad', hp: 5, maxHp: 5, speed: 1 }],
+    },
+  );
+
+  assert.equal(result.outcome, 'victory');
+  assert.equal(result.turns.length, 1);
+  assert.equal(result.turns[0].metadata.actionType, 'skill');
+  assert.equal(result.turns[0].targetHpAfter, 0);
+  assert.ok(result.events.some((event) => event.type === 'CombatantDefeated'
+    && event.combatantId === 'last-toad'
+    && event.cause === 'skill'));
+  assert.ok(result.events.some((event) => event.type === 'BattleCompleted'
+    && event.outcome === 'victory'
+    && event.turnNumber === 1));
+  assert.equal(result.events.some((event) => event.type === 'TurnStarted' && event.turnNumber > 1), false);
+});
