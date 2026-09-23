@@ -1,5 +1,6 @@
 import { VISUAL_ASSETS, visualAsset } from './visual-asset-catalog.js';
 import { isCharacterKind, resolveThreadboundCharacterVisual } from './character-asset-policy.js';
+import { isLegacyGenericItemAsset, legacyItemVisualAssetId } from './item-asset-policy.js';
 
 // Generated image sheets intentionally stay as single source assets. Presentation
 // code crops stable frames with CSS background positioning instead of duplicating
@@ -119,17 +120,18 @@ function runtimeAssetFrame(asset) {
 function resolvedAsset(entity, kind, fallbackSeed) {
   if (isCharacterKind(kind)) return resolveThreadboundCharacterVisual({ ...entity, id: entity?.id || fallbackSeed }, kind);
   const explicit = visualAsset(entity?.visualAssetId, kind);
-  if (explicit) return explicit;
   if (kind === 'item') {
-    const name = String(entity?.name || '').toLowerCase();
-    const inferredId = name.includes('threadblade') || name.includes('sword') ? 'item.steel-sword.v1'
-      : name.includes('needle') || name.includes('dagger') ? 'item.steel-dagger.v1'
-        : name.includes('spindle') || name.includes('staff') ? 'item.arcane-staff.v1'
-          : name.includes('shears') ? 'item.iron-dagger.v1'
-            : name.includes('potion') ? 'item.health-potion.v1' : null;
-    const inferred = visualAsset(inferredId, kind);
-    if (inferred) return inferred;
+    if (explicit && !isLegacyGenericItemAsset(explicit)) return explicit;
+    const compatibleId = legacyItemVisualAssetId(entity);
+    const compatible = compatibleId ? visualAsset(compatibleId, kind) : null;
+    if (compatible) return compatible;
+    if (explicit && !isLegacyGenericItemAsset(explicit)) return explicit;
+    if (explicit?.provenance?.sourceSheet === 'items_sheets.png') {
+      const figmaFallback = VISUAL_ASSETS.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1');
+      if (figmaFallback) return figmaFallback;
+    }
   }
+  if (explicit) return explicit;
   const candidates = VISUAL_ASSETS.filter((asset) => asset.kind === kind);
   return candidates[stableIndex(fallbackSeed, candidates.length)] || null;
 }

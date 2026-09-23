@@ -8505,6 +8505,6977 @@ export const VISUAL_ASSETS = Object.freeze([
     }
   },
   {
+    "id": "item.ashbite-sword.v1",
+    "kind": "item",
+    "label": "Ashbite Sword",
+    "description": "Figma Blade item artwork for Ashbite Sword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-ashbite-sword.0178c91c5185.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:10",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/ashbite-sword.svg",
+      "nodeId": "208:10"
+    }
+  },
+  {
+    "id": "item.threadsteel-longsword.v1",
+    "kind": "item",
+    "label": "Threadsteel Longsword",
+    "description": "Figma Blade item artwork for Threadsteel Longsword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-threadsteel-longsword.6d2d55a48dab.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:21",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/threadsteel-longsword.svg",
+      "nodeId": "208:21"
+    }
+  },
+  {
+    "id": "item.ember-edge.v1",
+    "kind": "item",
+    "label": "Ember Edge",
+    "description": "Figma Blade item artwork for Ember Edge.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-ember-edge.761b2d172dbc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:32",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/ember-edge.svg",
+      "nodeId": "208:32"
+    }
+  },
+  {
+    "id": "item.moonlit-saber.v1",
+    "kind": "item",
+    "label": "Moonlit Saber",
+    "description": "Figma Blade item artwork for Moonlit Saber.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-moonlit-saber.b350f0b12243.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:42",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/moonlit-saber.svg",
+      "nodeId": "208:42"
+    }
+  },
+  {
+    "id": "item.bramble-falchion.v1",
+    "kind": "item",
+    "label": "Bramble Falchion",
+    "description": "Figma Blade item artwork for Bramble Falchion.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-bramble-falchion.95b711524933.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:53",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/bramble-falchion.svg",
+      "nodeId": "208:53"
+    }
+  },
+  {
+    "id": "item.guildwatch-blade.v1",
+    "kind": "item",
+    "label": "Guildwatch Blade",
+    "description": "Figma Blade item artwork for Guildwatch Blade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-guildwatch-blade.2c0961ce328b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:63",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/guildwatch-blade.svg",
+      "nodeId": "208:63"
+    }
+  },
+  {
+    "id": "item.cinder-cleaver.v1",
+    "kind": "item",
+    "label": "Cinder Cleaver",
+    "description": "Figma Blade item artwork for Cinder Cleaver.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-cleaver.9132a91db043.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:77",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-cleaver.svg",
+      "nodeId": "208:77"
+    }
+  },
+  {
+    "id": "item.violet-needle.v1",
+    "kind": "item",
+    "label": "Violet Needle",
+    "description": "Figma Blade item artwork for Violet Needle.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-violet-needle.b5dfa7e52b85.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:88",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/violet-needle.svg",
+      "nodeId": "208:88"
+    }
+  },
+  {
+    "id": "item.dawn-rapier.v1",
+    "kind": "item",
+    "label": "Dawn Rapier",
+    "description": "Figma Blade item artwork for Dawn Rapier.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-dawn-rapier.cbb37cf60286.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:98",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/dawn-rapier.svg",
+      "nodeId": "208:98"
+    }
+  },
+  {
+    "id": "item.ironroot-greatsword.v1",
+    "kind": "item",
+    "label": "Ironroot Greatsword",
+    "description": "Figma Blade item artwork for Ironroot Greatsword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-ironroot-greatsword.3d40fc3abb1c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:108",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/ironroot-greatsword.svg",
+      "nodeId": "208:108"
+    }
+  },
+  {
+    "id": "item.hollow-fang.v1",
+    "kind": "item",
+    "label": "Hollow Fang",
+    "description": "Figma Blade item artwork for Hollow Fang.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-hollow-fang.3a1f75a444e2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:121",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/hollow-fang.svg",
+      "nodeId": "208:121"
+    }
+  },
+  {
+    "id": "item.glasswind-scimitar.v1",
+    "kind": "item",
+    "label": "Glasswind Scimitar",
+    "description": "Figma Blade item artwork for Glasswind Scimitar.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-glasswind-scimitar.30252e4736f7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:131",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/glasswind-scimitar.svg",
+      "nodeId": "208:131"
+    }
+  },
+  {
+    "id": "item.bronze-wardblade.v1",
+    "kind": "item",
+    "label": "Bronze Wardblade",
+    "description": "Figma Blade item artwork for Bronze Wardblade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-bronze-wardblade.cb8d9419ecfb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:141",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/bronze-wardblade.svg",
+      "nodeId": "208:141"
+    }
+  },
+  {
+    "id": "item.nightweave-dirk.v1",
+    "kind": "item",
+    "label": "Nightweave Dirk",
+    "description": "Figma Blade item artwork for Nightweave Dirk.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-nightweave-dirk.18ac03ad20b6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:152",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/nightweave-dirk.svg",
+      "nodeId": "208:152"
+    }
+  },
+  {
+    "id": "item.sunspoke-sword.v1",
+    "kind": "item",
+    "label": "Sunspoke Sword",
+    "description": "Figma Blade item artwork for Sunspoke Sword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-sunspoke-sword.736f6ff146df.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:166",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/sunspoke-sword.svg",
+      "nodeId": "208:166"
+    }
+  },
+  {
+    "id": "item.stormcurve-blade.v1",
+    "kind": "item",
+    "label": "Stormcurve Blade",
+    "description": "Figma Blade item artwork for Stormcurve Blade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-stormcurve-blade.886dcededb4a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:176",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/stormcurve-blade.svg",
+      "nodeId": "208:176"
+    }
+  },
+  {
+    "id": "item.warden-shortsword.v1",
+    "kind": "item",
+    "label": "Warden Shortsword",
+    "description": "Figma Blade item artwork for Warden Shortsword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-warden-shortsword.58bcae74bf7a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:187",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/warden-shortsword.svg",
+      "nodeId": "208:187"
+    }
+  },
+  {
+    "id": "item.runebreaker.v1",
+    "kind": "item",
+    "label": "Runebreaker",
+    "description": "Figma Blade item artwork for Runebreaker.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-runebreaker.aacf9f07d651.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:197",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/runebreaker.svg",
+      "nodeId": "208:197"
+    }
+  },
+  {
+    "id": "item.frostglass-dagger.v1",
+    "kind": "item",
+    "label": "Frostglass Dagger",
+    "description": "Figma Blade item artwork for Frostglass Dagger.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-frostglass-dagger.e2281d7811fb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:208",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/frostglass-dagger.svg",
+      "nodeId": "208:208"
+    }
+  },
+  {
+    "id": "item.coilblade.v1",
+    "kind": "item",
+    "label": "Coilblade",
+    "description": "Figma Blade item artwork for Coilblade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-coilblade.3953ddc4948a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:219",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/coilblade.svg",
+      "nodeId": "208:219"
+    }
+  },
+  {
+    "id": "item.ashen-broadsword.v1",
+    "kind": "item",
+    "label": "Ashen Broadsword",
+    "description": "Figma Blade item artwork for Ashen Broadsword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-ashen-broadsword.071069ee2c72.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:230",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/ashen-broadsword.svg",
+      "nodeId": "208:230"
+    }
+  },
+  {
+    "id": "item.lantern-knife.v1",
+    "kind": "item",
+    "label": "Lantern Knife",
+    "description": "Figma Blade item artwork for Lantern Knife.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-lantern-knife.f8b87b6e0068.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:240",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/lantern-knife.svg",
+      "nodeId": "208:240"
+    }
+  },
+  {
+    "id": "item.crownless-sword.v1",
+    "kind": "item",
+    "label": "Crownless Sword",
+    "description": "Figma Blade item artwork for Crownless Sword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-crownless-sword.74d90a16aa48.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:255",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/crownless-sword.svg",
+      "nodeId": "208:255"
+    }
+  },
+  {
+    "id": "item.mirefang.v1",
+    "kind": "item",
+    "label": "Mirefang",
+    "description": "Figma Blade item artwork for Mirefang.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-mirefang.8e2f359c66a3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:265",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/mirefang.svg",
+      "nodeId": "208:265"
+    }
+  },
+  {
+    "id": "item.riftglass-saber.v1",
+    "kind": "item",
+    "label": "Riftglass Saber",
+    "description": "Figma Blade item artwork for Riftglass Saber.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-riftglass-saber.6b91254308ed.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:275",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/riftglass-saber.svg",
+      "nodeId": "208:275"
+    }
+  },
+  {
+    "id": "item.threadpiercer.v1",
+    "kind": "item",
+    "label": "Threadpiercer",
+    "description": "Figma Blade item artwork for Threadpiercer.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-threadpiercer.a63dc6aa61ce.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:286",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/threadpiercer.svg",
+      "nodeId": "208:286"
+    }
+  },
+  {
+    "id": "item.honeyed-blade.v1",
+    "kind": "item",
+    "label": "Honeyed Blade",
+    "description": "Figma Blade item artwork for Honeyed Blade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-honeyed-blade.4c06bad3a5e8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:297",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/honeyed-blade.svg",
+      "nodeId": "208:297"
+    }
+  },
+  {
+    "id": "item.vaultbreaker.v1",
+    "kind": "item",
+    "label": "Vaultbreaker",
+    "description": "Figma Blade item artwork for Vaultbreaker.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-vaultbreaker.dca918a5a938.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:307",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/vaultbreaker.svg",
+      "nodeId": "208:307"
+    }
+  },
+  {
+    "id": "item.duskwire-knife.v1",
+    "kind": "item",
+    "label": "Duskwire Knife",
+    "description": "Figma Blade item artwork for Duskwire Knife.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-duskwire-knife.307e8da81d20.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:318",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/duskwire-knife.svg",
+      "nodeId": "208:318"
+    }
+  },
+  {
+    "id": "item.emberthorn.v1",
+    "kind": "item",
+    "label": "Emberthorn",
+    "description": "Figma Blade item artwork for Emberthorn.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-emberthorn.468ee4ddceae.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:328",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/emberthorn.svg",
+      "nodeId": "208:328"
+    }
+  },
+  {
+    "id": "item.copperleaf-sword.v1",
+    "kind": "item",
+    "label": "Copperleaf Sword",
+    "description": "Figma Blade item artwork for Copperleaf Sword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-copperleaf-sword.37008b39d872.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:343",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/copperleaf-sword.svg",
+      "nodeId": "208:343"
+    }
+  },
+  {
+    "id": "item.gloam-razor.v1",
+    "kind": "item",
+    "label": "Gloam Razor",
+    "description": "Figma Blade item artwork for Gloam Razor.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-gloam-razor.5399adabe3ae.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:354",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/gloam-razor.svg",
+      "nodeId": "208:354"
+    }
+  },
+  {
+    "id": "item.skyshard-blade.v1",
+    "kind": "item",
+    "label": "Skyshard Blade",
+    "description": "Figma Blade item artwork for Skyshard Blade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-skyshard-blade.bbf99bab5a6a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:364",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/skyshard-blade.svg",
+      "nodeId": "208:364"
+    }
+  },
+  {
+    "id": "item.bonewhite-dagger.v1",
+    "kind": "item",
+    "label": "Bonewhite Dagger",
+    "description": "Figma Blade item artwork for Bonewhite Dagger.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-bonewhite-dagger.487d6e0166ae.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:374",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/bonewhite-dagger.svg",
+      "nodeId": "208:374"
+    }
+  },
+  {
+    "id": "item.starfall-greatblade.v1",
+    "kind": "item",
+    "label": "Starfall Greatblade",
+    "description": "Figma Blade item artwork for Starfall Greatblade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-starfall-greatblade.8c0c1ee13c96.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:386",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/starfall-greatblade.svg",
+      "nodeId": "208:386"
+    }
+  },
+  {
+    "id": "item.gravehook-saber.v1",
+    "kind": "item",
+    "label": "Gravehook Saber",
+    "description": "Figma Blade item artwork for Gravehook Saber.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-gravehook-saber.c2a7d3b12b0b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:396",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/gravehook-saber.svg",
+      "nodeId": "208:396"
+    }
+  },
+  {
+    "id": "item.briar-knife.v1",
+    "kind": "item",
+    "label": "Briar Knife",
+    "description": "Figma Blade item artwork for Briar Knife.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-briar-knife.96128b5e4bba.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:406",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/briar-knife.svg",
+      "nodeId": "208:406"
+    }
+  },
+  {
+    "id": "item.prism-edge.v1",
+    "kind": "item",
+    "label": "Prism Edge",
+    "description": "Figma Blade item artwork for Prism Edge.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-prism-edge.e63cbd143bdf.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:417",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/prism-edge.svg",
+      "nodeId": "208:417"
+    }
+  },
+  {
+    "id": "item.hearthsteel-sword.v1",
+    "kind": "item",
+    "label": "Hearthsteel Sword",
+    "description": "Figma Blade item artwork for Hearthsteel Sword.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-hearthsteel-sword.5ca230e582b8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:431",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/hearthsteel-sword.svg",
+      "nodeId": "208:431"
+    }
+  },
+  {
+    "id": "item.wanderer-s-blade.v1",
+    "kind": "item",
+    "label": "Wanderer’s Blade",
+    "description": "Figma Blade item artwork for Wanderer’s Blade.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "blade",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-wanderer-s-blade.281280eb0509.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "208:441",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Blade",
+      "file": "public/assets/generated/figma-item-library/v1/wanderer-s-blade.svg",
+      "nodeId": "208:441"
+    }
+  },
+  {
+    "id": "item.ashwood-axe.v1",
+    "kind": "item",
+    "label": "Ashwood Axe",
+    "description": "Figma Heavy item artwork for Ashwood Axe.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-ashwood-axe.4d2824dbfdbf.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:6",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/ashwood-axe.svg",
+      "nodeId": "209:6"
+    }
+  },
+  {
+    "id": "item.threadsteel-axe.v1",
+    "kind": "item",
+    "label": "Threadsteel Axe",
+    "description": "Figma Heavy item artwork for Threadsteel Axe.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-threadsteel-axe.a95adee3f430.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:15",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/threadsteel-axe.svg",
+      "nodeId": "209:15"
+    }
+  },
+  {
+    "id": "item.ember-maul.v1",
+    "kind": "item",
+    "label": "Ember Maul",
+    "description": "Figma Heavy item artwork for Ember Maul.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-ember-maul.02c0b892220f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:23",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/ember-maul.svg",
+      "nodeId": "209:23"
+    }
+  },
+  {
+    "id": "item.violet-warhammer.v1",
+    "kind": "item",
+    "label": "Violet Warhammer",
+    "description": "Figma Heavy item artwork for Violet Warhammer.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-violet-warhammer.e91b796e3db8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:31",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/violet-warhammer.svg",
+      "nodeId": "209:31"
+    }
+  },
+  {
+    "id": "item.guildbreaker-mace.v1",
+    "kind": "item",
+    "label": "Guildbreaker Mace",
+    "description": "Figma Heavy item artwork for Guildbreaker Mace.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-guildbreaker-mace.f21589689d10.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:40",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/guildbreaker-mace.svg",
+      "nodeId": "209:40"
+    }
+  },
+  {
+    "id": "item.ironroot-hammer.v1",
+    "kind": "item",
+    "label": "Ironroot Hammer",
+    "description": "Figma Heavy item artwork for Ironroot Hammer.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-ironroot-hammer.5009076bb527.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:48",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/ironroot-hammer.svg",
+      "nodeId": "209:48"
+    }
+  },
+  {
+    "id": "item.cinder-pike.v1",
+    "kind": "item",
+    "label": "Cinder Pike",
+    "description": "Figma Heavy item artwork for Cinder Pike.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-pike.3d0bf0bf250c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:56",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-pike.svg",
+      "nodeId": "209:56"
+    }
+  },
+  {
+    "id": "item.moonspike-spear.v1",
+    "kind": "item",
+    "label": "Moonspike Spear",
+    "description": "Figma Heavy item artwork for Moonspike Spear.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-moonspike-spear.5ccb84d16086.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:65",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/moonspike-spear.svg",
+      "nodeId": "209:65"
+    }
+  },
+  {
+    "id": "item.briar-halberd.v1",
+    "kind": "item",
+    "label": "Briar Halberd",
+    "description": "Figma Heavy item artwork for Briar Halberd.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-briar-halberd.20ea1f8ea00c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:73",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/briar-halberd.svg",
+      "nodeId": "209:73"
+    }
+  },
+  {
+    "id": "item.glasswind-glaive.v1",
+    "kind": "item",
+    "label": "Glasswind Glaive",
+    "description": "Figma Heavy item artwork for Glasswind Glaive.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-glasswind-glaive.5668ce2baaf0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:83",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/glasswind-glaive.svg",
+      "nodeId": "209:83"
+    }
+  },
+  {
+    "id": "item.copperhead-axe.v1",
+    "kind": "item",
+    "label": "Copperhead Axe",
+    "description": "Figma Heavy item artwork for Copperhead Axe.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-copperhead-axe.b7fc53d597e3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:93",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/copperhead-axe.svg",
+      "nodeId": "209:93"
+    }
+  },
+  {
+    "id": "item.hearth-maul.v1",
+    "kind": "item",
+    "label": "Hearth Maul",
+    "description": "Figma Heavy item artwork for Hearth Maul.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-hearth-maul.30f540154e90.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:101",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/hearth-maul.svg",
+      "nodeId": "209:101"
+    }
+  },
+  {
+    "id": "item.vault-mace.v1",
+    "kind": "item",
+    "label": "Vault Mace",
+    "description": "Figma Heavy item artwork for Vault Mace.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-vault-mace.0973eee61ee0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:109",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/vault-mace.svg",
+      "nodeId": "209:109"
+    }
+  },
+  {
+    "id": "item.rainspike-spear.v1",
+    "kind": "item",
+    "label": "Rainspike Spear",
+    "description": "Figma Heavy item artwork for Rainspike Spear.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-rainspike-spear.c37ec82dc8ce.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:118",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/rainspike-spear.svg",
+      "nodeId": "209:118"
+    }
+  },
+  {
+    "id": "item.duskhook-halberd.v1",
+    "kind": "item",
+    "label": "Duskhook Halberd",
+    "description": "Figma Heavy item artwork for Duskhook Halberd.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-duskhook-halberd.0a80c22e2495.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:126",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/duskhook-halberd.svg",
+      "nodeId": "209:126"
+    }
+  },
+  {
+    "id": "item.starfall-hammer.v1",
+    "kind": "item",
+    "label": "Starfall Hammer",
+    "description": "Figma Heavy item artwork for Starfall Hammer.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-starfall-hammer.038e8d9ac383.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:134",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/starfall-hammer.svg",
+      "nodeId": "209:134"
+    }
+  },
+  {
+    "id": "item.honeycomb-mace.v1",
+    "kind": "item",
+    "label": "Honeycomb Mace",
+    "description": "Figma Heavy item artwork for Honeycomb Mace.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-honeycomb-mace.34400883ec31.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:143",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/honeycomb-mace.svg",
+      "nodeId": "209:143"
+    }
+  },
+  {
+    "id": "item.frostbranch-axe.v1",
+    "kind": "item",
+    "label": "Frostbranch Axe",
+    "description": "Figma Heavy item artwork for Frostbranch Axe.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-frostbranch-axe.d69a1f71e68c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:151",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/frostbranch-axe.svg",
+      "nodeId": "209:151"
+    }
+  },
+  {
+    "id": "item.gravewake-scythe.v1",
+    "kind": "item",
+    "label": "Gravewake Scythe",
+    "description": "Figma Heavy item artwork for Gravewake Scythe.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-gravewake-scythe.b199fbafd6b7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:159",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/gravewake-scythe.svg",
+      "nodeId": "209:159"
+    }
+  },
+  {
+    "id": "item.rift-pike.v1",
+    "kind": "item",
+    "label": "Rift Pike",
+    "description": "Figma Heavy item artwork for Rift Pike.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-rift-pike.ed5d7dba14d4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:170",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/rift-pike.svg",
+      "nodeId": "209:170"
+    }
+  },
+  {
+    "id": "item.lantern-poleaxe.v1",
+    "kind": "item",
+    "label": "Lantern Poleaxe",
+    "description": "Figma Heavy item artwork for Lantern Poleaxe.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-lantern-poleaxe.5ce514a60801.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:179",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/lantern-poleaxe.svg",
+      "nodeId": "209:179"
+    }
+  },
+  {
+    "id": "item.bonewheel-mace.v1",
+    "kind": "item",
+    "label": "Bonewheel Mace",
+    "description": "Figma Heavy item artwork for Bonewheel Mace.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-bonewheel-mace.35d84d0e55d2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:187",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/bonewheel-mace.svg",
+      "nodeId": "209:187"
+    }
+  },
+  {
+    "id": "item.sunforge-hammer.v1",
+    "kind": "item",
+    "label": "Sunforge Hammer",
+    "description": "Figma Heavy item artwork for Sunforge Hammer.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-sunforge-hammer.e2bde0f2467f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:196",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/sunforge-hammer.svg",
+      "nodeId": "209:196"
+    }
+  },
+  {
+    "id": "item.warden-spear.v1",
+    "kind": "item",
+    "label": "Warden Spear",
+    "description": "Figma Heavy item artwork for Warden Spear.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-warden-spear.0376bace92b7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:204",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/warden-spear.svg",
+      "nodeId": "209:204"
+    }
+  },
+  {
+    "id": "item.mirehook-glaive.v1",
+    "kind": "item",
+    "label": "Mirehook Glaive",
+    "description": "Figma Heavy item artwork for Mirehook Glaive.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-mirehook-glaive.e00b398f6ab3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:212",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/mirehook-glaive.svg",
+      "nodeId": "209:212"
+    }
+  },
+  {
+    "id": "item.prism-maul.v1",
+    "kind": "item",
+    "label": "Prism Maul",
+    "description": "Figma Heavy item artwork for Prism Maul.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-prism-maul.cda59463afeb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:221",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/prism-maul.svg",
+      "nodeId": "209:221"
+    }
+  },
+  {
+    "id": "item.nightbell-flail.v1",
+    "kind": "item",
+    "label": "Nightbell Flail",
+    "description": "Figma Heavy item artwork for Nightbell Flail.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-nightbell-flail.92d12d60e9aa.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:229",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/nightbell-flail.svg",
+      "nodeId": "209:229"
+    }
+  },
+  {
+    "id": "item.crownsplitter-axe.v1",
+    "kind": "item",
+    "label": "Crownsplitter Axe",
+    "description": "Figma Heavy item artwork for Crownsplitter Axe.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-crownsplitter-axe.d9b002966695.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:237",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/crownsplitter-axe.svg",
+      "nodeId": "209:237"
+    }
+  },
+  {
+    "id": "item.threadhook-scythe.v1",
+    "kind": "item",
+    "label": "Threadhook Scythe",
+    "description": "Figma Heavy item artwork for Threadhook Scythe.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-threadhook-scythe.a468a6bf76c9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:246",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/threadhook-scythe.svg",
+      "nodeId": "209:246"
+    }
+  },
+  {
+    "id": "item.goldleaf-halberd.v1",
+    "kind": "item",
+    "label": "Goldleaf Halberd",
+    "description": "Figma Heavy item artwork for Goldleaf Halberd.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-goldleaf-halberd.e1a63a87f1ec.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:256",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/goldleaf-halberd.svg",
+      "nodeId": "209:256"
+    }
+  },
+  {
+    "id": "item.ashcoil-mace.v1",
+    "kind": "item",
+    "label": "Ashcoil Mace",
+    "description": "Figma Heavy item artwork for Ashcoil Mace.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-ashcoil-mace.16d3febf6114.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:265",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/ashcoil-mace.svg",
+      "nodeId": "209:265"
+    }
+  },
+  {
+    "id": "item.stormstake-spear.v1",
+    "kind": "item",
+    "label": "Stormstake Spear",
+    "description": "Figma Heavy item artwork for Stormstake Spear.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-stormstake-spear.c939c14266da.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:274",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/stormstake-spear.svg",
+      "nodeId": "209:274"
+    }
+  },
+  {
+    "id": "item.bronzebloom-hammer.v1",
+    "kind": "item",
+    "label": "Bronzebloom Hammer",
+    "description": "Figma Heavy item artwork for Bronzebloom Hammer.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-bronzebloom-hammer.916a4f37bc4b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:282",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/bronzebloom-hammer.svg",
+      "nodeId": "209:282"
+    }
+  },
+  {
+    "id": "item.gloam-pike.v1",
+    "kind": "item",
+    "label": "Gloam Pike",
+    "description": "Figma Heavy item artwork for Gloam Pike.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-gloam-pike.49538871dd99.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:290",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/gloam-pike.svg",
+      "nodeId": "209:290"
+    }
+  },
+  {
+    "id": "item.ironvine-axe.v1",
+    "kind": "item",
+    "label": "Ironvine Axe",
+    "description": "Figma Heavy item artwork for Ironvine Axe.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-ironvine-axe.294b3fa6eb01.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:299",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/ironvine-axe.svg",
+      "nodeId": "209:299"
+    }
+  },
+  {
+    "id": "item.emberbell-flail.v1",
+    "kind": "item",
+    "label": "Emberbell Flail",
+    "description": "Figma Heavy item artwork for Emberbell Flail.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-emberbell-flail.625c2b018140.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:307",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/emberbell-flail.svg",
+      "nodeId": "209:307"
+    }
+  },
+  {
+    "id": "item.skyroot-poleaxe.v1",
+    "kind": "item",
+    "label": "Skyroot Poleaxe",
+    "description": "Figma Heavy item artwork for Skyroot Poleaxe.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-skyroot-poleaxe.1e3dd3d08ce2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:315",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/skyroot-poleaxe.svg",
+      "nodeId": "209:315"
+    }
+  },
+  {
+    "id": "item.cinderwake-scythe.v1",
+    "kind": "item",
+    "label": "Cinderwake Scythe",
+    "description": "Figma Heavy item artwork for Cinderwake Scythe.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-cinderwake-scythe.a0b7747e58cf.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:324",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/cinderwake-scythe.svg",
+      "nodeId": "209:324"
+    }
+  },
+  {
+    "id": "item.guildstone-maul.v1",
+    "kind": "item",
+    "label": "Guildstone Maul",
+    "description": "Figma Heavy item artwork for Guildstone Maul.",
+    "family": "axe",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "axe"
+    ],
+    "src": "/assets/runtime/figma-item-guildstone-maul.852a96e4b4b8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:332",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/guildstone-maul.svg",
+      "nodeId": "209:332"
+    }
+  },
+  {
+    "id": "item.wanderer-s-spear.v1",
+    "kind": "item",
+    "label": "Wanderer’s Spear",
+    "description": "Figma Heavy item artwork for Wanderer’s Spear.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "heavy",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-wanderer-s-spear.f6d2549d0acf.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "209:342",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "Heavy",
+      "file": "public/assets/generated/figma-item-library/v1/wanderer-s-spear.svg",
+      "nodeId": "209:342"
+    }
+  },
+  {
+    "id": "item.ashstring-bow.v1",
+    "kind": "item",
+    "label": "Ashstring Bow",
+    "description": "Figma RangedArcane item artwork for Ashstring Bow.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-ashstring-bow.cc3b9111da70.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:6",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/ashstring-bow.svg",
+      "nodeId": "210:6"
+    }
+  },
+  {
+    "id": "item.threadwind-bow.v1",
+    "kind": "item",
+    "label": "Threadwind Bow",
+    "description": "Figma RangedArcane item artwork for Threadwind Bow.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-threadwind-bow.923be98faf91.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:16",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/threadwind-bow.svg",
+      "nodeId": "210:16"
+    }
+  },
+  {
+    "id": "item.ember-crossbow.v1",
+    "kind": "item",
+    "label": "Ember Crossbow",
+    "description": "Figma RangedArcane item artwork for Ember Crossbow.",
+    "family": "crossbow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "crossbow"
+    ],
+    "src": "/assets/runtime/figma-item-ember-crossbow.f3c023c6e817.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:24",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/ember-crossbow.svg",
+      "nodeId": "210:24"
+    }
+  },
+  {
+    "id": "item.violet-repeater.v1",
+    "kind": "item",
+    "label": "Violet Repeater",
+    "description": "Figma RangedArcane item artwork for Violet Repeater.",
+    "family": "crossbow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "crossbow"
+    ],
+    "src": "/assets/runtime/figma-item-violet-repeater.a39069f648fe.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:31",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/violet-repeater.svg",
+      "nodeId": "210:31"
+    }
+  },
+  {
+    "id": "item.guildwatch-longbow.v1",
+    "kind": "item",
+    "label": "Guildwatch Longbow",
+    "description": "Figma RangedArcane item artwork for Guildwatch Longbow.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-guildwatch-longbow.f7f5f21c61cd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:38",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/guildwatch-longbow.svg",
+      "nodeId": "210:38"
+    }
+  },
+  {
+    "id": "item.ironroot-shortbow.v1",
+    "kind": "item",
+    "label": "Ironroot Shortbow",
+    "description": "Figma RangedArcane item artwork for Ironroot Shortbow.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-ironroot-shortbow.1ea89ab3c27e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:47",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/ironroot-shortbow.svg",
+      "nodeId": "210:47"
+    }
+  },
+  {
+    "id": "item.cinder-javelin.v1",
+    "kind": "item",
+    "label": "Cinder Javelin",
+    "description": "Figma RangedArcane item artwork for Cinder Javelin.",
+    "family": "spear",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "spear"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-javelin.5b81f3cd093f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:54",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-javelin.svg",
+      "nodeId": "210:54"
+    }
+  },
+  {
+    "id": "item.moonshot-dart.v1",
+    "kind": "item",
+    "label": "Moonshot Dart",
+    "description": "Figma RangedArcane item artwork for Moonshot Dart.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-moonshot-dart.a292d68c9981.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:62",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/moonshot-dart.svg",
+      "nodeId": "210:62"
+    }
+  },
+  {
+    "id": "item.briar-throwing-knife.v1",
+    "kind": "item",
+    "label": "Briar Throwing Knife",
+    "description": "Figma RangedArcane item artwork for Briar Throwing Knife.",
+    "family": "dagger",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "dagger"
+    ],
+    "src": "/assets/runtime/figma-item-briar-throwing-knife.b9ab4609d18b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:68",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/briar-throwing-knife.svg",
+      "nodeId": "210:68"
+    }
+  },
+  {
+    "id": "item.glasswind-chakram.v1",
+    "kind": "item",
+    "label": "Glasswind Chakram",
+    "description": "Figma RangedArcane item artwork for Glasswind Chakram.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-glasswind-chakram.31504ad15664.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:78",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/glasswind-chakram.svg",
+      "nodeId": "210:78"
+    }
+  },
+  {
+    "id": "item.copper-sparkstaff.v1",
+    "kind": "item",
+    "label": "Copper Sparkstaff",
+    "description": "Figma RangedArcane item artwork for Copper Sparkstaff.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-copper-sparkstaff.8ba15be80556.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:86",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/copper-sparkstaff.svg",
+      "nodeId": "210:86"
+    }
+  },
+  {
+    "id": "item.hearth-wand.v1",
+    "kind": "item",
+    "label": "Hearth Wand",
+    "description": "Figma RangedArcane item artwork for Hearth Wand.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-hearth-wand.4ce1bcaf07a5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:94",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/hearth-wand.svg",
+      "nodeId": "210:94"
+    }
+  },
+  {
+    "id": "item.vault-grimoire.v1",
+    "kind": "item",
+    "label": "Vault Grimoire",
+    "description": "Figma RangedArcane item artwork for Vault Grimoire.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-vault-grimoire.375bfd14605a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:102",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/vault-grimoire.svg",
+      "nodeId": "210:102"
+    }
+  },
+  {
+    "id": "item.rain-orb.v1",
+    "kind": "item",
+    "label": "Rain Orb",
+    "description": "Figma RangedArcane item artwork for Rain Orb.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-rain-orb.235b7965374f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:111",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/rain-orb.svg",
+      "nodeId": "210:111"
+    }
+  },
+  {
+    "id": "item.dusklight-focus.v1",
+    "kind": "item",
+    "label": "Dusklight Focus",
+    "description": "Figma RangedArcane item artwork for Dusklight Focus.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-dusklight-focus.79eb2ef7198b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:118",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/dusklight-focus.svg",
+      "nodeId": "210:118"
+    }
+  },
+  {
+    "id": "item.starfall-staff.v1",
+    "kind": "item",
+    "label": "Starfall Staff",
+    "description": "Figma RangedArcane item artwork for Starfall Staff.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-starfall-staff.0bdf105f57e4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:125",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/starfall-staff.svg",
+      "nodeId": "210:125"
+    }
+  },
+  {
+    "id": "item.honey-rune-tome.v1",
+    "kind": "item",
+    "label": "Honey Rune Tome",
+    "description": "Figma RangedArcane item artwork for Honey Rune Tome.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-honey-rune-tome.2b521c58adc1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:132",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/honey-rune-tome.svg",
+      "nodeId": "210:132"
+    }
+  },
+  {
+    "id": "item.frostbranch-wand.v1",
+    "kind": "item",
+    "label": "Frostbranch Wand",
+    "description": "Figma RangedArcane item artwork for Frostbranch Wand.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-frostbranch-wand.81200cdb8b04.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:142",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/frostbranch-wand.svg",
+      "nodeId": "210:142"
+    }
+  },
+  {
+    "id": "item.graveglass-orb.v1",
+    "kind": "item",
+    "label": "Graveglass Orb",
+    "description": "Figma RangedArcane item artwork for Graveglass Orb.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-graveglass-orb.84410fc784f0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:148",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/graveglass-orb.svg",
+      "nodeId": "210:148"
+    }
+  },
+  {
+    "id": "item.rift-scepter.v1",
+    "kind": "item",
+    "label": "Rift Scepter",
+    "description": "Figma RangedArcane item artwork for Rift Scepter.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-rift-scepter.9fb0b7d330dd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:156",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/rift-scepter.svg",
+      "nodeId": "210:156"
+    }
+  },
+  {
+    "id": "item.lantern-arcbow.v1",
+    "kind": "item",
+    "label": "Lantern Arcbow",
+    "description": "Figma RangedArcane item artwork for Lantern Arcbow.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-lantern-arcbow.c73712db77fd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:164",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/lantern-arcbow.svg",
+      "nodeId": "210:164"
+    }
+  },
+  {
+    "id": "item.bonewire-crossbow.v1",
+    "kind": "item",
+    "label": "Bonewire Crossbow",
+    "description": "Figma RangedArcane item artwork for Bonewire Crossbow.",
+    "family": "crossbow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "crossbow"
+    ],
+    "src": "/assets/runtime/figma-item-bonewire-crossbow.a0c11fc5f607.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:174",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/bonewire-crossbow.svg",
+      "nodeId": "210:174"
+    }
+  },
+  {
+    "id": "item.sunforge-hand-cannon.v1",
+    "kind": "item",
+    "label": "Sunforge Hand Cannon",
+    "description": "Figma RangedArcane item artwork for Sunforge Hand Cannon.",
+    "family": "crossbow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "crossbow"
+    ],
+    "src": "/assets/runtime/figma-item-sunforge-hand-cannon.21bcc6f1ad6a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:182",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/sunforge-hand-cannon.svg",
+      "nodeId": "210:182"
+    }
+  },
+  {
+    "id": "item.warden-longbow.v1",
+    "kind": "item",
+    "label": "Warden Longbow",
+    "description": "Figma RangedArcane item artwork for Warden Longbow.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-warden-longbow.4595b008bf92.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:189",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/warden-longbow.svg",
+      "nodeId": "210:189"
+    }
+  },
+  {
+    "id": "item.mirethorn-darts.v1",
+    "kind": "item",
+    "label": "Mirethorn Darts",
+    "description": "Figma RangedArcane item artwork for Mirethorn Darts.",
+    "family": "sword",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "sword"
+    ],
+    "src": "/assets/runtime/figma-item-mirethorn-darts.90535d46d80e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:196",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/mirethorn-darts.svg",
+      "nodeId": "210:196"
+    }
+  },
+  {
+    "id": "item.prism-staff.v1",
+    "kind": "item",
+    "label": "Prism Staff",
+    "description": "Figma RangedArcane item artwork for Prism Staff.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-prism-staff.764f983c9a6c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:205",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/prism-staff.svg",
+      "nodeId": "210:205"
+    }
+  },
+  {
+    "id": "item.nightcoil-tome.v1",
+    "kind": "item",
+    "label": "Nightcoil Tome",
+    "description": "Figma RangedArcane item artwork for Nightcoil Tome.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-nightcoil-tome.ec7732aca916.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:212",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/nightcoil-tome.svg",
+      "nodeId": "210:212"
+    }
+  },
+  {
+    "id": "item.crownless-wand.v1",
+    "kind": "item",
+    "label": "Crownless Wand",
+    "description": "Figma RangedArcane item artwork for Crownless Wand.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-crownless-wand.a416c462b4dd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:220",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/crownless-wand.svg",
+      "nodeId": "210:220"
+    }
+  },
+  {
+    "id": "item.threadcaster-orb.v1",
+    "kind": "item",
+    "label": "Threadcaster Orb",
+    "description": "Figma RangedArcane item artwork for Threadcaster Orb.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-threadcaster-orb.60567c8954d9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:226",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/threadcaster-orb.svg",
+      "nodeId": "210:226"
+    }
+  },
+  {
+    "id": "item.goldleaf-focus.v1",
+    "kind": "item",
+    "label": "Goldleaf Focus",
+    "description": "Figma RangedArcane item artwork for Goldleaf Focus.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-goldleaf-focus.95f2678ed69a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:236",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/goldleaf-focus.svg",
+      "nodeId": "210:236"
+    }
+  },
+  {
+    "id": "item.ashen-sling.v1",
+    "kind": "item",
+    "label": "Ashen Sling",
+    "description": "Figma RangedArcane item artwork for Ashen Sling.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-ashen-sling.0d4488c763bc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:244",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/ashen-sling.svg",
+      "nodeId": "210:244"
+    }
+  },
+  {
+    "id": "item.stormglass-bow.v1",
+    "kind": "item",
+    "label": "Stormglass Bow",
+    "description": "Figma RangedArcane item artwork for Stormglass Bow.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-stormglass-bow.2ca5e3ce6e7d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:252",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/stormglass-bow.svg",
+      "nodeId": "210:252"
+    }
+  },
+  {
+    "id": "item.bronze-repeater.v1",
+    "kind": "item",
+    "label": "Bronze Repeater",
+    "description": "Figma RangedArcane item artwork for Bronze Repeater.",
+    "family": "crossbow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "crossbow"
+    ],
+    "src": "/assets/runtime/figma-item-bronze-repeater.5a1a0e4526cc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:260",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/bronze-repeater.svg",
+      "nodeId": "210:260"
+    }
+  },
+  {
+    "id": "item.gloam-staff.v1",
+    "kind": "item",
+    "label": "Gloam Staff",
+    "description": "Figma RangedArcane item artwork for Gloam Staff.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-gloam-staff.e4c29e2b73c6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:269",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/gloam-staff.svg",
+      "nodeId": "210:269"
+    }
+  },
+  {
+    "id": "item.ironvine-tome.v1",
+    "kind": "item",
+    "label": "Ironvine Tome",
+    "description": "Figma RangedArcane item artwork for Ironvine Tome.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-ironvine-tome.bb5b65f43802.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:276",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/ironvine-tome.svg",
+      "nodeId": "210:276"
+    }
+  },
+  {
+    "id": "item.embercoil-wand.v1",
+    "kind": "item",
+    "label": "Embercoil Wand",
+    "description": "Figma RangedArcane item artwork for Embercoil Wand.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-embercoil-wand.58df0f15fa2c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:283",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/embercoil-wand.svg",
+      "nodeId": "210:283"
+    }
+  },
+  {
+    "id": "item.skyshard-orb.v1",
+    "kind": "item",
+    "label": "Skyshard Orb",
+    "description": "Figma RangedArcane item artwork for Skyshard Orb.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-skyshard-orb.0d329df4def0.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:290",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/skyshard-orb.svg",
+      "nodeId": "210:290"
+    }
+  },
+  {
+    "id": "item.cinder-quiver.v1",
+    "kind": "item",
+    "label": "Cinder Quiver",
+    "description": "Figma RangedArcane item artwork for Cinder Quiver.",
+    "family": "bow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "bow"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-quiver.98e99185878f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:300",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-quiver.svg",
+      "nodeId": "210:300"
+    }
+  },
+  {
+    "id": "item.guildspark-cannon.v1",
+    "kind": "item",
+    "label": "Guildspark Cannon",
+    "description": "Figma RangedArcane item artwork for Guildspark Cannon.",
+    "family": "crossbow",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "crossbow"
+    ],
+    "src": "/assets/runtime/figma-item-guildspark-cannon.e1d96c6d4b1d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:306",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/guildspark-cannon.svg",
+      "nodeId": "210:306"
+    }
+  },
+  {
+    "id": "item.wanderer-s-focus.v1",
+    "kind": "item",
+    "label": "Wanderer’s Focus",
+    "description": "Figma RangedArcane item artwork for Wanderer’s Focus.",
+    "family": "staff",
+    "tags": [
+      "figma-item",
+      "weapon",
+      "rangedarcane",
+      "staff"
+    ],
+    "src": "/assets/runtime/figma-item-wanderer-s-focus.3e8bc17306e4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "210:314",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Weapon",
+      "section": "RangedArcane",
+      "file": "public/assets/generated/figma-item-library/v1/wanderer-s-focus.svg",
+      "nodeId": "210:314"
+    }
+  },
+  {
+    "id": "item.ashguard-shield.v1",
+    "kind": "item",
+    "label": "Ashguard Shield",
+    "description": "Figma item artwork for Ashguard Shield.",
+    "family": "gear",
+    "tags": [
+      "figma-item",
+      "gear"
+    ],
+    "src": "/assets/runtime/figma-item-ashguard-shield.fe733e869ab1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:6",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/ashguard-shield.svg",
+      "nodeId": "211:6"
+    }
+  },
+  {
+    "id": "item.threadsteel-buckler.v1",
+    "kind": "item",
+    "label": "Threadsteel Buckler",
+    "description": "Figma item artwork for Threadsteel Buckler.",
+    "family": "gear",
+    "tags": [
+      "figma-item",
+      "gear"
+    ],
+    "src": "/assets/runtime/figma-item-threadsteel-buckler.a8280e424719.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:12",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/threadsteel-buckler.svg",
+      "nodeId": "211:12"
+    }
+  },
+  {
+    "id": "item.ember-helm.v1",
+    "kind": "item",
+    "label": "Ember Helm",
+    "description": "Figma item artwork for Ember Helm.",
+    "family": "helmet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "helmet"
+    ],
+    "src": "/assets/runtime/figma-item-ember-helm.757c2db26c7f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:21",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/ember-helm.svg",
+      "nodeId": "211:21"
+    }
+  },
+  {
+    "id": "item.violet-visor.v1",
+    "kind": "item",
+    "label": "Violet Visor",
+    "description": "Figma item artwork for Violet Visor.",
+    "family": "helmet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "helmet"
+    ],
+    "src": "/assets/runtime/figma-item-violet-visor.e5fd43b84fba.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:27",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/violet-visor.svg",
+      "nodeId": "211:27"
+    }
+  },
+  {
+    "id": "item.guildplate-coat.v1",
+    "kind": "item",
+    "label": "Guildplate Coat",
+    "description": "Figma item artwork for Guildplate Coat.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-guildplate-coat.4908ac84e26f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:33",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/guildplate-coat.svg",
+      "nodeId": "211:33"
+    }
+  },
+  {
+    "id": "item.ironroot-cuirass.v1",
+    "kind": "item",
+    "label": "Ironroot Cuirass",
+    "description": "Figma item artwork for Ironroot Cuirass.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-ironroot-cuirass.c93c94b12075.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:41",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/ironroot-cuirass.svg",
+      "nodeId": "211:41"
+    }
+  },
+  {
+    "id": "item.cinder-boots.v1",
+    "kind": "item",
+    "label": "Cinder Boots",
+    "description": "Figma item artwork for Cinder Boots.",
+    "family": "boots",
+    "tags": [
+      "figma-item",
+      "gear",
+      "boots"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-boots.29c7b7b9b4d2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:47",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-boots.svg",
+      "nodeId": "211:47"
+    }
+  },
+  {
+    "id": "item.moonstep-greaves.v1",
+    "kind": "item",
+    "label": "Moonstep Greaves",
+    "description": "Figma item artwork for Moonstep Greaves.",
+    "family": "boots",
+    "tags": [
+      "figma-item",
+      "gear",
+      "boots"
+    ],
+    "src": "/assets/runtime/figma-item-moonstep-greaves.0f1cc6c25e05.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:53",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/moonstep-greaves.svg",
+      "nodeId": "211:53"
+    }
+  },
+  {
+    "id": "item.briar-gauntlets.v1",
+    "kind": "item",
+    "label": "Briar Gauntlets",
+    "description": "Figma item artwork for Briar Gauntlets.",
+    "family": "gauntlet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "gauntlet",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-briar-gauntlets.3d7b7e27eed7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:61",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/briar-gauntlets.svg",
+      "nodeId": "211:61"
+    }
+  },
+  {
+    "id": "item.glasswind-gloves.v1",
+    "kind": "item",
+    "label": "Glasswind Gloves",
+    "description": "Figma item artwork for Glasswind Gloves.",
+    "family": "glove",
+    "tags": [
+      "figma-item",
+      "gear",
+      "glove",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-glasswind-gloves.e7b1dd60e8f6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:68",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/glasswind-gloves.svg",
+      "nodeId": "211:68"
+    }
+  },
+  {
+    "id": "item.copperloop-ring.v1",
+    "kind": "item",
+    "label": "Copperloop Ring",
+    "description": "Figma item artwork for Copperloop Ring.",
+    "family": "ring",
+    "tags": [
+      "figma-item",
+      "gear",
+      "ring",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-copperloop-ring.205d00ba6d5c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:76",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/copperloop-ring.svg",
+      "nodeId": "211:76"
+    }
+  },
+  {
+    "id": "item.hearthstone-band.v1",
+    "kind": "item",
+    "label": "Hearthstone Band",
+    "description": "Figma item artwork for Hearthstone Band.",
+    "family": "band",
+    "tags": [
+      "figma-item",
+      "gear",
+      "band",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-hearthstone-band.8eb52f61687c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:84",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/hearthstone-band.svg",
+      "nodeId": "211:84"
+    }
+  },
+  {
+    "id": "item.vault-amulet.v1",
+    "kind": "item",
+    "label": "Vault Amulet",
+    "description": "Figma item artwork for Vault Amulet.",
+    "family": "amulet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "amulet",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-vault-amulet.8c4bb19ceaba.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:91",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/vault-amulet.svg",
+      "nodeId": "211:91"
+    }
+  },
+  {
+    "id": "item.rainthread-pendant.v1",
+    "kind": "item",
+    "label": "Rainthread Pendant",
+    "description": "Figma item artwork for Rainthread Pendant.",
+    "family": "pendant",
+    "tags": [
+      "figma-item",
+      "gear",
+      "pendant",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-rainthread-pendant.dca9da4a205e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:97",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/rainthread-pendant.svg",
+      "nodeId": "211:97"
+    }
+  },
+  {
+    "id": "item.dusk-mantle.v1",
+    "kind": "item",
+    "label": "Dusk Mantle",
+    "description": "Figma item artwork for Dusk Mantle.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-dusk-mantle.a197a9b555c7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:105",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/dusk-mantle.svg",
+      "nodeId": "211:105"
+    }
+  },
+  {
+    "id": "item.starfall-cloak.v1",
+    "kind": "item",
+    "label": "Starfall Cloak",
+    "description": "Figma item artwork for Starfall Cloak.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-starfall-cloak.27219b843ff9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:111",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/starfall-cloak.svg",
+      "nodeId": "211:111"
+    }
+  },
+  {
+    "id": "item.honeycomb-belt.v1",
+    "kind": "item",
+    "label": "Honeycomb Belt",
+    "description": "Figma item artwork for Honeycomb Belt.",
+    "family": "belt",
+    "tags": [
+      "figma-item",
+      "gear",
+      "belt",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-honeycomb-belt.01712734b115.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:117",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/honeycomb-belt.svg",
+      "nodeId": "211:117"
+    }
+  },
+  {
+    "id": "item.frostweave-sash.v1",
+    "kind": "item",
+    "label": "Frostweave Sash",
+    "description": "Figma item artwork for Frostweave Sash.",
+    "family": "sash",
+    "tags": [
+      "figma-item",
+      "gear",
+      "sash",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-frostweave-sash.432675424091.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:125",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/frostweave-sash.svg",
+      "nodeId": "211:125"
+    }
+  },
+  {
+    "id": "item.graveward-charm.v1",
+    "kind": "item",
+    "label": "Graveward Charm",
+    "description": "Figma item artwork for Graveward Charm.",
+    "family": "charm",
+    "tags": [
+      "figma-item",
+      "gear",
+      "charm",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-graveward-charm.afbc452f1f5f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:131",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/graveward-charm.svg",
+      "nodeId": "211:131"
+    }
+  },
+  {
+    "id": "item.rift-brooch.v1",
+    "kind": "item",
+    "label": "Rift Brooch",
+    "description": "Figma item artwork for Rift Brooch.",
+    "family": "brooch",
+    "tags": [
+      "figma-item",
+      "gear",
+      "brooch",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-rift-brooch.c9cc3ea46889.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:138",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/rift-brooch.svg",
+      "nodeId": "211:138"
+    }
+  },
+  {
+    "id": "item.lantern-shield.v1",
+    "kind": "item",
+    "label": "Lantern Shield",
+    "description": "Figma item artwork for Lantern Shield.",
+    "family": "gear",
+    "tags": [
+      "figma-item",
+      "gear"
+    ],
+    "src": "/assets/runtime/figma-item-lantern-shield.c1e9b27718c5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:148",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/lantern-shield.svg",
+      "nodeId": "211:148"
+    }
+  },
+  {
+    "id": "item.bonecrest-helm.v1",
+    "kind": "item",
+    "label": "Bonecrest Helm",
+    "description": "Figma item artwork for Bonecrest Helm.",
+    "family": "helmet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "helmet"
+    ],
+    "src": "/assets/runtime/figma-item-bonecrest-helm.13576a736b53.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:154",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/bonecrest-helm.svg",
+      "nodeId": "211:154"
+    }
+  },
+  {
+    "id": "item.sunforge-plate.v1",
+    "kind": "item",
+    "label": "Sunforge Plate",
+    "description": "Figma item artwork for Sunforge Plate.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-sunforge-plate.ac934f2ec95f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:161",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/sunforge-plate.svg",
+      "nodeId": "211:161"
+    }
+  },
+  {
+    "id": "item.warden-boots.v1",
+    "kind": "item",
+    "label": "Warden Boots",
+    "description": "Figma item artwork for Warden Boots.",
+    "family": "boots",
+    "tags": [
+      "figma-item",
+      "gear",
+      "boots"
+    ],
+    "src": "/assets/runtime/figma-item-warden-boots.21dcf3b95bad.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:169",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/warden-boots.svg",
+      "nodeId": "211:169"
+    }
+  },
+  {
+    "id": "item.mirehide-gloves.v1",
+    "kind": "item",
+    "label": "Mirehide Gloves",
+    "description": "Figma item artwork for Mirehide Gloves.",
+    "family": "glove",
+    "tags": [
+      "figma-item",
+      "gear",
+      "glove",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-mirehide-gloves.15d03e232f1c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:175",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/mirehide-gloves.svg",
+      "nodeId": "211:175"
+    }
+  },
+  {
+    "id": "item.prism-ring.v1",
+    "kind": "item",
+    "label": "Prism Ring",
+    "description": "Figma item artwork for Prism Ring.",
+    "family": "ring",
+    "tags": [
+      "figma-item",
+      "gear",
+      "ring",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-prism-ring.d9c827a92bc4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:181",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/prism-ring.svg",
+      "nodeId": "211:181"
+    }
+  },
+  {
+    "id": "item.nightcoil-amulet.v1",
+    "kind": "item",
+    "label": "Nightcoil Amulet",
+    "description": "Figma item artwork for Nightcoil Amulet.",
+    "family": "amulet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "amulet",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-nightcoil-amulet.5c80ed001265.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:189",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/nightcoil-amulet.svg",
+      "nodeId": "211:189"
+    }
+  },
+  {
+    "id": "item.crownless-cloak.v1",
+    "kind": "item",
+    "label": "Crownless Cloak",
+    "description": "Figma item artwork for Crownless Cloak.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-crownless-cloak.62cdf9cd0dc3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:195",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/crownless-cloak.svg",
+      "nodeId": "211:195"
+    }
+  },
+  {
+    "id": "item.threadbound-belt.v1",
+    "kind": "item",
+    "label": "Threadbound Belt",
+    "description": "Figma item artwork for Threadbound Belt.",
+    "family": "belt",
+    "tags": [
+      "figma-item",
+      "gear",
+      "belt",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-threadbound-belt.787be3d15d8c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:201",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/threadbound-belt.svg",
+      "nodeId": "211:201"
+    }
+  },
+  {
+    "id": "item.goldleaf-charm.v1",
+    "kind": "item",
+    "label": "Goldleaf Charm",
+    "description": "Figma item artwork for Goldleaf Charm.",
+    "family": "charm",
+    "tags": [
+      "figma-item",
+      "gear",
+      "charm",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-goldleaf-charm.1be49cae7218.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:210",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/goldleaf-charm.svg",
+      "nodeId": "211:210"
+    }
+  },
+  {
+    "id": "item.ashscale-shield.v1",
+    "kind": "item",
+    "label": "Ashscale Shield",
+    "description": "Figma item artwork for Ashscale Shield.",
+    "family": "gear",
+    "tags": [
+      "figma-item",
+      "gear"
+    ],
+    "src": "/assets/runtime/figma-item-ashscale-shield.08edd3092d9e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:218",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/ashscale-shield.svg",
+      "nodeId": "211:218"
+    }
+  },
+  {
+    "id": "item.stormglass-helm.v1",
+    "kind": "item",
+    "label": "Stormglass Helm",
+    "description": "Figma item artwork for Stormglass Helm.",
+    "family": "helmet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "helmet"
+    ],
+    "src": "/assets/runtime/figma-item-stormglass-helm.b8d458f93ca7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:224",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/stormglass-helm.svg",
+      "nodeId": "211:224"
+    }
+  },
+  {
+    "id": "item.bronzeweave-coat.v1",
+    "kind": "item",
+    "label": "Bronzeweave Coat",
+    "description": "Figma item artwork for Bronzeweave Coat.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-bronzeweave-coat.6c8b18c10967.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:233",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/bronzeweave-coat.svg",
+      "nodeId": "211:233"
+    }
+  },
+  {
+    "id": "item.gloam-greaves.v1",
+    "kind": "item",
+    "label": "Gloam Greaves",
+    "description": "Figma item artwork for Gloam Greaves.",
+    "family": "boots",
+    "tags": [
+      "figma-item",
+      "gear",
+      "boots"
+    ],
+    "src": "/assets/runtime/figma-item-gloam-greaves.86c5e1db9bd2.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:239",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/gloam-greaves.svg",
+      "nodeId": "211:239"
+    }
+  },
+  {
+    "id": "item.ironvine-gauntlets.v1",
+    "kind": "item",
+    "label": "Ironvine Gauntlets",
+    "description": "Figma item artwork for Ironvine Gauntlets.",
+    "family": "gauntlet",
+    "tags": [
+      "figma-item",
+      "gear",
+      "gauntlet",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-ironvine-gauntlets.1909819261f6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:245",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/ironvine-gauntlets.svg",
+      "nodeId": "211:245"
+    }
+  },
+  {
+    "id": "item.emberstone-ring.v1",
+    "kind": "item",
+    "label": "Emberstone Ring",
+    "description": "Figma item artwork for Emberstone Ring.",
+    "family": "ring",
+    "tags": [
+      "figma-item",
+      "gear",
+      "ring",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-emberstone-ring.a767fa0ddfd6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:253",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/emberstone-ring.svg",
+      "nodeId": "211:253"
+    }
+  },
+  {
+    "id": "item.skyshard-pendant.v1",
+    "kind": "item",
+    "label": "Skyshard Pendant",
+    "description": "Figma item artwork for Skyshard Pendant.",
+    "family": "pendant",
+    "tags": [
+      "figma-item",
+      "gear",
+      "pendant",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-skyshard-pendant.3a487d04bc59.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:259",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/skyshard-pendant.svg",
+      "nodeId": "211:259"
+    }
+  },
+  {
+    "id": "item.cinder-mantle.v1",
+    "kind": "item",
+    "label": "Cinder Mantle",
+    "description": "Figma item artwork for Cinder Mantle.",
+    "family": "armor",
+    "tags": [
+      "figma-item",
+      "gear",
+      "armor"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-mantle.70dc1502aa89.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:265",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-mantle.svg",
+      "nodeId": "211:265"
+    }
+  },
+  {
+    "id": "item.guildmark-belt.v1",
+    "kind": "item",
+    "label": "Guildmark Belt",
+    "description": "Figma item artwork for Guildmark Belt.",
+    "family": "belt",
+    "tags": [
+      "figma-item",
+      "gear",
+      "belt",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-guildmark-belt.2880c605558d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:273",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/guildmark-belt.svg",
+      "nodeId": "211:273"
+    }
+  },
+  {
+    "id": "item.wanderer-s-brooch.v1",
+    "kind": "item",
+    "label": "Wanderer’s Brooch",
+    "description": "Figma item artwork for Wanderer’s Brooch.",
+    "family": "brooch",
+    "tags": [
+      "figma-item",
+      "gear",
+      "brooch",
+      "accessory"
+    ],
+    "src": "/assets/runtime/figma-item-wanderer-s-brooch.9147a66759db.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "211:280",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Gear",
+      "file": "public/assets/generated/figma-item-library/v1/wanderer-s-brooch.svg",
+      "nodeId": "211:280"
+    }
+  },
+  {
+    "id": "item.minor-healing-flask.v1",
+    "kind": "item",
+    "label": "Minor Healing Flask",
+    "description": "Figma item artwork for Minor Healing Flask.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-minor-healing-flask.6a39a21946c7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:6",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/minor-healing-flask.svg",
+      "nodeId": "212:6"
+    }
+  },
+  {
+    "id": "item.healing-flask.v1",
+    "kind": "item",
+    "label": "Healing Flask",
+    "description": "Figma item artwork for Healing Flask.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-healing-flask.2acdd2a46127.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:16",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/healing-flask.svg",
+      "nodeId": "212:16"
+    }
+  },
+  {
+    "id": "item.greater-healing-flask.v1",
+    "kind": "item",
+    "label": "Greater Healing Flask",
+    "description": "Figma item artwork for Greater Healing Flask.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-greater-healing-flask.6f716ea41d80.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:24",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/greater-healing-flask.svg",
+      "nodeId": "212:24"
+    }
+  },
+  {
+    "id": "item.major-healing-flask.v1",
+    "kind": "item",
+    "label": "Major Healing Flask",
+    "description": "Figma item artwork for Major Healing Flask.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-major-healing-flask.9af463f5a519.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:32",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/major-healing-flask.svg",
+      "nodeId": "212:32"
+    }
+  },
+  {
+    "id": "item.threadheart-elixir.v1",
+    "kind": "item",
+    "label": "Threadheart Elixir",
+    "description": "Figma item artwork for Threadheart Elixir.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-threadheart-elixir.cb491724729e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:41",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/threadheart-elixir.svg",
+      "nodeId": "212:41"
+    }
+  },
+  {
+    "id": "item.ember-tonic.v1",
+    "kind": "item",
+    "label": "Ember Tonic",
+    "description": "Figma item artwork for Ember Tonic.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-ember-tonic.1afaefddcf66.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:48",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/ember-tonic.svg",
+      "nodeId": "212:48"
+    }
+  },
+  {
+    "id": "item.moonwater-draught.v1",
+    "kind": "item",
+    "label": "Moonwater Draught",
+    "description": "Figma item artwork for Moonwater Draught.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-moonwater-draught.4fb6a0f992d9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:56",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/moonwater-draught.svg",
+      "nodeId": "212:56"
+    }
+  },
+  {
+    "id": "item.briar-antidote.v1",
+    "kind": "item",
+    "label": "Briar Antidote",
+    "description": "Figma item artwork for Briar Antidote.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-briar-antidote.02a8cc1302fe.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:66",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/briar-antidote.svg",
+      "nodeId": "212:66"
+    }
+  },
+  {
+    "id": "item.glassskin-potion.v1",
+    "kind": "item",
+    "label": "Glassskin Potion",
+    "description": "Figma item artwork for Glassskin Potion.",
+    "family": "consumable",
+    "tags": [
+      "figma-item",
+      "consumable"
+    ],
+    "src": "/assets/runtime/figma-item-glassskin-potion.968dde8e13a7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:74",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/glassskin-potion.svg",
+      "nodeId": "212:74"
+    }
+  },
+  {
+    "id": "item.ironroot-brew.v1",
+    "kind": "item",
+    "label": "Ironroot Brew",
+    "description": "Figma item artwork for Ironroot Brew.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-ironroot-brew.4504f5880531.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:81",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/ironroot-brew.svg",
+      "nodeId": "212:81"
+    }
+  },
+  {
+    "id": "item.mana-vial.v1",
+    "kind": "item",
+    "label": "Mana Vial",
+    "description": "Figma item artwork for Mana Vial.",
+    "family": "mana",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "mana"
+    ],
+    "src": "/assets/runtime/figma-item-mana-vial.90f87dc740eb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:92",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/mana-vial.svg",
+      "nodeId": "212:92"
+    }
+  },
+  {
+    "id": "item.greater-mana-vial.v1",
+    "kind": "item",
+    "label": "Greater Mana Vial",
+    "description": "Figma item artwork for Greater Mana Vial.",
+    "family": "mana",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "mana"
+    ],
+    "src": "/assets/runtime/figma-item-greater-mana-vial.490dc795cb38.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:100",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/greater-mana-vial.svg",
+      "nodeId": "212:100"
+    }
+  },
+  {
+    "id": "item.focus-tonic.v1",
+    "kind": "item",
+    "label": "Focus Tonic",
+    "description": "Figma item artwork for Focus Tonic.",
+    "family": "mana",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "mana"
+    ],
+    "src": "/assets/runtime/figma-item-focus-tonic.c635fab1b162.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:108",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/focus-tonic.svg",
+      "nodeId": "212:108"
+    }
+  },
+  {
+    "id": "item.haste-draught.v1",
+    "kind": "item",
+    "label": "Haste Draught",
+    "description": "Figma item artwork for Haste Draught.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-haste-draught.59d146897780.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:118",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/haste-draught.svg",
+      "nodeId": "212:118"
+    }
+  },
+  {
+    "id": "item.stoneguard-brew.v1",
+    "kind": "item",
+    "label": "Stoneguard Brew",
+    "description": "Figma item artwork for Stoneguard Brew.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-stoneguard-brew.37c5cc4b824f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:125",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/stoneguard-brew.svg",
+      "nodeId": "212:125"
+    }
+  },
+  {
+    "id": "item.flameward-elixir.v1",
+    "kind": "item",
+    "label": "Flameward Elixir",
+    "description": "Figma item artwork for Flameward Elixir.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-flameward-elixir.bb09305c9840.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:132",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/flameward-elixir.svg",
+      "nodeId": "212:132"
+    }
+  },
+  {
+    "id": "item.frostward-elixir.v1",
+    "kind": "item",
+    "label": "Frostward Elixir",
+    "description": "Figma item artwork for Frostward Elixir.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-frostward-elixir.20deb62775d6.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:142",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/frostward-elixir.svg",
+      "nodeId": "212:142"
+    }
+  },
+  {
+    "id": "item.shockward-elixir.v1",
+    "kind": "item",
+    "label": "Shockward Elixir",
+    "description": "Figma item artwork for Shockward Elixir.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-shockward-elixir.0086687344f3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:150",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/shockward-elixir.svg",
+      "nodeId": "212:150"
+    }
+  },
+  {
+    "id": "item.venom-ward-tonic.v1",
+    "kind": "item",
+    "label": "Venom Ward Tonic",
+    "description": "Figma item artwork for Venom Ward Tonic.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-venom-ward-tonic.9f205f5174e9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:158",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/venom-ward-tonic.svg",
+      "nodeId": "212:158"
+    }
+  },
+  {
+    "id": "item.luck-phial.v1",
+    "kind": "item",
+    "label": "Luck Phial",
+    "description": "Figma item artwork for Luck Phial.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-luck-phial.ebfbdb94c966.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:167",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/luck-phial.svg",
+      "nodeId": "212:167"
+    }
+  },
+  {
+    "id": "item.guild-ration.v1",
+    "kind": "item",
+    "label": "Guild Ration",
+    "description": "Figma item artwork for Guild Ration.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-guild-ration.3256299a6c1d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:176",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/guild-ration.svg",
+      "nodeId": "212:176"
+    }
+  },
+  {
+    "id": "item.honeybread.v1",
+    "kind": "item",
+    "label": "Honeybread",
+    "description": "Figma item artwork for Honeybread.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-honeybread.540fd5accf63.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:184",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/honeybread.svg",
+      "nodeId": "212:184"
+    }
+  },
+  {
+    "id": "item.ember-stew.v1",
+    "kind": "item",
+    "label": "Ember Stew",
+    "description": "Figma item artwork for Ember Stew.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-ember-stew.6b3acc6a5319.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:194",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/ember-stew.svg",
+      "nodeId": "212:194"
+    }
+  },
+  {
+    "id": "item.mirefruit-bowl.v1",
+    "kind": "item",
+    "label": "Mirefruit Bowl",
+    "description": "Figma item artwork for Mirefruit Bowl.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-mirefruit-bowl.87a8607e7f6c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:202",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/mirefruit-bowl.svg",
+      "nodeId": "212:202"
+    }
+  },
+  {
+    "id": "item.starleaf-tea.v1",
+    "kind": "item",
+    "label": "Starleaf Tea",
+    "description": "Figma item artwork for Starleaf Tea.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-starleaf-tea.35ae2bcba7ef.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:209",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/starleaf-tea.svg",
+      "nodeId": "212:209"
+    }
+  },
+  {
+    "id": "item.frostberry-tart.v1",
+    "kind": "item",
+    "label": "Frostberry Tart",
+    "description": "Figma item artwork for Frostberry Tart.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-frostberry-tart.8faf70115fad.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:218",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/frostberry-tart.svg",
+      "nodeId": "212:218"
+    }
+  },
+  {
+    "id": "item.copper-jerky.v1",
+    "kind": "item",
+    "label": "Copper Jerky",
+    "description": "Figma item artwork for Copper Jerky.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-copper-jerky.630d30122a4f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:226",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/copper-jerky.svg",
+      "nodeId": "212:226"
+    }
+  },
+  {
+    "id": "item.mooncake-ration.v1",
+    "kind": "item",
+    "label": "Mooncake Ration",
+    "description": "Figma item artwork for Mooncake Ration.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-mooncake-ration.d6d072f90ac5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:234",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/mooncake-ration.svg",
+      "nodeId": "212:234"
+    }
+  },
+  {
+    "id": "item.briar-soup.v1",
+    "kind": "item",
+    "label": "Briar Soup",
+    "description": "Figma item artwork for Briar Soup.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-briar-soup.6a469d506421.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:244",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/briar-soup.svg",
+      "nodeId": "212:244"
+    }
+  },
+  {
+    "id": "item.wanderer-s-meal.v1",
+    "kind": "item",
+    "label": "Wanderer’s Meal",
+    "description": "Figma item artwork for Wanderer’s Meal.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-wanderer-s-meal.8afb957e2fcf.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:251",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/wanderer-s-meal.svg",
+      "nodeId": "212:251"
+    }
+  },
+  {
+    "id": "item.cinder-bomb.v1",
+    "kind": "item",
+    "label": "Cinder Bomb",
+    "description": "Figma item artwork for Cinder Bomb.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-bomb.617e6edf12c4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:260",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-bomb.svg",
+      "nodeId": "212:260"
+    }
+  },
+  {
+    "id": "item.flash-flask.v1",
+    "kind": "item",
+    "label": "Flash Flask",
+    "description": "Figma item artwork for Flash Flask.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-flash-flask.6e5e8efd91b8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:270",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/flash-flask.svg",
+      "nodeId": "212:270"
+    }
+  },
+  {
+    "id": "item.smoke-jar.v1",
+    "kind": "item",
+    "label": "Smoke Jar",
+    "description": "Figma item artwork for Smoke Jar.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-smoke-jar.6e0c1026a50a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:278",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/smoke-jar.svg",
+      "nodeId": "212:278"
+    }
+  },
+  {
+    "id": "item.thread-snare.v1",
+    "kind": "item",
+    "label": "Thread Snare",
+    "description": "Figma item artwork for Thread Snare.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-thread-snare.d83cc7461b75.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:286",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/thread-snare.svg",
+      "nodeId": "212:286"
+    }
+  },
+  {
+    "id": "item.ward-scroll.v1",
+    "kind": "item",
+    "label": "Ward Scroll",
+    "description": "Figma item artwork for Ward Scroll.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-ward-scroll.9f6a0653b85f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:295",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/ward-scroll.svg",
+      "nodeId": "212:295"
+    }
+  },
+  {
+    "id": "item.recall-scroll.v1",
+    "kind": "item",
+    "label": "Recall Scroll",
+    "description": "Figma item artwork for Recall Scroll.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-recall-scroll.b5be7323b57f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:302",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/recall-scroll.svg",
+      "nodeId": "212:302"
+    }
+  },
+  {
+    "id": "item.repair-kit.v1",
+    "kind": "item",
+    "label": "Repair Kit",
+    "description": "Figma item artwork for Repair Kit.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-repair-kit.0789264b53c9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:310",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/repair-kit.svg",
+      "nodeId": "212:310"
+    }
+  },
+  {
+    "id": "item.mending-salve.v1",
+    "kind": "item",
+    "label": "Mending Salve",
+    "description": "Figma item artwork for Mending Salve.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-mending-salve.a4396459599e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:320",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/mending-salve.svg",
+      "nodeId": "212:320"
+    }
+  },
+  {
+    "id": "item.revival-charm.v1",
+    "kind": "item",
+    "label": "Revival Charm",
+    "description": "Figma item artwork for Revival Charm.",
+    "family": "healing",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "healing"
+    ],
+    "src": "/assets/runtime/figma-item-revival-charm.9b7211d5482f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:328",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/revival-charm.svg",
+      "nodeId": "212:328"
+    }
+  },
+  {
+    "id": "item.dungeon-camp-kit.v1",
+    "kind": "item",
+    "label": "Dungeon Camp Kit",
+    "description": "Figma item artwork for Dungeon Camp Kit.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "consumable",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-dungeon-camp-kit.7c34440198b1.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "212:335",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Consumable",
+      "file": "public/assets/generated/figma-item-library/v1/dungeon-camp-kit.svg",
+      "nodeId": "212:335"
+    }
+  },
+  {
+    "id": "item.gold-coin.v2",
+    "kind": "item",
+    "label": "Gold Coin",
+    "description": "Figma item artwork for Gold Coin.",
+    "family": "currency",
+    "tags": [
+      "figma-item",
+      "utility",
+      "currency"
+    ],
+    "src": "/assets/runtime/figma-item-gold-coin.051bb5def965.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:6",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/gold-coin.svg",
+      "nodeId": "213:6"
+    }
+  },
+  {
+    "id": "item.coin-stack.v1",
+    "kind": "item",
+    "label": "Coin Stack",
+    "description": "Figma item artwork for Coin Stack.",
+    "family": "currency",
+    "tags": [
+      "figma-item",
+      "utility",
+      "currency"
+    ],
+    "src": "/assets/runtime/figma-item-coin-stack.9efb914ff4b7.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:13",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/coin-stack.svg",
+      "nodeId": "213:13"
+    }
+  },
+  {
+    "id": "item.honey-point-crystal.v1",
+    "kind": "item",
+    "label": "Honey Point Crystal",
+    "description": "Figma item artwork for Honey Point Crystal.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-honey-point-crystal.c47998727a7d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:20",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/honey-point-crystal.svg",
+      "nodeId": "213:20"
+    }
+  },
+  {
+    "id": "item.thread-shard.v1",
+    "kind": "item",
+    "label": "Thread Shard",
+    "description": "Figma item artwork for Thread Shard.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-thread-shard.855f5c99feb5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:26",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/thread-shard.svg",
+      "nodeId": "213:26"
+    }
+  },
+  {
+    "id": "item.ember-ore.v1",
+    "kind": "item",
+    "label": "Ember Ore",
+    "description": "Figma item artwork for Ember Ore.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-ember-ore.f410e54073d9.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:32",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/ember-ore.svg",
+      "nodeId": "213:32"
+    }
+  },
+  {
+    "id": "item.moon-ore.v1",
+    "kind": "item",
+    "label": "Moon Ore",
+    "description": "Figma item artwork for Moon Ore.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-moon-ore.8a0c5f1d90af.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:38",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/moon-ore.svg",
+      "nodeId": "213:38"
+    }
+  },
+  {
+    "id": "item.ironroot-ore.v1",
+    "kind": "item",
+    "label": "Ironroot Ore",
+    "description": "Figma item artwork for Ironroot Ore.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-ironroot-ore.19b1c287ec39.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:44",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/ironroot-ore.svg",
+      "nodeId": "213:44"
+    }
+  },
+  {
+    "id": "item.violet-prism.v1",
+    "kind": "item",
+    "label": "Violet Prism",
+    "description": "Figma item artwork for Violet Prism.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-violet-prism.1fe99c62bfaa.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:50",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/violet-prism.svg",
+      "nodeId": "213:50"
+    }
+  },
+  {
+    "id": "item.star-shard.v1",
+    "kind": "item",
+    "label": "Star Shard",
+    "description": "Figma item artwork for Star Shard.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-star-shard.fdef4238a2ce.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:56",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/star-shard.svg",
+      "nodeId": "213:56"
+    }
+  },
+  {
+    "id": "item.rift-crystal.v1",
+    "kind": "item",
+    "label": "Rift Crystal",
+    "description": "Figma item artwork for Rift Crystal.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-rift-crystal.ac08712de810.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:62",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/rift-crystal.svg",
+      "nodeId": "213:62"
+    }
+  },
+  {
+    "id": "item.briar-herb.v1",
+    "kind": "item",
+    "label": "Briar Herb",
+    "description": "Figma item artwork for Briar Herb.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-briar-herb.749e8562a99a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:69",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/briar-herb.svg",
+      "nodeId": "213:69"
+    }
+  },
+  {
+    "id": "item.moonleaf.v1",
+    "kind": "item",
+    "label": "Moonleaf",
+    "description": "Figma item artwork for Moonleaf.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-moonleaf.63b1cfba9997.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:77",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/moonleaf.svg",
+      "nodeId": "213:77"
+    }
+  },
+  {
+    "id": "item.cinder-bloom.v1",
+    "kind": "item",
+    "label": "Cinder Bloom",
+    "description": "Figma item artwork for Cinder Bloom.",
+    "family": "utility",
+    "tags": [
+      "figma-item",
+      "utility"
+    ],
+    "src": "/assets/runtime/figma-item-cinder-bloom.cb8dc0ab1639.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:85",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/cinder-bloom.svg",
+      "nodeId": "213:85"
+    }
+  },
+  {
+    "id": "item.frostleaf.v1",
+    "kind": "item",
+    "label": "Frostleaf",
+    "description": "Figma item artwork for Frostleaf.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-frostleaf.2be3a7bae20c.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:93",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/frostleaf.svg",
+      "nodeId": "213:93"
+    }
+  },
+  {
+    "id": "item.frostcap-mushroom.v1",
+    "kind": "item",
+    "label": "Frostcap Mushroom",
+    "description": "Figma item artwork for Frostcap Mushroom.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-frostcap-mushroom.74ae96e3f1db.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:101",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/frostcap-mushroom.svg",
+      "nodeId": "213:101"
+    }
+  },
+  {
+    "id": "item.warden-cloth.v1",
+    "kind": "item",
+    "label": "Warden Cloth",
+    "description": "Figma item artwork for Warden Cloth.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-warden-cloth.66728feeaf8f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:109",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/warden-cloth.svg",
+      "nodeId": "213:109"
+    }
+  },
+  {
+    "id": "item.ash-leather.v1",
+    "kind": "item",
+    "label": "Ash Leather",
+    "description": "Figma item artwork for Ash Leather.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-ash-leather.0fac332ec8fd.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:115",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/ash-leather.svg",
+      "nodeId": "213:115"
+    }
+  },
+  {
+    "id": "item.bone-fragment.v1",
+    "kind": "item",
+    "label": "Bone Fragment",
+    "description": "Figma item artwork for Bone Fragment.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-bone-fragment.4148f49e1ad3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:121",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/bone-fragment.svg",
+      "nodeId": "213:121"
+    }
+  },
+  {
+    "id": "item.monster-fang.v1",
+    "kind": "item",
+    "label": "Monster Fang",
+    "description": "Figma item artwork for Monster Fang.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-monster-fang.63469eb4d2bb.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:126",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/monster-fang.svg",
+      "nodeId": "213:126"
+    }
+  },
+  {
+    "id": "item.boss-core.v1",
+    "kind": "item",
+    "label": "Boss Core",
+    "description": "Figma item artwork for Boss Core.",
+    "family": "material",
+    "tags": [
+      "figma-item",
+      "utility",
+      "material"
+    ],
+    "src": "/assets/runtime/figma-item-boss-core.bac96497c653.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:132",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/boss-core.svg",
+      "nodeId": "213:132"
+    }
+  },
+  {
+    "id": "item.copper-key.v1",
+    "kind": "item",
+    "label": "Copper Key",
+    "description": "Figma item artwork for Copper Key.",
+    "family": "key",
+    "tags": [
+      "figma-item",
+      "utility",
+      "key"
+    ],
+    "src": "/assets/runtime/figma-item-copper-key.0affbab75f3e.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:139",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/copper-key.svg",
+      "nodeId": "213:139"
+    }
+  },
+  {
+    "id": "item.silver-key.v1",
+    "kind": "item",
+    "label": "Silver Key",
+    "description": "Figma item artwork for Silver Key.",
+    "family": "key",
+    "tags": [
+      "figma-item",
+      "utility",
+      "key"
+    ],
+    "src": "/assets/runtime/figma-item-silver-key.e3ac24d45ca8.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:147",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/silver-key.svg",
+      "nodeId": "213:147"
+    }
+  },
+  {
+    "id": "item.vault-key.v1",
+    "kind": "item",
+    "label": "Vault Key",
+    "description": "Figma item artwork for Vault Key.",
+    "family": "key",
+    "tags": [
+      "figma-item",
+      "utility",
+      "key"
+    ],
+    "src": "/assets/runtime/figma-item-vault-key.508752a00c57.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:155",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/vault-key.svg",
+      "nodeId": "213:155"
+    }
+  },
+  {
+    "id": "item.dungeon-key.v1",
+    "kind": "item",
+    "label": "Dungeon Key",
+    "description": "Figma item artwork for Dungeon Key.",
+    "family": "key",
+    "tags": [
+      "figma-item",
+      "utility",
+      "key"
+    ],
+    "src": "/assets/runtime/figma-item-dungeon-key.ec9ac93a0910.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:163",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/dungeon-key.svg",
+      "nodeId": "213:163"
+    }
+  },
+  {
+    "id": "item.guild-seal.v1",
+    "kind": "item",
+    "label": "Guild Seal",
+    "description": "Figma item artwork for Guild Seal.",
+    "family": "quest",
+    "tags": [
+      "figma-item",
+      "utility",
+      "quest"
+    ],
+    "src": "/assets/runtime/figma-item-guild-seal.411b12676adc.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:171",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/guild-seal.svg",
+      "nodeId": "213:171"
+    }
+  },
+  {
+    "id": "item.quest-scroll.v2",
+    "kind": "item",
+    "label": "Quest Scroll",
+    "description": "Figma item artwork for Quest Scroll.",
+    "family": "quest",
+    "tags": [
+      "figma-item",
+      "utility",
+      "quest"
+    ],
+    "src": "/assets/runtime/figma-item-quest-scroll.9434549a8c6b.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:178",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/quest-scroll.svg",
+      "nodeId": "213:178"
+    }
+  },
+  {
+    "id": "item.treasure-map.v1",
+    "kind": "item",
+    "label": "Treasure Map",
+    "description": "Figma item artwork for Treasure Map.",
+    "family": "quest",
+    "tags": [
+      "figma-item",
+      "utility",
+      "quest"
+    ],
+    "src": "/assets/runtime/figma-item-treasure-map.87d0ee238887.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:185",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/treasure-map.svg",
+      "nodeId": "213:185"
+    }
+  },
+  {
+    "id": "item.rune-tablet.v1",
+    "kind": "item",
+    "label": "Rune Tablet",
+    "description": "Figma item artwork for Rune Tablet.",
+    "family": "quest",
+    "tags": [
+      "figma-item",
+      "utility",
+      "quest"
+    ],
+    "src": "/assets/runtime/figma-item-rune-tablet.9d74f29d5aad.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:191",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/rune-tablet.svg",
+      "nodeId": "213:191"
+    }
+  },
+  {
+    "id": "item.ancient-relic.v1",
+    "kind": "item",
+    "label": "Ancient Relic",
+    "description": "Figma item artwork for Ancient Relic.",
+    "family": "quest",
+    "tags": [
+      "figma-item",
+      "utility",
+      "quest"
+    ],
+    "src": "/assets/runtime/figma-item-ancient-relic.fe7c4418dbb5.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:197",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/ancient-relic.svg",
+      "nodeId": "213:197"
+    }
+  },
+  {
+    "id": "item.threadbound-emblem.v1",
+    "kind": "item",
+    "label": "Threadbound Emblem",
+    "description": "Figma item artwork for Threadbound Emblem.",
+    "family": "quest",
+    "tags": [
+      "figma-item",
+      "utility",
+      "quest"
+    ],
+    "src": "/assets/runtime/figma-item-threadbound-emblem.480b4767fe22.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:203",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/threadbound-emblem.svg",
+      "nodeId": "213:203"
+    }
+  },
+  {
+    "id": "item.heart-icon.v1",
+    "kind": "item",
+    "label": "Heart Icon",
+    "description": "Figma item artwork for Heart Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-heart-icon.58f1a697cdda.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:210",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/heart-icon.svg",
+      "nodeId": "213:210"
+    }
+  },
+  {
+    "id": "item.mana-drop.v1",
+    "kind": "item",
+    "label": "Mana Drop",
+    "description": "Figma item artwork for Mana Drop.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-mana-drop.feb9fb04aa24.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:215",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/mana-drop.svg",
+      "nodeId": "213:215"
+    }
+  },
+  {
+    "id": "item.attack-icon.v1",
+    "kind": "item",
+    "label": "Attack Icon",
+    "description": "Figma item artwork for Attack Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-attack-icon.fa3fa7de1b7d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:221",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/attack-icon.svg",
+      "nodeId": "213:221"
+    }
+  },
+  {
+    "id": "item.defense-icon.v1",
+    "kind": "item",
+    "label": "Defense Icon",
+    "description": "Figma item artwork for Defense Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-defense-icon.b3ccb1b5556a.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:228",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/defense-icon.svg",
+      "nodeId": "213:228"
+    }
+  },
+  {
+    "id": "item.speed-icon.v1",
+    "kind": "item",
+    "label": "Speed Icon",
+    "description": "Figma item artwork for Speed Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-speed-icon.2932d08782c4.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:234",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/speed-icon.svg",
+      "nodeId": "213:234"
+    }
+  },
+  {
+    "id": "item.critical-icon.v1",
+    "kind": "item",
+    "label": "Critical Icon",
+    "description": "Figma item artwork for Critical Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-critical-icon.b0ae629b91ae.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:240",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/critical-icon.svg",
+      "nodeId": "213:240"
+    }
+  },
+  {
+    "id": "item.poison-icon.v1",
+    "kind": "item",
+    "label": "Poison Icon",
+    "description": "Figma item artwork for Poison Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-poison-icon.e33641cf9b3f.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:245",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/poison-icon.svg",
+      "nodeId": "213:245"
+    }
+  },
+  {
+    "id": "item.burn-icon.v1",
+    "kind": "item",
+    "label": "Burn Icon",
+    "description": "Figma item artwork for Burn Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-burn-icon.35aeb8237592.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:253",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/burn-icon.svg",
+      "nodeId": "213:253"
+    }
+  },
+  {
+    "id": "item.freeze-icon.v1",
+    "kind": "item",
+    "label": "Freeze Icon",
+    "description": "Figma item artwork for Freeze Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-freeze-icon.639d6938b24d.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:259",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/freeze-icon.svg",
+      "nodeId": "213:259"
+    }
+  },
+  {
+    "id": "item.party-link-icon.v1",
+    "kind": "item",
+    "label": "Party Link Icon",
+    "description": "Figma item artwork for Party Link Icon.",
+    "family": "icon",
+    "tags": [
+      "figma-item",
+      "utility",
+      "icon"
+    ],
+    "src": "/assets/runtime/figma-item-party-link-icon.45c2d2290df3.webp",
+    "width": 256,
+    "height": 256,
+    "provenance": {
+      "sourceFigmaFileKey": "xfAbc94dv0LxhxhC9q9BhK",
+      "sourceNodeId": "213:265",
+      "sourceCollection": "figma-item-library-v1",
+      "creator": "Threadbound project",
+      "license": "project-owned-figma-export"
+    },
+    "sourceMaster": {
+      "collection": "figma-item-library-v1",
+      "category": "Utility",
+      "file": "public/assets/generated/figma-item-library/v1/party-link-icon.svg",
+      "nodeId": "213:265"
+    }
+  },
+  {
     "id": "character.road-sellsword.v1",
     "kind": "character",
     "label": "Road Sellsword",

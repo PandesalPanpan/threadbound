@@ -2,11 +2,11 @@
 
 ## Outcome
 
-The five project-owned AI-generated sheets in `public/assets/generated/` remain source masters. The deterministic generator now also imports exactly 100 committed SVG source masters from the Figma `THREADBOUND · CHARACTER LIBRARY` boards XIII–XXIX (reserved slots excluded), then writes 524 lossless WebP catalog entries covering the existing sheets, six battle concepts, and the new 100-art/152-entry character library. Threadbound entities and Arc Manifests reference stable `visualAssetId` values rather than file paths or sheet coordinates.
+The five project-owned AI-generated sheets in `public/assets/generated/` remain source masters for existing catalog IDs. New equipment rewards and starter offers use 240 committed SVG source masters from the Figma `THREADBOUND · ITEM ASSET SOURCES` section, alongside the existing character library. The deterministic generator writes 764 lossless WebP catalog entries across the legacy sheets, Figma battle concepts, the item library, and the character library. Threadbound entities and Arc Manifests reference stable `visualAssetId` values rather than file paths or sheet coordinates.
 
 ## Decisions
 
-1. Keep source sheets, the 100 Figma SVG masters, and generated runtime assets committed.
+1. Keep source sheets, all 340 Figma SVG masters, and generated runtime assets committed.
 2. Use canon-neutral semantic IDs, labels, descriptions, and tags.
 3. Keep `visualAssetId` optional for backward compatibility, but validate it strictly when present; v2 NPC artwork, when supplied, must be a `character` asset.
 4. Require new AI-authored content, through generation guidance, to select exact allowlisted IDs.
@@ -31,20 +31,22 @@ Asset IDs have the form `<kind>.<semantic-name>.v<version>`, for example `mob.sh
 - `item` for item templates
 - `character` for players, allies, and optional v2 NPC artwork
 
-The Figma character library is grouped by authoring family: humanoids (boards XIII–XIX) can author `character` or `mob` aliases; common mobs (XX–XXVII) author `mob`; elite boards (XXVIII–XXIX) author `mob` and `boss`. The stable IDs are derived from the source name, for example `character.road-sellsword.v1`, `mob.marsh-blob.v1`, and `boss.iron-husk.v1`. Catalog records carry family, role, board category, and source-master provenance; compact world context and the Workshop endpoint omit runtime URLs and provenance.
+New equipment defaults use the Figma item library. Its 156 slot-compatible equipment artworks provide semantic item IDs and labels for generated rewards; the remaining assets cover shields, consumables, materials, and utility art. Two Figma names that overlap legacy sheet IDs use version 2, preserving the original version 1 art. Catalog records carry source node IDs and collection provenance; compact world context and the Workshop endpoint omit runtime URLs and provenance.
+
+The Figma character library remains grouped by authoring family: humanoids (boards XIII–XIX) can author `character` or `mob` aliases; common mobs (XX–XXVII) author `mob`; elite boards (XXVIII–XXIX) author `mob` and `boss`. The stable IDs are derived from the source name, for example `character.road-sellsword.v1`, `mob.marsh-blob.v1`, and `boss.iron-husk.v1`. Catalog records carry family, role, board category, and source-master provenance.
 
 ## Regeneration
 
-Run `npm run assets:generate`. The command removes only generator-owned, content-hashed WebP files under `public/assets/runtime/`, recreates sheet crops, renders each Figma source once (aliases reuse that runtime binary), and rewrites `public/visual-asset-catalog.js`. Review changed images and catalog labels before committing.
+Run `npm run assets:generate`. The command removes only generator-owned, content-hashed WebP files under `public/assets/runtime/`, recreates sheet crops, renders the committed Figma battle, item, and character sources, and rewrites `public/visual-asset-catalog.js`. Review changed images and catalog labels before committing.
 
 ## Rollout and compatibility
 
-Older regular SVG atlases remain as compatibility data while UI surfaces transition. Existing manifests without `visualAssetId` remain valid. Canonical entities use explicit presentation mappings; unmapped legacy/generated entities receive a deterministic same-kind fallback.
+Older sheet-backed item IDs remain registered so persisted inventory and legacy content keep resolving to their original artwork. Existing manifests without `visualAssetId` remain valid. Canonical entities use explicit presentation mappings; unmapped legacy/generated entities receive a deterministic same-kind fallback.
 
 ## Verification plan
 
 - Generator determinism: rerunning produces the same catalog and filenames.
-- Catalog integrity: IDs are unique, URLs resolve, and kind lookup rejects mismatches.
+- Catalog integrity: IDs are unique, URLs resolve, Figma item source masters match their provenance, and kind lookup rejects mismatches.
 - Manifest validation: valid same-kind IDs pass; unknown and cross-kind IDs fail.
 - Runtime propagation: published enemy/boss, generated item, and illustrated v2 NPC/Town data retain explicit IDs.
 - HTTP behavior: runtime assets return long-lived immutable cache headers.

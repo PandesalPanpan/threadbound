@@ -3,6 +3,7 @@ import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import { FIGMA_CHARACTER_LIBRARY } from '../src/content/FigmaCharacterLibrary.js';
+import { FIGMA_ITEM_LIBRARY } from '../src/content/FigmaItemLibrary.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SOURCE_DIR = path.join(ROOT, 'public', 'assets', 'generated');
@@ -245,6 +246,44 @@ for (const authored of FIGMA_BATTLE_ASSETS) {
     width: rendered.info.width,
     height: rendered.info.height,
     provenance: { sourceFigmaFileKey: 'xfAbc94dv0LxhxhC9q9BhK', sourceNodeId: authored.nodeId, creator: 'Threadbound project', license: 'project-owned-figma-export' },
+  });
+}
+
+for (const authored of FIGMA_ITEM_LIBRARY) {
+  const source = path.join(SOURCE_DIR, 'figma-item-library', 'v1', authored.sourceFilename);
+  const rendered = await sharp(source)
+    .ensureAlpha()
+    .resize({ width: 256, height: 256, fit: 'inside', kernel: sharp.kernel.nearest })
+    .webp({ lossless: true, effort: 6 })
+    .toBuffer({ resolveWithObject: true });
+  const hash = createHash('sha256').update(rendered.data).digest('hex').slice(0, 12);
+  const runtimeFilename = `figma-item-${slug(authored.sourceName)}.${hash}.webp`;
+  await writeFile(path.join(OUTPUT_DIR, runtimeFilename), rendered.data);
+  const sourcePath = `public/assets/generated/figma-item-library/v1/${authored.sourceFilename}`;
+  assets.push({
+    id: authored.visualAssetId,
+    kind: 'item',
+    label: authored.label,
+    description: `Figma ${authored.section ? `${authored.section} ` : ''}item artwork for ${authored.label}.`,
+    family: authored.family,
+    tags: authored.tags,
+    src: `/assets/runtime/${runtimeFilename}`,
+    width: rendered.info.width,
+    height: rendered.info.height,
+    provenance: {
+      sourceFigmaFileKey: authored.sourceFigmaFileKey,
+      sourceNodeId: authored.sourceNodeId,
+      sourceCollection: authored.sourceCollection,
+      creator: 'Threadbound project',
+      license: 'project-owned-figma-export',
+    },
+    sourceMaster: {
+      collection: authored.sourceCollection,
+      category: authored.category,
+      ...(authored.section ? { section: authored.section } : {}),
+      file: sourcePath,
+      nodeId: authored.sourceNodeId,
+    },
   });
 }
 

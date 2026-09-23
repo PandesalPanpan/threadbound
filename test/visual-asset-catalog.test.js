@@ -7,11 +7,14 @@ import { VISUAL_ASSETS, visualAsset } from '../public/visual-asset-catalog.js';
 import { isModernCharacterAsset, modernCharacterAssets, resolveThreadboundCharacterVisual } from '../public/character-asset-policy.js';
 import { CANONICAL_VISUAL_ASSET_IDS, compactVisualAssetCatalog } from '../src/content/VisualAssetCatalog.js';
 import { FIGMA_CHARACTER_LIBRARY } from '../src/content/FigmaCharacterLibrary.js';
+import { FIGMA_EQUIPMENT_LIBRARY, FIGMA_ITEM_LIBRARY } from '../src/content/FigmaItemLibrary.js';
+import { itemSpriteFrame } from '../public/sprite-catalog.js';
+import { resolveShellAsset } from '../frontend/src/shell/presentation.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('visual asset catalog has unique typed semantic IDs and resolvable hashed files', async () => {
-  assert.equal(VISUAL_ASSETS.length, 524);
+  assert.equal(VISUAL_ASSETS.length, 764);
   assert.equal(new Set(VISUAL_ASSETS.map((asset) => asset.id)).size, VISUAL_ASSETS.length);
   for (const asset of VISUAL_ASSETS) {
     assert.match(asset.id, /^(mob|boss|item|icon|character)\.[a-z0-9-]+\.v\d+$/);
@@ -19,6 +22,35 @@ test('visual asset catalog has unique typed semantic IDs and resolvable hashed f
     assert.ok(['project-owned-ai-generated', 'project-owned-figma-export'].includes(asset.provenance.license));
     await access(path.join(ROOT, 'public', asset.src));
   }
+});
+
+test('Figma item library imports 240 official sources and preserves legacy IDs', async () => {
+  const sourceDirectory = path.join(ROOT, 'public', 'assets', 'generated', 'figma-item-library', 'v1');
+  const sourceFiles = (await readdir(sourceDirectory)).filter((name) => name.endsWith('.svg'));
+  const imported = VISUAL_ASSETS.filter((asset) => asset.provenance?.sourceCollection === 'figma-item-library-v1');
+  assert.equal(FIGMA_ITEM_LIBRARY.length, 240);
+  assert.equal(FIGMA_EQUIPMENT_LIBRARY.length, 156);
+  assert.equal(sourceFiles.length, FIGMA_ITEM_LIBRARY.length);
+  assert.equal(new Set(FIGMA_ITEM_LIBRARY.map((source) => source.sourceNodeId)).size, FIGMA_ITEM_LIBRARY.length);
+  assert.equal(new Set(FIGMA_ITEM_LIBRARY.map((source) => source.sourceFilename)).size, FIGMA_ITEM_LIBRARY.length);
+  assert.equal(imported.length, FIGMA_ITEM_LIBRARY.length);
+  for (const source of FIGMA_ITEM_LIBRARY) {
+    assert.ok(sourceFiles.includes(source.sourceFilename), source.sourceFilename);
+    const svg = await readFile(path.join(sourceDirectory, source.sourceFilename), 'utf8');
+    assert.match(svg, /<svg[^>]*viewBox=/);
+    assert.doesNotMatch(svg, /<image\b|<foreignObject\b/);
+    const asset = visualAsset(source.visualAssetId, 'item');
+    assert.equal(asset?.label, source.label);
+    assert.equal(asset?.provenance?.sourceNodeId, source.sourceNodeId);
+    assert.equal(asset?.provenance?.sourceFigmaFileKey, 'xfAbc94dv0LxhxhC9q9BhK');
+    assert.equal(asset?.sourceMaster?.file, `public/assets/generated/figma-item-library/v1/${source.sourceFilename}`);
+  }
+
+  assert.equal(visualAsset('item.wood-sword.v1')?.provenance?.license, 'project-owned-ai-generated');
+  assert.equal(visualAsset('item.gold-coin.v1')?.provenance?.license, 'project-owned-ai-generated');
+  assert.equal(visualAsset('item.gold-coin.v2')?.provenance?.sourceCollection, 'figma-item-library-v1');
+  assert.equal(visualAsset('item.quest-scroll.v1')?.provenance?.license, 'project-owned-ai-generated');
+  assert.equal(visualAsset('item.quest-scroll.v2')?.provenance?.sourceCollection, 'figma-item-library-v1');
 });
 
 test('Figma character library imports exactly 100 source masters with deterministic semantic aliases', async () => {
@@ -52,6 +84,19 @@ test('catalog lookup enforces kind and canonical mappings resolve', () => {
   for (const [entityId, assetId] of Object.entries(CANONICAL_VISUAL_ASSET_IDS)) {
     assert.ok(visualAsset(assetId), `${entityId} mapping must resolve`);
   }
+});
+
+test('legacy Needle and dagger item names resolve to an official semantic item asset', () => {
+  const inferred = itemSpriteFrame({ id: 'legacy-needle', name: 'Old Needle' });
+  assert.equal(inferred.type, 'visual-asset');
+  assert.equal(inferred.visualAssetId, 'item.violet-needle.v1');
+  assert.equal(itemSpriteFrame({ visualAssetId: 'item.iron-sword.v1', name: 'Iron Sword' }).visualAssetId, 'item.ashbite-sword.v1');
+  assert.equal(itemSpriteFrame({ visualAssetId: 'item.steel-sword.v1', name: 'Steel Sword' }).visualAssetId, 'item.threadsteel-longsword.v1');
+  assert.equal(itemSpriteFrame({ visualAssetId: 'item.iron-dagger.v1', name: 'Iron Dagger' }).visualAssetId, 'item.bonewhite-dagger.v1');
+  assert.equal(itemSpriteFrame({ visualAssetId: 'item.bronze-wardblade.v1', name: 'Bronze Sword' }).visualAssetId, 'item.bronze-wardblade.v1');
+  assert.equal(itemSpriteFrame({ title: 'A Lost Needle', name: 'Old Needle' }).visualAssetId, 'item.violet-needle.v1');
+  assert.equal(resolveShellAsset({ visualAssetId: 'item.iron-sword.v1' }, VISUAL_ASSETS, ['item'])?.id, 'item.ashbite-sword.v1');
+  assert.equal(resolveShellAsset({ title: 'Old Needle' }, VISUAL_ASSETS, ['item'])?.id, 'item.violet-needle.v1');
 });
 
 test('current living-character policy excludes first-generation Figma art and resolves legacy identities into the library', () => {
