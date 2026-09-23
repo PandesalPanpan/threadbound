@@ -1,5 +1,19 @@
 import { test, expect } from '@playwright/test';
 
+async function expectRecentReceiptVisible(page) {
+  const log = page.getByTestId('adventure-stream-log');
+  const latest = log.locator('.stream-entry').last();
+  await expect(latest).toBeVisible();
+  await expect.poll(async () => latest.evaluate((entry) => {
+    const container = entry.closest('[data-testid="adventure-stream-log"]');
+    const entryRect = entry.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return entryRect.top >= containerRect.top
+      && entryRect.bottom <= containerRect.bottom
+      && container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+  })).toBe(true);
+}
+
 test('React Adventure Stream exposes authoritative command cards on mobile and desktop', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -39,6 +53,10 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await composer.press('Enter');
   await expect(page.getByTestId('stream-command-card')).toHaveAttribute('data-rich-card-kind', 'party');
   await page.getByRole('button', { name: 'Create Party' }).click();
+  await expect(page.getByTestId('stream-command-card')).toHaveCount(0);
+  await expectRecentReceiptVisible(page);
+  await composer.fill('party');
+  await composer.press('Enter');
   await expect(page.getByRole('button', { name: 'Leave Party' })).toBeVisible();
 
   await composer.fill('area');
@@ -70,6 +88,10 @@ test('React Adventure Stream exposes authoritative command cards on mobile and d
   await composer.fill('party');
   await composer.press('Enter');
   await page.getByRole('button', { name: 'Leave Party' }).click();
+  await expect(page.getByTestId('stream-command-card')).toHaveCount(0);
+  await expectRecentReceiptVisible(page);
+  await composer.fill('party');
+  await composer.press('Enter');
   await expect(page.getByTestId('stream-command-card').getByText('Solo thread')).toBeVisible();
   await composer.fill('hunt');
   await composer.press('Enter');

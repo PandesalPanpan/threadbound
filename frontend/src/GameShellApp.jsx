@@ -249,6 +249,13 @@ export function GameShellApp() {
     }
   }, [applyPayload, mergeEntry, refresh, refreshWorld]);
 
+  const requestFromView = useCallback(async (command, path, options = {}) => {
+    const payload = await request(command, path, options);
+    const mutatingRequest = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(options.method || 'GET').toUpperCase());
+    if (payload !== null && mutatingRequest) setPanel(null);
+    return payload;
+  }, [request]);
+
   const openResource = useCallback(async (kind, command, loader, setter) => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -466,7 +473,7 @@ export function GameShellApp() {
       : terminalReplay?.replay?.areaUnlocks?.find((unlock) => String(unlock.playerId) === String(viewerId)) || null)
     : null;
   const presentedAreas = areaProjectionBeforeReplay(areas, replayUnlock?.areaNumber);
-  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas: presentedAreas, quests, shop, onRequest: request, onCommand: handleCommand, onClose: () => setPanel(null), dungeonChooserDisabled: terminalReplayPending, busy });
+  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas: presentedAreas, quests, shop, onRequest: requestFromView, onCommand: handleCommand, onClose: () => setPanel(null), dungeonChooserDisabled: terminalReplayPending, busy });
   return (
     <div className="game-shell">
       <GameTopBar dashboard={dashboard} areas={presentedAreas} connected={connected} onOpen={handleCommand} />

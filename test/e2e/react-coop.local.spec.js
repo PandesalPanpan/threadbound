@@ -35,7 +35,10 @@ test('React co-op party updates the other Adventure Stream through realtime stat
     await command(pageA, 'party');
     const partyA = pageA.getByTestId('stream-command-card');
     await partyA.getByRole('button', { name: 'Create Party' }).click();
-    await expect(partyA.getByRole('button', { name: 'Leave Party' })).toBeVisible();
+    await expect(partyA).toHaveCount(0);
+    await command(pageA, 'party');
+    const activePartyA = pageA.getByTestId('stream-command-card');
+    await expect(activePartyA.getByRole('button', { name: 'Leave Party' })).toBeVisible();
     const created = await dashboard(contextA);
     expect(created.party?.joinCode).toBeTruthy();
 
@@ -43,17 +46,20 @@ test('React co-op party updates the other Adventure Stream through realtime stat
     const partyB = pageB.getByTestId('stream-command-card');
     await partyB.getByTestId('party-join-code').fill(created.party.joinCode);
     await partyB.getByRole('button', { name: 'Join' }).click();
-    await expect(partyB.getByRole('button', { name: 'Leave Party' })).toBeVisible();
+    await expect(partyB).toHaveCount(0);
+    await command(pageB, 'party');
+    const activePartyB = pageB.getByTestId('stream-command-card');
+    await expect(activePartyB.getByRole('button', { name: 'Leave Party' })).toBeVisible();
 
     await expect.poll(async () => {
       const state = await dashboard(contextA);
       return state.party?.members?.some((member) => member.playerId === bPlayerId) || false;
     }, { timeout: 7000 }).toBe(true);
-    const memberB = partyA.getByTestId(`party-member-${bPlayerId}`);
+    const memberB = activePartyA.getByTestId(`party-member-${bPlayerId}`);
     await expect.poll(async () => memberB.count(), { timeout: 7000 }).toBe(1);
     await expect(memberB).toContainText('Local Weaver B');
 
-    await partyB.getByRole('button', { name: 'Ready Up' }).click();
+    await activePartyB.getByRole('button', { name: 'Ready Up' }).click();
     await expect.poll(async () => {
       const state = await dashboard(contextA);
       return state.party?.members?.find((member) => member.playerId === bPlayerId)?.ready || false;

@@ -48,9 +48,12 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   await expect(card.getByTestId('shell-simulated-profile')).toBeVisible();
   await expect(card.getByTestId('shell-profile-name')).toContainText('Rook');
 
+  const duelResponse = page.waitForResponse((response) => response.url().endsWith('/api/duels/guild-rook') && response.request().method() === 'POST');
   await rival.getByRole('button', { name: /Duel/ }).click();
+  expect((await duelResponse).ok()).toBe(true);
   const duelCard = page.getByTestId('stream-duel-rich-card').last();
   await expect(duelCard).toBeVisible();
+  await expect(card).toHaveCount(0);
   const replay = duelCard.getByTestId('shared-battle-surface');
   const renderedDuelId = await replay.getAttribute('data-replay-battle-id');
   const duelEntries = (await (await page.context().request.get('/api/stream')).json()).entries;

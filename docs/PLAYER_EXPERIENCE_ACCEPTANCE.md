@@ -139,6 +139,23 @@ For every substantial player-facing change:
 
 Use this run sheet to collect human evidence for the five Phase K gates in `THREADBOUND_MASTER_PLAN.md`. Allow about 2½ hours, plus setup. Automated Playwright runs prepare the build but do not count as human sign-off.
 
+### What Playwright can and cannot review
+
+Playwright can repeat objective checks: whether a successful Area Travel or Town Talk closes `YOUR VIEW`, whether the resulting receipt is visible at the bottom of the Adventure Stream without manual scrolling, and whether the same actions work at a mobile viewport. The React-local suite already covers those Area and NPC interactions. Run it with `npm run test:e2e:react-local` after installing Chromium with `npx playwright install chromium` if needed.
+
+Those results do not count as either human review. Two people still need to judge whether the first hour makes sense without coaching, whether Hunt receipts and play remain satisfying, whether chat cards feel easier to use than separate pages, whether co-op choices feel meaningful, and whether mobile and desktop feel coherent. Record their observations separately; do not infer those judgments from scripted clicks.
+
+### Host quick start
+
+1. Pick a local-only database filename that does not already exist, so the session starts with fresh characters and does not disturb another local save. Set `THREADBOUND_DB_PATH` to that file in `.env` along with `PORT=3001`, a long random `SESSION_SECRET`, and `THREADBOUND_AUTH_MODE=local`. Follow the local setup in `README.md`; do not use production accounts or a Threaded wallet.
+2. Start the app with `npm start`, then open `http://127.0.0.1:3001` in two separate browser sessions. Use a normal window and a private window (or two browsers), and have each reviewer choose a different Local Weaver profile. Join both to the same party for the co-op section.
+3. Set one session to **390×844** and the other to **1440×960**. A real phone is fine for the mobile session. Swap sizes during the review so each person tries both layouts.
+4. Give each reviewer their own blank worksheet from this guide. Ask them to keep answers independent until the debrief; one person's explanation must not teach the other.
+5. Read the opening script, let them play without a task list for the first hour, and only then read the progression task card below. Do not explain controls or commands. Record any hint or workaround as help.
+6. After the session, compare both worksheets with the gate criteria. Keep any **No** or **Mixed** result open, capture the concrete friction, fix it, and repeat the affected task with human reviewers before proposing Phase K as green.
+
+For the reported Area-card obstruction, specifically ask each reviewer to open `/area` and use **Talk** on a Town NPC. If they have an unlocked later Area, also ask them to use **Travel**. After each successful action, the `YOUR VIEW` card should close and the new Town or Area receipt should be visible at the bottom of the Adventure Stream without scrolling up or down to find it. Reopening `/area` should bring the card back when they want it. Note any failure to dismiss, stale card, or hidden receipt as a concrete PV2-K03 issue; Playwright coverage checks the repeatable behavior, while the reviewers judge whether the result is obvious and keeps the flow comfortable.
+
 ### People and materials
 
 - **Host:** prepares the test environment, reads the task cards, and takes observation notes. The host does not explain game controls or strategy during play.
@@ -163,7 +180,7 @@ At the start, say:
 | --- | --- | --- |
 | 0–10 min | Welcome and setup | Confirm both sessions are separate players in the same party. Set the two viewport sizes. Ask each reviewer about RPG and chat-game familiarity. Do not tour the interface. |
 | 10–70 min | Unprompted first hour | Let them play together from the fresh starting state. Do not provide a task list or hint. At natural pauses, ask only “What are you trying to do next?” and “What did you expect to happen?” Record who acted, who helped, dead ends, pauses, and the exact words used. |
-| 70–115 min | Connected progression tasks | Before showing the task card, have each reviewer privately write their current goal and next step. Keep those answers separate. Then read the card below. Give goals only; do not name buttons, commands, or where to find them. Let both reviewers take actions. Record each step they finish, any hint or workaround, and which viewport they used. |
+| 70–115 min | Connected progression tasks | Before showing the task card, have each reviewer privately write their current goal and next step. Keep those answers separate. Then read the card below. Give goals only; do not name buttons, commands, or where to find them. Let both reviewers take actions. Record each step they finish, any hint or workaround, and which viewport they used. After Area Travel or Town Talk, note whether the `YOUR VIEW` card closes and the new receipt is visible without manual scrolling. |
 | 115–130 min | Viewport swap | Swap the 390×844 and 1440×960 layouts. Have each person repeat one Inventory action and one active game action. Note discovery, clipping, text density, and any layout difference that changes meaning. |
 | 130–150 min | Separate debrief and notes | Ask each reviewer the questions below one at a time. They complete their worksheets independently before comparing answers. |
 
@@ -214,7 +231,7 @@ Complete one copy per person before comparing notes. Use **Yes**, **Mixed**, or 
 | --- | --- |
 | **PV2-K01** | Both reviewers can describe their goal and choose a useful next step after free play without developer docs or a host hint. Record partner help separately so it is clear whether the game, the partner, or both supplied the missing context. |
 | **PV2-K02** | Both can scan a Hunt receipt and identify the outcome, HP change, rewards/progression, and a sensible next action. Record whether they wanted to continue Hunts and why. |
-| **PV2-K03** | Both complete the observed Inventory, Shop, Quest, Area, and NPC tasks in context and can find the next action without expressing a need to leave chat. Note any exception by task. |
+| **PV2-K03** | Both complete the observed Inventory, Shop, Quest, Area, and NPC tasks in context and can find the next action without expressing a need to leave chat. After Area Travel or Town Talk, the `YOUR VIEW` card closes and the new receipt is visible without manual scrolling. Note any exception by task. |
 | **PV2-K04** | Both can explain the shared Heal opportunity and Continue choice in their own words, understand the Dungeon risk, and describe a meaningful contribution they made. |
 | **PV2-K05** | Both use both viewport sizes and can find the same important state/actions without clipping, unreadable density, or layout changes that alter their understanding. |
 

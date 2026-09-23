@@ -187,3 +187,38 @@ test('Area 4 Hunt resolves an authored enemy and generates rare gear from the Ar
     && option.materialFamily === result.item.materialFamily));
   repository.close();
 });
+
+test('Area 2 Hunt persists an Area-scoped Uncommon Figma item from its improved reward band', () => {
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'hunt-area-two-player' });
+  const player = repository.getOrCreatePlayer({ threadedUserId: 'hunt-area-two', displayName: 'Orchard Hunter' });
+  repository.db.prepare('UPDATE players SET base_attack = 1000 WHERE id = ?').run(player.id);
+  const areaRepository = new SQLiteAreaRepository({ database: repository.db });
+  areaRepository.save(player.id, new AreaProgression({ currentAreaNumber: 2, highestUnlockedAreaNumber: 2 }));
+  const events = [];
+  const service = new HuntService({
+    repository,
+    eventBus: { publish: (event) => events.push(event) },
+    huntCooldownSeconds: 0,
+    rng: () => 0.1,
+    itemGenerator: new ItemGenerator({ rng: () => 0.5, idFactory: () => 'area-two-generated-item' }),
+  });
+
+  const result = service.hunt(player.id);
+  const receipt = events.find((event) => event.type === 'HuntResolved');
+  const persistedItem = repository.getItem('area-two-generated-item');
+  const profile = itemRewardProfileForArea(2);
+
+  assert.equal(result.enemy.id, 'emberwing-hornet');
+  assert.ok(result.victory);
+  assert.equal(result.item?.id, persistedItem.id);
+  assert.equal(persistedItem.rarity, 'uncommon');
+  assert.equal(persistedItem.areaNumber, 2);
+  assert.ok(profile.equipmentOptionsByRarity.uncommon[persistedItem.slot].some((option) => (
+    option.visualAssetId === persistedItem.visualAssetId
+      && option.materialFamily === persistedItem.materialFamily
+  )));
+  assert.equal(receipt.itemId, persistedItem.id);
+  assert.equal(receipt.itemRarity, 'uncommon');
+  assert.equal(receipt.itemVisualAssetId, persistedItem.visualAssetId);
+  repository.close();
+});

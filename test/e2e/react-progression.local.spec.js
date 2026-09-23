@@ -29,6 +29,20 @@ async function command(page, value) {
   await page.getByTestId('stream-send').click();
 }
 
+async function expectRecentReceiptVisible(page) {
+  const log = page.getByTestId('adventure-stream-log');
+  const latest = log.locator('.stream-entry').last();
+  await expect(latest).toBeVisible();
+  await expect.poll(async () => latest.evaluate((entry) => {
+    const container = entry.closest('[data-testid="adventure-stream-log"]');
+    const entryRect = entry.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const visible = entryRect.top >= containerRect.top && entryRect.bottom <= containerRect.bottom;
+    const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+    return visible && nearBottom;
+  })).toBe(true);
+}
+
 async function pinReplayClock(page, timestamp) {
   await page.evaluate((value) => {
     window.__threadboundNativeDateNow ||= Date.now.bind(Date);
@@ -83,15 +97,25 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     expect(welcomeDefinition).toBeTruthy();
     const welcomeQuest = questCard.locator('[data-testid="quest-row"][data-quest-id="welcome-to-bellbloom"]');
     await welcomeQuest.getByTestId('quest-accept-welcome-to-bellbloom').click();
-    await expect(welcomeQuest).toContainText('active');
+    await expect(questCard).toHaveCount(0);
+    await expectRecentReceiptVisible(leader);
+    await command(leader, 'quest');
+    questCard = leader.getByTestId('quest-rich-card');
+    await expect(questCard.locator('[data-testid="quest-row"][data-quest-id="welcome-to-bellbloom"]')).toContainText('active');
     await command(leader, 'area');
     const areaBeforeChallenge = leader.getByTestId('area-rich-card');
     await areaBeforeChallenge.locator('[data-npc-id="mae-bramble"]').getByRole('button', { name: 'Talk' }).first().click();
     await expect(leader.getByTestId('stream-npc-rich-card').last()).toContainText('Your road report is still open.');
+    await expect(areaBeforeChallenge).toHaveCount(0);
+    await expectRecentReceiptVisible(leader);
+    mkdirSync(REVIEW_DIR, { recursive: true });
+    await leader.screenshot({ path: `${REVIEW_DIR}/react-area-interaction-receipt-mobile.png` });
     await command(leader, 'quest');
     questCard = leader.getByTestId('quest-rich-card');
     await questCard.getByTestId('quest-claim-welcome-to-bellbloom').click();
     await expect(leader.getByTestId('stream-quest-reward').last()).toContainText('Welcome to Bellbloom');
+    await expect(questCard).toHaveCount(0);
+    await expectRecentReceiptVisible(leader);
     await command(leader, 'quest');
     questCard = leader.getByTestId('quest-rich-card');
     const replacementOffers = questCard.locator('[data-testid="quest-row"][data-quest-id]:has(.quest-state--available)');
@@ -337,17 +361,49 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     const unlockedArea = areaCard.locator('.shell-area-row').filter({ hasText: 'Emberglass Orchard' });
     await expect(unlockedArea.getByRole('button', { name: 'Travel' })).toBeEnabled();
     await unlockedArea.getByRole('button', { name: 'Travel' }).click();
+    await expect(areaCard).toHaveCount(0);
+    await expectRecentReceiptVisible(leader);
+    await command(leader, 'area');
     await expect(areaCard).toContainText('CURRENT');
     await expect(areaCard).toContainText('Emberglass Orchard');
     const leaderAreaResponse = await leaderContext.request.get('/api/areas');
     const partnerAreaResponse = await partnerContext.request.get('/api/areas');
-    expect((await leaderAreaResponse.json()).area.highestUnlockedAreaNumber).toBe(2);
-    expect((await partnerAreaResponse.json()).area.highestUnlockedAreaNumber).toBe(2);
+    expect(leaderAreaResponse.ok()).toBe(true);
+    expect(partnerAreaResponse.ok()).toBe(true);
+    const leaderArea = (await leaderAreaResponse.json()).area;
+    const partnerArea = (await partnerAreaResponse.json()).area;
+    expect(leaderArea.highestUnlockedAreaNumber).toBe(2);
+    expect(partnerArea.highestUnlockedAreaNumber).toBe(2);
+    expect(leaderArea.currentArea).toMatchObject({ id: 'area-2', number: 2, name: 'Emberglass Orchard' });
+    const orchardTown = leaderArea.towns.find((town) => town.id === 'area-2-town');
+    expect(orchardTown).toMatchObject({
+      id: 'area-2-town',
+      name: 'Emberglass Waystation',
+      areaNumber: 2,
+      services: expect.arrayContaining(['shop', 'upgrade', 'heal', 'quest']),
+    });
+    expect(orchardTown.npcs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'area-2-shopkeeper', name: 'Tavi Emberglass', service: 'shop' }),
+      expect.objectContaining({ id: 'area-2-guide', name: 'Orin Copperspoon', service: 'quest' }),
+    ]));
 
     await command(leader, 'quest');
     questCard = leader.getByTestId('quest-rich-card');
     await expect(questCard).toContainText('Emberglass Orchard');
     await expect(questCard).toContainText('Warm crystal fruit keeps the orchard bright after sunset.');
+    const areaTwoQuestBoardResponse = await leaderContext.request.get('/api/quests');
+    expect(areaTwoQuestBoardResponse.ok()).toBe(true);
+    const areaTwoQuestBoard = await areaTwoQuestBoardResponse.json();
+    expect(areaTwoQuestBoard.currentArea).toMatchObject({ id: 'area-2', number: 2, name: 'Emberglass Orchard' });
+    expect(areaTwoQuestBoard.quests.length).toBeGreaterThan(0);
+    expect(areaTwoQuestBoard.quests.every((quest) => quest.areaNumber === 2 && quest.townId === 'area-2-town')).toBe(true);
+    expect(areaTwoQuestBoard.quests).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        templateId: 'orchard-patrol',
+        areaNumber: 2,
+        townId: 'area-2-town',
+      }),
+    ]));
     mkdirSync(REVIEW_DIR, { recursive: true });
     await questCard.screenshot({ path: `${REVIEW_DIR}/react-progression-area-2-mobile.png` });
 
@@ -355,8 +411,34 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     const orchardTownCard = leader.getByTestId('area-rich-card').last();
     const orchardGuide = orchardTownCard.locator('[data-npc-id="area-2-guide"]');
     await expect(orchardGuide).toBeVisible();
+    const orchardTalkResponsePromise = leader.waitForResponse((response) => response.url().endsWith('/api/towns/area-2-town/npcs/area-2-guide/interact')
+      && response.request().method() === 'POST');
     await orchardGuide.getByRole('button', { name: 'Talk' }).click();
+    const orchardTalkResponse = await orchardTalkResponsePromise;
+    expect(orchardTalkResponse.ok()).toBe(true);
+    expect((await orchardTalkResponse.json()).interaction).toMatchObject({
+      townId: 'area-2-town',
+      townName: 'Emberglass Waystation',
+      areaNumber: 2,
+      npcId: 'area-2-guide',
+      npcName: 'Orin Copperspoon',
+    });
     await expect(leader.getByTestId('stream-npc-rich-card').last()).toContainText(/festival road|orchard path/);
+    const areaTwoInteractionStreamResponse = await leaderContext.request.get('/api/stream?limit=20');
+    expect(areaTwoInteractionStreamResponse.ok()).toBe(true);
+    const areaTwoInteractionStream = await areaTwoInteractionStreamResponse.json();
+    const orchardInteraction = areaTwoInteractionStream.entries.find((entry) => entry.eventType === 'NpcInteracted'
+      && entry.metadata?.townId === 'area-2-town'
+      && entry.metadata?.npcId === 'area-2-guide');
+    expect(orchardInteraction?.metadata).toMatchObject({
+      townId: 'area-2-town',
+      townName: 'Emberglass Waystation',
+      areaNumber: 2,
+      npcId: 'area-2-guide',
+      npcName: 'Orin Copperspoon',
+    });
+    await expect(orchardTownCard).toHaveCount(0);
+    await expectRecentReceiptVisible(leader);
 
     const leaderBeforeAreaTwoHunt = await dashboard(leaderContext);
     if (leaderBeforeAreaTwoHunt.character.currentHealth <= 0) {
@@ -432,7 +514,11 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     const returnTravel = leader.waitForResponse((response) => response.url().endsWith('/api/areas/1/travel') && response.request().method() === 'POST');
     await areaOneRow.getByRole('button', { name: 'Travel' }).click();
     expect((await returnTravel).ok()).toBe(true);
-    await expect(areaOneRow).toContainText('CURRENT');
+    await expect(leader.getByTestId('area-rich-card')).toHaveCount(0);
+    await expectRecentReceiptVisible(leader);
+    await command(leader, 'area');
+    const returnedAreaOneRow = leader.getByTestId('area-rich-card').locator('.shell-area-row[data-area-number="1"]');
+    await expect(returnedAreaOneRow).toContainText('CURRENT');
     await command(leader, 'leaderboard');
     const guildCard = leader.getByTestId('leaderboard-rich-card');
     const rival = guildCard.locator('[data-testid^="leaderboard-row-"]').filter({ hasText: 'Rook' }).first();

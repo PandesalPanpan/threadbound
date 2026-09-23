@@ -354,6 +354,7 @@ function SharedEntryCard({ entry, viewerId, assets, areas, onRequest, onCommand,
 export function AdventureStream({ entries = [], ephemeralCard = null, onLoadMore = null, hasMore = false, connected = false, viewerId = null, assets = [], areas = null, onRequest = () => {}, onCommand = () => {}, onDungeonReplayComplete = null, busy = false, dashboard = null }) {
   const logRef = useRef(null);
   const nearBottomRef = useRef(true);
+  const hadEphemeralCardRef = useRef(Boolean(ephemeralCard));
   const latestBlackjack = useMemo(() => {
     const latest = new Map();
     for (const entry of entries) {
@@ -374,7 +375,9 @@ export function AdventureStream({ entries = [], ephemeralCard = null, onLoadMore
 
   useEffect(() => {
     const element = logRef.current;
-    if (!element || !nearBottomRef.current) return;
+    const dismissedEphemeralCard = hadEphemeralCardRef.current && !ephemeralCard;
+    hadEphemeralCardRef.current = Boolean(ephemeralCard);
+    if (!element || (!nearBottomRef.current && !dismissedEphemeralCard)) return;
     element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
   }, [entries.length, ephemeralCard]);
 
