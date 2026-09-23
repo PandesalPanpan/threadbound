@@ -11,7 +11,7 @@ async function login(page) {
   await expect(page.getByTestId('app-status')).toHaveText('Ready');
 }
 
-test('mobile play stays chat-first and Gear stays a clean secondary surface', async ({ page }) => {
+test('mobile play stays chat-first and Inventory stays a clean secondary surface', async ({ page }) => {
   await login(page);
 
   // The approved mobile direction keeps the Adventure Stream dominant: only the
@@ -28,12 +28,11 @@ test('mobile play stays chat-first and Gear stays a clean secondary surface', as
   await expect(page.getByText(/PRIVATE THREAD REPLY/i)).toHaveCount(0);
   await expect(page.getByTestId('stream-message')).toHaveAttribute('placeholder', 'Message party or type hunt…');
 
-  // Gear remains one tap away rather than competing with the chat. Inventory art
-  // is presentation-only and must come from the generated equipment atlas rather
-  // than the old generic relic fallback whenever an item is present.
+  // Inventory remains one tap away rather than competing with the chat. Item art uses
+  // semantic Visual Asset Catalog IDs whenever an item is present.
   const bottomNav = page.getByTestId('mobile-game-nav');
   await expect(bottomNav).toBeVisible();
-  await bottomNav.getByText('Gear', { exact: true }).click();
+  await bottomNav.getByText('Inventory', { exact: true }).click();
   await expect(page.locator('body')).toHaveAttribute('data-game-view', 'gear');
   await expect(page.locator('#inventory')).toBeVisible();
 
@@ -43,7 +42,8 @@ test('mobile play stays chat-first and Gear stays a clean secondary surface', as
     await expect(firstItem).toBeVisible();
     const sprite = firstItem.getByTestId('generated-inventory-item-sprite');
     await expect(sprite).toBeVisible();
-    await expect(sprite).toHaveAttribute('data-sprite-atlas', 'equipment-v1');
+    await expect(sprite).toHaveAttribute('data-visual-asset-id', /^item\./);
+    await expect(sprite).not.toHaveAttribute('data-sprite-atlas', /.+/);
     await expect(firstItem.locator('img[src="/sprites/relic.svg"]')).toHaveCount(0);
   }
 

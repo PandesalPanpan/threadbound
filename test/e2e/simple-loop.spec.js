@@ -1,32 +1,15 @@
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 const REVIEW_DIR = 'ux-review';
 
-function preserveSpriteAtlases() {
-  mkdirSync(REVIEW_DIR, { recursive: true });
-  for (const name of [
-    'threadbound-male-characters-v1.svg',
-    'threadbound-female-characters-v1.svg',
-    'threadbound-enemies-v1.svg',
-  ]) copyFileSync(`public/assets/generated/${name}`, `${REVIEW_DIR}/${name}`);
-}
-
-async function expectVisibleAtlasFrame(sprite) {
+async function expectVisibleSprite(sprite) {
   const metrics = await sprite.evaluate(async (element) => {
-    const atlasLayouts = {
-      'male-weavers-v1': { columns: 8, rows: 1 },
-      'female-weavers-v1': { columns: 8, rows: 1 },
-      'enemies-v1': { columns: 8, rows: 2 },
-    };
-    const atlasId = element.dataset.spriteAtlas;
     const visualAssetId = element.dataset.visualAssetId;
-    const layout = atlasLayouts[atlasId];
-    const frameIndex = Number(element.dataset.spriteFrame);
     const style = getComputedStyle(element);
     const imageMatch = style.backgroundImage.match(/^url\(["']?(.*?)["']?\)$/);
     const rect = element.getBoundingClientRect();
-    if (!imageMatch || (!visualAssetId && (!layout || !Number.isInteger(frameIndex)))) {
+    if (!imageMatch || !visualAssetId) {
       return { visible: false, uniqueColors: 0, channelRange: 0, width: rect.width, height: rect.height };
     }
 
@@ -36,32 +19,14 @@ async function expectVisibleAtlasFrame(sprite) {
     const image = await new Promise((resolve, reject) => {
       const candidate = new Image();
       candidate.onload = () => resolve(candidate);
-      candidate.onerror = () => reject(new Error(`Could not decode sprite asset ${visualAssetId || atlasId}`));
+      candidate.onerror = () => reject(new Error(`Could not decode sprite asset ${visualAssetId}`));
       candidate.src = objectUrl;
     });
     const canvas = document.createElement('canvas');
     canvas.width = 48;
     canvas.height = 48;
     const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (visualAssetId) {
-      context.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0, canvas.width, canvas.height);
-    } else {
-      const frameWidth = image.naturalWidth / layout.columns;
-      const frameHeight = image.naturalHeight / layout.rows;
-      const column = frameIndex % layout.columns;
-      const row = Math.floor(frameIndex / layout.columns);
-      context.drawImage(
-        image,
-        column * frameWidth,
-        row * frameHeight,
-        frameWidth,
-        frameHeight,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
-    }
+    context.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0, canvas.width, canvas.height);
     URL.revokeObjectURL(objectUrl);
 
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -120,7 +85,6 @@ async function screenshot(page, name) {
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
 test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only dungeon chat', async ({ page, context }) => {
-  preserveSpriteAtlases();
   await login(page);
 
   const hunt = page.locator('.simple-loop-action[data-testid="stream-hunt"]');
@@ -160,7 +124,7 @@ test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only d
   const huntSprite = huntReceipt.getByTestId('stream-hunt-sprite');
   await expect(huntSprite).toBeVisible({ timeout: 5000 });
   await expect(huntSprite).toHaveAttribute('data-visual-asset-id', /^mob\./);
-  await expectVisibleAtlasFrame(huntSprite);
+  await expectVisibleSprite(huntSprite);
   const afterHunt = await dashboard(context);
   expect(afterHunt.character.gold).toBeGreaterThan(0);
   expect(afterHunt.character.experience).toBeGreaterThan(0);
@@ -206,10 +170,10 @@ test('new player loop is a Figma-minimal Hunt -> equipment -> hard attack-only d
   const generatedEnemy = page.getByTestId('stream-generated-enemy-sprite').last();
   await expect(generatedWeaver).toBeVisible({ timeout: 5000 });
   await expect(generatedWeaver).toHaveAttribute('data-visual-asset-id', /^character\./);
-  await expectVisibleAtlasFrame(generatedWeaver);
+  await expectVisibleSprite(generatedWeaver);
   await expect(generatedEnemy).toBeVisible();
   await expect(generatedEnemy).toHaveAttribute('data-visual-asset-id', /^(mob|boss)\./);
-  await expectVisibleAtlasFrame(generatedEnemy);
+  await expectVisibleSprite(generatedEnemy);
 
   await page.getByTestId('stream-message').fill('/guard');
   await page.getByTestId('stream-send').click();

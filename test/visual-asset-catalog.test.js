@@ -111,7 +111,9 @@ test('legacy item aliases retain their object family across React and sprite ren
   ];
   for (const [legacyId, expectedId] of cases) {
     const entity = { visualAssetId: legacyId, id: legacyId };
-    assert.equal(itemSpriteFrame(entity).visualAssetId, expectedId, `sprite resolver: ${legacyId}`);
+    const frame = itemSpriteFrame(entity);
+    assert.equal(frame.type, 'visual-asset', `sprite resolver must use the semantic catalog: ${legacyId}`);
+    assert.equal(frame.visualAssetId, expectedId, `sprite resolver: ${legacyId}`);
     assert.equal(resolveShellAsset(entity, VISUAL_ASSETS, ['item'])?.id, expectedId, `React resolver: ${legacyId}`);
     assert.equal(visualAsset(expectedId, 'item')?.provenance?.sourceCollection, 'figma-item-library-v1');
   }

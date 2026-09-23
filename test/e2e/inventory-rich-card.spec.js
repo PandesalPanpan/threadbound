@@ -80,8 +80,9 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
   await expect(item).toHaveCount(1);
   await expect(item).toContainText('Weapon · COMMON');
   await expect(item).toContainText('+1 Attack');
-  const sprite = item.locator('[data-sprite-atlas="equipment-v1"], [data-visual-asset-id]').first();
+  const sprite = item.locator('[data-visual-asset-id]').first();
   await expect(sprite).toBeVisible();
+  await expect(sprite).toHaveAttribute('data-visual-asset-id', /^item\./);
 
   const equip = card.getByTestId(`inventory-rich-equip-${keeper.item.id}`);
   const upgrade = card.getByTestId(`inventory-rich-upgrade-${keeper.item.id}`);

@@ -6,8 +6,8 @@ const stream = document.querySelector('#stream');
 if (stream) {
   const style = document.createElement('style');
   style.textContent = `
-    /* Generated art stays presentation-only. Atlas frames are cropped with CSS so the
-       original sheets remain the single source of truth in /public/assets/generated. */
+    /* Generated art stays presentation-only. Semantic catalog IDs resolve to runtime
+       assets; browser presentation does not crop legacy atlas sheets. */
     #stream .thread-generated-sprite,
     #inventory .thread-generated-sprite {
       display:inline-block;

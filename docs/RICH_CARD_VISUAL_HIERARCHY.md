@@ -7,7 +7,7 @@ M2-07 completes the Phase 2 presentation foundation by integrating Threadbound's
 ## Presentation contract
 
 - Rich-card art comes from `public/visual-asset-catalog.js` through `public/sprite-catalog.js`.
-- Inventory continues to render generated equipment sprites and now uses semantic icons for derived stats, equipment slots, and Health Potions.
+- Inventory resolves equipment art through semantic Visual Asset Catalog IDs and uses semantic icons for derived stats, equipment slots, and Health Potions.
 - Shop continues to render generated item/potion sprites and gains a semantic Shop header identity.
 - Profile keeps the generated adventurer/equipment art and adds semantic resource/stat/header icons.
 - Bank adds semantic carried-Gold/banked-Gold/header icons while all balance mutations remain server-authoritative.
