@@ -135,6 +135,35 @@ For every substantial player-facing change:
 6. Record HUMAN items as questions for future real-player sessions; never convert a scripted click into evidence of genuine motivation.
 7. Do not call the build production-ready while any PRODUCTION GATE item is unresolved.
 
+## Threadbound RPG progression session — PV2-K01–K05
+
+This protocol gathers human evidence for the five Phase K gates in `THREADBOUND_MASTER_PLAN.md`. Automated Playwright runs prepare the build but do not count as human sign-off.
+
+### Participants and setup
+
+- Use two people who have not read developer documentation or been coached through the game. Record each person's RPG and chat-game familiarity before play; do not let them compare answers until both have completed their notes.
+- Use two separate local-auth browser sessions joined to the same party, backed by a fresh local database. Do not use production accounts or a Threaded wallet.
+- Exercise both supported layouts: 390×844 mobile and 1440×960 desktop. Start one participant on each layout, then swap so both people use both.
+- The observer records pauses, wrong turns, requests for help, and the participant's exact description of their current goal. Do not explain a control unless safety or access requires it; record any intervention.
+
+### Session flow
+
+1. Let both people play freely for up to one hour without a developer-provided task list. At natural pauses ask only, “What are you trying to do next?” Record the answer before offering a hint.
+2. After the unprompted hour, play the connected progression route together: Inventory and Area 1 Hunt; acquire and equip non-weapon gear; claim and replace a Quest; talk with a local NPC; enter a multi-enemy Dungeon; use the shared intermission Heal and continue through the boss; unlock and visit Area 2; Hunt there, review its local Quest/NPC context, then Duel a Guild Hall rival.
+3. Have each person submit independent observations before discussing the session. Include the step/Area, viewport, what happened, exact player words, any facilitator hint, and a Yes / Mixed / No verdict for each gate.
+
+### Evidence for each gate
+
+| Gate | Evidence to record |
+| --- | --- |
+| **PV2-K01** First-hour comprehension | Can each person explain their current goal and choose a useful next action without developer docs or an observer hint? Record the time and any dead ends. |
+| **PV2-K02** Hunt and long-session receipts | After repeated Hunts, can each person scan the result, identify HP/reward/progression changes, and understand what can happen next? Ask whether they would choose another Hunt or stop, and why. |
+| **PV2-K03** Rich cards in chat | Observe Inventory, Shop, Quest, Area, and NPC tasks. Record whether embedded cards kept context and made the next action easier to find, or whether either person expected to leave chat. |
+| **PV2-K04** Co-op and Dungeon | Ask each person to explain who can Heal, why only one party Heal is available in an intermission, what Continue does, and what made the boss/HP attrition understandable or confusing. Record whether both players contributed meaningfully. |
+| **PV2-K05** Mobile/desktop coherence | After each person uses both viewports, record whether the same actions and state are discoverable, whether the stream remains the game surface, and any clipping, dense text, or layout change that alters the experience. |
+
+Keep the Phase K boxes open until evidence from two people has been reviewed against every gate. A “No” or “Mixed” answer is useful evidence, not a failed test to hide; record the friction and repair it before reconsidering the relevant gate. Do not infer one person's experience from the other person's notes.
+
 ## Current release interpretation
 
 For the current manual-testing milestone, **all objective local/single-process player-experience gates must be green**. PX-48 ambiguous response-loss replay and PX-49 durable authenticated sessions are now resolved. PX-50 explicit long-lived run expiry/abandon policy is the remaining production gate; it does not block local manual playtesting, but it must be resolved before production.
