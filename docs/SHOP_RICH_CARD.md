@@ -18,7 +18,7 @@ The card presents Mara, semantic generated item sprites, server-projected prices
 
 ## Current stock
 
-The foundation shelf deliberately stays small: a Common Bronze Sword plus the existing Health Potion and Potion Satchel. Broader generated/Arc/Town stock remains ordered work in Phase 7 rather than being pulled forward into this milestone.
+The shelf includes a Common Bronze Sword, a Minor Health Potion, and a Minor Potion Satchel in Area 1. Health Potion, Greater Health Potion, and Major Health Potion offers unlock in Areas 2, 3, and 4 respectively; generated/Arc/Town stock remains separate.
 
 ## Verification
 

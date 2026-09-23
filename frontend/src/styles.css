@@ -431,6 +431,11 @@ kbd { margin-left: 8px; padding: 2px 5px; color: rgba(23, 19, 31, .75); backgrou
 .stream-card-facts { display: flex; flex-wrap: wrap; gap: 7px; }
 .stream-card-facts > span { padding: 6px 8px; color: var(--tb-muted); background: rgba(15, 17, 23, .28); border: 1px solid var(--tb-border-soft); border-radius: 7px; font-size: 8px; }
 .stream-card-facts strong { color: var(--tb-text); margin-left: 3px; }
+.stream-potion-list { display: grid; gap: 5px; margin-top: 8px; }
+.stream-potion-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 6px 8px; color: var(--tb-muted); background: rgba(15, 17, 23, .22); border: 1px solid var(--tb-border-soft); border-radius: 7px; font-size: 8px; }
+.stream-potion-row strong { color: var(--tb-text); font-family: var(--tb-mono); }
+.stream-potion-row small { color: var(--tb-blue); font-size: 7px; }
+.stream-potion-row.is-locked { opacity: .55; }
 .stream-card-detail { margin: 0 !important; color: var(--tb-muted) !important; font-size: 9px !important; }
 .stream-loadout { display: grid; gap: 7px; }
 .stream-loadout > div { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -668,13 +673,13 @@ kbd { margin-left: 8px; padding: 2px 5px; color: rgba(23, 19, 31, .75); backgrou
 .shared-battle-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--tb-purple), var(--tb-blue)); border-radius: inherit; transition: width 160ms linear; }
 .shared-battle-trajectory { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .shared-battle-trajectory line { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.shared-battle-trajectory .trajectory__beam { stroke: rgba(255, 92, 102, .2); stroke-width: 8; filter: blur(3px); }
-.shared-battle-trajectory .trajectory__core { stroke: var(--tb-red); stroke-width: 2.5; stroke-dasharray: 0 1; filter: drop-shadow(0 0 4px rgba(255, 92, 102, .9)); animation: shared-beam-strike 500ms ease-out both; }
-.shared-battle-trajectory .trajectory__burst { fill: rgba(255, 92, 102, .5); stroke: var(--tb-red); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: shared-burst-pop 320ms ease-out both; }
-.shared-battle-trajectory .trajectory__ring { fill: none; stroke: rgba(255, 206, 113, .9); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: shared-ring-spread 440ms ease-out both; }
-.shared-battle-trajectory .trajectory__beam { animation: shared-beam-glow 500ms ease-out both; }
+.shared-battle-trajectory .shared-trajectory__beam { stroke: rgba(255, 92, 102, .2); stroke-width: 8; filter: blur(3px); }
+.shared-battle-trajectory .shared-trajectory__core { stroke: var(--tb-red); stroke-width: 2.5; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 4px rgba(255, 92, 102, .9)); animation: shared-beam-strike 500ms ease-out both; }
+.shared-battle-trajectory .shared-trajectory__burst { fill: rgba(255, 92, 102, .5); stroke: var(--tb-red); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: shared-burst-pop 320ms ease-out both; }
+.shared-battle-trajectory .shared-trajectory__ring { fill: none; stroke: rgba(255, 206, 113, .9); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: shared-ring-spread 440ms ease-out both; }
+.shared-battle-trajectory .shared-trajectory__beam { animation: shared-beam-glow 500ms ease-out both; }
 @keyframes shared-beam-glow { from { opacity: 0; } 25% { opacity: 1; } to { opacity: .15; } }
-@keyframes shared-beam-strike { from { opacity: 0; stroke-dasharray: 0 1; } 25% { opacity: 1; } to { opacity: .35; stroke-dasharray: 1 0; } }
+@keyframes shared-beam-strike { from { opacity: 0; stroke-dasharray: 1; stroke-dashoffset: 1; } 25% { opacity: 1; } to { opacity: .35; stroke-dasharray: 1; stroke-dashoffset: 0; } }
 @keyframes shared-burst-pop { from { opacity: 0; transform: scale(.25); } 30% { opacity: 1; } to { opacity: 0; transform: scale(1.45); } }
 @keyframes shared-ring-spread { from { opacity: 0; transform: scale(.4); } 22% { opacity: 1; } to { opacity: 0; transform: scale(1.6); } }
 @keyframes shared-character-halo { from { opacity: 0; transform: scale(.72); } 45% { opacity: .9; transform: scale(1); } to { opacity: .35; transform: scale(1.08); } }

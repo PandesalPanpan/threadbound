@@ -212,7 +212,9 @@ export function GameShellApp() {
           break;
         }
         if (parsed.name === 'coinflip') {
-          await request(parsed.raw, '/api/gambling/coinflip', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-coinflip') }, body: JSON.stringify({ wager: Number(parsed.args[0]), choice: parsed.args[1] }) });
+          const choiceToken = String(parsed.args[1] || '').toLowerCase();
+          const choice = choiceToken === 'h' ? 'heads' : choiceToken === 't' ? 'tails' : parsed.args[1];
+          await request(parsed.raw, '/api/gambling/coinflip', { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-coinflip') }, body: JSON.stringify({ wager: Number(parsed.args[0]), choice }) });
           setPanel(null);
           break;
         }
@@ -257,7 +259,11 @@ export function GameShellApp() {
         const path = activeRun?.simpleCombat && activeRun.phase === 'between_encounter'
           ? `/api/runs/${encodeURIComponent(activeRun.id)}/potion`
           : '/api/recovery/potion';
-        await request(parsed.raw, path, { method: 'POST', headers: { 'Idempotency-Key': commandKey('shell-potion') } });
+        await request(parsed.raw, path, {
+          method: 'POST',
+          headers: { 'Idempotency-Key': commandKey('shell-potion') },
+          ...(parsed.args[0] ? { body: JSON.stringify({ potion: parsed.args[0] }) } : {}),
+        });
         break;
       }
       case 'continue':

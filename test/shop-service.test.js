@@ -48,7 +48,7 @@ test('shop potion purchases use catalog price and preserve legacy balance storag
   assert.equal(repository.getPlayer(player.id).healthPotions, 4);
   assert.equal(repository.getPlayer(player.id).threadDust, 0);
   assert.equal(events.at(-1).type, 'HealthPotionPurchased');
-  assert.equal(events.at(-1).offerName, 'Potion Satchel');
+  assert.equal(events.at(-1).offerName, 'Minor Potion Satchel');
 });
 
 test('shop equipment purchase atomically spends Gold and persists a normal owned item', () => {

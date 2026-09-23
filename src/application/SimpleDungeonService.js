@@ -96,11 +96,14 @@ export class SimpleDungeonService {
       const check = dungeonReadiness({
         attackPower: character?.attackPower || 0,
         maxHealth: character?.maxHealth || 0,
+        currentHealth: row?.currentHealth || 0,
         definition,
       });
       return {
         playerId: id,
         displayName: row?.displayName || 'Unknown Adventurer',
+        currentHealth: row?.currentHealth || 0,
+        maxHealth: character?.maxHealth || 0,
         ...check,
       };
     });
@@ -167,12 +170,20 @@ export class SimpleDungeonService {
       ownerId = player.id;
     }
 
+    const wounded = participantPlayers.find((participant) => Number(participant.currentHealth || 0) <= 0);
+    if (wounded) {
+      const error = new Error(`${wounded.displayName || 'A Weaver'} is too wounded to enter a Dungeon. Recover or use a potion first.`);
+      error.code = 'too_wounded_to_enter_dungeon';
+      error.playerId = wounded.id;
+      throw error;
+    }
+
     const run = AdventureRun.startSimple({
       id: this.idFactory(),
       ownerType,
       ownerId,
       startedByPlayerId: playerId,
-      participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth })),
+      participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth, currentHealth: participant.currentHealth })),
       dungeonId,
       dungeonDefinition,
       sharedSurface,

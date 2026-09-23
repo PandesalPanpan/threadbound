@@ -1,15 +1,17 @@
 import { Character } from '../domain/Character.js';
 import { projectAutomaticBattleResult } from './AutomaticBattleReadModel.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS } from '../content/VisualAssetCatalog.js';
+import { selectPotionForUse } from '../content/PotionCatalog.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
 import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
 import { applyFightBuffs } from '../domain/FightBuffPolicy.js';
-import { HEALING_RULES, resolveHealAction } from '../domain/HealingPolicy.js';
+import { resolveHealAction } from '../domain/HealingPolicy.js';
 import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
 import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
+import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepository.js';
 import { SQLiteHuntCooldownRepository } from '../infrastructure/SQLiteHuntCooldownRepository.js';
@@ -95,6 +97,7 @@ export class HuntService {
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.cooldownRepository = cooldownRepository || new SQLiteHuntCooldownRepository({ database: repository.db });
     this.bankRepository = bankRepository || new SQLiteBankRepository({ database: repository.db });
+    this.areaRepository = new SQLiteAreaRepository({ database: repository.db });
     this.fightBuffRepository = fightBuffRepository || new SQLiteFightBuffRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.rng = rng;
@@ -178,7 +181,7 @@ export class HuntService {
       }
       if (this.rng() < 0.2) {
         healthPotionsFound = 1;
-        this.repository.addHealthPotions(playerId, 1);
+        this.repository.addConsumable(playerId, 'minor-health-potion', 1);
       }
     } else if (result.remainingHp <= 0) {
       const balance = this.bankRepository.getBalance(playerId);
@@ -275,6 +278,7 @@ export class HuntService {
         maxHealth: stats.maxHp,
         currentHealth: result.remainingHp,
         healthPotions: refreshed.healthPotions ?? player.healthPotions,
+        potions: this.repository.listConsumables(playerId),
         gold,
         experience: progression.experience,
         xp: progression.experience,
@@ -286,25 +290,34 @@ export class HuntService {
     };
   }
 
-  heal(playerId) {
+  heal(playerId, potionSelection = null) {
     const player = this.repository.getPlayer(playerId);
     if (!player) throw new Error('Player not found.');
+    const area = this.areaRepository.get(playerId);
+    const potion = selectPotionForUse(this.repository.listConsumables(playerId), potionSelection, area.currentAreaNumber);
     const plan = resolveHealAction({
       activeRun: this.repository.getActiveRun(playerId),
       currentHealth: player.currentHealth,
       maxHealth: player.maxHealth,
-      healthPotions: player.healthPotions,
+      potionQuantity: potion.quantity,
+      potionId: potion.id,
+      potionName: potion.name,
+      potionHeal: potion.heal,
     });
-    const recovery = this.repository.useHealthPotion(playerId, { heal: HEALING_RULES.healthPotionHeal });
-    this.eventBus.publish({ type: 'HealthPotionUsed', playerId, healMethod: plan.method, ...recovery });
+    const recovery = this.repository.useConsumable(playerId, {
+      consumableId: potion.id,
+      heal: potion.heal,
+      currentHealth: player.currentHealth,
+    });
+    this.eventBus.publish({ type: 'HealthPotionUsed', playerId, healMethod: plan.method, potionId: potion.id, potionName: potion.name, potionHeal: potion.heal, ...recovery });
     return recovery;
   }
 
   // Compatibility adapter for the existing /api/recovery/potion route and older
   // callers. New application code should use the routine `heal` action.
-  useHealthPotion(playerId) {
+  useHealthPotion(playerId, potionSelection = null) {
     try {
-      return this.heal(playerId);
+      return this.heal(playerId, potionSelection);
     } catch (error) {
       if (error.code === 'heal_during_dungeon') error.code = 'potion_during_dungeon';
       throw error;

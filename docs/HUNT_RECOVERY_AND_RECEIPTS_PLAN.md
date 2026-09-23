@@ -8,7 +8,7 @@ Hunts remain lightweight commands, but damage becomes durable attrition with und
 
 1. Store current out-of-combat health and potion count on the player record.
 2. Recover one HP per minute outside active runs, calculated lazily from the last health change.
-3. **Heal** is the canonical routine player action: outside an active dungeon, a wounded player may consume one health potion; a potion restores up to 12 HP and cannot be wasted at full health.
+3. **Heal** is the canonical routine player action: outside an active dungeon, a wounded player may consume one selected Health Potion; the Minor tier restores up to 8 HP, stronger tiers restore their catalog amount, and no potion can be wasted at full health.
 4. Natural out-of-combat HP recovery is presented as part of Heal rather than as a separate headline recovery system. `/rest` and `/recovery` remain compatibility aliases for viewing the live next-HP/full-heal countdown; `/potion` and the existing recovery route remain migration adapters for older callers.
 5. Hunts persist remaining HP and may award a potion alongside Gold/gear. The canonical Hunt path also enforces the short server-owned cooldown defined by the master plan.
 6. Mara's shop presents illustrated potion choices so 0 HP + 0 potions is never an opaque dead end. Player-facing copy uses Heal/healing terminology; legacy storage/pricing terminology remains migration context only.

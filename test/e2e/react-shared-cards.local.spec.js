@@ -21,8 +21,8 @@ test('shared Hunt, Inventory, and Gambling cards survive reload and stay read-on
   const observer = await observerContext.newPage();
 
   try {
-    await login(owner, 'a');
-    await login(observer, 'b');
+    await login(owner, 'f');
+    await login(observer, 'g');
     await ownerContext.request.post('/api/party/leave');
     await observerContext.request.post('/api/party/leave');
 
@@ -95,8 +95,8 @@ test('owner and spectator share the same Blackjack table and public Dungeon repl
   const observer = await observerContext.newPage();
 
   try {
-    await login(owner, 'a');
-    await login(observer, 'b');
+    await login(owner, 'g');
+    await login(observer, 'h');
     await ownerContext.request.post('/api/party/leave');
     await observerContext.request.post('/api/party/leave');
 
@@ -159,7 +159,7 @@ test('owner and spectator share the same Blackjack table and public Dungeon repl
     await command(owner, 'status');
     await expect(owner.getByTestId('stream-player-status').last()).toHaveClass(/is-owner/);
     await expect(observer.getByTestId('stream-player-status').last()).toHaveClass(/is-observer/);
-    await expect(observer.getByTestId('stream-player-status').last()).toContainText('Local Weaver A');
+    await expect(observer.getByTestId('stream-player-status').last()).toContainText('Local Weaver G');
 
     await command(owner, 'inventory');
     const ownerInventory = owner.getByTestId('stream-inventory-rich-card').last();

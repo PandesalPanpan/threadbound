@@ -193,14 +193,18 @@ export function simpleRulesSummary(definition) {
   };
 }
 
-export function dungeonReadiness({ attackPower, maxHealth, definition }) {
+export function dungeonReadiness({ attackPower, maxHealth, currentHealth = maxHealth, definition }) {
   const recommendedAttack = Number(definition?.recommendedAttack || SIMPLE_DUNGEON_RULES.recommendedAttack);
+  const health = Number(currentHealth || 0);
   return {
     recommendedAttack,
     attackPower: Number(attackPower || 0),
     maxHealth: Number(maxHealth || 0),
-    ready: Number(attackPower || 0) >= recommendedAttack,
+    currentHealth: health,
+    canEnter: health > 0,
+    ready: Number(attackPower || 0) >= recommendedAttack && health > 0,
     attackShortfall: Math.max(0, recommendedAttack - Number(attackPower || 0)),
+    healthError: health > 0 ? null : 'Too wounded to enter. Recover or use a potion first.',
   };
 }
 

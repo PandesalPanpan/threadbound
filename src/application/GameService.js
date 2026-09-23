@@ -10,12 +10,15 @@ import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
+import { projectPotionInventory, selectPotionForUse } from '../content/PotionCatalog.js';
 import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
+import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
-function healthRecovery(row, now = Date.now()) {
+function healthRecovery(row, now = Date.now(), paused = false) {
+  if (paused) return { nextHealthInSeconds: 0, fullHealthInSeconds: 0 };
   if (row.currentHealth >= row.maxHealth) return { nextHealthInSeconds: 0, fullHealthInSeconds: 0 };
   const value = String(row.healthUpdatedAt || '');
   const timestamp = new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`).getTime();
@@ -291,6 +294,7 @@ export class GameService {
     this.equipmentRepository = equipmentRepository || new SQLiteEquipmentRepository({ database: repository.db });
     this.fightBuffRepository = fightBuffRepository || new SQLiteFightBuffRepository({ database: repository.db });
     this.bankRepository = bankRepository || new SQLiteBankRepository({ database: repository.db });
+    this.areaRepository = new SQLiteAreaRepository({ database: repository.db });
     this.itemGenerator = itemGenerator;
     this.idFactory = idFactory;
   }
@@ -312,6 +316,10 @@ export class GameService {
     const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
     const party = this.repository.getPartyForPlayer(playerId);
     const activeRun = this.repository.getActiveRun(playerId);
+    const area = this.areaRepository.get(playerId);
+    const activeParticipant = activeRun?.participants?.find((participant) => participant.playerId === playerId) || null;
+    const currentHealth = activeParticipant ? Number(activeParticipant.hp || 0) : row.currentHealth;
+    const potions = projectPotionInventory(this.repository.listConsumables(playerId), area.currentAreaNumber);
     const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
     const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
@@ -340,9 +348,11 @@ export class GameService {
         // Compatibility aliases while older Hunt/dungeon/presentation callers migrate.
         attackPower: stats.attack,
         maxHealth: stats.maxHp,
-        currentHealth: row.currentHealth,
+        currentHealth,
         healthPotions: row.healthPotions,
-        healthRecovery: healthRecovery(row),
+        potions,
+        consumables: potions,
+        healthRecovery: healthRecovery({ ...row, currentHealth }, Date.now(), Boolean(activeRun)),
         gold: character.gold,
         experience: progression.experience,
         xp: progression.experience,
@@ -361,6 +371,7 @@ export class GameService {
       activeRun: activeRun ? this.#decorateRun(activeRun, playerId) : null,
       achievements: this.repository.listAchievements(playerId),
       world: this.repository.getWorldState(),
+      area: area.currentArea,
       dungeons: allDungeons.map(({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId, arcTitle, sourceManifestRevision }) => ({ id, name, recommendedPlayers, minPlayers, maxPlayers, arcId: arcId || 'arc-1', arcTitle: arcTitle || 'The First Unraveling', sourceManifestRevision: sourceManifestRevision || null })),
       runUpgrades: Object.values(RUN_UPGRADES),
       combatSkills: publicCombatSkills(),
@@ -397,12 +408,20 @@ export class GameService {
       ownerId = player.id;
     }
 
+    const wounded = participantPlayers.find((participant) => Number(participant.currentHealth || 0) <= 0);
+    if (wounded) {
+      const error = new Error(`${wounded.displayName || 'A Weaver'} is too wounded to enter a Dungeon. Recover or use a potion first.`);
+      error.code = 'too_wounded_to_enter_dungeon';
+      error.playerId = wounded.id;
+      throw error;
+    }
+
     const run = DungeonRun.start({
       id: this.idFactory(),
       ownerType,
       ownerId,
       startedByPlayerId: playerId,
-      participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth })),
+      participants: participantPlayers.map((participant) => ({ playerId: participant.id, maxHealth: participant.maxHealth, currentHealth: participant.currentHealth })),
       dungeonId,
       dungeonDefinition,
     });
@@ -574,26 +593,31 @@ export class GameService {
     return { ...resolved, continued: true, previousPhase: state.phase };
   }
 
-  useDungeonPotion(playerId, runId) {
+  useDungeonPotion(playerId, runId, potionSelection = null) {
     const { run } = this.#simpleDecisionContext(playerId, runId);
     const participant = run.participant(playerId);
-    const player = this.repository.getPlayer(playerId);
+    const potion = selectPotionForUse(this.repository.listConsumables(playerId), potionSelection, this.areaRepository.get(playerId).currentAreaNumber);
     const plan = resolveDungeonPotionAction({
       activeRun: run.state,
       currentHealth: participant.hp,
       maxHealth: participant.maxHp,
-      healthPotions: player.healthPotions,
+      potionQuantity: potion.quantity,
+      potionId: potion.id,
+      potionName: potion.name,
+      potionHeal: potion.heal,
     });
     const outcome = run.usePotionBetweenEncounters({ playerId, healed: plan.healed });
-    const persisted = this.repository.saveRunWithPotion(outcome.state, playerId);
+    const persisted = this.repository.saveRunWithPotion(outcome.state, playerId, { consumableId: potion.id });
     outcome.state = persisted.state;
     const event = {
       ...outcome.events[0],
       healthPotions: persisted.healthPotions,
+      potionId: potion.id,
+      potionName: potion.name,
       participantIds: outcome.state.participants.map((candidate) => candidate.playerId),
     };
     this.eventBus.publish({ ...event, silentStream: Boolean(run.state.sharedSurface) });
-    const recovery = { ...plan, healthPotions: persisted.healthPotions };
+    const recovery = { ...plan, quantity: persisted.quantity, healthPotions: persisted.healthPotions };
     if (!run.state.sharedSurface) {
       const decoratedRun = this.#decorateRun(outcome.state, playerId);
       return { run: decoratedRun, state: decoratedRun, battleReplay: null, recovery };

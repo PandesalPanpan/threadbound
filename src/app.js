@@ -39,6 +39,14 @@ const LOCAL_PROFILES = Object.freeze({
   b: Object.freeze({ id: 'local:b', name: 'Local Weaver B', username: 'local-b', capabilities: Object.freeze({ arcWorkshop: true }) }),
   c: Object.freeze({ id: 'local:c', name: 'Local Weaver C', username: 'local-c', capabilities: Object.freeze({ arcWorkshop: false }) }),
   d: Object.freeze({ id: 'local:d', name: 'Local Weaver D', username: 'local-d', capabilities: Object.freeze({ arcWorkshop: true }) }),
+  ...(process.env.NODE_ENV === 'test' ? {
+    e: Object.freeze({ id: 'local:e', name: 'Local Weaver E', username: 'local-e', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    f: Object.freeze({ id: 'local:f', name: 'Local Weaver F', username: 'local-f', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    g: Object.freeze({ id: 'local:g', name: 'Local Weaver G', username: 'local-g', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    h: Object.freeze({ id: 'local:h', name: 'Local Weaver H', username: 'local-h', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    i: Object.freeze({ id: 'local:i', name: 'Local Weaver I', username: 'local-i', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    j: Object.freeze({ id: 'local:j', name: 'Local Weaver J', username: 'local-j', startingGold: 300, capabilities: Object.freeze({ arcWorkshop: false }) }),
+  } : {}),
 });
 const INITIAL_STREAM_LIMIT = 30;
 
@@ -229,6 +237,9 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const profile = LOCAL_PROFILES[slot];
     if (!profile) return response.status(422).json({ error: 'invalid_local_profile', message: 'Choose one of the configured local Weaver profiles.' });
     const player = gameService.ensurePlayer(profile);
+    if (process.env.NODE_ENV === 'test' && Number(profile.startingGold || 0) > Number(player.threadDust || 0)) {
+      repository.addThreadDust(player.id, Number(profile.startingGold) - Number(player.threadDust || 0));
+    }
     request.session.threaded = { source: 'local', accessToken: null, profile, wallet: { balance: null, lifetime_earned: null, unavailable: true }, playerId: player.id, connectedAt: new Date().toISOString() };
     return response.redirect('/game');
   });
@@ -464,7 +475,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   });
   app.post('/api/recovery/potion', requireConnection, (request, response) => {
     const playerId = request.session.threaded.playerId;
-    const recovery = huntService.useHealthPotion(playerId);
+    const recovery = huntService.useHealthPotion(playerId, request.body?.potion || request.body?.potionId || null);
     return response.json({ recovery, dashboard: gameService.dashboard(playerId) });
   });
   app.get('/api/shop', requireConnection, (request, response) => {
@@ -501,7 +512,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.use('/api/runs/:runId', requireConnection, idempotentRunCommand);
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/continue', requireConnection, (request, response) => response.json(gameService.continueDungeon(request.session.threaded.playerId, request.params.runId)));
-  app.post('/api/runs/:runId/potion', requireConnection, (request, response) => response.json(gameService.useDungeonPotion(request.session.threaded.playerId, request.params.runId)));
+  app.post('/api/runs/:runId/potion', requireConnection, (request, response) => response.json(gameService.useDungeonPotion(request.session.threaded.playerId, request.params.runId, request.body?.potion || request.body?.potionId || null)));
   app.post('/api/runs/:runId/retreat', requireConnection, (request, response) => response.json(gameService.retreatDungeon(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/guard', requireConnection, (request, response) => response.json(gameService.guard(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/interrupt', requireConnection, (request, response) => response.json(gameService.interrupt(request.session.threaded.playerId, request.params.runId)));
@@ -574,6 +585,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'dungeon_continue_not_available',
       'dungeon_retreat_not_available',
       'potion_during_dungeon',
+      'heal_during_dungeon',
+      'too_wounded_to_enter_dungeon',
+      'potion_not_found',
+      'potion_unavailable',
+      'potion_locked',
       'shop_during_dungeon',
       'shop_offer_not_found',
       'unsupported_shop_offer',

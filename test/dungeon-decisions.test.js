@@ -87,12 +87,13 @@ test('Dungeon pause is an authoritative active run and Potion spends persisted i
 
   const result = game.useDungeonPotion(player.id, started.id);
   assert.equal(result.recovery.method, 'dungeon_health_potion');
-  assert.equal(result.recovery.healed, paused.participants[0].maxHp - paused.participants[0].hp);
+  assert.equal(result.recovery.healed, Math.min(8, paused.participants[0].maxHp - paused.participants[0].hp));
   assert.equal(result.recovery.healthPotions, 0);
   assert.equal(result.battleReplay.status, 'room_clear');
-  assert.equal(result.battleReplay.recovery.currentHealth, 40);
+  assert.equal(result.battleReplay.recovery.currentHealth, Math.min(40, paused.participants[0].hp + 8));
   assert.equal(repository.getRun(started.id).phase, 'between_encounter');
   assert.ok(repository.getRun(started.id).participants[0].hp > 0);
+  assert.equal(repository.getPlayer(player.id).currentHealth, repository.getRun(started.id).participants[0].hp);
   assert.equal(repository.getPlayer(player.id).healthPotions, 0);
 
   assert.throws(() => game.useDungeonPotion(player.id, started.id), /between Dungeon encounters|no health potions|currently in combat/i);

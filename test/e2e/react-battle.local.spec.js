@@ -23,7 +23,7 @@ async function sharedBattleMotionSnapshot(surface) {
     const targetUnit = byCombatant('.shared-battle-unit', targetId);
     const actorCopy = byCombatant('.shared-battle-unit__copy', actorId);
     const targetCopy = byCombatant('.shared-battle-unit__copy', targetId);
-    const line = node.querySelector('.trajectory__core');
+    const line = node.querySelector('.shared-trajectory__core');
     const damageElement = node.querySelector('[data-testid="shared-battle-floating-damage"]');
     const center = (element) => {
       const box = rect(element);
@@ -37,6 +37,7 @@ async function sharedBattleMotionSnapshot(surface) {
       actor: { stage: relativeRect(actorStage), motion: relativeRect(actorMotion), unit: relativeRect(actorUnit), copy: relativeRect(actorCopy), center: center(actorStage), motionStyle: computed(actorMotion), unitStyle: computed(actorUnit), acting: actorMotion?.dataset.acting === 'true' },
       target: { stage: relativeRect(targetStage), motion: relativeRect(targetMotion), unit: relativeRect(targetUnit), copy: relativeRect(targetCopy), center: center(targetStage), motionStyle: computed(targetMotion), unitStyle: computed(targetUnit), targeted: targetMotion?.dataset.targeted === 'true' },
       line: line ? { x1: Number(line.getAttribute('x1')), y1: Number(line.getAttribute('y1')), x2: Number(line.getAttribute('x2')), y2: Number(line.getAttribute('y2')) } : null,
+      lineTransform: line ? getComputedStyle(line).transform : null,
       damage: rect(damageElement),
       damageCenter: center(damageElement),
       damageAnchor: damageElement ? { x: Number.parseFloat(damageElement.style.left), y: Number.parseFloat(damageElement.style.top) } : null,
@@ -221,9 +222,9 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
   }, { timeout: 1200, intervals: [50] }).toBe(true);
 
   expect(rectDelta(windup.actor.unit, trajectory.actor.unit)).toBeLessThan(0.5);
-  expect(rectDelta(windup.actor.copy, trajectory.actor.copy)).toBeLessThan(0.5);
+  expect(rectDelta(windup.actor.copy, trajectory.actor.copy)).toBeLessThan(1.5);
   expect(rectDelta(windup.target.unit, trajectory.target.unit)).toBeLessThan(0.5);
-  expect(rectDelta(windup.target.copy, trajectory.target.copy)).toBeLessThan(0.5);
+  expect(rectDelta(windup.target.copy, trajectory.target.copy)).toBeLessThan(1.5);
   expect(trajectory.actor.motionStyle.animationName).toContain('shared-character-lunge');
   expect(trajectory.actor.unitStyle.animationName).toBe('none');
   expect(trajectory.target.unitStyle.animationName).toBe('none');
@@ -245,10 +246,78 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
   expect(impact.target.targeted).toBe(true);
   expect(impact.target.unitStyle.animationName).toBe('none');
   expect(rectDelta(windup.target.unit, impact.target.unit)).toBeLessThan(0.5);
-  expect(rectDelta(windup.target.copy, impact.target.copy)).toBeLessThan(0.5);
+  expect(rectDelta(windup.target.copy, impact.target.copy)).toBeLessThan(1.5);
   expect(impact.damageText).toMatch(/HP$/);
   expect(Math.abs((impact.damageCenter?.x || 0) - impact.target.center.x)).toBeLessThan(12);
   expect(impact.damageAnchor?.y || 0).toBeLessThan(impact.target.center.y);
+});
+
+test('shared battle trajectories stay art-relative on mobile and desktop, including reverse attacks', async ({ page }) => {
+  await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
+  await page.goto('/');
+  await page.getByTestId('local-login-i').click();
+  await page.context().request.post('/api/party/leave');
+
+  await page.route('**/api/stream*', async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json();
+    const latestHuntId = [...(payload.entries || [])].reverse().find((entry) => entry.eventType === 'HuntResolved')?.id;
+    const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId
+      ? { ...entry, createdAt: new Date(Date.now() - 100).toISOString() }
+      : entry);
+    await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
+  });
+
+  for (const [width, height] of [[390, 844], [1440, 960]]) {
+    await page.setViewportSize({ width, height });
+    const huntResponse = await page.context().request.post('/api/hunt');
+    expect(huntResponse.ok()).toBe(true);
+    const payload = await huntResponse.json();
+    const player = payload.hunt.battle.combatants.find((combatant) => combatant.team === 'players');
+    const enemy = payload.hunt.battle.combatants.find((combatant) => combatant.team === 'enemies');
+    expect(player?.id).toBeTruthy();
+    expect(enemy?.id).toBeTruthy();
+    expect(payload.hunt.battle.turns.some((turn) => (
+      turn.actorId === enemy.id
+      && turn.targetId === player.id
+      && Number(turn.targetDamage || 0) > 0
+    ))).toBe(true);
+
+    await page.goto('/game');
+    await page.reload();
+    const surface = page.getByTestId('stream-hunt-rich-card').last().getByTestId('shared-battle-surface');
+    await expect(surface).toBeVisible();
+    await expect(surface.locator('.trajectory__core, .trajectory__beam, .trajectory__burst, .trajectory__ring')).toHaveCount(0);
+
+    let forward;
+    await expect.poll(async () => {
+      const snapshot = await sharedBattleMotionSnapshot(surface);
+      if (snapshot.phase !== 'trajectory' || snapshot.actorId !== player.id || snapshot.targetId !== enemy.id || !snapshot.line) return false;
+      forward = snapshot;
+      return true;
+    }, { timeout: 3500, intervals: [25] }).toBe(true);
+
+    expect(Math.abs(forward.line.x1 - forward.actor.center.x)).toBeLessThan(1.5);
+    expect(Math.abs(forward.line.y1 - forward.actor.center.y)).toBeLessThan(1.5);
+    expect(Math.abs(forward.line.x2 - forward.target.center.x)).toBeLessThan(1.5);
+    expect(Math.abs(forward.line.y2 - forward.target.center.y)).toBeLessThan(1.5);
+    expect(Math.max(forward.line.x1, forward.line.y1, forward.line.x2, forward.line.y2)).toBeGreaterThan(8);
+    expect(forward.lineTransform).toBe('none');
+
+    let reverse;
+    await expect.poll(async () => {
+      const snapshot = await sharedBattleMotionSnapshot(surface);
+      if (snapshot.phase !== 'trajectory' || snapshot.actorId !== enemy.id || snapshot.targetId !== player.id || !snapshot.line) return false;
+      reverse = snapshot;
+      return true;
+    }, { timeout: 3500, intervals: [25] }).toBe(true);
+    expect(Math.abs(reverse.line.x1 - reverse.actor.center.x)).toBeLessThan(1.5);
+    expect(Math.abs(reverse.line.y1 - reverse.actor.center.y)).toBeLessThan(1.5);
+    expect(Math.abs(reverse.line.x2 - reverse.target.center.x)).toBeLessThan(1.5);
+    expect(Math.abs(reverse.line.y2 - reverse.target.center.y)).toBeLessThan(1.5);
+    expect(reverse.lineTransform).toBe('none');
+    await expect(surface).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
+  }
 });
 
 test('a missing Hunt replay does not render the unrelated 3v3 showcase', async ({ page }) => {

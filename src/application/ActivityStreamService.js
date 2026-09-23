@@ -93,6 +93,17 @@ export class ActivityStreamService {
           currentHealth: Number(character.currentHealth || 0),
           maxHealth: Number(character.maxHealth ?? character.maxHp ?? 1),
           healthPotions: Number(character.healthPotions || 0),
+          potions: Array.isArray(character.potions) ? character.potions.map((potion) => ({
+            id: potion.id || potion.consumableId,
+            name: potion.name,
+            shortName: potion.shortName || null,
+            heal: Number(potion.heal || 0),
+            tier: Number(potion.tier || 0),
+            quantity: Number(potion.quantity || 0),
+            requiredArea: Number(potion.requiredArea || 1),
+            unlocked: potion.unlocked !== false,
+            visualAssetId: potion.visualAssetId || null,
+          })) : [],
         },
         equipment: equipmentSnapshot,
         inventory: inventorySnapshot,
@@ -169,6 +180,9 @@ export class ActivityStreamService {
     const compactOffer = (offer) => ({
       sku: offer.sku,
       kind: offer.kind,
+      potionId: offer.potionId || null,
+      heal: offer.heal == null ? null : Number(offer.heal),
+      requiredArea: offer.requiredArea == null ? null : Number(offer.requiredArea),
       name: offer.name,
       description: offer.description || null,
       visualAssetId: offer.visualAssetId || offer.item?.visualAssetId || offer.itemTemplate?.visualAssetId || null,
@@ -355,9 +369,9 @@ export class ActivityStreamService {
         };
       }
       case 'HealthPotionUsed':
-        return { actorName: 'THREADBOUND', body: `${actorName} used a health potion. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} left.` };
+        return { actorName: 'THREADBOUND', body: `${actorName} used ${event.potionName || 'a Health Potion'}. +${event.healed} HP · ${event.currentHealth}/${event.maxHealth} HP · ${event.healthPotions} Minor left.` };
       case 'HealthPotionPurchased':
-        return { actorName: 'THREADBOUND', body: `${actorName} bought ${event.quantity} health potion${event.quantity === 1 ? '' : 's'} · −${event.cost} Gold · ${event.healthPotions} left.` };
+        return { actorName: 'THREADBOUND', body: `${actorName} bought ${event.quantity} ${event.offerName || 'Health Potion'} · −${event.cost} Gold · ${event.healthPotions} Minor left.` };
       case 'DungeonStarted': {
         if (event.simpleCombat && event.sharedSurface) return null;
         const foe = event.enemyName || enemyName || 'an enemy';
@@ -383,7 +397,7 @@ export class ActivityStreamService {
         return {
           actorPlayerId: event.playerId || null,
           actorName: 'THREADBOUND',
-          body: `${actorName || 'A Weaver'} used a Health Potion between encounters. +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · ${event.healthPotions ?? 0} left. ${event.enemyName || enemyName || 'The next room'} begins now.`,
+          body: `${actorName || 'A Weaver'} used ${event.potionName || 'a Health Potion'} between encounters. +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · ${event.healthPotions ?? 0} Minor left. ${event.enemyName || enemyName || 'The next room'} begins now.`,
         };
       case 'DungeonRetreated':
         return {

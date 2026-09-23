@@ -235,9 +235,9 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
       <div className="shared-battle-arena" ref={arenaRef}>
         <svg className="shared-battle-trajectory" data-testid="shared-battle-trajectory" viewBox={`0 0 ${trajectory?.width || 1} ${trajectory?.height || 1}`} aria-hidden="true" focusable="false">
           {trajectory && trajectoryVisible ? <>
-            <line className="trajectory__beam" pathLength="1" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
-            <line className="trajectory__core" pathLength="1" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
-            {impactVisible ? <><circle className="trajectory__burst" cx={trajectory.x2} cy={trajectory.y2} r="12" /><circle className="trajectory__ring" cx={trajectory.x2} cy={trajectory.y2} r="18" /></> : null}
+            <line className="shared-trajectory__beam" pathLength="1" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
+            <line className="shared-trajectory__core" pathLength="1" x1={trajectory.x1} y1={trajectory.y1} x2={trajectory.x2} y2={trajectory.y2} />
+            {impactVisible ? <><circle className="shared-trajectory__burst" cx={trajectory.x2} cy={trajectory.y2} r="12" /><circle className="shared-trajectory__ring" cx={trajectory.x2} cy={trajectory.y2} r="18" /></> : null}
           </> : null}
         </svg>
         <div className="shared-battle-combatants">

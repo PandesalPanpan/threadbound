@@ -31,9 +31,16 @@ test('routine Heal consumes one potion and heals by the canonical bounded amount
 
   const recovery = service.heal(player.id);
 
-  assert.equal(HEALING_RULES.healthPotionHeal, 12);
-  assert.deepEqual(recovery, { healed: 12, currentHealth: 37, maxHealth: 40, healthPotions: 0 });
-  assert.equal(repository.getPlayer(player.id).currentHealth, 37);
+  assert.equal(HEALING_RULES.healthPotionHeal, 8);
+  assert.deepEqual(recovery, {
+    healed: 8,
+    currentHealth: 33,
+    maxHealth: 40,
+    consumableId: 'minor-health-potion',
+    quantity: 0,
+    healthPotions: 0,
+  });
+  assert.equal(repository.getPlayer(player.id).currentHealth, 33);
   assert.equal(events.at(-1).type, 'HealthPotionUsed');
   assert.equal(events.at(-1).healMethod, 'health_potion');
 });

@@ -31,19 +31,26 @@ function GamblingOutcomeBanner({ outcome = 'resolved', delta = 0, active = false
 
 export function HelpPanel({ onCommand }) {
   const commands = [
-    ['hunt', 'Resolve one short automatic battle for Gold, XP, and possible gear.'],
-    ['adventure', 'Take a larger automatic encounter in the current Area.'],
-    ['dungeon', 'Enter a persistent Dungeon and watch each room resolve in the shared thread.'],
-    ['inventory', 'Inspect Equipment, equip a piece, Upgrade, Sell, or Heal.'],
-    ['shop', 'Buy supplies and Equipment with Gold.'],
-    ['party', 'Create or join a cooperative party.'],
-    ['area', 'Travel between unlocked Areas and visit Town NPCs.'],
-    ['quest', 'Accept or claim the current Area Quest.'],
-    ['leaderboard', 'Inspect Guild Hall standings or Duel a simulated rival.'],
-    ['gambling', 'Open Blackjack, Coinflip, and Slots with carried Gold.'],
-    ['world', 'Read shared Arc progress and your milestones.'],
+    ['hunt', null, 'Resolve one short automatic battle for Gold, XP, and possible gear.'],
+    ['adventure', 'adv', 'Take a larger automatic encounter in the current Area.'],
+    ['dungeon', 'dg', 'Enter a persistent Dungeon and watch each room resolve in the shared thread.'],
+    ['inventory', 'inv', 'Inspect Equipment, equip a piece, Upgrade, Sell, or Heal.'],
+    ['shop', 'sh', 'Buy supplies and Equipment with Gold.'],
+    ['party', 'pt', 'Create or join a cooperative party.'],
+    ['area', 'ar', 'Travel between unlocked Areas and visit Town NPCs.'],
+    ['quest', null, 'Accept or claim the current Area Quest.'],
+    ['leaderboard', 'lb', 'Inspect Guild Hall standings or Duel a simulated rival.'],
+    ['blackjack', 'bj <Gold>', 'Start the shared Blackjack table with a wager.'],
+    ['coinflip', 'cf <Gold> heads|tails', 'Call a Gold Coinflip.'],
+    ['slots', 'sl <Gold>', 'Spin Slots with carried Gold.'],
+    ['heal', 'pot [tier]', 'Use the lowest available potion, or choose minor/health/greater/major.'],
+    ['status', 'st', 'Read the one persistent HP pool and character status.'],
+    ['continue', 'cont', 'Continue to the next Dungeon room.'],
+    ['retreat', 'lv', 'Leave a paused Dungeon safely.'],
+    ['codex', 'cx', 'Open the Living Codex.'],
+    ['world', null, 'Read shared Arc progress and your milestones.'],
   ];
-  return <RichCard kind="help" kicker="THREAD GUIDE · /help" title="Choose your next thread" subtitle="Common words and slash commands work the same way."><div className="shell-command-list">{commands.map(([command, description]) => <button type="button" key={command} onClick={() => onCommand(command)}><strong>/{command}</strong><span>{description}</span><b>›</b></button>)}</div><p className="shell-muted-copy">Battle details remain available in the focused Battle view when you want turn-by-turn animation.</p></RichCard>;
+  return <RichCard kind="help" kicker="THREAD GUIDE · /help" title="Choose your next thread" subtitle="Common words, short aliases, and slash commands work the same way."><div className="shell-command-list">{commands.map(([command, alias, description]) => <button type="button" key={command} onClick={() => onCommand(command)}><strong>/{command}</strong><span>{alias ? `alias: ${alias} · ${description}` : description}</span><b>›</b></button>)}</div><p className="shell-muted-copy">Battle details remain available in the focused Battle view when you want turn-by-turn animation.</p></RichCard>;
 }
 
 export function ShopPanel({ shop, assets, onRequest, onCommand, busy = false, bankOnly = false }) {
@@ -82,7 +89,7 @@ export function DungeonPanel({ dashboard, onRequest, onCommand, busy = false }) 
     const enemy = run.enemy;
     return <RichCard kind="dungeon" kicker="PERSISTENT RUN · /dungeon" title={run.dungeonDefinition?.name || 'Dungeon'} subtitle="This run has tactical details in Battle view." testId="shell-dungeon-card"><div className="shell-run-state"><div><span className="shell-kicker">ROOM {Number(run.encounterIndex || 0) + 1}</span><strong>{enemy?.name || (run.phase === 'complete' ? 'Run complete' : 'Run state')}</strong><small>{run.phase} · HP persists between actions</small></div>{enemy ? <div className="shell-run-enemy"><span>ENEMY</span><strong>{enemy.hp}/{enemy.maxHp} HP</strong></div> : null}</div>{viewer ? <ProgressBar value={viewer.hp} max={viewer.maxHp} label={`${dashboard.character?.displayName || 'You'} HP`} tone="green" /> : null}{enemy ? <ProgressBar value={enemy.hp} max={enemy.maxHp} label={enemy.name} tone="red" /> : null}<div className="shell-card-actions"><PanelButton primary onClick={() => { window.location.href = '/game?view=battle'; }}>Open Battle Details</PanelButton><PanelButton onClick={() => onCommand('status')}>View HP</PanelButton></div></RichCard>;
   }
-  return <RichCard kind="dungeon" kicker="DUNGEON ENTRY · /dungeon" title="Choose a Dungeon" subtitle="Persistent HP, a shared server replay, and owner-only room decisions." testId="shell-dungeon-card"><div className="shell-dungeon-list">{dungeons.map((dungeon) => <button type="button" key={dungeon.id} className={`shell-dungeon-choice${selected?.id === dungeon.id ? ' is-selected' : ''}`} onClick={() => setSelectedDungeonId(dungeon.id)}><span><strong>{dungeon.name}</strong><small>{dungeon.recommendedPlayers || 1} recommended Weaver{dungeon.recommendedPlayers === 1 ? '' : 's'} · recommended Attack {readiness?.recommendedAttack || 9}+</small></span><b>{selected?.id === dungeon.id ? 'SELECTED' : '›'}</b></button>)}</div>{selected ? <div className="shell-dungeon-ready"><span className={`shell-ready-dot${readiness?.ready ? ' is-ready' : ''}`} /><div><strong>{readiness?.ready ? 'Ready to enter' : 'Ready with risk'}</strong><small>{readiness?.members?.map((member) => `${member.displayName}: ${member.ready ? 'ready' : 'below recommendation'}`).join(' · ') || 'Readiness is a server projection; entering remains your choice.'}</small></div></div> : <StateMessage title="Pick a Dungeon" copy="The server will return the authoritative readiness check." />}{selected ? <PanelButton primary disabled={busy} onClick={() => onRequest(`start dungeon ${selected.name}`, `/api/dungeons/${encodeURIComponent(selected.id)}/start-shared`, { method: 'POST' })} testId={`dungeon-start-${selected.id}`}>Enter Dungeon</PanelButton> : null}</RichCard>;
+  return <RichCard kind="dungeon" kicker="DUNGEON ENTRY · /dungeon" title="Choose a Dungeon" subtitle="Persistent HP, a shared server replay, and owner-only room decisions." testId="shell-dungeon-card"><div className="shell-dungeon-list">{dungeons.map((dungeon) => <button type="button" key={dungeon.id} className={`shell-dungeon-choice${selected?.id === dungeon.id ? ' is-selected' : ''}`} onClick={() => setSelectedDungeonId(dungeon.id)}><span><strong>{dungeon.name}</strong><small>{dungeon.recommendedPlayers || 1} recommended Weaver{dungeon.recommendedPlayers === 1 ? '' : 's'} · recommended Attack {readiness?.recommendedAttack || 9}+</small></span><b>{selected?.id === dungeon.id ? 'SELECTED' : '›'}</b></button>)}</div>{selected ? <div className="shell-dungeon-ready"><span className={`shell-ready-dot${readiness?.ready ? ' is-ready' : ''}`} /><div><strong>{readiness?.ready ? 'Ready to enter' : 'Ready with risk'}</strong><small>{readiness?.members?.map((member) => `${member.displayName}: ${member.currentHealth}/${member.maxHealth} HP · ${member.canEnter === false ? 'too wounded' : member.ready ? 'ready' : 'below recommendation'}`).join(' · ') || 'Readiness is a server projection; entering remains your choice.'}</small></div></div> : <StateMessage title="Pick a Dungeon" copy="The server will return the authoritative readiness check." />}{selected ? <PanelButton primary disabled={busy} onClick={() => onRequest(`start dungeon ${selected.name}`, `/api/dungeons/${encodeURIComponent(selected.id)}/start-shared`, { method: 'POST' })} testId={`dungeon-start-${selected.id}`}>Enter Dungeon</PanelButton> : null}</RichCard>;
 }
 
 export function WorldPanel({ dashboard, onCommand }) {

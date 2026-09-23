@@ -1,5 +1,5 @@
 export const HEALING_RULES = Object.freeze({
-  healthPotionHeal: 12,
+  healthPotionHeal: 8,
   passiveRecoverySecondsPerHp: 60,
 });
 
@@ -20,6 +20,10 @@ export function resolveHealAction({
   currentHealth,
   maxHealth,
   healthPotions,
+  potionQuantity = null,
+  potionId = 'minor-health-potion',
+  potionName = 'Minor Health Potion',
+  potionHeal = HEALING_RULES.healthPotionHeal,
 } = {}) {
   if (activeRun) {
     const error = new Error('Heal is only available outside an active dungeon.');
@@ -29,7 +33,7 @@ export function resolveHealAction({
 
   const current = Math.max(0, wholeNumber(currentHealth));
   const maximum = Math.max(1, wholeNumber(maxHealth, 1));
-  const potions = Math.max(0, wholeNumber(healthPotions));
+  const potions = Math.max(0, wholeNumber(potionQuantity == null ? healthPotions : potionQuantity));
 
   if (current >= maximum) {
     const error = new Error('You are already at full health.');
@@ -37,14 +41,17 @@ export function resolveHealAction({
     throw error;
   }
   if (potions <= 0) {
-    const error = new Error('You have no health potions. Heal naturally over time or buy another potion.');
+    const error = new Error('You have no Health Potions available. Heal naturally over time or buy another potion.');
     error.code = 'no_health_potions';
     throw error;
   }
 
-  const nextHealth = Math.min(maximum, current + HEALING_RULES.healthPotionHeal);
+  const nextHealth = Math.min(maximum, current + Math.max(1, wholeNumber(potionHeal, HEALING_RULES.healthPotionHeal)));
   return Object.freeze({
     method: 'health_potion',
+    potionId,
+    potionName,
+    potionHeal: Math.max(1, wholeNumber(potionHeal, HEALING_RULES.healthPotionHeal)),
     consumeHealthPotions: 1,
     healed: nextHealth - current,
     currentHealth: nextHealth,
@@ -63,6 +70,10 @@ export function resolveDungeonPotionAction({
   currentHealth,
   maxHealth,
   healthPotions,
+  potionQuantity = null,
+  potionId = 'minor-health-potion',
+  potionName = 'Minor Health Potion',
+  potionHeal = HEALING_RULES.healthPotionHeal,
 } = {}) {
   if (!activeRun || activeRun.phase !== 'between_encounter' || activeRun.simpleCombat !== true) {
     const error = new Error('A health potion can only be used between Dungeon encounters.');
@@ -72,26 +83,25 @@ export function resolveDungeonPotionAction({
 
   const current = Math.max(0, wholeNumber(currentHealth));
   const maximum = Math.max(1, wholeNumber(maxHealth, 1));
-  const potions = Math.max(0, wholeNumber(healthPotions));
+  const potions = Math.max(0, wholeNumber(potionQuantity == null ? healthPotions : potionQuantity));
   if (current >= maximum) {
     const error = new Error('You are already at full Dungeon HP.');
     error.code = 'health_already_full';
     throw error;
   }
   if (potions <= 0) {
-    const error = new Error('You have no health potions left.');
+    const error = new Error('You have no Health Potions left.');
     error.code = 'no_health_potions';
     throw error;
   }
 
-  // Multi-enemy rooms create more granular incoming action pressure than the
-  // former singleton loop. A v2 Dungeon potion tops off the persistent room
-  // HP once between rooms; legacy simple runs retain the bounded v1 amount.
-  const nextHealth = Number(activeRun.simpleCombatVersion || 1) >= 2
-    ? maximum
-    : Math.min(maximum, current + HEALING_RULES.healthPotionHeal);
+  const boundedHeal = Math.max(1, wholeNumber(potionHeal, HEALING_RULES.healthPotionHeal));
+  const nextHealth = Math.min(maximum, current + boundedHeal);
   return Object.freeze({
     method: 'dungeon_health_potion',
+    potionId,
+    potionName,
+    potionHeal: boundedHeal,
     consumeHealthPotions: 1,
     healed: nextHealth - current,
     currentHealth: nextHealth,

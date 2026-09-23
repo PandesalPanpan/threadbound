@@ -28,13 +28,21 @@ async function dungeonBattlePosition(surface) {
       return box && arena ? { ...box, left: box.left - arena.left, top: box.top - arena.top } : box;
     };
     const ids = [...node.querySelectorAll('.shared-battle-unit')].map((unit) => unit.dataset.combatantId);
+    const line = node.querySelector('.shared-trajectory__core');
     const units = Object.fromEntries(ids.map((id) => {
       const stage = [...node.querySelectorAll('.shared-battle-character-stage')].find((element) => element.dataset.combatantId === id);
       const motion = [...node.querySelectorAll('.shared-battle-character-motion')].find((element) => element.dataset.combatantId === id);
       const unit = [...node.querySelectorAll('.shared-battle-unit')].find((element) => element.dataset.combatantId === id);
       return [id, { stage: relativeRect(stage), motion: relativeRect(motion), unit: relativeRect(unit), stageCenter: center(stage, arena), motionCenter: center(motion, arena), animationName: getComputedStyle(unit).animationName }];
     }));
-    return { phase: node.dataset.replayPhase, actorId: node.dataset.currentActorId, targetId: node.dataset.currentTargetId, units };
+    return {
+      phase: node.dataset.replayPhase,
+      actorId: node.dataset.currentActorId,
+      targetId: node.dataset.currentTargetId,
+      line: line ? { x1: Number(line.getAttribute('x1')), y1: Number(line.getAttribute('y1')), x2: Number(line.getAttribute('x2')), y2: Number(line.getAttribute('y2')) } : null,
+      lineTransform: line ? getComputedStyle(line).transform : null,
+      units,
+    };
   });
 }
 
@@ -59,15 +67,6 @@ test('Multi-enemy replay moves the committed actor and target without moving com
   await page.getByTestId('local-login-a').click();
   await page.context().request.post('/api/party/leave');
 
-  await page.route('**/api/stream*', async (route) => {
-    const response = await route.fetch();
-    const status = response.status();
-    const headers = response.headers();
-    const payload = await response.json();
-    const latestDungeon = [...(payload.entries || [])].reverse().find((entry) => entry.metadata?.battleReplay?.kind === 'simple-dungeon-battle');
-    const entries = (payload.entries || []).map((entry) => entry.id === latestDungeon?.id ? { ...entry, createdAt: new Date().toISOString() } : entry);
-    await route.fulfill({ status, headers, body: JSON.stringify({ ...payload, entries }) });
-  });
   await page.goto('/game');
   await page.getByTestId('stream-message').fill('dungeon');
   await page.getByTestId('stream-send').click();
@@ -79,7 +78,8 @@ test('Multi-enemy replay moves the committed actor and target without moving com
   expect(started.ok()).toBe(true);
   const startedPayload = await started.json();
   const replay = startedPayload.battleReplay;
-  const enemyAction = replay.beats.find((beat) => beat.phase === 'enemy');
+  const firstEnemyId = replay.enemies[0].combatantId;
+  const enemyAction = replay.beats.find((beat) => beat.phase === 'enemy' && beat.actorId !== firstEnemyId && beat.actorCombatantId !== firstEnemyId);
   expect(enemyAction).toBeTruthy();
   expect(replay.enemies.length).toBeGreaterThanOrEqual(2);
   expect(new Set(replay.enemies.map((enemy) => enemy.combatantId)).size).toBe(replay.enemies.length);
@@ -96,7 +96,8 @@ test('Multi-enemy replay moves the committed actor and target without moving com
   }, { timeout: 1800, intervals: [50] }).toBe(true);
   expect(firstPosition.units[firstBeat.actorId].animationName).toBe('none');
 
-  await expect.poll(async () => surface.getAttribute('data-replay-moment-index'), { timeout: 2500, intervals: [50] }).toBe('1');
+  const enemyMomentIndex = replay.beats.findIndex((beat) => beat === enemyAction);
+  await expect.poll(async () => surface.getAttribute('data-replay-moment-index'), { timeout: 5000, intervals: [50] }).toBe(String(enemyMomentIndex));
   let enemyPosition;
   await expect.poll(async () => {
     const position = await dungeonBattlePosition(surface);
@@ -106,6 +107,12 @@ test('Multi-enemy replay moves the committed actor and target without moving com
   }, { timeout: 1800, intervals: [50] }).toBe(true);
 
   expect(enemyPosition.units[enemyAction.actorId].animationName).toBe('none');
+  expect(enemyPosition.line).not.toBeNull();
+  expect(Math.abs(enemyPosition.line.x1 - enemyPosition.units[enemyAction.actorId].stageCenter.x)).toBeLessThan(1.5);
+  expect(Math.abs(enemyPosition.line.y1 - enemyPosition.units[enemyAction.actorId].stageCenter.y)).toBeLessThan(1.5);
+  expect(Math.abs(enemyPosition.line.x2 - enemyPosition.units[enemyAction.targetId].stageCenter.x)).toBeLessThan(1.5);
+  expect(Math.abs(enemyPosition.line.y2 - enemyPosition.units[enemyAction.targetId].stageCenter.y)).toBeLessThan(1.5);
+  expect(enemyPosition.lineTransform).toBe('none');
   for (const id of Object.keys(firstPosition.units)) {
     expect(rectDistance(firstPosition.units[id].unit, enemyPosition.units[id].unit)).toBeLessThan(0.5);
   }
@@ -190,7 +197,7 @@ test('React Dungeon resolves rooms inline and leaves only owner between-room dec
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await page.getByTestId('local-login-a').click();
+  await page.getByTestId('local-login-e').click();
   await page.context().request.post('/api/party/leave');
   await page.goto('/game');
   await page.getByTestId('stream-message').fill('dungeon');
@@ -223,9 +230,8 @@ test('React Dungeon resolves rooms inline and leaves only owner between-room dec
   const afterPotion = await waitForPhase(page.context(), 'between_encounter');
   expect(afterPotion.activeRun.viewer.hp).toBeGreaterThan(0);
   expect(afterPotion.activeRun.viewer.hp).toBeLessThanOrEqual(afterPotion.activeRun.viewer.maxHp);
-  // v2 potions top off before the next automatic room; that room may deal
-  // less damage than the recovery amount, so HP can legitimately exceed the
-  // pre-potion value while remaining capped at max HP.
+  // A Dungeon potion applies its fixed bounded heal before the next automatic
+  // room; that room may deal damage immediately after this assertion.
   const potionCard = page.getByTestId('stream-dungeon-rich-card').last();
   await expect(potionCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
 

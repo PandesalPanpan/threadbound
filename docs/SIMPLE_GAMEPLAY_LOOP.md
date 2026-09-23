@@ -18,7 +18,7 @@ The goal is to keep the command vocabulary closer to a lightweight chat RPG. Dep
 
 Hunts award a small amount of Gold and can drop permanent Equipment. Hunt drops are capped at Rare so Dungeon rewards and other progression sources can remain aspirational.
 
-Hunt damage persists between encounters. Outside a Dungeon, one HP regenerates per minute. New characters begin with one Health Potion, Hunts may find more, and `heal`/`potion` restores up to 12 HP. `rest` shows live next-HP and full-recovery countdowns. `shop` opens Mara's illustrated two-item shelf: one Potion for 5 Gold or three for 12. This health economy—not an arbitrary action cooldown—paces repeated Hunts without an unexplained dead end.
+Hunt damage persists between encounters. Outside a Dungeon, one HP regenerates per minute. New characters begin with one Minor Health Potion, Hunts may find more, and `heal`/`potion` restores up to 8 HP. `rest` shows live next-HP and full-recovery countdowns. `shop` opens Mara's illustrated shelf: one Minor Health Potion for 5 Gold or three for 12, with stronger tiers unlocking in later Areas. This health economy—not an arbitrary action cooldown—paces repeated Hunts without an unexplained dead end.
 
 ## Contextual chat navigation
 

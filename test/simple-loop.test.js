@@ -118,7 +118,7 @@ test('simple Dungeon pauses between rooms for explicit Continue, Potion, or Leav
   assert.equal(state.enemy, null);
   assert.equal(state.phase, 'between_encounter');
 
-  const potion = run.usePotionBetweenEncounters({ playerId: 'p1', healed: 12 });
+  const potion = run.usePotionBetweenEncounters({ playerId: 'p1', healed: 8 });
   assert.equal(potion.healed, 6);
   assert.equal(potion.state.participants[0].hp, 40);
   assert.equal(potion.state.phase, 'combat');
@@ -142,7 +142,7 @@ test('base Attack can clear rooms but fails the harder boss while recommended At
     for (let action = 0; action < 40 && !['complete', 'failed'].includes(state.phase); action += 1) {
       state = state.phase === 'between_encounter'
         ? (potionAvailable
-          ? (potionAvailable = false, run.usePotionBetweenEncounters({ playerId: 'p1', healed: 12 }).state)
+          ? (potionAvailable = false, run.usePotionBetweenEncounters({ playerId: 'p1', healed: 8 }).state)
           : run.continueEncounter({ playerId: 'p1' }).state)
         : run.attack({ playerId: 'p1', attackPower, equipmentEffect: 'none', now: `2026-09-10T00:01:${String(action).padStart(2, '0')}.000Z` }).state;
     }

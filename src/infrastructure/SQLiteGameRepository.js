@@ -37,6 +37,7 @@ export class SQLiteGameRepository {
     if (existing) return this.#decodePlayer(existing);
     const id = this.idFactory();
     this.db.prepare('INSERT INTO players (id, threaded_user_id, display_name, base_attack, max_health, thread_dust) VALUES (?, ?, ?, 6, 40, 0)').run(id, String(threadedUserId), displayName);
+    this.db.prepare("INSERT OR IGNORE INTO player_consumables (player_id, consumable_id, quantity) VALUES (?, 'minor-health-potion', 1)").run(id);
     return this.getPlayer(id);
   }
 
@@ -88,29 +89,96 @@ export class SQLiteGameRepository {
   }
 
   addHealthPotions(playerId, amount = 1) {
-    this.db.prepare('UPDATE players SET health_potions = health_potions + ? WHERE id = ?').run(Math.max(0, Math.floor(Number(amount))), playerId);
+    return this.addConsumable(playerId, 'minor-health-potion', amount);
   }
 
-  useHealthPotion(playerId, { heal = 12, updatedAt = new Date().toISOString() } = {}) {
+  listConsumables(playerId) {
+    return this.db.prepare('SELECT consumable_id AS consumableId, quantity FROM player_consumables WHERE player_id = ? ORDER BY consumable_id ASC').all(playerId).map((row) => ({
+      consumableId: row.consumableId,
+      quantity: Math.max(0, Number(row.quantity || 0)),
+    }));
+  }
+
+  getConsumableQuantity(playerId, consumableId) {
+    const row = this.db.prepare('SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = ?').get(playerId, consumableId);
+    return Math.max(0, Number(row?.quantity || 0));
+  }
+
+  addConsumable(playerId, consumableId, amount = 1) {
+    const quantity = Math.max(0, Math.floor(Number(amount) || 0));
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error('Player not found.');
+    this.db.prepare(`
+      INSERT INTO player_consumables (player_id, consumable_id, quantity)
+      VALUES (?, ?, ?)
+      ON CONFLICT(player_id, consumable_id) DO UPDATE SET quantity = quantity + excluded.quantity
+    `).run(playerId, consumableId, quantity);
+    this.#syncLegacyPotionProjection(playerId);
+    return this.getConsumableQuantity(playerId, consumableId);
+  }
+
+  useConsumable(playerId, { consumableId = 'minor-health-potion', heal = 8, currentHealth = null, updatedAt = new Date().toISOString() } = {}) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const row = this.db.prepare('SELECT current_health, max_health, health_potions FROM players WHERE id = ?').get(playerId);
+      const row = this.db.prepare('SELECT current_health, max_health FROM players WHERE id = ?').get(playerId);
       if (!row) throw new Error('Player not found.');
-      if (row.current_health >= row.max_health) {
+      const startingHealth = currentHealth == null
+        ? Number(row.current_health)
+        : Math.max(0, Math.min(Number(row.max_health), Math.floor(Number(currentHealth))));
+      if (startingHealth >= row.max_health) {
         const error = new Error('You are already at full health.');
         error.code = 'health_already_full';
         throw error;
       }
-      if (row.health_potions <= 0) {
-        const error = new Error('You have no health potions. Hunt to find another.');
+      const inventory = this.db.prepare('SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = ?').get(playerId, consumableId);
+      if (Number(inventory?.quantity || 0) <= 0) {
+        const error = new Error('You do not have that Health Potion.');
         error.code = 'no_health_potions';
         throw error;
       }
-      const currentHealth = Math.min(row.max_health, row.current_health + heal);
-      const healed = currentHealth - row.current_health;
-      this.db.prepare('UPDATE players SET current_health = ?, health_potions = health_potions - 1, health_updated_at = ? WHERE id = ?').run(currentHealth, updatedAt, playerId);
+      const nextHealth = Math.min(row.max_health, startingHealth + Math.max(1, Math.floor(Number(heal) || 0)));
+      const healed = nextHealth - startingHealth;
+      const consumed = this.db.prepare('UPDATE player_consumables SET quantity = quantity - 1 WHERE player_id = ? AND consumable_id = ? AND quantity > 0').run(playerId, consumableId);
+      if (consumed.changes !== 1) {
+        const error = new Error('That Health Potion is no longer available.');
+        error.code = 'no_health_potions';
+        throw error;
+      }
+      this.db.prepare('UPDATE players SET current_health = ?, health_updated_at = ? WHERE id = ?').run(nextHealth, updatedAt, playerId);
+      this.#syncLegacyPotionProjection(playerId);
+      const remaining = this.getConsumableQuantity(playerId, consumableId);
       this.db.exec('COMMIT');
-      return { healed, currentHealth, maxHealth: row.max_health, healthPotions: row.health_potions - 1 };
+      return { healed, currentHealth: nextHealth, maxHealth: row.max_health, consumableId, quantity: remaining, healthPotions: this.#legacyPotionQuantity(playerId) };
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
+  }
+
+  useHealthPotion(playerId, { heal = 8, updatedAt = new Date().toISOString() } = {}) {
+    return this.useConsumable(playerId, { consumableId: 'minor-health-potion', heal, updatedAt });
+  }
+
+  buyConsumable(playerId, { consumableId = 'minor-health-potion', cost = 5, quantity = 1 } = {}) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.db.prepare('SELECT thread_dust FROM players WHERE id = ?').get(playerId);
+      if (!row) throw new Error('Player not found.');
+      if (row.thread_dust < cost) {
+        const error = new Error(`You need ${cost} Thread Dust to buy a Health Potion.`);
+        error.code = 'insufficient_thread_dust';
+        throw error;
+      }
+      this.db.prepare('UPDATE players SET thread_dust = thread_dust - ? WHERE id = ?').run(cost, playerId);
+      this.db.prepare(`
+        INSERT INTO player_consumables (player_id, consumable_id, quantity)
+        VALUES (?, ?, ?)
+        ON CONFLICT(player_id, consumable_id) DO UPDATE SET quantity = quantity + excluded.quantity
+      `).run(playerId, consumableId, Math.max(0, Math.floor(Number(quantity) || 0)));
+      this.#syncLegacyPotionProjection(playerId);
+      const nextQuantity = this.getConsumableQuantity(playerId, consumableId);
+      this.db.exec('COMMIT');
+      return { cost, quantity, consumableId, threadDust: row.thread_dust - cost, quantityOwned: nextQuantity, healthPotions: this.#legacyPotionQuantity(playerId) };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -118,22 +186,7 @@ export class SQLiteGameRepository {
   }
 
   buyHealthPotion(playerId, { cost = 5, quantity = 1 } = {}) {
-    this.db.exec('BEGIN IMMEDIATE');
-    try {
-      const row = this.db.prepare('SELECT thread_dust, health_potions FROM players WHERE id = ?').get(playerId);
-      if (!row) throw new Error('Player not found.');
-      if (row.thread_dust < cost) {
-        const error = new Error(`You need ${cost} Thread Dust to buy a health potion.`);
-        error.code = 'insufficient_thread_dust';
-        throw error;
-      }
-      this.db.prepare('UPDATE players SET thread_dust = thread_dust - ?, health_potions = health_potions + ? WHERE id = ?').run(cost, quantity, playerId);
-      this.db.exec('COMMIT');
-      return { cost, quantity, threadDust: row.thread_dust - cost, healthPotions: row.health_potions + quantity };
-    } catch (error) {
-      try { this.db.exec('ROLLBACK'); } catch {}
-      throw error;
-    }
+    return this.buyConsumable(playerId, { consumableId: 'minor-health-potion', cost, quantity });
   }
 
   createParty(party) {
@@ -188,6 +241,7 @@ export class SQLiteGameRepository {
       );
       const insertParticipant = this.db.prepare('INSERT INTO dungeon_run_participants (run_id, player_id) VALUES (?, ?)');
       for (const participant of persisted.participants) insertParticipant.run(persisted.id, participant.playerId);
+      this.#syncRunHealth(persisted, new Date().toISOString());
       if (persisted.ownerType === 'party') this.db.prepare("UPDATE parties SET status = 'in_run' WHERE id = ?").run(persisted.ownerId);
       this.db.exec('COMMIT');
       return persisted;
@@ -204,26 +258,35 @@ export class SQLiteGameRepository {
   saveRun(state) {
     const expectedVersion = Number.isInteger(state.version) ? state.version : 0;
     const nextState = { ...state, version: expectedVersion + 1 };
-    const result = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
-      nextState.phase,
-      JSON.stringify(nextState),
-      nextState.version,
-      new Date().toISOString(),
-      nextState.id,
-      expectedVersion,
-    );
-    if (result.changes !== 1) {
-      const error = new Error('Dungeon state changed before this action could be saved. Refresh and retry.');
-      error.code = 'stale_run_version';
+    const updatedAt = new Date().toISOString();
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
+        nextState.phase,
+        JSON.stringify(nextState),
+        nextState.version,
+        updatedAt,
+        nextState.id,
+        expectedVersion,
+      );
+      if (result.changes !== 1) {
+        const error = new Error('Dungeon state changed before this action could be saved. Refresh and retry.');
+        error.code = 'stale_run_version';
+        throw error;
+      }
+      this.#syncRunHealth(nextState, updatedAt);
+      if (['failed', 'retreated'].includes(nextState.phase) && nextState.ownerType === 'party') {
+        this.#releaseParty(nextState.ownerId);
+      }
+      this.db.exec('COMMIT');
+      return nextState;
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
     }
-    if (['failed', 'retreated'].includes(nextState.phase) && nextState.ownerType === 'party') {
-      this.#releaseParty(nextState.ownerId);
-    }
-    return nextState;
   }
 
-  saveRunWithPotion(state, playerId) {
+  saveRunWithPotion(state, playerId, { consumableId = 'minor-health-potion', updatedAt = new Date().toISOString() } = {}) {
     const expectedVersion = Number.isInteger(state.version) ? state.version : 0;
     this.db.exec('BEGIN IMMEDIATE');
     try {
@@ -235,19 +298,20 @@ export class SQLiteGameRepository {
         error.code = 'stale_run_version';
         throw error;
       }
-      const potionRow = this.db.prepare('SELECT health_potions FROM players WHERE id = ?').get(playerId);
-      if (!potionRow) throw new Error('Player not found.');
-      if (Number(potionRow.health_potions || 0) <= 0) {
-        const error = new Error('You have no health potions left.');
+      const potionRow = this.db.prepare('SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = ?').get(playerId, consumableId);
+      if (!this.db.prepare('SELECT 1 FROM players WHERE id = ?').get(playerId)) throw new Error('Player not found.');
+      if (Number(potionRow?.quantity || 0) <= 0) {
+        const error = new Error('You have no Health Potions left.');
         error.code = 'no_health_potions';
         throw error;
       }
       const nextState = { ...state, version: expectedVersion + 1 };
+      const nextUpdatedAt = updatedAt || new Date().toISOString();
       const update = this.db.prepare('UPDATE dungeon_runs SET phase = ?, state_json = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?').run(
         nextState.phase,
         JSON.stringify(nextState),
         nextState.version,
-        new Date().toISOString(),
+        nextUpdatedAt,
         nextState.id,
         expectedVersion,
       );
@@ -256,9 +320,16 @@ export class SQLiteGameRepository {
         error.code = 'stale_run_version';
         throw error;
       }
-      this.db.prepare('UPDATE players SET health_potions = health_potions - 1 WHERE id = ? AND health_potions > 0').run(playerId);
+      const consumed = this.db.prepare('UPDATE player_consumables SET quantity = quantity - 1 WHERE player_id = ? AND consumable_id = ? AND quantity > 0').run(playerId, consumableId);
+      if (consumed.changes !== 1) {
+        const error = new Error('That Health Potion is no longer available.');
+        error.code = 'no_health_potions';
+        throw error;
+      }
+      this.#syncRunHealth(nextState, nextUpdatedAt);
+      this.#syncLegacyPotionProjection(playerId);
       this.db.exec('COMMIT');
-      return { state: nextState, healthPotions: Number(potionRow.health_potions) - 1 };
+      return { state: nextState, consumableId, quantity: this.getConsumableQuantity(playerId, consumableId), healthPotions: this.#legacyPotionQuantity(playerId) };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -316,6 +387,7 @@ export class SQLiteGameRepository {
         error.code = 'stale_run_version';
         throw error;
       }
+      this.#syncRunHealth(nextState, new Date().toISOString());
       if (nextState.ownerType === 'party') this.#releaseParty(nextState.ownerId);
       this.db.exec('COMMIT');
       return { state: nextState, penalties: appliedPenalties };
@@ -393,6 +465,7 @@ export class SQLiteGameRepository {
         throw error;
       }
 
+      this.#syncRunHealth(nextState, new Date().toISOString());
       if (nextState.ownerType === 'party') {
         this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(nextState.ownerId);
         this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(nextState.ownerId, nextState.ownerId);
@@ -447,6 +520,25 @@ export class SQLiteGameRepository {
     return { ...JSON.parse(row.state_json), version: row.version };
   }
 
+  #syncRunHealth(state, updatedAt) {
+    for (const participant of state.participants || []) {
+      const player = this.db.prepare('SELECT max_health FROM players WHERE id = ?').get(participant.playerId);
+      if (!player) throw new Error('Player not found while syncing Dungeon health.');
+      const maxHealth = Math.max(1, Number(player.max_health || participant.maxHp || 1));
+      const currentHealth = Math.max(0, Math.min(maxHealth, Math.floor(Number(participant.hp || 0))));
+      this.db.prepare('UPDATE players SET current_health = ?, health_updated_at = ? WHERE id = ?').run(currentHealth, updatedAt, participant.playerId);
+    }
+  }
+
+  #legacyPotionQuantity(playerId) {
+    const row = this.db.prepare("SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = 'minor-health-potion'").get(playerId);
+    return Math.max(0, Number(row?.quantity || 0));
+  }
+
+  #syncLegacyPotionProjection(playerId) {
+    this.db.prepare("UPDATE players SET health_potions = COALESCE((SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = 'minor-health-potion'), 0) WHERE id = ?").run(playerId, playerId);
+  }
+
   #releaseParty(partyId) {
     this.db.prepare("UPDATE parties SET status = 'forming' WHERE id = ?").run(partyId);
     this.db.prepare('UPDATE party_members SET ready = CASE WHEN player_id = (SELECT leader_player_id FROM parties WHERE id = ?) THEN 1 ELSE 0 END WHERE party_id = ?').run(partyId, partyId);
@@ -457,7 +549,18 @@ export class SQLiteGameRepository {
     const updatedAt = healthTimestamp ? new Date(healthTimestamp.includes('T') ? healthTimestamp : `${healthTimestamp.replace(' ', 'T')}Z`).getTime() : Date.now();
     const elapsedMinutes = Math.max(0, Math.floor((Date.now() - updatedAt) / 60000));
     const storedHealth = Number.isInteger(row.current_health) ? row.current_health : row.max_health;
-    return { id: row.id, threadedUserId: row.threaded_user_id, displayName: row.display_name, baseAttack: row.base_attack, maxHealth: row.max_health, currentHealth: Math.min(row.max_health, storedHealth + elapsedMinutes), healthPotions: row.health_potions ?? 1, healthUpdatedAt: row.health_updated_at, threadDust: row.thread_dust, equippedItemId: row.equipped_item_id };
+    const activeRun = this.db.prepare("SELECT dr.state_json FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') ORDER BY dr.created_at DESC LIMIT 1").get(row.id);
+    let activeHealth = null;
+    if (activeRun?.state_json) {
+      const state = JSON.parse(activeRun.state_json);
+      activeHealth = state.participants?.find((participant) => participant.playerId === row.id)?.hp;
+    }
+    const minorPotion = this.db.prepare("SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = 'minor-health-potion'").get(row.id);
+    const healthPotions = minorPotion ? Number(minorPotion.quantity || 0) : (row.health_potions ?? 1);
+    const currentHealth = activeHealth == null
+      ? Math.min(row.max_health, storedHealth + elapsedMinutes)
+      : Math.max(0, Math.min(row.max_health, Number(activeHealth)));
+    return { id: row.id, threadedUserId: row.threaded_user_id, displayName: row.display_name, baseAttack: row.base_attack, maxHealth: row.max_health, currentHealth, healthPotions, healthUpdatedAt: row.health_updated_at, threadDust: row.thread_dust, equippedItemId: row.equipped_item_id };
   }
 
   #decodeParty(row) {
@@ -489,6 +592,12 @@ export class SQLiteGameRepository {
         health_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         thread_dust INTEGER NOT NULL DEFAULT 0,
         equipped_item_id TEXT NULL
+      );
+      CREATE TABLE IF NOT EXISTS player_consumables (
+        player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        consumable_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0 CHECK(quantity >= 0),
+        PRIMARY KEY (player_id, consumable_id)
       );
       CREATE TABLE IF NOT EXISTS items (
         id TEXT PRIMARY KEY,
@@ -575,5 +684,11 @@ export class SQLiteGameRepository {
     if (!playerColumns.some((column) => column.name === 'health_updated_at')) this.db.exec("ALTER TABLE players ADD COLUMN health_updated_at TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'");
     const itemColumns = this.db.prepare('PRAGMA table_info(items)').all();
     if (!itemColumns.some((column) => column.name === 'visual_asset_id')) this.db.exec('ALTER TABLE items ADD COLUMN visual_asset_id TEXT NULL');
+    this.db.exec(`
+      INSERT OR IGNORE INTO player_consumables (player_id, consumable_id, quantity)
+      SELECT id, 'minor-health-potion', MAX(0, COALESCE(health_potions, 0))
+      FROM players
+      WHERE COALESCE(health_potions, 0) > 0;
+    `);
   }
 }

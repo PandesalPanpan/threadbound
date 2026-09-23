@@ -8,6 +8,7 @@ async function login(page, slot = 'd') {
 }
 
 async function command(page, value) {
+  await expect(page.getByTestId('stream-busy')).toHaveCount(0);
   const composer = page.getByTestId('stream-message');
   await composer.fill(value);
   await composer.press('Enter');
@@ -66,4 +67,41 @@ test('React shell embeds Gold games and server-backed Blackjack state', async ({
   await command(page, 'slots');
   await expect(page.getByTestId('gambling-rich-card')).toContainText('Slots');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('desktop composer accepts bj 250, keeps Hit/Stand authoritative, and preserves canonical Blackjack', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await login(page, 'j');
+
+  await command(page, 'bj 250');
+  let table = page.getByTestId('stream-gambling-rich-card').last();
+  await expect(table).toBeVisible();
+  await expect(table).toContainText('Wager 250 Gold');
+  const active = table.getByTestId('shared-blackjack-active');
+  if (await active.count()) {
+    await expect(active.getByTestId('shared-blackjack-hit')).toBeVisible();
+    await expect(active.getByTestId('shared-blackjack-stand')).toBeVisible();
+    await command(page, 'hit');
+    await expect.poll(async () => {
+      const latest = page.getByTestId('stream-gambling-rich-card').last();
+      return await latest.locator('[data-testid="shared-blackjack-active"], [data-testid="shared-blackjack-result"]').count();
+    }, { timeout: 7000 }).toBe(1);
+    const refreshed = page.getByTestId('stream-gambling-rich-card').last();
+    if (await refreshed.getByTestId('shared-blackjack-active').count()) await command(page, 'stand');
+    await expect(page.getByTestId('stream-gambling-rich-card').last().getByTestId('shared-blackjack-result')).toBeVisible();
+  }
+
+  await command(page, 'blackjack 1');
+  table = page.getByTestId('stream-gambling-rich-card').last();
+  await expect(table).toContainText('Wager 1 Gold');
+
+  await command(page, 'dg');
+  await expect(page.getByTestId('shell-dungeon-card')).toBeVisible();
+  await command(page, 'inv');
+  await expect(page.getByTestId('stream-inventory-rich-card').last()).toBeVisible();
+  await command(page, 'sh');
+  await expect(page.getByTestId('stream-shop-rich-card').last()).toBeVisible();
+  await command(page, 'st');
+  await expect(page.getByTestId('stream-player-status').last()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 });

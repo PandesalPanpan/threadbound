@@ -1,49 +1,65 @@
 import { isCharacterKind, isModernCharacterAsset } from '../../../public/character-asset-policy.js';
 
-const COMMAND_ALIASES = Object.freeze({
-  '/help': 'help',
-  '/status': 'status',
-  '/profile': 'status',
-  '/hunt': 'hunt',
-  '/dungeon': 'dungeon',
-  '/dungeons': 'dungeon',
-  '/adventures': 'dungeon',
-  '/run': 'dungeon',
-  '/adventure': 'adventure',
-  '/attack': 'attack',
-  '/continue': 'continue',
-  '/leave': 'retreat',
-  '/retreat': 'retreat',
-  '/guard': 'guard',
-  '/interrupt': 'interrupt',
-  '/mend': 'mend',
-  '/revive': 'revive',
-  '/heal': 'heal',
-  '/potion': 'heal',
-  '/rest': 'heal',
-  '/shop': 'shop',
-  '/buy': 'shop',
-  '/bank': 'bank',
-  '/inventory': 'inventory',
-  '/gear': 'inventory',
-  '/party': 'party',
-  '/area': 'area',
-  '/town': 'area',
-  '/quest': 'quest',
-  '/quests': 'quest',
-  '/gambling': 'gambling',
-  '/casino': 'gambling',
-  '/blackjack': 'blackjack',
-  '/hit': 'hit',
-  '/stand': 'stand',
-  '/coinflip': 'coinflip',
-  '/slots': 'slots',
-  '/leaderboard': 'leaderboard',
-  '/world': 'world',
-  '/achievements': 'world',
-  '/honey': 'honey',
-  '/wallet': 'honey',
-  '/codex': 'codex',
+export const COMMAND_ALIASES = Object.freeze({
+  help: 'help',
+  status: 'status',
+  st: 'status',
+  profile: 'status',
+  hunt: 'hunt',
+  dungeon: 'dungeon',
+  dg: 'dungeon',
+  dungeons: 'dungeon',
+  adventures: 'dungeon',
+  run: 'dungeon',
+  adventure: 'adventure',
+  adv: 'adventure',
+  attack: 'attack',
+  continue: 'continue',
+  cont: 'continue',
+  leave: 'retreat',
+  retreat: 'retreat',
+  lv: 'retreat',
+  guard: 'guard',
+  interrupt: 'interrupt',
+  mend: 'mend',
+  revive: 'revive',
+  heal: 'heal',
+  potion: 'heal',
+  pot: 'heal',
+  rest: 'heal',
+  shop: 'shop',
+  sh: 'shop',
+  buy: 'shop',
+  bank: 'bank',
+  bk: 'bank',
+  inventory: 'inventory',
+  inv: 'inventory',
+  gear: 'inventory',
+  party: 'party',
+  pt: 'party',
+  area: 'area',
+  ar: 'area',
+  town: 'area',
+  quest: 'quest',
+  quests: 'quest',
+  gambling: 'gambling',
+  casino: 'gambling',
+  blackjack: 'blackjack',
+  bj: 'blackjack',
+  hit: 'hit',
+  stand: 'stand',
+  coinflip: 'coinflip',
+  cf: 'coinflip',
+  slots: 'slots',
+  sl: 'slots',
+  leaderboard: 'leaderboard',
+  lb: 'leaderboard',
+  world: 'world',
+  achievements: 'world',
+  honey: 'honey',
+  wallet: 'honey',
+  codex: 'codex',
+  cx: 'codex',
 });
 
 export const QUICK_COMMANDS = Object.freeze([
@@ -58,7 +74,7 @@ export const QUICK_COMMANDS = Object.freeze([
 ]);
 
 export const COMMAND_SUGGESTIONS = Object.freeze([
-  'help', 'status', 'hunt', 'adventure', 'dungeon', 'inventory', 'shop', 'bank', 'party', 'area', 'quest', 'leaderboard', 'gambling', 'world', 'honey', 'codex',
+  'help', 'status', 'st', 'hunt', 'adventure', 'adv', 'dungeon', 'dg', 'inventory', 'inv', 'shop', 'sh', 'bank', 'bk', 'party', 'pt', 'area', 'ar', 'quest', 'leaderboard', 'lb', 'gambling', 'blackjack', 'bj', 'coinflip', 'cf', 'slots', 'sl', 'heal', 'pot', 'continue', 'cont', 'retreat', 'lv', 'world', 'honey', 'codex', 'cx',
 ]);
 
 function stableIndex(value, length) {
@@ -76,9 +92,10 @@ export function normalizeCommand(value) {
   if (!raw) return { raw: '', name: '', args: [] };
   const tokens = raw.split(/\s+/g);
   const token = tokens.shift().toLowerCase();
-  const canonical = (token.replace(/^\//, '') === 'profile' && tokens.length > 0)
+  const key = token.replace(/^\/+/, '');
+  const canonical = (key === 'profile' && tokens.length > 0)
     ? 'profile'
-    : COMMAND_ALIASES[token] || token.replace(/^\//, '');
+    : COMMAND_ALIASES[key] || key;
   return { raw, name: canonical, args: tokens, token };
 }
 

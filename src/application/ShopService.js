@@ -30,7 +30,7 @@ export class ShopService {
   #offersFor(playerId) {
     const area = this.areaRepository.get(playerId);
     const arcOffers = arcTownShopOffers(this.manifestRepository.listPublished(), { areaNumber: area.currentAreaNumber });
-    return [...SHOP_OFFERS, ...arcOffers];
+    return [...SHOP_OFFERS.filter((offer) => !offer.requiredArea || offer.requiredArea <= area.currentAreaNumber), ...arcOffers];
   }
 
   browse(playerId) {
@@ -52,7 +52,8 @@ export class ShopService {
       available,
       unavailableReason: available ? null : 'Finish the active dungeon before visiting the shop.',
       offers: offers.map(({ itemTemplate, ...offer }) => ({
-        ...offer,
+      ...offer,
+        ...(offer.potionId ? { potionId: offer.potionId, heal: offer.heal, requiredArea: offer.requiredArea } : {}),
         affordable: gold >= offer.cost,
         available,
         item: itemTemplate ? {
@@ -100,8 +101,10 @@ export class ShopService {
 
     let result;
     try {
-      // The repository still persists Gold in the legacy thread_dust column.
-      result = this.repository.buyHealthPotion(playerId, {
+      // The repository still persists Gold in the legacy thread_dust column,
+      // while the consumable quantity is keyed by the canonical potion id.
+      result = this.repository.buyConsumable(playerId, {
+        consumableId: offer.potionId || 'minor-health-potion',
         cost: offer.cost,
         quantity: offer.quantity,
       });
@@ -117,6 +120,9 @@ export class ShopService {
     const purchase = {
       kind: offer.kind,
       sku: offer.sku,
+      potionId: offer.potionId || null,
+      potionName: offer.name,
+      potionHeal: offer.heal || null,
       ...result,
       gold,
       // Compatibility alias for older API consumers.

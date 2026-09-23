@@ -36,8 +36,15 @@ test('health potions atomically heal persistent Hunt HP and decrement inventory'
 
   const recovery = service.useHealthPotion(player.id);
 
-  assert.deepEqual(recovery, { healed: 12, currentHealth: 37, maxHealth: 40, healthPotions: 0 });
-  assert.equal(repository.getPlayer(player.id).currentHealth, 37);
+  assert.deepEqual(recovery, {
+    healed: 8,
+    currentHealth: 33,
+    maxHealth: 40,
+    consumableId: 'minor-health-potion',
+    quantity: 0,
+    healthPotions: 0,
+  });
+  assert.equal(repository.getPlayer(player.id).currentHealth, 33);
   assert.equal(events.at(-1).type, 'HealthPotionUsed');
   assert.throws(() => service.useHealthPotion(player.id), (error) => error.code === 'no_health_potions');
 });

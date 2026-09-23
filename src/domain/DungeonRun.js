@@ -86,14 +86,15 @@ function cloneEnemy(definition, playerCount, isBoss = false) {
 function freshParticipants(participants) {
   if (!Array.isArray(participants) || participants.length < 1 || participants.length > 4) throw new Error('Dungeon requires between 1 and 4 participants.');
   const ids = new Set();
-  return participants.map(({ playerId, maxHealth }) => {
+  return participants.map(({ playerId, maxHealth, currentHealth = maxHealth, startingHealth = currentHealth }) => {
     if (!playerId || !Number.isInteger(maxHealth) || maxHealth <= 0) throw new Error('Each participant requires playerId and positive maxHealth.');
+    if (!Number.isInteger(startingHealth) || startingHealth < 0 || startingHealth > maxHealth) throw new Error('Each participant requires currentHealth between 0 and maxHealth.');
     if (ids.has(playerId)) throw new Error('Dungeon participants must be unique.');
     ids.add(playerId);
     return {
       playerId,
       maxHp: maxHealth,
-      hp: maxHealth,
+      hp: startingHealth,
       contributionDamage: 0,
       healingDone: 0,
       revives: 0,

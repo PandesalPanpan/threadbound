@@ -42,7 +42,7 @@ Typed commands remain available even when they are not one of the two surfaced a
 
 `hunt` resolves one short solo encounter. Hunt damage persists instead of resetting after every command. Outside active dungeons, Hunt HP regenerates lazily at one HP per minute.
 
-Health potions restore up to 12 Hunt HP. New characters begin with one potion, Hunts may find more, and Mara's in-thread field shop provides a recovery sink for Thread Dust.
+Minor Health Potions restore up to 8 Hunt HP. New characters begin with one potion, Hunts may find more, and Mara's in-thread field shop provides a recovery sink for Gold. Higher potion tiers unlock with later Areas.
 
 Shop offers are server-owned:
 
