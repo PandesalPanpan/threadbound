@@ -87,6 +87,49 @@ test('Quest claims atomically award Gold and XP, project level growth, and issue
   }
 });
 
+test('renewable offers rotate past the most recently claimed template regardless of its catalog position', () => {
+  const { repository, player, questRepository, progressionRepository, eventBus } = fixture();
+  const catalog = ['field-note-one', 'field-note-two', 'field-note-three', 'field-note-four'].map((id, index) => new Quest({
+    id,
+    title: `Field Note ${index + 1}`,
+    areaNumber: 1,
+    townId: 'area-1-town',
+    reward: { gold: 10 + index, experience: 20 + index },
+    objectives: [{ id: `complete-hunt-${index + 1}`, type: 'hunt', count: 1 }],
+  }));
+  const service = new QuestService({
+    repository,
+    questRepository,
+    progressionRepository,
+    eventBus,
+    catalog,
+    questCatalog: [],
+    now: () => new Date('2026-09-23T00:10:00.000Z'),
+  });
+  try {
+    const chosen = catalog[1];
+    const availableBefore = service.browse(player.id).quests.filter((quest) => quest.state === 'available');
+    assert.equal(availableBefore[1].templateId, chosen.id);
+    service.accept(player.id, chosen.id, '2026-09-23T00:00:00.000Z');
+    eventBus.publish({ type: 'HuntResolved', playerId: player.id, enemyId: 'any-enemy', victory: true });
+    service.claim(player.id, chosen.id, '2026-09-23T00:10:00.000Z');
+
+    const availableAfter = service.browse(player.id).quests.filter((quest) => quest.state === 'available');
+    assert.equal(availableAfter.length, 3);
+    const identity = (quest) => ({
+      templateId: quest.templateId,
+      title: quest.title,
+      objectives: quest.objectives.map(({ type, targetId, count }) => ({ type, targetId, count })),
+    });
+    const claimedIdentity = identity(chosen);
+    assert.ok(availableAfter.every((quest) => JSON.stringify(identity(quest)) !== JSON.stringify(claimedIdentity)));
+    assert.ok(availableAfter.every((quest) => !quest.id.startsWith(`${chosen.id}-again-`)));
+  } finally {
+    service.dispose();
+    repository.close();
+  }
+});
+
 test('a leveling Quest claim preserves HP regenerated since the last persisted health write', () => {
   const { repository, player, questRepository, progressionRepository, eventBus } = fixture();
   const service = new QuestService({

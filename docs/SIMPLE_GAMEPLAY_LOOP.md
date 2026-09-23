@@ -108,6 +108,8 @@ HP or Mana.
 At each intermission, one party member may claim one bounded shared potion
 Heal. A versioned server-side run transition records the claiming player and
 intermission window; whichever valid request commits first owns that window.
+If another participant claims it first, the losing request returns a conflict
+and does not spend that participant's potion.
 Both participants see the same consumed state after realtime refresh or
 reconnect, and the allowance resets on Continue. The Heal action is separate
 from Continue and does not start the next encounter.

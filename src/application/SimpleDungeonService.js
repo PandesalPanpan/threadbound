@@ -62,6 +62,46 @@ function progressionRoomStages(definition, areaContent) {
   });
 }
 
+function progressionBalanceEnemy(enemy, balance, { boss = false, bossAdd = false } = {}) {
+  if (!enemy || !balance) return enemy;
+  const id = enemy.id || enemy.definitionId;
+  const next = { ...enemy };
+  if (!boss && !bossAdd) {
+    const hpMultiplier = Number(balance.normalEnemyHpMultiplier || 1);
+    if (hpMultiplier !== 1 && Number.isFinite(Number(enemy.hp))) {
+      next.hp = Math.max(1, Math.ceil(Number(enemy.hp) * hpMultiplier));
+    }
+  }
+  const retaliationMultiplier = Number(balance.enemyRetaliationMultiplier || 1);
+  if (retaliationMultiplier !== 1 && Number.isFinite(Number(enemy.retaliation))) {
+    next.retaliation = Math.max(1, Math.ceil(Number(enemy.retaliation) * retaliationMultiplier));
+  }
+  const skillMana = bossAdd
+    ? balance.bossAddManaByEnemy?.[id]
+    : balance.skillStartingManaByEnemy?.[id];
+  if (skillMana && typeof skillMana === 'object') Object.assign(next, skillMana);
+  else if (Number.isFinite(Number(skillMana))) next.mana = Math.max(0, Math.floor(Number(skillMana)));
+  return next;
+}
+
+function applyProgressionBalance(definition, areaContent) {
+  const balance = areaContent?.simpleDungeonBalance;
+  if (!balance) return definition;
+  const simpleStages = (definition.simpleStages || []).map((stage) => (
+    stage.map((enemy) => progressionBalanceEnemy(enemy, balance))
+  ));
+  const encounters = Array.isArray(definition.encounters)
+    ? simpleStages.flat()
+    : definition.encounters;
+  return {
+    ...definition,
+    encounters,
+    simpleStages,
+    boss: progressionBalanceEnemy(definition.boss, balance, { boss: true }),
+    bossAdds: (definition.bossAdds || []).map((enemy) => progressionBalanceEnemy(enemy, balance, { bossAdd: true })),
+  };
+}
+
 const FIRST_GUILD_TRIAL = Object.freeze({
   id: AREA_ONE_PROGRESSION_DUNGEON_ID,
   name: 'Sunpetal Guild Trial',
@@ -160,7 +200,8 @@ export class SimpleDungeonService {
       progressionAreaNumber: areaContent?.number || null,
       recommendedLevelBand: challenge.recommendedLevel,
     };
-    return applyProgressionBossEnrage(progressionDefinition, this.enrageRepository.get(definition.id || dungeonId));
+    const balancedDefinition = applyProgressionBalance(progressionDefinition, areaContent);
+    return applyProgressionBossEnrage(balancedDefinition, this.enrageRepository.get(definition.id || dungeonId));
   }
 
   readiness(playerId, dungeonId) {

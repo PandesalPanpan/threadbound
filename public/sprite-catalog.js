@@ -122,7 +122,7 @@ function resolvedAsset(entity, kind, fallbackSeed) {
   const explicit = visualAsset(entity?.visualAssetId, kind);
   if (kind === 'item') {
     if (explicit && !isLegacyGenericItemAsset(explicit)) return explicit;
-    const compatibleId = legacyItemVisualAssetId(entity);
+    const compatibleId = legacyItemVisualAssetId(entity, VISUAL_ASSETS);
     const compatible = compatibleId ? visualAsset(compatibleId, kind) : null;
     if (compatible) return compatible;
     if (explicit && !isLegacyGenericItemAsset(explicit)) return explicit;

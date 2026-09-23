@@ -182,6 +182,8 @@ export function instantiateSimpleStage({ definition, stage, roomIndex = 0, parti
       skillCode: enemy.skillCode || null,
       mana: Math.max(0, Number(enemy.mana || 0)),
       maxMana: Math.max(0, Number(enemy.maxMana || 100)),
+      manaGain: Math.max(0, Math.floor(Number(enemy.manaGain ?? 35) || 0)),
+      manaGainOnDamage: Math.max(0, Math.floor(Number(enemy.manaGainOnDamage ?? 12) || 0)),
       ...(enemy.resistances ? { resistances: structuredClone(enemy.resistances) } : {}),
       targetingProfile: profileFor(enemy),
       abilities: [],

@@ -117,6 +117,19 @@ test('legacy item aliases retain their object family across React and sprite ren
   }
 });
 
+test('name-only items prefer an exact official Figma label over broad family fallbacks', () => {
+  const cases = [
+    ['Threadsteel Longsword', 'item.threadsteel-longsword.v1'],
+    ['Bronze Wardblade', 'item.bronze-wardblade.v1'],
+    ['Ironroot Cuirass', 'item.ironroot-cuirass.v1'],
+  ];
+  for (const [name, expectedId] of cases) {
+    assert.equal(itemSpriteFrame({ name }).visualAssetId, expectedId, `sprite resolver: ${name}`);
+    assert.equal(resolveShellAsset({ name }, VISUAL_ASSETS, ['item'])?.id, expectedId, `React resolver: ${name}`);
+    assert.equal(visualAsset(expectedId, 'item')?.provenance?.sourceCollection, 'figma-item-library-v1');
+  }
+});
+
 test('current living-character policy excludes first-generation Figma art and resolves legacy identities into the library', () => {
   assert.equal(modernCharacterAssets('character').length, 42);
   assert.equal(modernCharacterAssets('mob').length, 100);

@@ -238,14 +238,28 @@ export class QuestService {
   #currentOffers(areaNumber, stored) {
     const templates = this.#allTemplates().filter((quest) => quest.areaNumber === areaNumber);
     if (templates.length === 0) return Object.freeze([]);
-    const claimedCount = stored.filter((progress) => progress.status === 'claimed').length;
-    const startIndex = claimedCount % templates.length;
+    const claimedInArea = stored
+      .filter((progress) => progress.status === 'claimed'
+        && definitionForProgress(progress, this.templatesById)?.areaNumber === areaNumber)
+      .sort((left, right) => String(left.claimedAt || '').localeCompare(String(right.claimedAt || ''))
+        || String(left.questId).localeCompare(String(right.questId)));
+    const latestClaimed = claimedInArea.at(-1) || null;
+    const latestClaimedTemplateId = latestClaimed
+      ? templateIdForProgress(latestClaimed, this.templatesById)
+      : null;
+    const latestClaimedIndex = latestClaimedTemplateId
+      ? templates.findIndex((template) => template.templateId === latestClaimedTemplateId)
+      : -1;
+    const startIndex = latestClaimedIndex >= 0
+      ? (latestClaimedIndex + 1) % templates.length
+      : claimedInArea.length % templates.length;
     const occupiedTemplateIds = new Set(stored
       .filter((progress) => progress.status !== 'claimed')
       .map((progress) => templateIdForProgress(progress, this.templatesById)));
     const offeredTemplates = [];
     for (let offset = 0; offset < templates.length && offeredTemplates.length < QUEST_OFFER_COUNT; offset += 1) {
       const template = templates[(startIndex + offset) % templates.length];
+      if (templates.length > 1 && template.templateId === latestClaimedTemplateId) continue;
       if (!occupiedTemplateIds.has(template.templateId)) offeredTemplates.push(template);
     }
     const acceptedCounts = new Map();

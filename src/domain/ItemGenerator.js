@@ -97,13 +97,21 @@ function serializableEffect(definition, equipmentTemplate) {
 }
 
 export class ItemGenerator {
-  constructor({ rng = Math.random, idFactory = randomUUID, equipmentOptions = null } = {}) {
+  constructor({ rng = Math.random, idFactory = randomUUID, equipmentOptions = null, equipmentOptionsByRarity = null } = {}) {
     this.rng = rng;
     this.idFactory = idFactory;
     this.equipmentOptions = equipmentOptions;
+    this.equipmentOptionsByRarity = equipmentOptionsByRarity;
   }
 
-  generateReward({ source = 'frayed-hollow', areaNumber = 1, slot = null, rarityWeights = null, equipmentOptions = this.equipmentOptions } = {}) {
+  generateReward({
+    source = 'frayed-hollow',
+    areaNumber = 1,
+    slot = null,
+    rarityWeights = null,
+    equipmentOptions = this.equipmentOptions,
+    equipmentOptionsByRarity = this.equipmentOptionsByRarity,
+  } = {}) {
     const area = normalizeArea(areaNumber);
     const itemSlot = slot ? String(slot).trim().toLowerCase() : pick(EQUIPMENT_SLOTS, this.rng);
     if (!EQUIPMENT_SLOTS.includes(itemSlot)) {
@@ -115,7 +123,9 @@ export class ItemGenerator {
     const rarity = rarityFromWeightedRoll(randomFraction(this.rng), rarityWeights);
     const effectPool = rarity.tier >= 3 ? NON_PLAIN_EFFECT_CODES : EFFECT_CODES;
     const effectCode = pick(effectPool, this.rng);
-    const visuals = equipmentOptions?.[itemSlot];
+    const visuals = equipmentOptionsByRarity == null
+      ? equipmentOptions?.[itemSlot]
+      : equipmentOptionsByRarity[rarity.id]?.[itemSlot];
     if (!Array.isArray(visuals) || visuals.length === 0) {
       const error = new Error(`Generated equipment requires application-selected official ${itemSlot} item options.`);
       error.code = 'generated_equipment_options_required';

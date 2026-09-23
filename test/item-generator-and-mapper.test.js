@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generatedEquipmentOptions } from '../src/content/GeneratedEquipmentCatalog.js';
-import { AREA_CONTENT } from '../src/content/AreaContentCatalog.js';
+import { AREA_CONTENT, itemRewardProfileForArea } from '../src/content/AreaContentCatalog.js';
 import { EQUIPMENT_SLOTS } from '../src/domain/EquipmentSlotPolicy.js';
 import { ItemGenerator } from '../src/domain/ItemGenerator.js';
 import { rarityFromWeightedRoll } from '../src/domain/ItemRarityPolicy.js';
@@ -85,6 +85,48 @@ test('every configured Area can generate official material families in all five 
       assert.ok(officialItemIds.has(item.visualAssetId));
     }
   }
+});
+
+test('Area and rolled rarity narrow generated rewards to the matching official material family', () => {
+  const cases = [
+    { areaNumber: 1, slot: 'weapon', rarity: 'common', materialFamily: 'wood' },
+    { areaNumber: 1, slot: 'weapon', rarity: 'rare', materialFamily: 'iron' },
+    { areaNumber: 2, slot: 'armor', rarity: 'common', materialFamily: 'steel' },
+    { areaNumber: 2, slot: 'armor', rarity: 'rare', materialFamily: 'nature' },
+    { areaNumber: 3, slot: 'weapon', rarity: 'common', materialFamily: 'fire' },
+    { areaNumber: 3, slot: 'weapon', rarity: 'epic', materialFamily: 'arcane' },
+    { areaNumber: 4, slot: 'accessory', rarity: 'common', materialFamily: 'void' },
+    { areaNumber: 4, slot: 'accessory', rarity: 'mythic', materialFamily: 'angel' },
+  ];
+
+  for (const { areaNumber, slot, rarity, materialFamily } of cases) {
+    const profile = itemRewardProfileForArea(areaNumber);
+    const eligible = profile.equipmentOptionsByRarity[rarity][slot];
+    assert.ok(eligible.length > 0, `Area ${areaNumber} ${rarity} ${slot} must have official eligible art`);
+    assert.ok(eligible.every((option) => option.materialFamily === materialFamily));
+    assert.ok(eligible.every((option) => visualAsset(option.visualAssetId, 'item')?.provenance.sourceCollection === 'figma-item-library-v1'));
+
+    const item = new ItemGenerator({ rng: () => 0, idFactory: () => `${areaNumber}-${rarity}-${slot}` })
+      .generateReward({
+        source: 'area-rarity-family-test',
+        slot,
+        ...profile,
+        rarityWeights: { [rarity]: 1 },
+      });
+    assert.equal(item.rarity, rarity);
+    assert.equal(item.areaNumber, areaNumber);
+    assert.equal(item.materialFamily, materialFamily);
+    assert.ok(officialItemIds.has(item.visualAssetId));
+  }
+
+  assert.notEqual(
+    itemRewardProfileForArea(1).equipmentOptionsByRarity.common.weapon[0].materialFamily,
+    itemRewardProfileForArea(1).equipmentOptionsByRarity.rare.weapon[0].materialFamily,
+  );
+  assert.notEqual(
+    itemRewardProfileForArea(1).equipmentOptionsByRarity.common.weapon[0].visualAssetId,
+    itemRewardProfileForArea(4).equipmentOptionsByRarity.common.weapon[0].visualAssetId,
+  );
 });
 
 test('ordinary loot keeps generated rarity, slot stats, and nested budget consistent', () => {

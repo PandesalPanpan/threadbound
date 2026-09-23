@@ -10,7 +10,7 @@ Status: **M5-01 complete — merged in PR #73 at `8884ee15`; M5-02 complete — 
 
 `src/application/AreaService.js` is the Service Layer boundary. It projects authoritative unlocked travel choices and coordinates current-Area changes through the existing Domain Model and Area repository. Browser code never grants an unlock or writes location state directly.
 
-M5-01 through M5-03 deliberately use stable canon-neutral identities (`area-1`, `area-2`, ...) and labels (`Area 1`, `Area 2`, ...). This is world-position/travel infrastructure, not new Arc content. Named Areas, Arc mappings, Adventure content, and progression unlock commands remain later ordered milestones.
+M5-01 through M5-03 originally established stable, canon-neutral travel identities (`area-1`, `area-2`, ...) before the world content existed. The branch-local RPG progression increment now maps those identities to Bellbloom Meadows, Emberglass Orchard, Kitewind Heights, and The Mirrorfen, with authored Hunt/Adventure pools, Towns, Quests, and progression challenges. See `docs/SIMPLE_GAMEPLAY_LOOP.md` for the current content and behavior; this document retains the original Area persistence/travel contract.
 
 ## Domain and application contract
 
@@ -88,6 +88,6 @@ The Playwright multi-Area projection is presentation-contract coverage only; aut
 
 PR #75 passed `npm run check`, the full unit/contract suite, and the complete active Chromium E2E suite before merge. Merged `main` CI #1445 repeated both required jobs successfully. M5-03 made no shipped layout change, so the existing 390x844 Area-card visual baseline remains applicable rather than requiring a new visual redesign pass.
 
-## Next ordered task
+## Later Area progression work
 
-The next earliest unchecked milestone is **M5-04 — implement ordinary Adventure activity using shared battle/world policies**.
+M5-04 ordinary Adventure content and the later Area progression/unlock milestones are implemented on `feat/rpg-progression-loop`, with branch-local status recorded in `docs/THREADBOUND_MASTER_PLAN.md`. This branch has not yet satisfied the master plan's merge and green `main` CI requirement. Continue from the earliest unchecked item in the master plan after that branch-local work is reviewed and delivered.

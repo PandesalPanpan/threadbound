@@ -47,7 +47,6 @@ function entryMeta(entry) {
 }
 
 function entrySummary(entry) {
-  if (entry.category === 'items' && Number.isFinite(Number(entry.mechanics?.attackBonus))) return `+${entry.mechanics.attackBonus} Attack · ${entry.mechanics?.effectName || 'Equipment effect'}`;
   return entry.summary || entry.body || 'No summary recorded.';
 }
 

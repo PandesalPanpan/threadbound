@@ -8,7 +8,11 @@ import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository
 import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
+import { QuestService } from '../src/application/QuestService.js';
+import { TownService } from '../src/application/TownService.js';
+import { EventBus } from '../src/application/EventBus.js';
 import { AUTOMATIC_BATTLE_EFFECT_TYPES } from '../src/domain/AutomaticBattleEffectPolicy.js';
+import { visualAsset } from '../src/content/VisualAssetCatalog.js';
 
 function equipment(id, overrides = {}) {
   return {
@@ -97,15 +101,38 @@ test('Arc Manifest vNext rejects Quest kill, collect, and boss objectives that c
   assert.ok(result.errors.some((error) => error.code === 'unknown_boss_target'));
 });
 
-test('Arc Manifest vNext accepts Quest kill, collect, and boss targets used by authoritative game events', () => {
+test('Arc Manifest vNext rejects known enemies absent from the Quest Area runtime pools and accepts local targets', () => {
+  const unavailable = manifestV2();
+  unavailable.quests[0].objectives = [{ type: 'kill', targetId: 'vnext-enemy', count: 1 }];
+  const unavailableResult = new ArcManifestVNextValidator().validate(unavailable);
+  assert.equal(unavailableResult.valid, false);
+  assert.ok(unavailableResult.errors.some((error) => error.code === 'kill_target_unavailable_in_area'));
+
   const manifest = manifestV2();
+  manifest.enemies.push({ ...manifest.enemies[0], id: 'bouncebud-slime', name: 'Bouncebud Slime' });
   manifest.quests[0].objectives = [
-    { type: 'kill', targetId: 'vnext-enemy', count: 1 },
+    { type: 'kill', targetId: 'bouncebud-slime', count: 1 },
     { type: 'collect', targetId: 'vnext-blade', count: 1 },
     { type: 'boss', targetId: 'vnext-dungeon', count: 1 },
   ];
   const result = new ArcManifestVNextValidator().validate(manifest);
   assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test('runtime Arc Quests omit legacy published kill targets unavailable in their Area', () => {
+  const gameRepository = new SQLiteGameRepository({ filename: ':memory:' });
+  const codexRepository = new SQLiteCodexRepository({ database: gameRepository.db });
+  const manifestRepository = new SQLiteArcManifestRepository({ database: gameRepository.db });
+  const service = new ArcManifestService({ gameRepository, codexRepository, manifestRepository, bundledManifests: [] });
+  const invalidLegacy = manifestV2();
+  invalidLegacy.quests[0].objectives = [{ type: 'kill', targetId: 'vnext-enemy', count: 1 }];
+  manifestRepository.listPublished = () => [{ id: 'legacy-published-vnext', arcId: invalidLegacy.arc.id, revision: 1, manifest: invalidLegacy }];
+
+  try {
+    assert.equal(service.runtimeQuests().some((quest) => quest.id === 'vnext-quest-1'), false);
+  } finally {
+    gameRepository.close();
+  }
 });
 
 test('Arc Manifest vNext keeps NPC artwork optional but accepts only character visual assets', () => {
@@ -160,4 +187,38 @@ test('published v2 Town projections preserve optional NPC character art without 
   assert.ok(authoredQuest.reward.gold > 0 && authoredQuest.reward.experience > 0);
 
   gameRepository.close();
+});
+
+test('published no-art Arc speaker is projected with semantic character art and its Quest is completable in that Town', () => {
+  const gameRepository = new SQLiteGameRepository({ filename: ':memory:' });
+  const codexRepository = new SQLiteCodexRepository({ database: gameRepository.db });
+  const manifestRepository = new SQLiteArcManifestRepository({ database: gameRepository.db });
+  const arcManifestService = new ArcManifestService({ gameRepository, codexRepository, manifestRepository, bundledManifests: [] });
+  const eventBus = new EventBus();
+  const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'vnext-no-art-speaker', displayName: 'Speaker Tester' });
+  const manifest = manifestV2();
+  delete manifest.npcs[0].visualAssetId;
+  const draft = arcManifestService.saveDraft(manifest, { source: 'vnext-no-art-speaker-test' });
+  arcManifestService.publish(draft.id);
+  const quests = new QuestService({ repository: gameRepository, eventBus, arcManifestService });
+  const towns = new TownService({ repository: gameRepository, eventBus, arcManifestService });
+
+  try {
+    const town = towns.browse(player.id).towns.find((entry) => entry.id === 'vnext-town-1');
+    assert.ok(town, 'the valid Arc Town must be available in its supported Area');
+    const npc = town.npcs.find((entry) => entry.id === 'vnext-smith');
+    assert.ok(npc);
+    assert.ok(visualAsset(npc.visualAssetId, 'character'), 'NPC fallback must use an allowlisted semantic character asset');
+
+    const quest = quests.browse(player.id).quests.find((entry) => entry.id === 'vnext-quest-1');
+    assert.ok(quest);
+    assert.equal(quest.townId, town.id);
+    assert.ok(quest.objectives.some((objective) => objective.type === 'speak' && objective.targetId === npc.id));
+    quests.accept(player.id, quest.id);
+    towns.interact(player.id, quest.townId, npc.id);
+    assert.equal(quests.browse(player.id).quests.find((entry) => entry.id === quest.id).state, 'claimable');
+  } finally {
+    quests.dispose();
+    gameRepository.close();
+  }
 });

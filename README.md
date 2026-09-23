@@ -4,25 +4,24 @@ Threadbound is a persistent cooperative **chat-first RPG**. In normal mode it au
 
 ## Canonical product direction
 
-Threadbound is now migrating toward an **EPIC-RPG-clear standalone two-player adventure RPG**: simple commands and readable receipts on the surface, with richer server-authoritative progression underneath. The Adventure Stream remains the primary application shell.
+Threadbound is a **standalone two-player adventure RPG**: simple commands and readable receipts on the surface, with server-authoritative progression underneath. The Adventure Stream remains the primary application shell.
 
-The canonical ordered product/execution checklist is **`docs/THREADBOUND_MASTER_PLAN.md`**. New gameplay work must follow that plan before expanding Arc content. In particular, the project is deliberately moving toward plain player-facing terms such as **Gold, Inventory, Equipment, Upgrade, Heal, Bank, Area, Town, Quest, Adventure, Duel, Profile, and Leaderboard**. Existing Thread Dust / Temper / Relic terminology below describes the currently shipped legacy-compatible implementation and is being migrated incrementally rather than rewritten unsafely in one step.
+The canonical ordered product/execution checklist is **`docs/THREADBOUND_MASTER_PLAN.md`**. Follow it before expanding Arc content. Player-facing terms include **Gold, Inventory, Equipment, Upgrade, Heal, Bank, Area, Town, Quest, Adventure, Duel, Profile, and Leaderboard**. Legacy persistence and API names remain only where compatibility requires them.
 
 ## Current player loop
 
-The currently shipped player experience is intentionally smaller than the legacy tactical prototype:
+The connected player loop is:
 
 ```text
-Hunt -> earn Gold / find permanent Equipment
-     -> Inventory: equip, Upgrade, or Sell
-     -> Shop / Recovery when wounded
-     -> Dungeon when strong enough
-     -> enter or continue a room; the server resolves the automatic battle
-        and the Adventure Stream replays the committed result
-     -> reward -> Inventory -> repeat
+Hunt -> earn XP / Gold / Area-specific loot
+     -> Quest progress, NPCs, Inventory, and Equipment upgrades
+     -> party progression Dungeon with Mana skills and multi-enemy battles
+     -> replay the committed result, then use the shared intermission Heal if needed
+     -> clear the challenge -> unlock and travel to the next Area
+     -> stronger Hunts, new Quests and NPC context, better loot -> repeat
 ```
 
-This is the migration baseline, not the final target loop. See `docs/THREADBOUND_MASTER_PLAN.md` for the replacement foundation and ordered milestones.
+Hunt, Adventure, Quest, Duel, and Dungeon outcomes are resolved on the server. The browser presents persisted state and replays committed combat; it does not calculate game rules. See `docs/SIMPLE_GAMEPLAY_LOOP.md` and the focused foundation docs for mechanics.
 
 The Adventure Stream is the primary play surface. Players can type commands directly or use at most two contextual actions near the composer.
 
@@ -32,15 +31,18 @@ Current contextual behavior:
 - gear exists but Attack is below the recommendation: **Hunt + Inventory**;
 - Attack meets the recommendation and gear exists: **Dungeon + Inventory**;
 - zero Hunt HP: **Recovery + Shop**;
-- active shared Dungeon: the latest Dungeon card owns the automatic replay and,
-  after a room clears, exposes **Continue**, **Use Potion**, and **Leave** only
-  to the acting Weaver; the composer does not expose repeated Attack clicks.
+- active shared Dungeon: the latest Dungeon card owns the battle replay; after
+  playback, both participants see the intermission Heal state while only the
+  leader can Continue or Leave.
 
 Typed commands remain available even when they are not one of the two surfaced actions. See `docs/SIMPLE_GAMEPLAY_LOOP.md` and `docs/CHAT_META_LOOP_V2.md` for the current migration baseline.
 
 ## Hunts, recovery, and Mara's shop
 
-`hunt` resolves one short solo encounter. Hunt damage persists instead of resetting after every command. Outside active dungeons, Hunt HP regenerates lazily at one HP per minute.
+`hunt` resolves a short encounter from the player's current Area. Area-authored
+enemies, rewards, and loot improve along the four-Area progression ladder.
+Hunt damage persists instead of resetting after every command. Outside active
+dungeons, Hunt HP regenerates lazily at one HP per minute.
 
 Minor Health Potions restore up to 8 Hunt HP. New characters begin with one potion, Hunts may find more, and Mara's in-thread field shop provides a recovery sink for Gold. Higher potion tiers unlock with later Areas.
 
@@ -48,40 +50,54 @@ Shop offers are server-owned:
 
 - `ShopCatalog` defines the allowlisted offers and prices;
 - `ShopService` projects the current catalog/affordability and coordinates purchases;
-- SQLite performs the atomic Thread Dust / potion transaction;
+- SQLite performs atomic Gold / potion transactions;
 - the browser renders `/api/shop` and does not own economy prices or purchase effects.
 
-The current shelf is intentionally small: one health potion or a discounted three-potion satchel. That catalog can expand later without embedding economy rules into the chat presentation.
+Offers, prices, and Area potion availability remain server-owned. Inventory,
+Shop, Hunt, Adventure, and Dungeon receipts use canonical item projections and
+semantic item artwork.
 
 ## Inventory and permanent progression
 
-`inventory` and `gear` open the same authoritative Relic pouch rather than separate inventory implementations. Permanent equipment can be equipped, Tempered, or salvaged for Thread Dust subject to server-side rules.
+Inventory contains generated and purchased equipment across Weapon, Helmet,
+Armor, Boots, and Accessory slots. Equipment families affect their stats:
+weapons favor Attack, armor favors Defense and Max HP, boots favor Speed, and
+accessories favor critical chance and utility. Equipment can be equipped,
+upgraded, or sold using server-side rules.
 
-Generated item identity and mechanics are constrained data. Runtime visuals use stable semantic `visualAssetId` references so artwork can change without changing canonical gameplay identity.
+Level growth increases base Max HP while preserving damage already taken.
+Generated item identity and mechanics are constrained data. New items use the
+official Figma item library; old visual IDs resolve through a compatibility
+policy. Runtime visuals use stable semantic `visualAssetId` references.
 
 ## Simple dungeons
 
-New player-facing dungeons use the simplified combat path. Frayed Hollow is currently a readable progression check: the baseline Weaver begins at 6 Attack while the canonical dungeon recommends 9+.
+Progression Dungeons connect Areas 1–4. Their committed rooms can contain one
+to three simultaneous enemies, including boss adds. Each battle uses the real
+party and authored encounter roster.
 
-Simple dungeon rules intentionally remove the tactical dashboard:
+The Adventure Stream keeps Dungeon play concise:
 
-- entering or continuing a room resolves the existing Attack transition until
-  the room reaches a terminal state; the browser does not require repeated
-  Attack commands;
-- no Focus;
-- no Guard or Interrupt;
-- no combat skills;
-- no temporary run powers;
-- no random run-event buff choices;
-- party/run state remains server-authoritative and durable across reload/reconnect.
+- the server resolves automatic combat, including Mana gain, signature skills,
+  status effects, and encounter composition;
+- the browser replays committed HP, Mana, target, and skill changes before
+  showing the result or intermission actions;
+- one participant may spend their own potion for their own HP at each
+  intermission; both participants see when the shared Heal opportunity is used;
+- party/run state remains server-authoritative and durable across reload and
+  reconnect.
 
-The old tactical `DungeonRun` behavior and legacy route remain temporarily available for old persisted runs and focused regression/migration coverage. This is a strangler-style transition; legacy mechanics are not the default player-facing loop.
+Legacy run records continue to hydrate through compatibility paths.
 
 ## Cooperative play and realtime stream
 
 Players can create a party, share a join code, ready up, and start a shared dungeon. Starting a run snapshots its participants so later party membership changes cannot rewrite run ownership.
 
-The shared Adventure Stream carries both player chat and Threadbound system receipts. WebSocket is the preferred realtime transport with SSE fallback. Realtime transport never decides game outcomes: HTTP application commands invoke authoritative services/domain rules, committed outcomes are persisted, then state/stream changes are broadcast.
+The shared Adventure Stream carries player chat, NPC dialogue, and concise
+Threadbound receipts. WebSocket is the preferred realtime transport with SSE
+fallback. Realtime transport never decides game outcomes: HTTP application
+commands invoke authoritative services/domain rules, committed outcomes are
+persisted, then state/stream changes are broadcast.
 
 ## Living Threadbound Codex
 
@@ -101,14 +117,14 @@ Generated lore/content follows a constrained draft -> validate/review -> publish
 
 Arc Manifests are portable, untrusted content contracts for new narrative, encounters, rewards, achievements, and allowlisted visual references. The Arc Workshop can validate and publish manifests in local development without requiring a paid AI API.
 
-See `docs/ARC_MANIFEST_WORKFLOW.md` and the manifest schema for the current authoring contract. The master plan intentionally postpones new Arc expansion until the simpler Gold/Level/Equipment/Inventory/Shop/Bank/automatic-combat foundation is coherent end-to-end.
+See `docs/ARC_MANIFEST_WORKFLOW.md` and the manifest schema for the current authoring contract. New Arc expansion follows the ordered master plan; published Arc content remains validated data and never introduces executable game rules.
 
 ## Architecture
 
 Threadbound remains a **modular monolith**. Fowler-style patterns are used where they solve concrete boundaries without premature microservices or full event sourcing.
 
-- **Service Layer** — `GameService`, `HuntService`, `SimpleDungeonService`, `ShopService`, `InventoryService`, `PartyService`, `CodexService`, `ArcManifestService`, `HoneyPurchaseService`.
-- **Domain Model / policies** — characters, parties, runs, Hunt resolution, simple-dungeon rules, relic progression, and constrained content vocabularies own gameplay rules.
+- **Service Layer** — `GameService`, `HuntService`, `AdventureService`, `SimpleDungeonService`, `DuelService`, `QuestService`, `TownService`, `ShopService`, `InventoryService`, `PartyService`, and `CodexService` coordinate use cases.
+- **Domain Model / policies** — characters, equipment, Area content, quests, parties, runs, automatic battle skills, Dungeon rules, growth, and constrained content vocabularies own gameplay rules.
 - **Repositories** — SQLite repositories isolate persistence and transaction boundaries.
 - **Gateway** — `ThreadedGateway` is the external Threaded boundary.
 - **Domain events / projections** — committed game facts drive achievements, world history, activity-stream receipts, and realtime notifications.
@@ -169,7 +185,10 @@ npm run test:e2e
 
 GitHub Actions gates pushes and pull requests on syntax checks, Node/unit-contract tests, and the active Chromium Playwright suites.
 
-The browser acceptance coverage includes the current chat-first Hunt loop, compact receipts, recovery/shop UI, contextual Inventory navigation, simple solo/co-op dungeons, realtime continuity, Codex behavior, Arc Workshop behavior, and representative mobile screenshots.
+The browser acceptance coverage includes Area progression, Quest rotation,
+contextual NPC dialogue, canonical item art, Mana skill playback, Duel replays,
+multi-enemy co-op Dungeons, intermission healing, reconnect recovery, Codex and
+Arc Workshop behavior, and mobile/desktop screenshots.
 
 `docs/PLAYER_EXPERIENCE_ACCEPTANCE.md` remains the broader pre-merge experience/reliability checklist. HUMAN items still require real-player evidence; automation does not prove that a loop is fun.
 
@@ -177,15 +196,8 @@ The browser acceptance coverage includes the current chat-first Hunt loop, compa
 
 Do **not** use this section to improvise the roadmap. Follow the ordered checklist in `docs/THREADBOUND_MASTER_PLAN.md`.
 
-The immediate target is the migration-safe foundation:
-
-```text
-profile -> hunt -> level / earn Gold
-        -> inventory / equip / upgrade
-        -> shop / buy / sell
-        -> bank
-        -> heal
-        -> hunt again
-```
-
-with generated sprites, polished chat receipts/cards, server-authoritative progression, simple terminology, and green automated/mobile gates. Areas, Adventure, Towns, Quests, simulated adventurers, Duels, gambling, and new Arc content follow in their ordered phases.
+The RPG progression increment is implemented on `feat/rpg-progression-loop`
+and documented in `docs/SIMPLE_GAMEPLAY_LOOP.md`. Keep Phase K's human
+experience gates and Phase L's production lifecycle gates in
+`docs/THREADBOUND_MASTER_PLAN.md` open until their evidence exists. Branch-local
+green tests do not replace merge and `main` CI verification.

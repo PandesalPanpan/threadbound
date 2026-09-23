@@ -21,16 +21,34 @@ function normalizedText(value) {
   return String(value || '').replace(/^(worn|sturdy|gleaming|runed|royal|mythic|old)\s+/i, '').trim().toLowerCase();
 }
 
+function exactFigmaItemVisualAssetId(entity, assets) {
+  if (!Array.isArray(assets)) return null;
+  const names = [entity.name, entity.label, entity.title]
+    .map(normalizedText)
+    .filter(Boolean);
+  if (!names.length) return null;
+  const match = assets.find((asset) => asset.kind === 'item'
+    && asset.provenance?.sourceCollection === 'figma-item-library-v1'
+    && names.includes(normalizedText(asset.label)));
+  return match?.id || null;
+}
+
 /**
  * Maps retired generated-item identities to authored Figma item art. Current
  * visual IDs pass through untouched, so this only affects persisted legacy
  * item records and receipts that lack a current semantic ID.
  */
-export function legacyItemVisualAssetId(entity = {}) {
+export function legacyItemVisualAssetId(entity = {}, assets = []) {
   for (const value of [entity.visualAssetId, entity.assetId, entity.id, entity.itemId]) {
     const known = LEGACY_ITEM_VISUAL_IDS[String(value || '').trim().toLowerCase()];
     if (known) return known;
   }
+
+  // A current Figma label is a stronger identity than an inferred broad family.
+  // Keep known retired-ID aliases first so established compatibility mappings
+  // remain stable, then use exact authored names before family fallbacks.
+  const exactFigmaId = exactFigmaItemVisualAssetId(entity, assets);
+  if (exactFigmaId) return exactFigmaId;
 
   const text = [entity.name, entity.label, entity.title, entity.visualAssetId, entity.id, entity.itemId]
     .map(normalizedText)

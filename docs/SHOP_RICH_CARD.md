@@ -18,13 +18,13 @@ The card presents Mara, semantic generated item sprites, server-projected prices
 
 ## Current stock
 
-The shelf includes a Common Bronze Sword, a Minor Health Potion, and a Minor Potion Satchel in Area 1. Health Potion, Greater Health Potion, and Major Health Potion offers unlock in Areas 2, 3, and 4 respectively; generated/Arc/Town stock remains separate.
+The foundation shelf includes a Common Bronze Sword, a Common Bronzeweave Coat (+1 Defense, +4 Max HP), a Minor Health Potion, and a Minor Potion Satchel in Area 1. Health Potion, Greater Health Potion, and Major Health Potion offers unlock in Areas 2, 3, and 4 respectively; generated/Arc/Town stock remains separate. The Bronzeweave Coat uses the semantic `item.bronzeweave-coat.v1` Figma asset and persists its non-Weapon stats through the normal item/loadout path.
 
 ## Verification
 
 `test/shop-service.test.js` covers Gold affordability, equipment and potion stock projection, atomic equipment persistence/debit, rollback on insufficient Gold, and purchase events.
 
-`test/e2e/shop-rich-card.spec.js` is part of the active Playwright suite and exercises the 390px chat-first card: sprites, prices, affordability, equipment purchase persistence, visible stream activity, Sell-to-Inventory handoff, horizontal fit, and 44px actions. `ux-review/shop-rich-card-mobile.png` was visually reviewed at 390px and keeps the Adventure Stream/composer primary while presenting readable generated sprites, Gold prices, and touch-sized actions.
+`test/e2e/shop-rich-card.spec.js` is part of the active Playwright suite and exercises the 390px chat-first card: sprites, prices, affordability, equipment purchase persistence, visible stream activity, Sell-to-Inventory handoff, horizontal fit, and 44px actions. `test/e2e/react-equipment.local.spec.js` earns Gold through visible Hunts, buys the Bronzeweave Coat, equips it, and verifies Defense/Max HP on mobile and desktop Status cards. `ux-review/shop-rich-card-mobile.png` was visually reviewed at 390px and keeps the Adventure Stream/composer primary while presenting readable generated sprites, Gold prices, and touch-sized actions.
 
 Required gates are green on the merged milestone: `npm run check`, `npm test`, the complete Chromium E2E suite, and post-merge `main` CI #1144 at `576c9c5ab59d3dcb4e389289db8bbecac5485604`.
 

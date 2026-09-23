@@ -4,6 +4,7 @@ import { AUTOMATIC_BATTLE_EFFECT_TYPES } from '../domain/AutomaticBattleEffectPo
 import { normalizeAutomaticBattleResistances } from '../domain/AutomaticBattleResistancePolicy.js';
 import { QUEST_OBJECTIVE_TYPES } from '../domain/QuestObjective.js';
 import { visualAsset } from '../content/VisualAssetCatalog.js';
+import { areaContentForNumber } from '../content/AreaContentCatalog.js';
 
 export const ARC_MANIFEST_VNEXT_VERSION = 2;
 export const ARC_MANIFEST_SUPPORTED_VERSIONS = Object.freeze([1, ARC_MANIFEST_VNEXT_VERSION]);
@@ -56,6 +57,7 @@ export class ArcManifestVNextValidator {
     };
 
     const areaIds = new Set();
+    const areaNumbersById = new Map();
     const areaNumbers = new Set();
     manifest.areas.forEach((area, index) => {
       const path = `areas[${index}]`;
@@ -65,6 +67,7 @@ export class ArcManifestVNextValidator {
       if (!positiveInteger(area.number) || area.number > 100) addError(`${path}.number`, 'invalid_area_number', 'Area number must be an integer between 1 and 100.');
       else if (areaNumbers.has(area.number)) addError(`${path}.number`, 'duplicate_area_number', `Area number ${area.number} is already defined.`);
       else areaNumbers.add(area.number);
+      if (text(area.id) && positiveInteger(area.number)) areaNumbersById.set(area.id, area.number);
       if (!text(area.name)) addError(`${path}.name`, 'area_name_required', 'Area name is required.');
       validateLevelBand(area.recommendedLevel, `${path}.recommendedLevel`, addError);
     });
@@ -121,6 +124,17 @@ export class ArcManifestVNextValidator {
         if (!positiveInteger(objective.count ?? 1)) addError(`${objectivePath}.count`, 'invalid_quest_objective_count', 'Quest objective count must be a positive integer.');
         if (['kill', 'collect', 'boss', 'visit', 'speak'].includes(type) && !text(objective.targetId)) addError(`${objectivePath}.targetId`, 'quest_target_required', `${type} objectives require targetId.`);
         if (type === 'kill' && text(objective.targetId) && !enemyIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_kill_target', `Unknown enemy target "${objective.targetId}".`);
+        if (type === 'kill' && text(objective.targetId) && enemyIds.has(objective.targetId)) {
+          const areaNumber = areaNumbersById.get(quest.areaId);
+          let availableEnemyIds = new Set();
+          try {
+            const area = areaContentForNumber(areaNumber);
+            availableEnemyIds = new Set([...area.huntEncounters, ...area.adventureEncounters].map((enemy) => enemy.id));
+          } catch {}
+          if (!availableEnemyIds.has(objective.targetId)) {
+            addError(`${objectivePath}.targetId`, 'kill_target_unavailable_in_area', `Enemy target "${objective.targetId}" cannot spawn in Area ${areaNumber ?? 'unknown'} Hunt or Adventure encounters.`);
+          }
+        }
         if (type === 'collect' && text(objective.targetId) && !knownItemIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_collect_target', `Unknown item template target "${objective.targetId}".`);
         if (type === 'boss' && text(objective.targetId) && !dungeonIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_boss_target', `Unknown Dungeon target "${objective.targetId}".`);
         if (type === 'visit' && text(objective.targetId) && !areaIds.has(objective.targetId) && !townIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_visit_target', `Unknown Area/Town target "${objective.targetId}".`);

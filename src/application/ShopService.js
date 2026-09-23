@@ -61,6 +61,9 @@ export class ShopService {
           rarity: itemTemplate.rarity || 'common',
           attackBonus: Number(itemTemplate.attackBonus || 0),
           defenseBonus: Number(itemTemplate.defenseBonus || 0),
+          maxHpBonus: Number(itemTemplate.maxHpBonus ?? itemTemplate.maxHealthBonus ?? 0),
+          speedBonus: Number(itemTemplate.speedBonus || 0),
+          critChanceBonus: Number(itemTemplate.critChanceBonus || 0),
           effect: itemTemplate.effect ? {
             code: itemTemplate.effect.code || itemTemplate.effectCode || null,
             name: itemTemplate.effect.name || null,
@@ -162,7 +165,13 @@ export class ShopService {
     });
     // Existing ItemGenerated projection supplies the single visible acquisition receipt
     // until the stream projector is migrated to a dedicated ShopEquipmentPurchased copy.
-    this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: item.source });
+    this.eventBus.publish({
+      type: 'ItemGenerated',
+      playerId,
+      itemId: item.id,
+      itemTemplateId: item.definitionId || null,
+      source: item.source,
+    });
     return purchase;
   }
 }

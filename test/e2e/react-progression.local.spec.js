@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { SHARED_REPLAY_BEAT_MS, replayMoments } from '../../frontend/src/battle/sharedReplay.js';
 import { resolveShellAsset } from '../../frontend/src/shell/presentation.js';
+import { isLegacyGenericItemAsset, legacyItemVisualAssetId } from '../../public/item-asset-policy.js';
 import { VISUAL_ASSETS } from '../../public/visual-asset-catalog.js';
 import { AREA_CONTENT } from '../../src/content/AreaContentCatalog.js';
 
@@ -28,6 +29,28 @@ async function command(page, value) {
   await page.getByTestId('stream-send').click();
 }
 
+async function pinReplayClock(page, timestamp) {
+  await page.evaluate((value) => {
+    window.__threadboundNativeDateNow ||= Date.now.bind(Date);
+    Date.now = () => value;
+  }, timestamp);
+}
+
+async function restoreReplayClock(page) {
+  await page.evaluate(() => {
+    if (window.__threadboundNativeDateNow) Date.now = window.__threadboundNativeDateNow;
+  });
+}
+
+async function replayUnitState(card) {
+  return card.locator('.shared-battle-unit').evaluateAll((units) => units.map((unit) => ({
+    id: unit.dataset.combatantId,
+    hp: unit.querySelector('.shared-battle-hp b')?.textContent || null,
+    mana: unit.querySelector('[data-testid^="shared-battle-mana-"]')?.getAttribute('data-mana') || null,
+    effects: unit.querySelector('[data-testid^="shared-battle-effects-"]')?.innerText || '',
+  })));
+}
+
 test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 Hunt', async ({ browser }) => {
   test.setTimeout(180_000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -37,17 +60,22 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
   let runId = null;
 
   try {
-    await login(leader, 'c');
-    await login(partner, 'd');
+    await login(leader, 'l');
+    await login(partner, 'm');
 
     await command(leader, 'quest');
     let questCard = leader.getByTestId('quest-rich-card');
+    const initialQuestBoardResponse = await leaderContext.request.get('/api/quests');
+    expect(initialQuestBoardResponse.ok()).toBe(true);
+    const initialQuestBoard = await initialQuestBoardResponse.json();
+    const welcomeDefinition = initialQuestBoard.quests.find((quest) => quest.id === 'welcome-to-bellbloom');
+    expect(welcomeDefinition).toBeTruthy();
     const welcomeQuest = questCard.locator('[data-testid="quest-row"][data-quest-id="welcome-to-bellbloom"]');
     await welcomeQuest.getByTestId('quest-accept-welcome-to-bellbloom').click();
     await expect(welcomeQuest).toContainText('active');
     await command(leader, 'area');
     const areaBeforeChallenge = leader.getByTestId('area-rich-card');
-    await areaBeforeChallenge.locator('[data-npc-id="mae-bramble"]').getByRole('button', { name: 'Talk' }).click();
+    await areaBeforeChallenge.locator('[data-npc-id="mae-bramble"]').getByRole('button', { name: 'Talk' }).first().click();
     await expect(leader.getByTestId('stream-npc-rich-card').last()).toContainText('Your road report is still open.');
     await command(leader, 'quest');
     questCard = leader.getByTestId('quest-rich-card');
@@ -57,7 +85,22 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     questCard = leader.getByTestId('quest-rich-card');
     const replacementOffers = questCard.locator('[data-testid="quest-row"][data-quest-id]:has(.quest-state--available)');
     await expect(replacementOffers).toHaveCount(3);
-    expect(await replacementOffers.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-quest-id')))).not.toContain('welcome-to-bellbloom');
+    const replacementBoardResponse = await leaderContext.request.get('/api/quests');
+    expect(replacementBoardResponse.ok()).toBe(true);
+    const replacementBoard = await replacementBoardResponse.json();
+    const availableReplacements = replacementBoard.quests.filter((quest) => quest.state === 'available');
+    const objectiveIdentity = (quest) => quest.objectives.map(({ type, targetId, count }) => ({ type, targetId, count }));
+    for (const replacement of availableReplacements) {
+      expect(replacement.templateId).not.toBe(welcomeDefinition.templateId);
+      expect(replacement.title).not.toBe(welcomeDefinition.title);
+      expect(objectiveIdentity(replacement)).not.toEqual(objectiveIdentity(welcomeDefinition));
+    }
+    const renderedReplacementCopy = await replacementOffers.evaluateAll((rows) => rows.map((row) => ({
+      title: row.querySelector('h3')?.textContent?.trim() || '',
+      objectives: [...row.querySelectorAll('li span')].map((node) => node.textContent?.trim() || ''),
+    })));
+    expect(renderedReplacementCopy.every((replacement) => replacement.title !== welcomeDefinition.title)).toBe(true);
+    expect(renderedReplacementCopy.every((replacement) => JSON.stringify(replacement.objectives) !== JSON.stringify(welcomeDefinition.objectives.map((objective) => objective.label)))).toBe(true);
     const beforeLevelHunt = await dashboard(leaderContext);
     expect(beforeLevelHunt.character.level).toBe(1);
     await command(leader, 'hunt');
@@ -97,7 +140,8 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     runId = run.id;
     expect(run.simpleCombat).toBe(true);
     expect(result.battleReplay.actions.some((action) => action.actionType === 'skill' && action.manaBefore === 100 && action.manaAfter === 0)).toBe(true);
-    const skillMomentIndex = replayMoments(result.battleReplay).findIndex((moment) => moment.actionType === 'skill');
+    const moments = replayMoments(result.battleReplay);
+    const skillMomentIndex = moments.findIndex((moment) => moment.actionType === 'skill');
     expect(skillMomentIndex).toBeGreaterThanOrEqual(0);
     const battleStream = await (await leaderContext.request.get('/api/stream')).json();
     const battleEntry = battleStream.entries.find((entry) => entry.metadata?.battleReplay?.battleId === result.battleReplay.battleId);
@@ -112,20 +156,34 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await expect(reconnectCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(2);
     await expect(reconnectCard.locator('[data-testid^="shared-battle-enemy"]')).toHaveCount(2);
     await expect(reconnectCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
-    const skillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill');
-    const skillActorId = skillAction.actorId;
-    const playbackAtSkill = Date.parse(battleEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
-    await leader.evaluate((timestamp) => {
-      window.__threadboundNativeDateNow = Date.now.bind(Date);
-      Date.now = () => timestamp;
-    }, playbackAtSkill);
-    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
-    await expect(reconnectCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', '0');
-    await leader.evaluate(() => { if (window.__threadboundNativeDateNow) Date.now = window.__threadboundNativeDateNow; });
     const partnerLiveCard = partner.getByTestId('stream-dungeon-rich-card').last();
     const partnerLiveReplay = partnerLiveCard.getByTestId('shared-battle-surface');
     await expect(partnerLiveReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
     expect(await partnerLiveReplay.getAttribute('data-replay-battle-id')).toBe(await reconnectReplay.getAttribute('data-replay-battle-id'));
+
+    const replayPlayerIds = new Set((result.battleReplay.players || []).map((player) => String(player.id || player.playerId || '')));
+    const playerManaGain = (event) => event.reason === 'basic-attack' && Number(event.delta) > 0 && replayPlayerIds.has(String(event.combatantId || event.targetId || ''));
+    const manaMomentIndex = moments.findIndex((moment) => moment.manaEvents?.some(playerManaGain));
+    expect(manaMomentIndex).toBeGreaterThanOrEqual(0);
+    const manaEvent = moments[manaMomentIndex].manaEvents.find(playerManaGain);
+    const playbackAtMana = Date.parse(battleEntry.createdAt) + manaMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
+    await Promise.all([pinReplayClock(leader, playbackAtMana), pinReplayClock(partner, playbackAtMana)]);
+    await expect(reconnectCard.getByTestId(`shared-battle-mana-${manaEvent.combatantId}`)).toHaveAttribute('data-mana', String(manaEvent.manaAfter));
+    await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${manaEvent.combatantId}`)).toHaveAttribute('data-mana', String(manaEvent.manaAfter));
+    await expect(reconnectCard.getByTestId('shared-battle-status-updates')).toContainText(`+${manaEvent.delta} Mana`);
+    await expect(partnerLiveCard.getByTestId('shared-battle-status-updates')).toContainText(`+${manaEvent.delta} Mana`);
+    expect(await replayUnitState(reconnectCard)).toEqual(await replayUnitState(partnerLiveCard));
+
+    const skillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill');
+    const skillActorId = skillAction.actorId;
+    const playbackAtSkill = Date.parse(battleEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
+    await Promise.all([pinReplayClock(leader, playbackAtSkill), pinReplayClock(partner, playbackAtSkill)]);
+    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
+    await expect(reconnectCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', '0');
+    await expect(partnerLiveReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
+    await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', '0');
+    expect(await replayUnitState(reconnectCard)).toEqual(await replayUnitState(partnerLiveCard));
+    await Promise.all([restoreReplayClock(leader), restoreReplayClock(partner)]);
     expect(await reconnectCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.getAttribute('data-combatant-id')))).toEqual(
       await partnerLiveCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.getAttribute('data-combatant-id'))),
     );
@@ -153,6 +211,11 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
           }
         }
 
+        // Hold the replay clock just before the server commits the next room.
+        // This keeps a terminal Area unlock genuinely pending while both
+        // clients receive and render its receipt.
+        const continueReplayClock = Date.now();
+        await Promise.all([pinReplayClock(leader, continueReplayClock), pinReplayClock(partner, continueReplayClock)]);
         const continueResponse = leader.waitForResponse((response) => response.url().endsWith(`/api/runs/${encodeURIComponent(runId)}/continue`) && response.request().method() === 'POST');
         await leaderCard.getByTestId('stream-run-continue').click();
         const continued = await continueResponse;
@@ -161,6 +224,9 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
         run = result.run;
         terminalReplay = result.battleReplay;
         replaySkillSeen ||= (result.battleReplay?.actions || []).some((action) => action.actionType === 'skill');
+        if (run.phase !== 'complete') {
+          await Promise.all([restoreReplayClock(leader), restoreReplayClock(partner)]);
+        }
       } else {
         throw new Error(`Unexpected challenge phase ${run.phase}.`);
       }
@@ -172,13 +238,28 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     expect(terminalReplay?.rewards).toHaveLength(2);
     expect(terminalReplay.rewards.every(({ item }) => String(item.visualAssetId || '').startsWith('item.'))).toBe(true);
 
+    const terminalStreamResponse = await partnerContext.request.get('/api/stream');
+    expect(terminalStreamResponse.ok()).toBe(true);
+    const terminalStream = await terminalStreamResponse.json();
+    const terminalEntry = terminalStream.entries.find((entry) => entry.metadata?.battleReplay?.battleId === terminalReplay.battleId);
+    expect(terminalEntry?.metadata?.battleReplay?.areaUnlocks?.some((unlock) => unlock.areaNumber === 2)).toBe(true);
+    const terminalReplayClock = Date.parse(terminalEntry.createdAt) + 1;
+    await Promise.all([pinReplayClock(leader, terminalReplayClock), pinReplayClock(partner, terminalReplayClock)]);
+
     const finalCard = leader.getByTestId('stream-dungeon-rich-card').last();
     await expect(finalCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+    const partnerFinalCard = partner.getByTestId('stream-dungeon-rich-card').last();
+    await expect(partnerFinalCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+    const areaTwoBeforeReplayComplete = partnerAreaBeforeChallenge.locator('.shell-area-row').filter({ hasText: 'Emberglass Orchard' });
+    await expect(areaTwoBeforeReplayComplete).toContainText('Battle replay in progress');
+    await expect(areaTwoBeforeReplayComplete.getByRole('button', { name: 'Travel' })).toHaveCount(0);
     await command(leader, 'dungeon');
     const gatedChooser = leader.getByTestId('shell-dungeon-card');
     await expect(gatedChooser).toContainText('Replay in progress');
     await expect(gatedChooser.getByTestId('dungeon-start-brightbell-trial')).toHaveCount(0);
+    await Promise.all([restoreReplayClock(leader), restoreReplayClock(partner)]);
     await expect(finalCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
+    await expect(partnerFinalCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
     await expect(finalCard.getByTestId('dungeon-replay-rewards')).toBeVisible();
     const rewardArt = finalCard.getByTestId('dungeon-replay-rewards').locator('img[data-visual-asset-id]');
     await expect(rewardArt).toHaveCount(2);
@@ -216,6 +297,19 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     mkdirSync(REVIEW_DIR, { recursive: true });
     await questCard.screenshot({ path: `${REVIEW_DIR}/react-progression-area-2-mobile.png` });
 
+    const leaderBeforeAreaTwoHunt = await dashboard(leaderContext);
+    if (leaderBeforeAreaTwoHunt.character.currentHealth <= 0) {
+      await command(leader, 'inventory');
+      const inventoryCard = leader.getByTestId('stream-inventory-rich-card').last();
+      await expect(leader.getByTestId('stream-busy')).toHaveCount(0);
+      await expect(inventoryCard.locator('.stream-potion-row').first()).toContainText('Minor Health Potion');
+      const healResponse = leader.waitForResponse((response) => response.url().endsWith('/api/recovery/potion') && response.request().method() === 'POST');
+      await expect(inventoryCard.getByRole('button', { name: /Heal/ })).toBeEnabled();
+      await inventoryCard.getByRole('button', { name: /Heal/ }).click();
+      expect((await healResponse).ok()).toBe(true);
+      expect((await dashboard(leaderContext)).character.currentHealth).toBeGreaterThan(0);
+    }
+
     await command(leader, 'hunt');
     const huntCard = leader.getByTestId('stream-hunt-rich-card').last();
     await expect(huntCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
@@ -231,12 +325,62 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
 
     await leader.goto('/codex');
     await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
+    const codexItemsResponse = await leaderContext.request.get('/api/codex?category=items');
+    expect(codexItemsResponse.ok()).toBe(true);
+    const codexItems = (await codexItemsResponse.json()).entries;
+    const rewardIds = new Set(terminalReplay.rewards.map(({ item }) => item.id));
+    const codexReward = codexItems.find((entry) => rewardIds.has(entry.id)) || codexItems[0];
+    expect(codexReward).toBeTruthy();
     await leader.getByTestId('codex-tab-items').click();
     await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
+    await leader.getByTestId('codex-search').fill(codexReward.title);
+    const codexRewardRow = leader.locator(`[data-testid="codex-entry"][data-entry-id="${codexReward.id}"]`);
+    await expect(codexRewardRow).toBeVisible();
+    const explicitCodexAsset = VISUAL_ASSETS.find((asset) => asset.id === codexReward.visualAssetId);
+    const expectedCodexArt = explicitCodexAsset && !isLegacyGenericItemAsset(explicitCodexAsset)
+      ? explicitCodexAsset.id
+      : legacyItemVisualAssetId(codexReward, VISUAL_ASSETS);
+    expect(expectedCodexArt).toBeTruthy();
+    await expect(codexRewardRow.getByTestId('codex-entry-art')).toHaveAttribute('data-visual-asset-id', expectedCodexArt);
+    await codexRewardRow.click();
     await expect(leader.getByTestId('codex-detail')).toHaveAttribute('data-category', 'items');
-    await expect(leader.getByTestId('codex-entry').first()).toBeVisible();
-    await expect(leader.getByTestId('codex-entry-art').first()).toHaveAttribute('data-visual-asset-id', /^item\./);
-    await expect(leader.getByTestId('codex-detail-art')).toHaveAttribute('data-visual-asset-id', /^item\./);
+    await expect(leader.getByTestId('codex-detail-title')).toHaveText(codexReward.title);
+    await expect(codexRewardRow.getByTestId('codex-entry-art')).toHaveAttribute('data-visual-asset-id', expectedCodexArt);
+    await expect(leader.getByTestId('codex-detail-art')).toHaveAttribute('data-visual-asset-id', expectedCodexArt);
+    const expectedStatLabels = [
+      ['attackBonus', 'Attack'],
+      ['defenseBonus', 'Defense'],
+      ['maxHpBonus', 'Max HP'],
+      ['speedBonus', 'Speed'],
+    ].filter(([key]) => Number(codexReward.mechanics?.[key]) > 0)
+      .map(([key, label]) => `+${codexReward.mechanics[key]} ${label}`);
+    if (Number(codexReward.mechanics?.critChanceBonus) > 0) {
+      expectedStatLabels.push(`+${Math.round(Number(codexReward.mechanics.critChanceBonus) * 100)}% Crit`);
+    }
+    for (const stat of expectedStatLabels) await expect(codexRewardRow).toContainText(stat);
+
+    await leader.goto('/game');
+    await command(leader, 'area');
+    const areaOneRow = leader.getByTestId('area-rich-card').locator('.shell-area-row[data-area-number="1"]');
+    await expect(areaOneRow.getByRole('button', { name: 'Travel' })).toBeVisible();
+    const returnTravel = leader.waitForResponse((response) => response.url().endsWith('/api/areas/1/travel') && response.request().method() === 'POST');
+    await areaOneRow.getByRole('button', { name: 'Travel' }).click();
+    expect((await returnTravel).ok()).toBe(true);
+    await expect(areaOneRow).toContainText('CURRENT');
+    await command(leader, 'leaderboard');
+    const guildCard = leader.getByTestId('leaderboard-rich-card');
+    const rival = guildCard.locator('[data-testid^="leaderboard-row-"]').filter({ hasText: 'Rook' }).first();
+    await expect(rival).toBeVisible();
+    await rival.getByRole('button', { name: /Duel/ }).click();
+    const finalDuel = leader.getByTestId('stream-duel-rich-card').last();
+    const finalDuelReplay = finalDuel.getByTestId('shared-battle-surface');
+    await expect(finalDuelReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+    await expect(finalDuelReplay.locator('[data-testid^="shared-battle-player"]')).toHaveCount(1);
+    await expect(finalDuelReplay.locator('[data-testid^="shared-battle-enemy"]')).toHaveCount(1);
+    await expect(finalDuelReplay.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+    await expect(finalDuel.locator('[data-testid^="duel-loadout-"]')).not.toHaveCount(0);
+    await expect(finalDuelReplay).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
+    await expect(finalDuelReplay.getByTestId('shared-battle-result')).toContainText(/VICTORY|DEFEAT|DRAW/);
   } finally {
     for (const context of [leaderContext, partnerContext]) {
       try {

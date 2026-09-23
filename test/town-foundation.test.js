@@ -96,8 +96,15 @@ test('Mae uses authored dialogue for the player’s accepted and claimed Quest h
   const { repository, player, areaRepository } = fixture({ eventBus: { publish() {} } });
   try {
     const mae = npcById('mae-bramble');
+    const maeQuest = {
+      id: 'welcome-to-bellbloom',
+      areaNumber: 1,
+      townId: 'area-1-town',
+      npcId: 'mae-bramble',
+      objectives: [{ id: 'speak-to-mae', type: 'speak', targetId: 'mae-bramble' }],
+    };
     const questRepository = {
-      list: () => [{ questId: 'welcome-to-bellbloom', status: 'active' }],
+      list: () => [{ questId: 'welcome-to-bellbloom', status: 'active', definition: maeQuest }],
     };
     const service = new TownService({
       repository,
@@ -113,10 +120,34 @@ test('Mae uses authored dialogue for the player’s accepted and claimed Quest h
       repository,
       eventBus: { publish() {} },
       areaRepository,
-      questRepository: { list: () => [{ questId: 'welcome-to-bellbloom', status: 'claimed' }] },
+      questRepository: { list: () => [{ questId: 'welcome-to-bellbloom', status: 'claimed', definition: maeQuest }] },
     });
     const completedInteraction = completedQuestService.interact(player.id, 'area-1-town', 'mae-bramble');
     assert.ok(mae.dialogueByContext['quest-completed'].includes(completedInteraction.dialogue));
+  } finally {
+    repository.close();
+  }
+});
+
+test('Mae does not use Quest-specific dialogue for another NPC’s or another Area’s Quest', () => {
+  const { repository, player, areaRepository } = fixture({ eventBus: { publish() {} } });
+  try {
+    const mae = npcById('mae-bramble');
+    const service = new TownService({
+      repository,
+      eventBus: { publish() {} },
+      areaRepository,
+      questRepository: {
+        list: () => [
+          { questId: 'welcome-to-bellbloom', status: 'active' }, // the catalog assigns this one to the shopkeeper
+          { questId: 'warm-road-check-in', status: 'active' }, // Area 2 guide
+        ],
+      },
+    });
+
+    const interaction = service.interact(player.id, 'area-1-town', 'mae-bramble');
+    assert.ok(mae.dialogueByContext.welcome.includes(interaction.dialogue));
+    assert.equal(mae.dialogueByContext['quest-active'].includes(interaction.dialogue), false);
   } finally {
     repository.close();
   }
@@ -147,6 +178,57 @@ test('TownService exposes only Town hubs and NPC read models belonging to the au
       () => service.get(player.id, 'area-1-town'),
       (error) => error.code === 'town_unavailable' && /current Area/i.test(error.message),
     );
+  } finally {
+    repository.close();
+  }
+});
+
+test('Arc Towns that alias a foundation hub enrich it without duplicating its public hub or NPCs', () => {
+  const events = [];
+  const { repository, player, areaRepository } = fixture({ eventBus: { publish: (event) => events.push(event) } });
+  const arcTown = {
+    id: 'bellbloom',
+    name: 'Bellbloom',
+    areaNumber: 1,
+    services: ['cook', 'quest'],
+    npcIds: ['mae-bramble', 'arc-bard'],
+    npcs: [
+      { id: 'mae-bramble', name: 'Mae Bramble', role: 'Quest Guide', service: 'quest', dialogue: 'Duplicate authored record.' },
+      { id: 'arc-bard', name: 'Orin Copperspoon', role: 'Cook', service: 'cook', dialogue: 'A new Arc resident.', visualAssetId: 'character.road-sellsword.v1' },
+    ],
+  };
+  const arcManifestService = {
+    runtimeTowns: ({ areaNumber }) => areaNumber === 1 ? [arcTown] : [],
+    runtimeTownById: (id) => id === arcTown.id ? arcTown : null,
+  };
+  const service = new TownService({
+    repository,
+    eventBus: { publish: (event) => events.push(event) },
+    areaRepository,
+    arcManifestService,
+  });
+
+  try {
+    const towns = service.browse(player.id).towns;
+    assert.equal(towns.length, 1);
+    assert.equal(towns[0].id, 'area-1-town');
+    assert.ok(towns[0].services.includes('cook'));
+    assert.equal(towns[0].npcs.filter((npc) => npc.id === 'mae-bramble').length, 1);
+    assert.ok(towns[0].npcs.some((npc) => npc.id === 'arc-bard'));
+    assert.equal(service.get(player.id, 'bellbloom').id, 'area-1-town');
+
+    const interaction = service.interact(player.id, 'bellbloom', 'arc-bard');
+    assert.deepEqual(interaction, {
+      townId: 'area-1-town',
+      townName: 'Bellbloom',
+      areaNumber: 1,
+      npcId: 'arc-bard',
+      npcName: 'Orin Copperspoon',
+      role: 'Cook',
+      service: 'cook',
+      dialogue: 'A new Arc resident.',
+    });
+    assert.equal(events.length, 1);
   } finally {
     repository.close();
   }

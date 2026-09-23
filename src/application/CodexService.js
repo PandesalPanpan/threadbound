@@ -120,15 +120,34 @@ function narrativeEntries(gameRepository, codexRepository) {
   return [...byId.values()];
 }
 
+function itemStatSummary(item) {
+  const stats = [
+    ['attackBonus', 'Attack'],
+    ['defenseBonus', 'Defense'],
+    ['maxHpBonus', 'Max HP'],
+    ['speedBonus', 'Speed'],
+  ].flatMap(([key, label]) => {
+    const value = Math.max(0, Number(item[key]) || 0);
+    return value > 0 ? [`+${value} ${label}`] : [];
+  });
+  const critChance = Math.max(0, Number(item.critChanceBonus) || 0);
+  if (critChance > 0) stats.push(`+${Math.round(critChance * 100)}% Crit`);
+  return stats.length ? stats.join(' · ') : 'No listed bonuses';
+}
+
 function itemEntries(codexRepository) {
   return codexRepository.listCodexItems().map((item) => ({
     id: item.id,
     category: 'items',
     title: item.name,
-    summary: `${item.rarity} ${item.slot} · +${item.attackBonus} attack · ${item.effect.name}`,
+    summary: `${item.rarity} ${item.slot} · ${itemStatSummary(item)} · ${item.effect?.name || 'Equipment'}`,
     body: `${item.name} was recovered from ${item.source}. ${item.effect.description}`,
     mechanics: {
       attackBonus: item.attackBonus,
+      defenseBonus: item.defenseBonus,
+      maxHpBonus: item.maxHpBonus,
+      speedBonus: item.speedBonus,
+      critChanceBonus: item.critChanceBonus,
       rarity: item.rarity,
       slot: item.slot,
       effectCode: item.effectCode,

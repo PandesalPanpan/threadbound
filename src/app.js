@@ -47,6 +47,9 @@ const LOCAL_PROFILES = Object.freeze({
     h: Object.freeze({ id: 'local:h', name: 'Local Weaver H', username: 'local-h', capabilities: Object.freeze({ arcWorkshop: false }) }),
     i: Object.freeze({ id: 'local:i', name: 'Local Weaver I', username: 'local-i', capabilities: Object.freeze({ arcWorkshop: false }) }),
     j: Object.freeze({ id: 'local:j', name: 'Local Weaver J', username: 'local-j', startingGold: 300, capabilities: Object.freeze({ arcWorkshop: false }) }),
+    k: Object.freeze({ id: 'local:k', name: 'Local Weaver K', username: 'local-k', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    l: Object.freeze({ id: 'local:l', name: 'Local Weaver L', username: 'local-l', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    m: Object.freeze({ id: 'local:m', name: 'Local Weaver M', username: 'local-m', capabilities: Object.freeze({ arcWorkshop: false }) }),
   } : {}),
 });
 const INITIAL_STREAM_LIMIT = 30;
@@ -592,6 +595,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'health_already_full',
       'no_health_potions',
       'potion_not_between_encounters',
+      'dungeon_potion_intermission_already_claimed',
       'simple_dungeon_decision_only',
       'dungeon_continue_not_available',
       'dungeon_retreat_not_available',

@@ -26,10 +26,21 @@ test('shop browse projects server-owned equipment and potion stock in Gold with 
   assert.deepEqual(shop.currency, { code: 'gold', label: 'Gold', balance: 7 });
   assert.deepEqual(shop.offers.map(({ sku, kind, cost, affordable }) => ({ sku, kind, cost, affordable })), [
     { sku: 'bronze-sword', kind: 'equipment', cost: 8, affordable: false },
+    { sku: 'bronzeweave-coat', kind: 'equipment', cost: 8, affordable: false },
     { sku: 'single', kind: 'health_potion', cost: 5, affordable: true },
     { sku: 'satchel', kind: 'health_potion', cost: 12, affordable: false },
   ]);
   assert.equal(shop.offers[0].visualAssetId, 'item.bronze-wardblade.v1');
+  assert.deepEqual(shop.offers[1].item, {
+    slot: 'armor',
+    rarity: 'common',
+    attackBonus: 0,
+    defenseBonus: 1,
+    maxHpBonus: 4,
+    speedBonus: 0,
+    critChanceBonus: 0,
+    effect: { code: 'none', name: 'Plain', description: 'Reliable starter protection.' },
+  });
   assert.equal('itemTemplate' in shop.offers[0], false, 'private item construction data is not projected to the browser');
 });
 
@@ -72,6 +83,23 @@ test('shop equipment purchase atomically spends Gold and persists a normal owned
   assert.equal(events.at(-2).itemId, 'shop-item-1');
   assert.equal(events.at(-1).type, 'ItemGenerated');
   assert.equal(events.at(-1).source, 'shop:bronze-sword');
+});
+
+test('shop armor purchase persists Defense and Max HP as normal equipment stats', () => {
+  const { repository, player, service } = setup();
+  repository.addThreadDust(player.id, 8);
+
+  const purchase = service.purchase(player.id, 'bronzeweave-coat');
+  const item = repository.listItems(player.id)[0];
+
+  assert.equal(purchase.cost, 8);
+  assert.equal(purchase.gold, 0);
+  assert.equal(item.name, 'Bronzeweave Coat');
+  assert.equal(item.slot, 'armor');
+  assert.equal(item.defenseBonus, 1);
+  assert.equal(item.maxHpBonus, 4);
+  assert.equal(item.visualAssetId, 'item.bronzeweave-coat.v1');
+  assert.equal(repository.getPlayer(player.id).threadDust, 0);
 });
 
 test('failed equipment purchase does not create an item or spend Gold', () => {

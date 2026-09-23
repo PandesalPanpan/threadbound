@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { replayMoments } from '../../frontend/src/battle/sharedReplay.js';
 
 async function dashboard(context) {
   const response = await context.request.get('/api/dashboard');
@@ -96,7 +98,11 @@ test('Multi-enemy replay moves the committed actor and target without moving com
   }, { timeout: 1800, intervals: [50] }).toBe(true);
   expect(firstPosition.units[firstBeat.actorId].animationName).toBe('none');
 
-  const enemyMomentIndex = replay.beats.findIndex((beat) => beat === enemyAction);
+  const enemyActorId = enemyAction.actorCombatantId || enemyAction.actorId;
+  const enemyTargetId = enemyAction.targetCombatantId || enemyAction.targetId;
+  const enemyMomentIndex = replayMoments(replay).findIndex((moment) => moment.beatIndex === enemyAction.index
+    && moment.actorId === enemyActorId && moment.targetId === enemyTargetId);
+  expect(enemyMomentIndex).toBeGreaterThanOrEqual(0);
   await expect.poll(async () => surface.getAttribute('data-replay-moment-index'), { timeout: 5000, intervals: [50] }).toBe(String(enemyMomentIndex));
   let enemyPosition;
   await expect.poll(async () => {
@@ -119,7 +125,7 @@ test('Multi-enemy replay moves the committed actor and target without moving com
   await page.context().request.post(`/api/runs/${encodeURIComponent(startedPayload.run.id)}/retreat`);
 });
 
-test('Two-Weaver shared Dungeon keeps the same three-mob roster across browsers', async ({ browser }) => {
+test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and desktop', async ({ browser }) => {
   test.setTimeout(90_000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const partnerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -136,6 +142,16 @@ test('Two-Weaver shared Dungeon keeps the same three-mob roster across browsers'
     await partner.goto('/game');
     await leaderContext.request.post('/api/party/leave');
     await partnerContext.request.post('/api/party/leave');
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const partnerState = await dashboard(partnerContext);
+      if (partnerState.character.currentHealth < partnerState.character.maxHealth && partnerState.character.healthPotions > 0) break;
+      const hunt = await partnerContext.request.post('/api/hunt');
+      expect(hunt.ok()).toBe(true);
+    }
+    const healEligiblePartner = await dashboard(partnerContext);
+    expect(healEligiblePartner.character.currentHealth).toBeLessThan(healEligiblePartner.character.maxHealth);
+    expect(healEligiblePartner.character.healthPotions).toBeGreaterThan(0);
 
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
@@ -201,6 +217,9 @@ test('Two-Weaver shared Dungeon keeps the same three-mob roster across browsers'
     expect(claimed.phase).toBe('between_encounter');
     expect(claimed.intermissionPotionClaimedWindowId).toBeTruthy();
     expect(claimed.intermissionPotionClaimedByPlayerId).toBe(claimantId);
+    const losingHeal = await leaderContext.request.post(`/api/runs/${encodeURIComponent(runId)}/potion`);
+    expect(losingHeal.status()).toBe(409);
+    expect(await losingHeal.json()).toMatchObject({ error: 'dungeon_potion_intermission_already_claimed' });
     await leader.reload();
     await partner.reload();
     const reloadedLeaderRun = (await dashboard(leaderContext)).activeRun;
@@ -253,10 +272,25 @@ test('Two-Weaver shared Dungeon keeps the same three-mob roster across browsers'
     await secondLeaderCard.getByTestId('stream-run-continue').click();
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(secondVersion);
     const thirdLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
+    const thirdLeaderSurface = thirdLeaderCard.getByTestId('shared-battle-surface');
+    await expect(thirdLeaderSurface).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
     await expect(thirdLeaderCard.getByTestId('shared-battle-enemy')).toHaveCount(3);
-    await expect(thirdLeaderCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    await leader.setViewportSize({ width: 1440, height: 960 });
+    await thirdLeaderCard.scrollIntoViewIfNeeded();
+    await expect(thirdLeaderCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(2);
+    await expect(thirdLeaderCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+    await expect(leader.getByTestId('shell-dungeon-card')).toHaveCount(0);
+    expect(await leader.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
+    expect(await thirdLeaderCard.evaluate((card) => card.scrollWidth - card.clientWidth)).toBeLessThanOrEqual(1);
+    mkdirSync('ux-review', { recursive: true });
+    await leader.screenshot({ path: 'ux-review/react-dungeon-replay-desktop.png' });
+    await leader.setViewportSize({ width: 390, height: 844 });
+    await thirdLeaderCard.scrollIntoViewIfNeeded();
+    expect(await leader.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    expect(await thirdLeaderCard.evaluate((card) => card.scrollWidth - card.clientWidth)).toBeLessThanOrEqual(1);
     const thirdIds = await thirdLeaderCard.getByTestId('shared-battle-enemy').evaluateAll((nodes) => nodes.map((node) => node.dataset.combatantId));
     expect(new Set(thirdIds).size).toBe(3);
+    await leader.screenshot({ path: 'ux-review/react-dungeon-replay-mobile.png' });
 
     await partner.reload();
     const thirdPartnerCard = partner.getByTestId('stream-dungeon-rich-card').last();

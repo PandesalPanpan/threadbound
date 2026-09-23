@@ -12,7 +12,7 @@ receipt.
 ## World content
 
 The catalog covers Bellbloom (Area 1), Emberglass Waystation (Area 2),
-Kitewatch (Area 3), and Mirrorfen Waystation (Area 4), with 17 authored
+Kitewatch (Area 3), and Mirrorfen Waystation (Area 4), with 18 authored
 service and background NPCs. Residents use stable IDs and semantic character
 art. Service capabilities describe where existing Shop, Upgrade, Heal, Bank,
 and Guild Hall flows are available; an NPC conversation does not itself

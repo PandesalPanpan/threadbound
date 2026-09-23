@@ -56,6 +56,45 @@ test('generated item instances appear automatically without hand-written codex r
   gameRepository.close();
 });
 
+test('Codex item entries expose and summarize every nonzero equipment stat', () => {
+  const { gameRepository, service, player } = setup();
+  gameRepository.addItem(player.id, {
+    id: 'codex-armor-stats',
+    definitionId: 'codex-armor-stats',
+    name: 'Ironroot Cuirass',
+    slot: 'armor',
+    rarity: 'rare',
+    attackBonus: 0,
+    effectCode: 'none',
+    effect: {
+      code: 'none',
+      name: 'Plain Weave',
+      description: 'No special combat effect.',
+      equipmentTemplate: {
+        effectCodes: ['none'],
+        stats: { attackBonus: 0, defenseBonus: 3, maxHpBonus: 12, speedBonus: 2, critChanceBonus: 0.08 },
+      },
+    },
+    source: 'test',
+  });
+
+  const entry = service.browse(player.id, { category: 'items' }).entries.find((item) => item.id === 'codex-armor-stats');
+  assert.equal(entry.summary, 'rare armor · +3 Defense · +12 Max HP · +2 Speed · +8% Crit · Plain Weave');
+  assert.deepEqual(entry.mechanics, {
+    attackBonus: 0,
+    defenseBonus: 3,
+    maxHpBonus: 12,
+    speedBonus: 2,
+    critChanceBonus: 0.08,
+    rarity: 'rare',
+    slot: 'armor',
+    effectCode: 'none',
+    effectName: 'Plain Weave',
+    effectDescription: 'No special combat effect.',
+  });
+  gameRepository.close();
+});
+
 test('generated lore is hidden as draft and auto-published into the lore browser after approval', () => {
   const { gameRepository, codexRepository, service, player } = setup();
   codexRepository.saveDraftContentEntry({

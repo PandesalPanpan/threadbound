@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ShopService } from '../src/application/ShopService.js';
+import { QuestService } from '../src/application/QuestService.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
 import { arcTownShopOffers, validateArcTownShopStocks } from '../src/content/ArcTownShopCatalog.js';
+import { Quest } from '../src/domain/Quest.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
 
@@ -109,28 +111,62 @@ test('ShopService consumes only published validated Arc Town stock for the curre
   manifests.publish(draft.id, { valid: true, errors: [], warnings: [] });
 
   const events = [];
+  const listeners = new Set();
+  const eventBus = {
+    publish(event) {
+      events.push(event);
+      for (const listener of listeners) listener(event);
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  const collectQuest = new Quest({
+    id: 'collect-ember-needle',
+    title: 'Collect an Ember Needle',
+    areaNumber: 1,
+    townId: 'area-1-town',
+    objectives: [{ id: 'collect-needle', type: 'collect', targetId: 'ember-needle-template' }],
+  });
+  const quests = new QuestService({ repository, eventBus, catalog: [collectQuest] });
+  quests.accept(player.id, collectQuest.id);
   const service = new ShopService({
     repository,
-    eventBus: { publish: (event) => events.push(event) },
+    eventBus,
     idFactory: () => 'arc-shop-item-1',
   });
 
-  const browse = service.browse(player.id);
-  const offer = browse.offers.find((candidate) => candidate.sku === 'market-arc:market-stock:ember-needle');
-  assert.ok(offer);
-  assert.equal(offer.name, 'Ember Needle of the Market');
-  assert.equal(offer.cost, 14);
-  assert.equal(offer.affordable, true);
-  assert.equal('itemTemplate' in offer, false, 'private generated equipment construction data must not reach the browser');
+  try {
+    const browse = service.browse(player.id);
+    const offer = browse.offers.find((candidate) => candidate.sku === 'market-arc:market-stock:ember-needle');
+    assert.ok(offer);
+    assert.equal(offer.name, 'Ember Needle of the Market');
+    assert.equal(offer.cost, 14);
+    assert.equal(offer.affordable, true);
+    assert.equal('itemTemplate' in offer, false, 'private generated equipment construction data must not reach the browser');
 
-  const purchase = service.purchase(player.id, offer.sku);
-  assert.equal(purchase.gold, 6);
-  assert.equal(purchase.item.id, 'arc-shop-item-1');
-  assert.equal(purchase.item.definitionId, 'ember-needle-template');
-  assert.equal(purchase.item.attackBonus, 3);
-  assert.equal(repository.listItems(player.id)[0].source, `shop:${offer.sku}`);
-  assert.equal(events.at(-2).type, 'ShopEquipmentPurchased');
-  assert.equal(events.at(-1).type, 'ItemGenerated');
+    const purchase = service.purchase(player.id, offer.sku);
+    assert.equal(purchase.gold, 6);
+    assert.equal(purchase.item.id, 'arc-shop-item-1');
+    assert.equal(purchase.item.definitionId, 'ember-needle-template');
+    assert.equal(purchase.item.attackBonus, 3);
+    assert.equal(repository.listItems(player.id)[0].source, `shop:${offer.sku}`);
+    assert.equal(events.some((event) => event.type === 'ShopEquipmentPurchased'), true);
+    assert.deepEqual(events.find((event) => event.type === 'ItemGenerated'), {
+      type: 'ItemGenerated',
+      playerId: player.id,
+      itemId: 'arc-shop-item-1',
+      itemTemplateId: 'ember-needle-template',
+      source: `shop:${offer.sku}`,
+    });
+    const collected = quests.browse(player.id).quests.find((quest) => quest.id === collectQuest.id);
+    assert.equal(collected.state, 'claimable');
+    assert.equal(collected.objectives[0].complete, true);
+  } finally {
+    quests.dispose();
+    repository.close();
+  }
 });
 
 test('invalid published stock is fail-closed and never reaches the Shop catalog', () => {

@@ -149,15 +149,10 @@ export function resolveShellAsset(entity, assets = [], preferredKinds = []) {
 }
 
 function legacyItemAsset(entity, assets) {
-  const compatibleId = legacyItemVisualAssetId(entity);
+  const compatibleId = legacyItemVisualAssetId(entity, assets);
   if (compatibleId) {
     const match = assets.find((asset) => asset.id === compatibleId);
     if (match) return match;
-  }
-  const name = String(entity?.name || entity?.label || entity?.title || '').replace(/^(worn|sturdy|gleaming|runed|royal|mythic|old)\s+/i, '').trim().toLowerCase();
-  if (name) {
-    const byName = assets.find((asset) => asset.kind === 'item' && asset.provenance?.sourceCollection === 'figma-item-library-v1' && String(asset.label || '').trim().toLowerCase() === name);
-    if (byName) return byName;
   }
   return null;
 }

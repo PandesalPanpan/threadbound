@@ -2,6 +2,7 @@ import { projectTown, townsForArea, townById, npcById } from '../content/TownCat
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { SQLiteQuestRepository } from '../infrastructure/SQLiteQuestRepository.js';
 import { SQLiteSimulatedAdventurerRepository } from '../infrastructure/SQLiteSimulatedAdventurerRepository.js';
+import { QUEST_CATALOG } from '../content/QuestCatalog.js';
 import { GuildHallService } from './GuildHallService.js';
 
 export class TownService {
@@ -40,7 +41,15 @@ export class TownService {
     if (!player) throw new Error('Player not found.');
 
     const progression = this.areaRepository.get(playerId);
-    const town = this.#townById(townId);
+    const availableTowns = this.#availableTowns(progression.currentAreaNumber);
+    const normalizedTownId = String(townId || '').trim().toLowerCase();
+    let town = availableTowns.find((candidate) => candidate.id === normalizedTownId) || null;
+    if (!town) {
+      const alias = this.#townById(normalizedTownId);
+      town = alias && alias.areaNumber === progression.currentAreaNumber
+        ? availableTowns.find((candidate) => candidate.name.trim().toLowerCase() === alias.name.trim().toLowerCase()) || alias
+        : null;
+    }
     if (!town || town.areaNumber !== progression.currentAreaNumber) {
       const error = new Error('That Town is not available in the current Area.');
       error.code = 'town_unavailable';
@@ -96,18 +105,38 @@ export class TownService {
     const foundation = this.townCatalog.townsForArea(areaNumber);
     const generated = this.arcManifestService?.runtimeTowns({
       areaNumber,
-      // Keep legacy/bundled v1 and unillustrated v2 towns out of the current
-      // player shell until their NPC art is explicitly authored.
-      onlyWithExplicitNpcVisual: true,
     }) || [];
-    const authoredIds = new Set(foundation.map((town) => town.id));
-    return [...foundation, ...generated.filter((town) => !authoredIds.has(town.id))];
+    const remainingGenerated = new Set(generated);
+    const mergedFoundation = foundation.map((town) => {
+      const base = this.#projectTown(town);
+      const sameHub = generated.filter((candidate) => candidate.areaNumber === town.areaNumber
+        && candidate.name.trim().toLowerCase() === town.name.trim().toLowerCase());
+      for (const candidate of sameHub) remainingGenerated.delete(candidate);
+      if (sameHub.length === 0) return town;
+
+      const npcIds = new Set((base.npcs || []).map((npc) => npc.id));
+      const npcs = [...(base.npcs || [])];
+      for (const candidate of sameHub) {
+        for (const npc of candidate.npcs || []) {
+          if (npcIds.has(npc.id)) continue;
+          npcIds.add(npc.id);
+          npcs.push(npc);
+        }
+      }
+      return {
+        ...base,
+        services: [...new Set([...(base.services || []), ...sameHub.flatMap((candidate) => candidate.services || [])])],
+        npcIds: [...npcIds],
+        npcs,
+      };
+    });
+    return [...mergedFoundation, ...remainingGenerated];
   }
 
   #townById(townId) {
     const foundation = this.townCatalog.townById(townId);
     if (foundation) return foundation;
-    return this.arcManifestService?.runtimeTownById(townId, { onlyWithExplicitNpcVisual: true }) || null;
+    return this.arcManifestService?.runtimeTownById(townId) || null;
   }
 
   #dialogueFor(playerId, town, npc) {
@@ -117,7 +146,7 @@ export class TownService {
       : town.areaNumber === 1 && progression.highestUnlockedAreaNumber === 1
         ? 'welcome'
         : 'frontier';
-    const questHistory = this.#questHistoryFor(playerId);
+    const questHistory = this.#questHistoryFor(playerId, town, npc);
     const questContext = questHistory.some((entry) => entry.status === 'active')
       ? 'quest-active'
       : questHistory.some((entry) => ['completed', 'claimed'].includes(entry.status))
@@ -143,17 +172,36 @@ export class TownService {
     return String(choices[(hash >>> 0) % choices.length] || choices[0]);
   }
 
-  #questHistoryFor(playerId) {
+  #questHistoryFor(playerId, town, npc) {
     try {
       const rows = this.questRepository?.list?.(playerId);
       if (!Array.isArray(rows)) return [];
-      return rows
-        .filter((row) => row && ['active', 'completed', 'claimed'].includes(row.status))
-        .map((row) => ({
-          questId: String(row.questId || '').trim().toLowerCase(),
-          status: row.status,
-        }))
-        .filter((entry) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.questId));
+      const definitionsById = new Map();
+      let authored = [];
+      try { authored = this.arcManifestService?.runtimeQuests?.() || []; }
+      catch {}
+      for (const quest of authored) definitionsById.set(String(quest?.id || '').trim().toLowerCase(), quest);
+      for (const quest of QUEST_CATALOG) {
+        const definition = quest.toJSON();
+        if (!definitionsById.has(definition.id)) definitionsById.set(definition.id, definition);
+      }
+
+      const relevant = [];
+      for (const row of rows) {
+        if (!row || !['active', 'completed', 'claimed'].includes(row.status)) continue;
+        const questId = String(row.questId || '').trim().toLowerCase();
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(questId)) continue;
+        const baseQuestId = questId.replace(/-again-\d+$/, '');
+        const definition = row.definition || definitionsById.get(questId) || definitionsById.get(baseQuestId);
+        if (!definition) continue;
+        const areaNumber = Number(definition.areaNumber ?? definition.area?.number);
+        if (areaNumber !== town.areaNumber) continue;
+        const speaksToNpc = (definition.objectives || []).some((objective) =>
+          String(objective.type || '').toLowerCase() === 'speak' && objective.targetId === npc.id);
+        if (definition.npcId !== npc.id && !speaksToNpc) continue;
+        relevant.push({ questId, status: row.status });
+      }
+      return relevant;
     } catch {
       // Quest history is optional context; an unavailable read must not block
       // an otherwise valid Town interaction.

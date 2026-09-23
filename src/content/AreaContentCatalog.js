@@ -1,4 +1,4 @@
-import { generatedEquipmentOptions } from './GeneratedEquipmentCatalog.js';
+import { generatedEquipmentOptions, generatedEquipmentOptionsByRarity } from './GeneratedEquipmentCatalog.js';
 import { AREA_ITEM_FAMILIES } from './AreaItemFamilyCatalog.js';
 
 const SUPPORTED_AREAS = [
@@ -27,6 +27,24 @@ const SUPPORTED_AREAS = [
     ],
     dungeonSkillCodes: {
       'bouncebud-slime': 'thornwake', 'ribbon-boar': 'shield-break', 'meadow-breeze': 'threadsong', 'parade-golem': 'ember-burst',
+    },
+    simpleDungeonBalance: {
+      // Measured against a fresh two-player Level 1 party over 24 deterministic
+      // runs. This raises pre-boss loss into a one-Heal intermission window and
+      // lets the authored room, boss, and add skills contribute to the run.
+      normalEnemyHpMultiplier: 1.2,
+      enemyRetaliationMultiplier: 1.1,
+      skillStartingManaByEnemy: {
+        'ribbon-boar': 80,
+        'meadow-breeze': 50,
+        'parade-golem': 35,
+      },
+      bossAddManaByEnemy: {
+        // The boar enters the boss stage ready to cast once if it survives the
+        // player phase. It does not regenerate Mana, so it cannot repeat the
+        // same pressure after that committed action.
+        'ribbon-boar': { mana: 100, manaGain: 0, manaGainOnDamage: 0 },
+      },
     },
     adventureRewards: { gold: 6, experience: 30, dropChance: 0.5, storyEventChance: 0.35, storyEvents: [{ id: 'area-trail-signs', text: 'You spot fresh trail signs from another adventurer.' }] },
     progressionChallenge: {
@@ -221,6 +239,7 @@ export function itemRewardProfileForArea(areaNumber) {
     itemFamilies: area.itemFamilies,
     rarityWeights: area.rarityWeights,
     equipmentOptions: generatedEquipmentOptions({ itemFamilies: area.itemFamilies }),
+    equipmentOptionsByRarity: generatedEquipmentOptionsByRarity({ itemFamilies: area.itemFamilies }),
   });
 }
 

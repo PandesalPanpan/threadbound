@@ -278,6 +278,13 @@ export class ArcManifestService {
       for (const quest of source) {
         const areaNumber = Number(quest.areaNumber);
         if (!Number.isInteger(areaNumber) || areaNumber < 1 || !quest.id || !quest.title || !Array.isArray(quest.objectives) || !quest.objectives.length) continue;
+        let areaEnemyIds = new Set();
+        try {
+          const area = areaContentForNumber(areaNumber);
+          areaEnemyIds = new Set([...area.huntEncounters, ...area.adventureEncounters].map((enemy) => enemy.id));
+        } catch {}
+        if (quest.objectives.some((objective) => String(objective.type || '').trim().toLowerCase() === 'kill'
+          && (!enemiesById.has(objective.targetId) || !areaEnemyIds.has(objective.targetId)))) continue;
         const town = (manifest.towns || []).find((candidate) => candidate.areaId === quest.areaId)
           || (manifest.towns || []).find((candidate) => Number(areasById.get(candidate.areaId)?.number) === areaNumber);
         const objectives = quest.objectives.map((objective, index) => {
@@ -323,7 +330,7 @@ export class ArcManifestService {
           title: quest.title,
           description: quest.description || fallbackDescription,
           areaNumber,
-          townId: referencedNpc?.visualAssetId ? (npcTown?.id || town?.id || canonicalTownId) : (canonicalTownId || npcTown?.id || town?.id) || null,
+          townId: referencedNpc ? (npcTown?.id || town?.id || canonicalTownId) : (canonicalTownId || town?.id) || null,
           npcId: referencedNpc?.id || null,
           objectives,
           reward: quest.reward || {

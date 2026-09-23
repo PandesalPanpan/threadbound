@@ -2,6 +2,9 @@ function freezeSlotFamilies(families) {
   return Object.freeze(Object.fromEntries(Object.entries(families).map(([slot, values]) => [slot, Object.freeze([...values])])));
 }
 
+// For each Area and slot, list available official material families from the
+// entry tier to the highest tier. GeneratedEquipmentCatalog applies rarity to
+// this order and safely clamps when the Area has fewer families than tiers.
 export const AREA_ITEM_FAMILIES = Object.freeze({
   1: freezeSlotFamilies({
     weapon: ['wood', 'iron'],

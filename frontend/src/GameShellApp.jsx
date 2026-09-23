@@ -16,14 +16,49 @@ function sortEntries(entries) {
   });
 }
 
-function terminalDungeonReplayId(entries = []) {
+function terminalDungeonReplay(entries = []) {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
     const replay = entry?.metadata?.battleReplay;
     if (replay?.kind !== 'simple-dungeon-battle' || !['victory', 'defeat'].includes(replay.status)) continue;
-    return replay.battleId || replay.runId || entry.id || null;
+    return { id: replay.battleId || replay.runId || entry.id || null, replay };
   }
   return null;
+}
+
+function pendingAreaUnlockReplay(entries, viewerId, completedIds) {
+  const terminal = terminalDungeonReplay(entries);
+  if (!terminal?.id || completedIds.has(terminal.id)) return null;
+  const unlock = terminal.replay.areaUnlocks?.find((candidate) => String(candidate.playerId) === String(viewerId));
+  const areaNumber = Number(unlock?.areaNumber);
+  return Number.isInteger(areaNumber) && areaNumber > 1
+    ? { replayId: terminal.id, areaNumber }
+    : null;
+}
+
+function areaProjectionBeforeReplay(areas, areaNumber) {
+  const gatedNumber = Math.floor(Number(areaNumber));
+  const currentNumber = Number(areas?.currentAreaNumber || 1);
+  if (!areas || !Number.isInteger(gatedNumber) || gatedNumber < 1 || gatedNumber <= currentNumber) return areas;
+
+  const candidate = (areas.areas || []).find((area) => Number(area.number) === gatedNumber)
+    || (Number(areas.nextLockedArea?.number) === gatedNumber ? areas.nextLockedArea : null);
+  if (!candidate) return areas;
+  const visibleAreas = (areas.areas || []).filter((area) => Number(area.number) < gatedNumber);
+  const previousFrontier = visibleAreas.at(-1) || areas.highestUnlockedArea;
+  return {
+    ...areas,
+    highestUnlockedArea: previousFrontier,
+    highestUnlockedAreaNumber: Math.max(1, gatedNumber - 1),
+    areas: visibleAreas,
+    nextLockedArea: {
+      ...candidate,
+      unlocked: false,
+      locked: true,
+      lockReason: 'Battle replay in progress. Travel opens when playback ends.',
+      progressionChallenge: null,
+    },
+  };
 }
 
 export function GameShellApp() {
@@ -35,17 +70,28 @@ export function GameShellApp() {
   const [shop, setShop] = useState(null);
   const [panel, setPanel] = useState(null);
   const [completedTerminalReplayIds, setCompletedTerminalReplayIds] = useState(() => new Set());
+  const [pendingReplayAreaUnlock, setPendingReplayAreaUnlock] = useState(null);
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const busyRef = useRef(false);
   const connectedRef = useRef(false);
+  const dashboardRef = useRef(null);
+  const completedTerminalReplayIdsRef = useRef(new Set());
+  const pendingReplayAreaUnlockRef = useRef(null);
+  const deferredWorldRefreshRef = useRef(false);
+  const refreshWorldRef = useRef(null);
 
   useEffect(() => { busyRef.current = busy; }, [busy]);
   useEffect(() => { connectedRef.current = connected; }, [connected]);
 
   const mergeEntry = useCallback((entry) => {
     if (!entry) return;
+    const unlockGate = pendingAreaUnlockReplay([entry], dashboardRef.current?.character?.id, completedTerminalReplayIdsRef.current);
+    if (unlockGate) {
+      pendingReplayAreaUnlockRef.current = unlockGate;
+      setPendingReplayAreaUnlock(unlockGate);
+    }
     setEntries((current) => {
       const byId = new Map(current.map((candidate) => [candidate.id || `${candidate.createdAt}-${candidate.body}`, candidate]));
       byId.set(entry.id || `${entry.createdAt}-${entry.body}`, entry);
@@ -55,13 +101,25 @@ export function GameShellApp() {
 
   const markDungeonReplayComplete = useCallback((replayId) => {
     if (!replayId) return;
+    completedTerminalReplayIdsRef.current.add(replayId);
     setCompletedTerminalReplayIds((current) => current.has(replayId) ? current : new Set([...current, replayId]));
+    if (pendingReplayAreaUnlockRef.current?.replayId === replayId) {
+      pendingReplayAreaUnlockRef.current = null;
+      setPendingReplayAreaUnlock(null);
+      if (deferredWorldRefreshRef.current) {
+        deferredWorldRefreshRef.current = false;
+        refreshWorldRef.current?.().catch(() => {});
+      }
+    }
   }, []);
 
   const applyPayload = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
     const nextDashboard = payload.dashboard || (payload.character && payload.inventory ? payload : null);
-    if (nextDashboard) setDashboard(nextDashboard);
+    if (nextDashboard) {
+      dashboardRef.current = nextDashboard;
+      setDashboard(nextDashboard);
+    }
     if (payload.shop) setShop(payload.shop);
     if (payload.quests) setQuests(payload.quests);
     if (payload.area) setAreas(payload.area);
@@ -75,16 +133,28 @@ export function GameShellApp() {
       getDashboard(),
       includeStream ? getStream({ limit: 30 }) : Promise.resolve(null),
     ]);
+    dashboardRef.current = nextDashboard;
     setDashboard(nextDashboard);
-    if (nextStream?.entries) setEntries(sortEntries(nextStream.entries));
+    if (nextStream?.entries) {
+      const sortedEntries = sortEntries(nextStream.entries);
+      const unlockGate = pendingAreaUnlockReplay(sortedEntries, nextDashboard?.character?.id, completedTerminalReplayIdsRef.current);
+      pendingReplayAreaUnlockRef.current = unlockGate;
+      setPendingReplayAreaUnlock(unlockGate);
+      setEntries(sortedEntries);
+    }
     return { dashboard: nextDashboard, stream: nextStream };
   }, []);
 
   const refreshWorld = useCallback(async () => {
+    if (pendingReplayAreaUnlockRef.current) {
+      deferredWorldRefreshRef.current = true;
+      return null;
+    }
     const [areaPayload, questPayload] = await Promise.all([getAreas(), getQuests()]);
     setAreas(areaPayload?.area || null);
     setQuests(questPayload || null);
   }, []);
+  refreshWorldRef.current = refreshWorld;
 
   const recordCommand = useCallback(async (command) => {
     const text = String(command || '').trim();
@@ -112,9 +182,14 @@ export function GameShellApp() {
     Promise.all([getDashboard(), getVisualAssets(), getStream({ limit: 30 }), getAreas(), getQuests(), getShop()])
       .then(([nextDashboard, assetPayload, streamPayload, areaPayload, questPayload, shopPayload]) => {
         if (cancelled) return;
+        dashboardRef.current = nextDashboard;
+        const initialEntries = sortEntries(streamPayload?.entries || []);
+        const unlockGate = pendingAreaUnlockReplay(initialEntries, nextDashboard?.character?.id, completedTerminalReplayIdsRef.current);
+        pendingReplayAreaUnlockRef.current = unlockGate;
+        setPendingReplayAreaUnlock(unlockGate);
         setDashboard(nextDashboard);
         setAssets(assetPayload?.assets || []);
-        setEntries(sortEntries(streamPayload?.entries || []));
+        setEntries(initialEntries);
         setAreas(areaPayload?.area || null);
         setQuests(questPayload || null);
         setShop(shopPayload || null);
@@ -130,8 +205,10 @@ export function GameShellApp() {
       if (closed) return;
       if (message.type === 'stream_entry') mergeEntry(message.entry);
       if (message.type === 'state_changed' && !busyRef.current) {
-        refresh({ includeStream: true }).catch(() => {});
-        if (['AreaUnlocked', 'AreaTraveled', 'QuestAccepted', 'QuestProgressed', 'QuestCompleted', 'QuestClaimed', 'DungeonCompleted', 'NpcInteracted'].includes(message.eventType)) refreshWorld().catch(() => {});
+        const needsWorldRefresh = ['AreaUnlocked', 'AreaTraveled', 'QuestAccepted', 'QuestProgressed', 'QuestCompleted', 'QuestClaimed', 'DungeonCompleted', 'NpcInteracted'].includes(message.eventType);
+        refresh({ includeStream: true })
+          .then(() => needsWorldRefresh ? refreshWorld() : null)
+          .catch(() => {});
       }
     }, (nextConnected) => {
       if (closed) return;
@@ -379,20 +456,28 @@ export function GameShellApp() {
     return <main className="game-shell-loading"><span className="loading-orbit" /><span>Loading the Adventure Stream…</span>{error ? <p data-testid="stream-error">{error}</p> : null}</main>;
   }
 
-  const terminalReplayId = terminalDungeonReplayId(entries);
+  const terminalReplay = terminalDungeonReplay(entries);
+  const terminalReplayId = terminalReplay?.id || null;
   const terminalReplayPending = Boolean(terminalReplayId && !completedTerminalReplayIds.has(terminalReplayId));
-  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas, quests, shop, onRequest: request, onCommand: handleCommand, onClose: () => setPanel(null), dungeonChooserDisabled: terminalReplayPending, busy });
+  const viewerId = dashboard?.character?.id;
+  const replayUnlock = terminalReplayPending
+    ? (pendingReplayAreaUnlock?.replayId === terminalReplayId
+      ? pendingReplayAreaUnlock
+      : terminalReplay?.replay?.areaUnlocks?.find((unlock) => String(unlock.playerId) === String(viewerId)) || null)
+    : null;
+  const presentedAreas = areaProjectionBeforeReplay(areas, replayUnlock?.areaNumber);
+  const ephemeralCard = renderGameplayPanel({ panel, dashboard, assets, areas: presentedAreas, quests, shop, onRequest: request, onCommand: handleCommand, onClose: () => setPanel(null), dungeonChooserDisabled: terminalReplayPending, busy });
   return (
     <div className="game-shell">
-      <GameTopBar dashboard={dashboard} areas={areas} connected={connected} onOpen={handleCommand} />
+      <GameTopBar dashboard={dashboard} areas={presentedAreas} connected={connected} onOpen={handleCommand} />
       <div className="game-shell-layout">
         <QuickRail dashboard={dashboard} onCommand={handleCommand} />
         <main className="game-shell-center">
-          <AdventureStream entries={entries} ephemeralCard={ephemeralCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={dashboard?.character?.id} assets={assets} areas={areas} onRequest={request} onCommand={handleCommand} onDungeonReplayComplete={markDungeonReplayComplete} busy={busy} dashboard={dashboard} />
+          <AdventureStream entries={entries} ephemeralCard={ephemeralCard} onLoadMore={loadEarlier} hasMore={false} connected={connected} viewerId={viewerId} assets={assets} areas={presentedAreas} onRequest={request} onCommand={handleCommand} onDungeonReplayComplete={markDungeonReplayComplete} busy={busy} dashboard={dashboard} />
           <CommandComposer onSubmit={handleCommand} busy={busy} contextualActions={contextualActions} />
           {busy ? <span className="game-shell-busy" role="status" data-testid="stream-busy">Syncing authoritative state…</span> : null}
         </main>
-        <LiveContextRail dashboard={dashboard} areas={areas} quests={quests} connected={connected} onCommand={handleCommand} />
+        <LiveContextRail dashboard={dashboard} areas={presentedAreas} quests={quests} connected={connected} onCommand={handleCommand} />
       </div>
       {error ? <div className="game-shell-error" role="alert" data-testid="stream-error"><span>!</span>{error}<button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button></div> : null}
     </div>
