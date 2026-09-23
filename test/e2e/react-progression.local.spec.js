@@ -235,6 +235,7 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
 
     let replaySkillSeen = result.battleReplay.actions.some((action) => action.actionType === 'skill');
     let terminalReplay = null;
+    let sharedHealObservedForBoth = false;
     for (let step = 0; step < 8 && run.phase !== 'complete'; step += 1) {
       expect(run.phase).not.toBe('failed');
       const leaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
@@ -251,6 +252,13 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
               const healResponse = partner.waitForResponse((response) => response.url().endsWith(`/api/runs/${encodeURIComponent(runId)}/potion`) && response.request().method() === 'POST');
               await heal.click();
               expect((await healResponse).ok()).toBe(true);
+              const partnerId = partnerDashboard.character.id;
+              await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.intermissionPotionClaimedByPlayerId || null, { timeout: 7000 }).toBe(partnerId);
+              await expect(leaderCard.getByTestId('stream-run-potion')).toBeDisabled({ timeout: 7000 });
+              await expect(partnerCard.getByTestId('stream-run-potion')).toBeDisabled({ timeout: 7000 });
+              await expect(leaderCard.getByTestId('intermission-heal-status')).toContainText('Shared intermission Heal used');
+              await expect(partnerCard.getByTestId('intermission-heal-status')).toContainText('Shared intermission Heal used');
+              sharedHealObservedForBoth = true;
               run = (await (await dashboard(partnerContext)).activeRun) || run;
             }
           }
@@ -278,6 +286,7 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     }
 
     expect(run.phase).toBe('complete');
+    expect(sharedHealObservedForBoth).toBe(true);
     expect(replaySkillSeen).toBe(true);
     expect(terminalReplay?.status).toBe('victory');
     expect(terminalReplay?.rewards).toHaveLength(2);
