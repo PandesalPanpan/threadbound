@@ -13,8 +13,11 @@ import { resolveAutomaticBasicAttack } from '../src/domain/AutomaticBattleAction
 import { speedInitiativeState } from '../src/domain/AutomaticBattleInitiativePolicy.js';
 import { simulateAutomaticBattle } from '../src/domain/AutomaticBattleSimulator.js';
 
-test('effect vocabulary is exactly Fire, Poison, Ice, and Psychic', () => {
-  assert.deepEqual(AUTOMATIC_BATTLE_EFFECT_TYPES, ['fire', 'poison', 'ice', 'psychic']);
+test('effect vocabulary is constrained to conditions and combat stat modifiers', () => {
+  assert.deepEqual(AUTOMATIC_BATTLE_EFFECT_TYPES, [
+    'fire', 'poison', 'ice', 'psychic',
+    'attack-up', 'attack-down', 'defense-up', 'defense-down', 'speed-up', 'speed-down',
+  ]);
   for (const type of AUTOMATIC_BATTLE_EFFECT_TYPES) assert.equal(isAutomaticBattleEffectType(type), true);
   assert.equal(isAutomaticBattleEffectType('bleed'), false);
   assert.throws(() => normalizeAutomaticBattleEffect({ type: 'arbitrary-script' }), /Unsupported automatic battle effect type/);
@@ -93,6 +96,22 @@ test('Psychic reduces offensive and defensive effectiveness with safe floors', (
   });
   assert.equal(action.metadata.attack, 6);
   assert.equal(action.targetDamage, 3);
+});
+
+test('allowlisted combat-stat effects apply bounded buffs and debuffs for their remaining turns', () => {
+  const projected = projectCombatantWithAutomaticEffects({
+    attack: 10,
+    defense: 4,
+    speed: 8,
+    effects: [
+      { type: 'attack-up', potency: 3, remainingTurns: 2 },
+      { type: 'defense-down', potency: 2, remainingTurns: 2 },
+      { type: 'speed-down', potency: 4, remainingTurns: 2 },
+    ],
+  });
+  assert.equal(projected.attack, 13);
+  assert.equal(projected.defense, 2);
+  assert.equal(projected.speed, 4);
 });
 
 test('automatic simulator resolves periodic effects inside the authoritative lifecycle', () => {

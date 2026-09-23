@@ -32,6 +32,7 @@ test('Duel resolves through the shared automatic battle engine without mutating 
   assert.equal(result.battle.receipt.winnerId, player.id);
   assert.equal(result.battle.receipt.loserId, 'guild-lio');
   assert.ok(result.battle.details.turnCount > 0);
+  assert.ok(result.battle.details.combatants.every((combatant) => combatant.signatureSkill?.id));
   assert.equal(result.battle.details.turns[0].actor.id, player.id);
   assert.equal(result.replayed, false);
   assert.deepEqual(result.record, { wins: 1, losses: 0, draws: 0, total: 1 });
@@ -43,6 +44,11 @@ test('Duel resolves through the shared automatic battle engine without mutating 
   assert.equal(events[0].type, 'DuelResolved');
   assert.equal(events[0].opponentId, 'guild-lio');
   assert.match(events[0].receiptText, /Victory/);
+  assert.deepEqual(new SQLiteDuelRepository({ database: repository.db }).get('duel-lio-1').battleReplay, result.battle);
+  const replay = service.duel(player.id, 'guild-lio', { duelId: 'duel-lio-1' });
+  assert.equal(replay.replayed, true);
+  assert.deepEqual(replay.battle, result.battle, 'retry returns the replay persisted with the original Duel result');
+  assert.equal(events.length, 1, 'retry does not publish a second result receipt');
   repository.close();
 });
 

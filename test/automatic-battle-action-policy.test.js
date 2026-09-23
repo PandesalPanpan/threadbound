@@ -91,7 +91,7 @@ test('canonical action policy plugs into the shared simulator and HP remains sim
 
   assert.equal(result.outcome, 'victory');
   assert.equal(result.winnerId, 'hero');
-  assert.deepEqual(result.turns.map((turn) => turn.targetDamage), [5, 2, 5]);
+  assert.deepEqual(result.turns.map((turn) => turn.targetDamage), [5, 2, 4]);
   assert.deepEqual(result.turns.map((turn) => turn.metadata.kind), ['basic-attack', 'basic-attack', 'basic-attack']);
   assert.equal(result.combatants.find((entry) => entry.id === 'hero').hp, 18);
   assert.equal(result.combatants.find((entry) => entry.id === 'slime').hp, 0);

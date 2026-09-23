@@ -4,6 +4,7 @@ import { ITEM_RARITIES, ITEM_RARITY_IDS, isItemRarity, itemRarity, rarityFromRol
 import { ItemGenerator } from '../src/domain/ItemGenerator.js';
 import { maxRelicUpgradeLevel } from '../src/domain/RelicProgressionPolicy.js';
 import { SALVAGE_BY_RARITY } from '../src/application/InventoryService.js';
+import { generatedEquipmentOptions } from '../src/content/GeneratedEquipmentCatalog.js';
 
 test('canonical rarity contract is exactly Common through Mythic in ascending tiers', () => {
   assert.deepEqual(ITEM_RARITY_IDS, ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic']);
@@ -25,9 +26,9 @@ test('rarity roll preserves existing bands and reserves the top band for Mythic'
 });
 
 test('generated Mythic equipment carries tier 6 and remains compatible with upgrade and salvage policies', () => {
-  const rolls = [0.997, 0, 0, 0, 0, 0];
+  const rolls = [0, 0.997, 0, 0, 0, 0];
   let index = 0;
-  const generator = new ItemGenerator({ rng: () => rolls[index++] ?? 0, idFactory: () => 'mythic-test-item' });
+  const generator = new ItemGenerator({ rng: () => rolls[index++] ?? 0, idFactory: () => 'mythic-test-item', equipmentOptions: generatedEquipmentOptions() });
   const item = generator.generateReward({ source: 'test' });
   assert.equal(item.rarity, 'mythic');
   assert.equal(item.rarityTier, 6);

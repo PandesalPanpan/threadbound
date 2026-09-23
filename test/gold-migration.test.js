@@ -42,13 +42,13 @@ test('Hunt persists into the legacy column but returns and publishes Gold', () =
   const stored = repository.getPlayer(player.id);
   const huntEvent = events.find((event) => event.type === 'HuntResolved');
 
-  assert.equal(result.gold, 3);
-  assert.equal(result.threadDust, 3, 'legacy result alias stays readable');
-  assert.equal(result.character.gold, 3);
-  assert.equal(result.character.threadDust, 3);
-  assert.equal(stored.threadDust, 3, 'existing thread_dust persistence remains authoritative during migration');
-  assert.equal(huntEvent.gold, 3);
-  assert.equal(huntEvent.threadDust, 3, 'legacy stream metadata alias stays readable');
+  assert.equal(result.gold, 4);
+  assert.equal(result.threadDust, 4, 'legacy result alias stays readable');
+  assert.equal(result.character.gold, 4);
+  assert.equal(result.character.threadDust, 4);
+  assert.equal(stored.threadDust, 4, 'existing thread_dust persistence remains authoritative during migration');
+  assert.equal(huntEvent.gold, 4);
+  assert.equal(huntEvent.threadDust, 4, 'legacy stream metadata alias stays readable');
 
   repository.close();
 });

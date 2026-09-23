@@ -1,3 +1,5 @@
+import { normalizeEquipmentSlot } from './EquipmentSlotPolicy.js';
+
 // Legacy attunements remain readable for already-persisted tactical items. New default
 // equipment upgrades no longer require players to choose these obsolete combat paths.
 export const RELIC_ATTUNEMENTS = Object.freeze({
@@ -37,6 +39,23 @@ const RARITY_MAX_LEVEL = Object.freeze({
 });
 
 const UPGRADE_COSTS = Object.freeze([8, 14, 22]);
+const EQUIPMENT_SLOT_UPGRADES = Object.freeze({
+  weapon: Object.freeze({ statKey: 'attackBonus', statLabel: 'Attack', statIncrease: 1, displayIncrease: 1, displayUnit: '', budgetIncrease: 1 }),
+  helmet: Object.freeze({ statKey: 'defenseBonus', statLabel: 'Defense', statIncrease: 1, displayIncrease: 1, displayUnit: '', budgetIncrease: 1 }),
+  armor: Object.freeze({ statKey: 'maxHpBonus', statLabel: 'Max HP', statIncrease: 4, displayIncrease: 4, displayUnit: '', budgetIncrease: 1 }),
+  boots: Object.freeze({ statKey: 'speedBonus', statLabel: 'Speed', statIncrease: 1, displayIncrease: 1, displayUnit: '', budgetIncrease: 1 }),
+  accessory: Object.freeze({ statKey: 'critChanceBonus', statLabel: 'Crit Chance', statIncrease: 0.01, displayIncrease: 1, displayUnit: '%', budgetIncrease: 1 }),
+});
+
+export function equipmentSlotUpgrade(slot) {
+  const normalizedSlot = normalizeEquipmentSlot(slot || 'weapon');
+  const upgrade = EQUIPMENT_SLOT_UPGRADES[normalizedSlot];
+  return Object.freeze({
+    slot: normalizedSlot,
+    ...upgrade,
+    statText: `+${upgrade.displayIncrease}${upgrade.displayUnit} ${upgrade.statLabel}`,
+  });
+}
 
 function currentLevel(item) {
   const value = Number(item?.upgradeLevel ?? item?.effect?.upgradeLevel ?? 0);
@@ -101,12 +120,15 @@ export function planRelicUpgrade(item, requestedAttunementCode = null) {
     attunementCode = requested;
   }
 
+  const statUpgrade = equipmentSlotUpgrade(item.slot);
   return {
     expectedLevel: progression.level,
     nextLevel: progression.level + 1,
     maxLevel: progression.maxLevel,
     cost: progression.nextCost,
-    attackIncrease: 1,
+    ...statUpgrade,
+    // Compatibility field for Weapon-only clients and persisted event consumers.
+    attackIncrease: statUpgrade.statKey === 'attackBonus' ? statUpgrade.statIncrease : 0,
     attunementCode,
     attunement: attunementCode ? { ...RELIC_ATTUNEMENTS[attunementCode] } : null,
   };

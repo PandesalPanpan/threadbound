@@ -12,6 +12,7 @@ import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, BALANCE_BUDGETS, Arc
 import { ArcEquipmentTemplateValidator } from './ArcEquipmentTemplateValidator.js';
 import { ArcManifestReplayabilityValidator } from './ArcManifestReplayabilityValidator.js';
 import { TARGETING_PROFILES } from '../domain/SimpleEncounterBattle.js';
+import { areaContentForNumber } from '../content/AreaContentCatalog.js';
 
 function serializableEquipmentEffect(definition, equipmentTemplate) {
   return {
@@ -252,6 +253,83 @@ export class ArcManifestService {
           rewardPoolId: dungeon.rewardPoolId,
           sourceManifestId: record.id,
           sourceManifestRevision: record.revision,
+        });
+      }
+    }
+    return result;
+  }
+
+  /** Published, data-only Quest definitions ready for the Quest Service. */
+  runtimeQuests() {
+    this.#ensureBundledContent();
+    const result = [];
+    for (const record of this.manifestRepository.listPublished()) {
+      const manifest = record.manifest;
+      const areasById = new Map((manifest.areas || []).map((area) => [area.id, area]));
+      const townsById = new Map((manifest.towns || []).map((town) => [town.id, town]));
+      const npcsById = new Map((manifest.npcs || []).map((npc) => [npc.id, npc]));
+      const enemiesById = new Map([...(manifest.enemies || []), ...(manifest.bosses || [])].map((entry) => [entry.id, entry]));
+      const dungeonsById = new Map((manifest.dungeons || []).map((dungeon) => [dungeon.id, dungeon]));
+      const itemsById = new Map((manifest.itemPools || []).flatMap((pool) => (pool.items || []).map((item) => [item.id, item])));
+      const source = manifest.manifestVersion === 2
+        ? (manifest.quests || []).map((quest) => ({ ...quest, areaNumber: areasById.get(quest.areaId)?.number }))
+        : (manifest.storyQuests || []);
+
+      for (const quest of source) {
+        const areaNumber = Number(quest.areaNumber);
+        if (!Number.isInteger(areaNumber) || areaNumber < 1 || !quest.id || !quest.title || !Array.isArray(quest.objectives) || !quest.objectives.length) continue;
+        const town = (manifest.towns || []).find((candidate) => candidate.areaId === quest.areaId)
+          || (manifest.towns || []).find((candidate) => Number(areasById.get(candidate.areaId)?.number) === areaNumber);
+        const objectives = quest.objectives.map((objective, index) => {
+          const type = String(objective.type || '').trim().toLowerCase();
+          const targetId = objective.targetId || null;
+          const target = type === 'speak' ? npcsById.get(targetId)
+            : type === 'visit' ? townsById.get(targetId) || areasById.get(targetId)
+              : type === 'boss' ? dungeonsById.get(targetId)
+                : type === 'collect' ? itemsById.get(targetId)
+                  : enemiesById.get(targetId);
+          return {
+            id: objective.id || `${quest.id}-objective-${index + 1}`,
+            type,
+            ...(targetId ? { targetId } : {}),
+            ...(target?.name ? { targetLabel: target.name } : {}),
+            count: Number(objective.count || 1),
+          };
+        });
+        const referencedNpc = objectives.find((objective) => objective.type === 'speak')?.targetId
+          ? npcsById.get(objectives.find((objective) => objective.type === 'speak').targetId)
+          : null;
+        const npcTown = referencedNpc ? townsById.get(referencedNpc.townId) : null;
+        let sourceArea = areasById.get(quest.areaId) || null;
+        if (!sourceArea) {
+          try { sourceArea = areaContentForNumber(areaNumber); }
+          catch { sourceArea = null; }
+        }
+        const loreTags = new Set(sourceArea?.loreTags || []);
+        const lore = (manifest.lore || []).find((entry) => (entry.tags || []).some((tag) => loreTags.has(tag)));
+        const objectiveLabel = objectives.map((objective) => {
+          const label = objective.targetLabel || objective.targetId || objective.type;
+          return `${objective.type} ${label}`;
+        }).join(' and ');
+        const difficulty = objectives.reduce((sum, objective) => sum + Number(objective.count || 1) * ({ boss: 5, kill: 2, collect: 2, hunt: 2, adventure: 2, speak: 1, visit: 1 }[objective.type] || 1), 0);
+        const fallbackDescription = lore
+          ? `${lore.summary} Objective: ${objectiveLabel}.`
+          : `${record.manifest.arc.title}: ${objectiveLabel}.`;
+        let canonicalTownId = null;
+        try { canonicalTownId = areaContentForNumber(areaNumber).town?.id || null; }
+        catch { canonicalTownId = null; }
+        result.push({
+          id: quest.id,
+          title: quest.title,
+          description: quest.description || fallbackDescription,
+          areaNumber,
+          townId: referencedNpc?.visualAssetId ? (npcTown?.id || town?.id || canonicalTownId) : (canonicalTownId || npcTown?.id || town?.id) || null,
+          npcId: referencedNpc?.id || null,
+          objectives,
+          reward: quest.reward || {
+            gold: 10 + areaNumber * 8 + difficulty * 3,
+            experience: 25 + areaNumber * 10 + difficulty * 7,
+          },
         });
       }
     }

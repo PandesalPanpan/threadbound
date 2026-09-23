@@ -198,6 +198,12 @@ Run `npm run check`, `npm test`, relevant Playwright projects, and full E2E befo
 
 Every increment reports: implementation; Figma frames; both viewport screenshots; tests; remaining visual differences; API/read-model gaps; obsolete safe-to-delete files; next unchecked increment.
 
+### Branch-local RPG progression increment — 2026-09-23
+
+`feat/rpg-progression-loop` extends the existing player loop with semantic multi-slot Equipment, Level-derived Max HP, authored Area/Hunt/Quest/Town progression, automatic Mana skills, replayable Duels, multi-enemy Dungeons, and one party-wide intermission Heal. The server owns those rules and persisted state; React surfaces the resulting receipts and replays. Focused migration, repository, service, domain, stream, and Playwright coverage accompanies the changes.
+
+Branch-local verification completed: `npm run check`, `npm test` (470 passing), and full `npm run test:e2e` (24 threaded, 21 simple-local, 21 React-local, and 7 workshop passing). The 240-art Figma item library and mobile/desktop progression screenshots were inspected. The Phase K human acceptance gates and Phase L production lifecycle gates remain unchecked. This branch-local increment has not been merged or verified by `main` CI, so it does not satisfy the checklist's merge-green completion rule.
+
 ## 8. Agent protocol and explicit non-goals
 
 Start from current `main`, inspect this plan, then continue the earliest unchecked task whose dependencies are satisfied. Finish partial work before moving on. Read `CONTEXT.md`, `README.md`, this plan, and focused docs before boundary changes. Inspect exact Figma nodes before implementation. Preserve unrelated/untracked user files. Never check milestones before merged green `main`.

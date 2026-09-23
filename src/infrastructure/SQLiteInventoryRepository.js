@@ -1,4 +1,11 @@
 import { assertEquipmentSellable, equipmentSellValue } from '../domain/EquipmentSellPolicy.js';
+import { arcEquipmentBudgetLimit, arcEquipmentBudgetUsed } from '../domain/ArcEquipmentTemplatePolicy.js';
+import { equipmentSlotUpgrade } from '../domain/RelicProgressionPolicy.js';
+
+function finiteNonNegative(value) {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
 
 export class SQLiteInventoryRepository {
   constructor({ database }) {
@@ -61,7 +68,7 @@ export class SQLiteInventoryRepository {
     return this.sellItem({ playerId, itemId });
   }
 
-  upgradeItem({ playerId, itemId, expectedLevel, cost, attackIncrease, attunementCode }) {
+  upgradeItem({ playerId, itemId, expectedLevel, cost, attackIncrease, statKey = null, statIncrease = null, budgetIncrease = null, attunementCode }) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       // This check belongs inside the same write transaction as Gold spending and item
@@ -79,7 +86,9 @@ export class SQLiteInventoryRepository {
       const player = this.db.prepare('SELECT thread_dust FROM players WHERE id = ?').get(playerId);
       if (!player) throw new Error('Player not found.');
 
-      const effect = JSON.parse(item.effect_json || '{}');
+      let effect = {};
+      try { effect = JSON.parse(item.effect_json || '{}'); } catch {}
+      if (!effect || typeof effect !== 'object' || Array.isArray(effect)) effect = {};
       const storedLevel = Number(effect.upgradeLevel || 0);
       if (storedLevel !== expectedLevel) {
         const error = new Error('Equipment progression changed before this Upgrade could be applied. Refresh and retry.');
@@ -92,10 +101,63 @@ export class SQLiteInventoryRepository {
         throw error;
       }
 
+      const statUpgrade = equipmentSlotUpgrade(item.slot);
+      const requestedStatKey = statKey || statUpgrade.statKey;
+      const requestedStatIncrease = statIncrease == null
+        ? (requestedStatKey === 'attackBonus' ? Number(attackIncrease ?? statUpgrade.statIncrease) : statUpgrade.statIncrease)
+        : Number(statIncrease);
+      const requestedBudgetIncrease = budgetIncrease == null ? statUpgrade.budgetIncrease : Number(budgetIncrease);
+      if (requestedStatKey !== statUpgrade.statKey
+        || requestedStatIncrease !== statUpgrade.statIncrease
+        || requestedBudgetIncrease !== statUpgrade.budgetIncrease) {
+        const error = new Error('Equipment Upgrade does not match the authoritative slot stat.');
+        error.code = 'invalid_equipment_upgrade_stat';
+        throw error;
+      }
+
       effect.upgradeLevel = expectedLevel + 1;
       if (attunementCode) effect.attunementCode ||= attunementCode;
-      const updated = this.db.prepare('UPDATE items SET attack_bonus = attack_bonus + ?, effect_json = ? WHERE id = ? AND player_id = ?').run(
-        attackIncrease,
+      const oldTemplate = effect.equipmentTemplate && typeof effect.equipmentTemplate === 'object' && !Array.isArray(effect.equipmentTemplate)
+        ? effect.equipmentTemplate
+        : {};
+      const oldStats = oldTemplate.stats && typeof oldTemplate.stats === 'object' && !Array.isArray(oldTemplate.stats)
+        ? oldTemplate.stats
+        : {};
+      const stats = {
+        attackBonus: finiteNonNegative(item.attack_bonus),
+        defenseBonus: finiteNonNegative(oldStats.defenseBonus),
+        maxHpBonus: finiteNonNegative(oldStats.maxHpBonus ?? oldStats.maxHealthBonus),
+        speedBonus: finiteNonNegative(oldStats.speedBonus),
+        critChanceBonus: Math.min(1, finiteNonNegative(oldStats.critChanceBonus)),
+      };
+      stats[statUpgrade.statKey] += statUpgrade.statIncrease;
+      const effects = Array.isArray(oldTemplate.effectCodes)
+        ? oldTemplate.effectCodes.map((code) => String(code).trim().toLowerCase()).filter(Boolean)
+        : [String(item.effect_code || effect.code || 'none').trim().toLowerCase() || 'none'];
+      const requiredLevel = Math.max(1, Math.floor(Number(oldTemplate.requiredLevel) || 1));
+      const areaNumber = Math.max(1, Math.floor(Number(oldTemplate.areaNumber) || 1));
+      const budgetUsed = arcEquipmentBudgetUsed({ stats, effects });
+      const baseBudgetLimit = arcEquipmentBudgetLimit({ rarity: String(item.rarity || 'common').toLowerCase(), requiredLevel, areaNumber });
+      const storedBudgetLimit = Number(oldTemplate.budget?.limit);
+      const previousBudgetLimit = Number.isFinite(storedBudgetLimit) && storedBudgetLimit > 0
+        ? Math.max(storedBudgetLimit, baseBudgetLimit + storedLevel * statUpgrade.budgetIncrease)
+        : baseBudgetLimit + storedLevel * statUpgrade.budgetIncrease;
+      const budget = {
+        used: budgetUsed,
+        limit: Math.max(previousBudgetLimit + statUpgrade.budgetIncrease, budgetUsed),
+      };
+      effect.equipmentTemplate = {
+        ...oldTemplate,
+        effectCodes: effects,
+        requiredLevel,
+        areaNumber,
+        stats,
+        budget,
+      };
+      const nextAttackBonus = stats.attackBonus;
+      const attackDelta = statUpgrade.statKey === 'attackBonus' ? statUpgrade.statIncrease : 0;
+      const updated = this.db.prepare('UPDATE items SET attack_bonus = ?, effect_json = ? WHERE id = ? AND player_id = ?').run(
+        nextAttackBonus,
         JSON.stringify(effect),
         itemId,
         playerId,
@@ -110,7 +172,12 @@ export class SQLiteInventoryRepository {
         attunementCode: effect.attunementCode || null,
         goldSpent: cost,
         threadDustSpent: cost,
-        attackIncrease,
+        attackIncrease: attackDelta,
+        statKey: statUpgrade.statKey,
+        statLabel: statUpgrade.statLabel,
+        statIncrease: statUpgrade.statIncrease,
+        statText: statUpgrade.statText,
+        budget,
       };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}

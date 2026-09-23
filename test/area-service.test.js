@@ -44,9 +44,9 @@ test('AreaService travel persists through the Area repository and publishes one 
     assert.deepEqual(events, [{
       type: 'AreaTraveled',
       playerId: player.id,
-      fromArea: { id: 'area-1', number: 1, name: 'Area 1' },
-      toArea: { id: 'area-2', number: 2, name: 'Area 2' },
-      highestUnlockedArea: { id: 'area-2', number: 2, name: 'Area 2' },
+      fromArea: { id: 'area-1', number: 1, name: 'Bellbloom Meadows' },
+      toArea: { id: 'area-2', number: 2, name: 'Emberglass Orchard' },
+      highestUnlockedArea: { id: 'area-2', number: 2, name: 'Emberglass Orchard' },
     }]);
   } finally {
     repository.close();

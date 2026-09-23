@@ -62,6 +62,51 @@ function resourceProjection(result, combatant) {
   });
 }
 
+function publicItemProjection(item) {
+  if (!item || typeof item !== 'object') return null;
+  return Object.freeze({
+    id: item.id || null,
+    name: item.name || null,
+    slot: item.slot || null,
+    rarity: item.rarity || 'common',
+    visualAssetId: item.visualAssetId || null,
+    attackBonus: Number(item.attackBonus || item.stats?.attackBonus || 0),
+    defenseBonus: Number(item.defenseBonus || item.stats?.defenseBonus || 0),
+    maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
+    speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
+    critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
+  });
+}
+
+function combatantReplayProjection(result, combatant) {
+  const skill = combatant.skills?.[0] || null;
+  const equipment = combatant.equipment && typeof combatant.equipment === 'object'
+    ? Object.fromEntries(Object.entries(combatant.equipment).map(([slot, item]) => [slot, publicItemProjection(item)]))
+    : {};
+  return Object.freeze({
+    id: combatant.id,
+    label: combatantLabel(combatant),
+    team: combatant.team || null,
+    visualAssetId: combatant.visualAssetId || null,
+    hp: Object.freeze({ initial: inferInitialHp(result, combatant), final: Number(combatant.hp), max: Number(combatant.maxHp) }),
+    mana: Object.freeze({ initial: inferInitialMana(result, combatant), final: Number(combatant.mana ?? 0), max: Number(combatant.maxMana ?? 100) }),
+    stats: Object.freeze({
+      attack: Number(combatant.attack || 0),
+      defense: Number(combatant.defense || 0),
+      speed: Number(combatant.speed || 0),
+      critChance: Number(combatant.critChance || 0),
+    }),
+    signatureSkill: skill ? Object.freeze({
+      id: String(skill.id || skill.skillId || ''),
+      name: String(skill.name || skill.label || skill.id || 'Signature Skill'),
+      description: String(skill.description || ''),
+      manaCost: Number(skill.manaCost || 0),
+    }) : null,
+    equipment: Object.freeze(equipment),
+    effects: Object.freeze((combatant.effects || []).map((effect) => Object.freeze({ ...effect }))),
+  });
+}
+
 function projectPendingDecision(result) {
   const decision = result.pendingDecision;
   if (!decision) return null;
@@ -119,7 +164,7 @@ function mainReceiptText(result, viewerId, hp, pendingDecision = null) {
   return `${headline}${hpText} · ${result.turns.length} turn${result.turns.length === 1 ? '' : 's'}`;
 }
 
-function effectEvents(metadata = {}) {
+function effectEvents(metadata = {}, result = null) {
   const events = [];
   for (const event of metadata.effectEvents || []) {
     if (event.damage > 0) {
@@ -138,6 +183,10 @@ function effectEvents(metadata = {}) {
     events.push(Object.freeze({
       kind: application.blocked ? 'effect-blocked' : 'effect-applied',
       effect: application.type,
+      ...(application.targetId ? {
+        targetId: application.targetId,
+        targetLabel: combatantLabel(combatantById(result, application.targetId)),
+      } : {}),
       resistanceLevel: application.resistanceLevel,
       incomingPotency: Number(application.incomingPotency || 0),
       appliedPotency: Number(application.appliedPotency || 0),
@@ -156,7 +205,7 @@ function turnSummary({ turn, actorLabel, targetLabel, consecutiveAction, events 
   if (turn.targetId && turn.targetDamage > 0) {
     const critical = Boolean(turn.metadata?.critical);
     const action = turn.metadata?.actionType === 'skill'
-      ? ` cast ${String(turn.metadata.skillId || 'a skill')} on`
+      ? ` cast ${String(turn.metadata.skillName || turn.metadata.skillId || 'a skill')} on`
       : `${critical ? ' critically' : ''} hit`;
     pieces.push(`${actorLabel}${action} ${targetLabel} for ${turn.targetDamage} damage.`);
   } else if (turn.targetId && turn.targetDamage === 0) {
@@ -164,6 +213,7 @@ function turnSummary({ turn, actorLabel, targetLabel, consecutiveAction, events 
   }
 
   if (turn.selfHealing > 0) pieces.push(`${actorLabel} healed ${turn.selfHealing} HP.`);
+  if (turn.selfDamage > 0) pieces.push(`${actorLabel} spent ${turn.selfDamage} HP.`);
   if (turn.actorManaBefore != null && turn.actorManaAfter != null && turn.actorManaBefore !== turn.actorManaAfter) {
     const delta = Number(turn.actorManaAfter) - Number(turn.actorManaBefore);
     pieces.push(`${delta >= 0 ? '+' : ''}${delta} Mana.`);
@@ -171,8 +221,9 @@ function turnSummary({ turn, actorLabel, targetLabel, consecutiveAction, events 
   if (!turn.targetId && turn.effectDamage > 0 && turn.actorHpAfter <= 0) pieces.push(`${actorLabel} was defeated by an effect.`);
 
   for (const event of events) {
-    if (event.kind === 'effect-applied') pieces.push(`${targetLabel} received ${event.effect}.`);
-    if (event.kind === 'effect-blocked') pieces.push(`${targetLabel} resisted ${event.effect} (${event.resistanceLevel}).`);
+    const recipient = event.targetLabel || targetLabel || actorLabel;
+    if (event.kind === 'effect-applied') pieces.push(`${recipient} received ${event.effect}.`);
+    if (event.kind === 'effect-blocked') pieces.push(`${recipient} resisted ${event.effect} (${event.resistanceLevel}).`);
   }
 
   return pieces.join(' ') || `${actorLabel} completed a turn.`;
@@ -184,7 +235,7 @@ function projectTurn(result, turn, previousTurn) {
   const actorLabel = combatantLabel(actor || { id: turn.actorId });
   const targetLabel = target ? combatantLabel(target) : null;
   const consecutiveAction = Boolean(previousTurn && previousTurn.actorId === turn.actorId);
-  const events = effectEvents(turn.metadata);
+  const events = effectEvents(turn.metadata, result);
 
   return Object.freeze({
     turnNumber: Number(turn.turnNumber),
@@ -194,9 +245,16 @@ function projectTurn(result, turn, previousTurn) {
     critical: Boolean(turn.metadata?.critical),
     damage: Number(turn.targetDamage || 0),
     healing: Number(turn.selfHealing || 0),
+    selfDamage: Number(turn.selfDamage || 0),
+    lifestealHealing: Number(turn.lifestealHealing || 0),
     effectDamage: Number(turn.effectDamage || 0),
+    damageEvents: Object.freeze((turn.metadata?.damageEvents || []).map((event) => Object.freeze({ ...event }))),
+    healingEvents: Object.freeze((turn.metadata?.healingEvents || []).map((event) => Object.freeze({ ...event }))),
+    manaEvents: Object.freeze((turn.metadata?.manaEvents || []).map((event) => Object.freeze({ ...event }))),
+    effectEvents: Object.freeze(effectEvents(turn.metadata, result)),
     actionType: turn.metadata?.actionType || null,
     skillId: turn.metadata?.skillId || null,
+    skillName: turn.metadata?.skillName || null,
     actorMana: Object.freeze({
       before: Number(turn.actorManaBefore ?? turn.metadata?.manaBefore ?? 0),
       after: Number(turn.actorManaAfter ?? turn.metadata?.manaAfter ?? turn.actorManaBefore ?? 0),
@@ -230,6 +288,7 @@ export function projectAutomaticBattleResult(result, { viewerId = null } = {}) {
     actorId: event.actorId || event.combatantId || null,
     targetId: event.targetId || null,
     skillId: event.skillId || null,
+    skillName: event.skillName || null,
     damage: event.damage == null ? null : Number(event.damage),
     healing: event.healing == null ? null : Number(event.healing),
     manaBefore: event.manaBefore == null ? null : Number(event.manaBefore),
@@ -263,6 +322,7 @@ export function projectAutomaticBattleResult(result, { viewerId = null } = {}) {
         players: Object.freeze((result.players || result.teams?.players || result.combatants.filter((combatant) => combatant.team === 'players')).map((combatant) => Object.freeze({ id: combatant.id, label: combatantLabel(combatant) }))),
         enemies: Object.freeze((result.enemies || result.teams?.enemies || result.combatants.filter((combatant) => combatant.team === 'enemies')).map((combatant) => Object.freeze({ id: combatant.id, label: combatantLabel(combatant) }))),
       }),
+      combatants: Object.freeze(result.combatants.map((combatant) => combatantReplayProjection(result, combatant))),
     }),
   });
 }

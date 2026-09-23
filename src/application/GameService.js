@@ -6,10 +6,12 @@ import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
 import { DUNGEON_REWARD_RULES, projectDungeonRisk } from '../domain/DungeonRiskPolicy.js';
 import { resolveDungeonPotionAction } from '../domain/HealingPolicy.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
+import { automaticBattleSkillForCombatant } from '../domain/AutomaticBattleSkillCatalog.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
+import { areaContentForDungeon, itemRewardProfileForArea } from '../content/AreaContentCatalog.js';
 import { projectPotionInventory, selectPotionForUse } from '../content/PotionCatalog.js';
 import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
@@ -57,18 +59,23 @@ function participantProjection(repository, participant) {
     visualAssetId: playerVisualAssetId(participant.playerId),
     hp: Number(participant.hp || 0),
     maxHp: Number(participant.maxHp || 1),
+    mana: Number(participant.mana || 0),
+    maxMana: Number(participant.maxMana || 100),
   };
 }
 
-function publicItemProjection(item) {
+export function publicItemProjection(item) {
   if (!item) return null;
   return {
     id: item.id || null,
     name: item.name || null,
     slot: item.slot || null,
     rarity: item.rarity || 'common',
-    attackBonus: Number(item.attackBonus || 0),
-    defenseBonus: Number(item.defenseBonus || 0),
+    attackBonus: Number(item.attackBonus ?? item.stats?.attackBonus ?? 0),
+    defenseBonus: Number(item.defenseBonus ?? item.stats?.defenseBonus ?? 0),
+    maxHpBonus: Number(item.maxHpBonus ?? item.stats?.maxHpBonus ?? 0),
+    speedBonus: Number(item.speedBonus ?? item.stats?.speedBonus ?? 0),
+    critChanceBonus: Number(item.critChanceBonus ?? item.stats?.critChanceBonus ?? 0),
     effect: item.effect ? {
       code: item.effect.code || item.effectCode || null,
       name: item.effect.name || null,
@@ -167,6 +174,9 @@ function simpleBattleReplay({ repository, initial, final, beats = [], actions = 
         ...participant,
         startingHp: participant.hp,
         endingHp: finalParticipants.find((candidate) => candidate.id === participant.id)?.hp ?? participant.hp,
+        startingMana: participant.mana,
+        endingMana: finalParticipants.find((candidate) => candidate.id === participant.id)?.mana ?? participant.mana,
+        maxMana: participant.maxMana,
       })),
       enemy,
       beats: beats.map((beat, index) => ({ ...beat, index })),
@@ -263,6 +273,9 @@ function simpleBattleReplay({ repository, initial, final, beats = [], actions = 
       ...participant,
       startingHp: participant.hp,
       endingHp: finalParticipants.find((candidate) => candidate.id === participant.id)?.hp ?? participant.hp,
+      startingMana: participant.mana,
+      endingMana: finalParticipants.find((candidate) => candidate.id === participant.id)?.mana ?? participant.mana,
+      maxMana: participant.maxMana,
     })),
     enemies,
     // Keep the old singleton field as a readable first-enemy projection for
@@ -324,6 +337,10 @@ export class GameService {
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
     const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
     const equipment = Object.fromEntries(Object.entries(loadout).map(([slot, item]) => [slot, decorateItem(item)]));
+    const signatureSkill = automaticBattleSkillForCombatant({
+      equipment,
+      weaponFamily: equipment.weapon?.weaponFamily || equipment.weapon?.family,
+    }, { defaultSkill: 'threadsong' });
     const activeFightBuffs = this.fightBuffRepository.listActive(playerId).map((buff) => ({
       code: buff.code,
       name: buff.name,
@@ -364,6 +381,12 @@ export class GameService {
         // legacy combat/presentation callers while the strangler migration continues.
         equipment,
         equippedItem: equipment.weapon,
+        signatureSkill: {
+          id: signatureSkill.id,
+          name: signatureSkill.name,
+          description: signatureSkill.description,
+          manaCost: signatureSkill.manaCost,
+        },
       },
       activeFightBuffs,
       party: party ? this.#decorateParty(party, playerId) : null,
@@ -484,10 +507,19 @@ export class GameService {
         playerActions[participant.playerId] = {
           attackPower: character.attackPower,
           equipmentEffect: equipped?.effectCode ?? 'none',
+          defense: character.stats.defense,
+          speed: character.stats.speed,
+          critChance: character.stats.critChance,
+          maxHp: participant.maxHp,
+          equipment,
+          equippedItem: equipped,
+          weaponFamily: equipped?.weaponFamily || equipped?.family || null,
+          visualAssetId: playerVisualAssetId(participant.playerId),
         };
       }
       const outcome = run.resolveSimpleEncounter({
         playerActions,
+        signatureSkills: true,
         now: new Date().toISOString(),
       });
       const battleReplay = simpleBattleReplay({
@@ -596,6 +628,9 @@ export class GameService {
   useDungeonPotion(playerId, runId, potionSelection = null) {
     const { run } = this.#simpleDecisionContext(playerId, runId);
     const participant = run.participant(playerId);
+    // A spent shared claim takes precedence over caller HP/inventory validation
+    // so every participant sees the authoritative window state consistently.
+    run.assertIntermissionPotionAvailable();
     const potion = selectPotionForUse(this.repository.listConsumables(playerId), potionSelection, this.areaRepository.get(playerId).currentAreaNumber);
     const plan = resolveDungeonPotionAction({
       activeRun: run.state,
@@ -616,16 +651,21 @@ export class GameService {
       potionName: potion.name,
       participantIds: outcome.state.participants.map((candidate) => candidate.playerId),
     };
-    this.eventBus.publish({ ...event, silentStream: Boolean(run.state.sharedSurface) });
+    // Healing is one player command and gets one concise shared receipt. Only
+    // fine-grained battle events stay silent while the committed replay plays.
+    this.eventBus.publish(event);
     const recovery = { ...plan, quantity: persisted.quantity, healthPotions: persisted.healthPotions };
-    if (!run.state.sharedSurface) {
-      const decoratedRun = this.#decorateRun(outcome.state, playerId);
-      return { run: decoratedRun, state: decoratedRun, battleReplay: null, recovery };
-    }
-    const resolved = this.resolveSimpleEncounter(playerId, runId, { recovery });
+    const decoratedRun = this.#decorateRun(outcome.state, playerId);
     return {
-      ...resolved,
+      run: decoratedRun,
+      state: decoratedRun,
+      battleReplay: null,
       recovery,
+      intermission: Object.freeze({
+        windowId: event.intermissionWindowId,
+        potionClaimed: true,
+        claimedByPlayerId: event.intermissionPotionClaimedByPlayerId,
+      }),
     };
   }
 
@@ -870,7 +910,10 @@ export class GameService {
       const rewardsByPlayer = {};
       const rewardItemIds = {};
       for (const participant of outcome.state.participants) {
-        const reward = this.arcManifestService?.generateReward(outcome.state.dungeonId) || this.itemGenerator.generateReward({ source: outcome.state.dungeonId });
+        const sourceArea = areaContentForDungeon(outcome.state.dungeonId);
+        const rewardProfile = itemRewardProfileForArea(sourceArea?.number || 1);
+        const reward = this.arcManifestService?.generateReward(outcome.state.dungeonId)
+          || this.itemGenerator.generateReward({ source: outcome.state.dungeonId, ...rewardProfile });
         rewardsByPlayer[participant.playerId] = reward;
         rewardItemIds[participant.playerId] = reward.id;
       }
@@ -908,7 +951,7 @@ export class GameService {
             runId: completion.state.id,
             dungeonId: completion.state.dungeonId,
           });
-          this.eventBus.publish({ type: 'ItemGenerated', silentStream: Boolean(outcome.battleReplay), playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], source: completion.state.dungeonId });
+          this.eventBus.publish({ type: 'ItemGenerated', silentStream: Boolean(outcome.battleReplay), playerId: participant.playerId, itemId: rewardItemIds[participant.playerId], itemTemplateId: rewardsByPlayer[participant.playerId]?.definitionId || null, source: completion.state.dungeonId });
         }
         for (const unlock of completion.areaUnlocks || []) {
           this.eventBus.publish({

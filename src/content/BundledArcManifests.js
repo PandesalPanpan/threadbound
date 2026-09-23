@@ -72,8 +72,8 @@ export const GLASSWAKE_ARC_MANIFEST = Object.freeze({
     Object.freeze({
       id: 'glasswake-relics',
       items: Object.freeze([
-        Object.freeze({ id: 'mirror-shears-template', namePattern: 'Mirror Shears of {suffix}', rarity: 'rare', attackBonus: 3, effects: Object.freeze(['boss_bane']), visualAssetId: 'item.ice-sword.v1' }),
-        Object.freeze({ id: 'glass-needle-template', namePattern: 'Glass Needle of {arc}', rarity: 'uncommon', attackBonus: 2, effects: Object.freeze(['opening_strike']), visualAssetId: 'item.ice-dagger.v1' }),
+        Object.freeze({ id: 'mirror-shears-template', namePattern: 'Mirror Shears of {suffix}', rarity: 'rare', attackBonus: 3, effects: Object.freeze(['boss_bane']), visualAssetId: 'item.threadpiercer.v1' }),
+        Object.freeze({ id: 'glass-needle-template', namePattern: 'Glass Needle of {arc}', rarity: 'uncommon', attackBonus: 2, effects: Object.freeze(['opening_strike']), visualAssetId: 'item.violet-needle.v1' }),
       ]),
     }),
   ]),

@@ -49,6 +49,31 @@ function normalizeCooldown(event) {
   });
 }
 
+function normalizeItemStats(event) {
+  const source = event.itemStats && typeof event.itemStats === 'object' ? event.itemStats : {};
+  return Object.freeze({
+    attackBonus: nonNegativeNumber(source.attackBonus ?? event.itemAttackBonus),
+    defenseBonus: nonNegativeNumber(source.defenseBonus ?? event.itemDefenseBonus),
+    maxHpBonus: nonNegativeNumber(source.maxHpBonus ?? source.maxHealthBonus ?? event.itemMaxHpBonus),
+    speedBonus: nonNegativeNumber(source.speedBonus ?? event.itemSpeedBonus),
+    critChanceBonus: nonNegativeNumber(source.critChanceBonus ?? event.itemCritChanceBonus),
+  });
+}
+
+function itemStatText(stats) {
+  const bonuses = [
+    [stats.attackBonus, 'Attack'],
+    [stats.defenseBonus, 'Defense'],
+    [stats.maxHpBonus, 'Max HP'],
+    [stats.speedBonus, 'Speed'],
+  ].filter(([value]) => value > 0).map(([value, label]) => `+${value} ${label}`);
+  if (stats.critChanceBonus > 0) {
+    const percent = Math.round(stats.critChanceBonus * 1000) / 10;
+    bonuses.push(`+${Number.isInteger(percent) ? percent : percent.toFixed(1)}% Crit`);
+  }
+  return bonuses.length ? ` · ${bonuses.join(' · ')}` : '';
+}
+
 /**
  * Projects already-authoritative HuntResolved facts into one concise stream receipt.
  * It never calculates combat, rewards, loot, death penalties, level, quest completion, buff consumption, or cooldown legality.
@@ -66,15 +91,20 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
   const carriedGold = event.carriedGold == null ? null : nonNegativeNumber(event.carriedGold);
   const bankedGold = event.bankedGold == null ? null : nonNegativeNumber(event.bankedGold);
   const xp = victory ? nonNegativeNumber(event.experienceGained ?? event.xp) : 0;
+  const maxHealthIncrease = victory ? nonNegativeNumber(event.maxHealthIncrease) : 0;
   const healthPotionsFound = victory ? nonNegativeNumber(event.healthPotionsFound) : 0;
   const questProgress = normalizeQuestProgress(event.questProgress);
   const fightBuffs = normalizeFightBuffs(event.fightBuffsConsumed);
   const cooldown = normalizeCooldown(event);
+  const itemStats = normalizeItemStats(event);
   const loot = victory && event.itemName ? Object.freeze({
     id: event.itemId || null,
     name: String(event.itemName),
+    slot: event.itemSlot || null,
     rarity: event.itemRarity ? String(event.itemRarity) : null,
-    attackBonus: nonNegativeNumber(event.itemAttackBonus),
+    ...(event.itemVisualAssetId ? { visualAssetId: String(event.itemVisualAssetId) } : {}),
+    attackBonus: itemStats.attackBonus,
+    stats: itemStats,
   }) : null;
 
   const resultText = victory
@@ -86,9 +116,11 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     : goldLost > 0
       ? ` −${goldLost} carried Gold · Bank safe.`
       : ' No rewards.';
-  const levelText = victory && event.leveledUp ? ` Level up — ${nonNegativeNumber(event.level)}.` : '';
+  const levelText = victory && event.leveledUp
+    ? ` Level up — ${nonNegativeNumber(event.level)}.${maxHealthIncrease > 0 ? ` Max HP +${maxHealthIncrease}.` : ''}`
+    : '';
   const lootText = loot
-    ? ` Loot — ${loot.rarity ? `${titleize(loot.rarity)} ` : ''}${loot.name} · +${loot.attackBonus} Attack.`
+    ? ` Loot — ${loot.rarity ? `${titleize(loot.rarity)} ` : ''}${loot.name}${itemStatText(loot.stats)}.`
     : '';
   const potionText = healthPotionsFound
     ? ` +${healthPotionsFound} Health Potion${healthPotionsFound === 1 ? '' : 's'}.`
@@ -115,6 +147,9 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
       level: nonNegativeNumber(event.level),
       leveledUp: victory && Boolean(event.leveledUp),
       levelsGained: victory ? nonNegativeNumber(event.levelsGained) : 0,
+      ...(victory && event.maxHealthIncrease != null ? { maxHealthIncrease } : {}),
+      ...(victory && event.maxHealth != null ? { maxHealth: nonNegativeNumber(event.maxHealth) } : {}),
+      ...(victory && event.currentHealth != null ? { currentHealth: nonNegativeNumber(event.currentHealth) } : {}),
     }),
     loot,
     healthPotionsFound,

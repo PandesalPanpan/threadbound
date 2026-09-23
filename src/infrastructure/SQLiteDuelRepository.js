@@ -20,6 +20,7 @@ function rowResult(row) {
     winnerId: row.winner_id,
     loserId: row.loser_id,
     turnCount: row.turn_count,
+    battleReplay: row.battle_replay_json ? JSON.parse(row.battle_replay_json) : null,
     createdAt: row.created_at,
   });
 }
@@ -42,7 +43,7 @@ export class SQLiteDuelRepository {
     return rowResult(this.db.prepare('SELECT * FROM duel_results WHERE duel_id = ?').get(String(duelId || '').trim()));
   }
 
-  recordResult({ duelId, challengerId, opponentId, outcome, winnerId = null, loserId = null, turnCount = 0 }) {
+  recordResult({ duelId, challengerId, opponentId, outcome, winnerId = null, loserId = null, turnCount = 0, battleReplay = null }) {
     const id = requiredId(duelId, 'Duel id');
     const challenger = requiredId(challengerId, 'Duel challenger id');
     const opponent = requiredId(opponentId, 'Duel opponent id');
@@ -50,6 +51,10 @@ export class SQLiteDuelRepository {
     const result = normalizedOutcome(outcome);
     const turns = Number(turnCount);
     if (!Number.isInteger(turns) || turns < 0) throw new Error('Duel turn count must be a non-negative integer.');
+    if (battleReplay !== null && (!battleReplay || typeof battleReplay !== 'object' || Array.isArray(battleReplay))) {
+      throw new Error('Duel battle replay must be an object or null.');
+    }
+    const replayJson = battleReplay == null ? null : JSON.stringify(battleReplay);
 
     const existing = this.get(id);
     if (existing) {
@@ -59,7 +64,9 @@ export class SQLiteDuelRepository {
         && existing.winnerId === (winnerId || null)
         && existing.loserId === (loserId || null)
         && existing.turnCount === turns;
-      if (!same) {
+      const replayMatches = !battleReplay || !existing.battleReplay
+        || JSON.stringify(existing.battleReplay) === replayJson;
+      if (!same || !replayMatches) {
         const error = new Error('Duel id was already used for a different result.');
         error.code = 'duel_replay_mismatch';
         throw error;
@@ -67,13 +74,31 @@ export class SQLiteDuelRepository {
       return Object.freeze({ applied: false, replayed: true, duel: existing });
     }
 
-    this.db.prepare(`
-      INSERT INTO duel_results (
-        duel_id, challenger_id, opponent_id, outcome, winner_id, loser_id, turn_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(id, challenger, opponent, result, winnerId || null, loserId || null, turns);
+    const insert = this.db.prepare(`
+      INSERT OR IGNORE INTO duel_results (
+        duel_id, challenger_id, opponent_id, outcome, winner_id, loser_id, turn_count, battle_replay_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, challenger, opponent, result, winnerId || null, loserId || null, turns, replayJson);
 
-    return Object.freeze({ applied: true, replayed: false, duel: this.get(id) });
+    const persisted = this.get(id);
+    if (!persisted) throw new Error('Duel result could not be persisted.');
+    if (insert.changes === 0) {
+      const same = persisted.challengerId === challenger
+        && persisted.opponentId === opponent
+        && persisted.outcome === result
+        && persisted.winnerId === (winnerId || null)
+        && persisted.loserId === (loserId || null)
+        && persisted.turnCount === turns;
+      const replayMatches = !battleReplay || !persisted.battleReplay
+        || JSON.stringify(persisted.battleReplay) === replayJson;
+      if (!same || !replayMatches) {
+        const error = new Error('Duel id was already used for a different result.');
+        error.code = 'duel_replay_mismatch';
+        throw error;
+      }
+      return Object.freeze({ applied: false, replayed: true, duel: persisted });
+    }
+    return Object.freeze({ applied: true, replayed: false, duel: persisted });
   }
 
   recordFor(participantId) {
@@ -124,11 +149,16 @@ export class SQLiteDuelRepository {
         winner_id TEXT NULL,
         loser_id TEXT NULL,
         turn_count INTEGER NOT NULL DEFAULT 0 CHECK(turn_count >= 0),
+        battle_replay_json TEXT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CHECK(challenger_id <> opponent_id)
       );
       CREATE INDEX IF NOT EXISTS idx_duel_results_challenger ON duel_results(challenger_id, created_at);
       CREATE INDEX IF NOT EXISTS idx_duel_results_opponent ON duel_results(opponent_id, created_at);
     `);
+    const columns = this.db.prepare('PRAGMA table_info(duel_results)').all();
+    if (!columns.some((column) => column.name === 'battle_replay_json')) {
+      this.db.exec('ALTER TABLE duel_results ADD COLUMN battle_replay_json TEXT NULL');
+    }
   }
 }

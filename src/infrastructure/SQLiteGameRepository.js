@@ -2,24 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-
-function decodeItem(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    playerId: row.player_id,
-    definitionId: row.definition_id,
-    name: row.name,
-    slot: row.slot,
-    rarity: row.rarity,
-    attackBonus: row.attack_bonus,
-    effectCode: row.effect_code,
-    effect: JSON.parse(row.effect_json),
-    visualAssetId: row.visual_asset_id || null,
-    source: row.source,
-    createdAt: row.created_at,
-  };
-}
+import { mapSQLiteItemRow, sqliteEquipmentMaxHpBonus } from './SQLiteItemMapper.js';
 
 export class SQLiteGameRepository {
   constructor({ filename = './data/threadbound.sqlite', idFactory = randomUUID } = {}) {
@@ -47,10 +30,10 @@ export class SQLiteGameRepository {
   }
 
   listItems(playerId) {
-    return this.db.prepare('SELECT * FROM items WHERE player_id = ? ORDER BY created_at DESC, id DESC').all(playerId).map(decodeItem);
+    return this.db.prepare('SELECT * FROM items WHERE player_id = ? ORDER BY created_at DESC, id DESC').all(playerId).map(mapSQLiteItemRow);
   }
 
-  getItem(itemId) { return decodeItem(this.db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)); }
+  getItem(itemId) { return mapSQLiteItemRow(this.db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)); }
 
   addItem(playerId, item) {
     this.#insertItem(playerId, item, true);
@@ -122,10 +105,11 @@ export class SQLiteGameRepository {
     try {
       const row = this.db.prepare('SELECT current_health, max_health FROM players WHERE id = ?').get(playerId);
       if (!row) throw new Error('Player not found.');
+      const maxHealth = Math.max(1, Number(row.max_health || 1) + sqliteEquipmentMaxHpBonus(this.db, playerId));
       const startingHealth = currentHealth == null
         ? Number(row.current_health)
-        : Math.max(0, Math.min(Number(row.max_health), Math.floor(Number(currentHealth))));
-      if (startingHealth >= row.max_health) {
+        : Math.max(0, Math.min(maxHealth, Math.floor(Number(currentHealth))));
+      if (startingHealth >= maxHealth) {
         const error = new Error('You are already at full health.');
         error.code = 'health_already_full';
         throw error;
@@ -136,7 +120,7 @@ export class SQLiteGameRepository {
         error.code = 'no_health_potions';
         throw error;
       }
-      const nextHealth = Math.min(row.max_health, startingHealth + Math.max(1, Math.floor(Number(heal) || 0)));
+      const nextHealth = Math.min(maxHealth, startingHealth + Math.max(1, Math.floor(Number(heal) || 0)));
       const healed = nextHealth - startingHealth;
       const consumed = this.db.prepare('UPDATE player_consumables SET quantity = quantity - 1 WHERE player_id = ? AND consumable_id = ? AND quantity > 0').run(playerId, consumableId);
       if (consumed.changes !== 1) {
@@ -148,7 +132,7 @@ export class SQLiteGameRepository {
       this.#syncLegacyPotionProjection(playerId);
       const remaining = this.getConsumableQuantity(playerId, consumableId);
       this.db.exec('COMMIT');
-      return { healed, currentHealth: nextHealth, maxHealth: row.max_health, consumableId, quantity: remaining, healthPotions: this.#legacyPotionQuantity(playerId) };
+      return { healed, currentHealth: nextHealth, maxHealth, consumableId, quantity: remaining, healthPotions: this.#legacyPotionQuantity(playerId) };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -524,7 +508,12 @@ export class SQLiteGameRepository {
     for (const participant of state.participants || []) {
       const player = this.db.prepare('SELECT max_health FROM players WHERE id = ?').get(participant.playerId);
       if (!player) throw new Error('Player not found while syncing Dungeon health.');
-      const maxHealth = Math.max(1, Number(player.max_health || participant.maxHp || 1));
+      // An active run snapshots Max HP on entry. Keep its stored HP within that
+      // snapshot; legacy runs without the field fall back to current effective HP.
+      const snapshotMaxHealth = Number(participant.maxHp);
+      const maxHealth = Number.isFinite(snapshotMaxHealth) && snapshotMaxHealth > 0
+        ? snapshotMaxHealth
+        : Math.max(1, Number(player.max_health || 1) + sqliteEquipmentMaxHpBonus(this.db, participant.playerId));
       const currentHealth = Math.max(0, Math.min(maxHealth, Math.floor(Number(participant.hp || 0))));
       this.db.prepare('UPDATE players SET current_health = ?, health_updated_at = ? WHERE id = ?').run(currentHealth, updatedAt, participant.playerId);
     }
@@ -549,18 +538,38 @@ export class SQLiteGameRepository {
     const updatedAt = healthTimestamp ? new Date(healthTimestamp.includes('T') ? healthTimestamp : `${healthTimestamp.replace(' ', 'T')}Z`).getTime() : Date.now();
     const elapsedMinutes = Math.max(0, Math.floor((Date.now() - updatedAt) / 60000));
     const storedHealth = Number.isInteger(row.current_health) ? row.current_health : row.max_health;
+    const baseMaxHealth = Math.max(1, Number(row.max_health || 1));
+    const effectiveMaxHealth = baseMaxHealth + sqliteEquipmentMaxHpBonus(this.db, row.id);
     const activeRun = this.db.prepare("SELECT dr.state_json FROM dungeon_runs dr JOIN dungeon_run_participants rp ON rp.run_id = dr.id WHERE rp.player_id = ? AND dr.phase IN ('combat', 'event', 'upgrade', 'boss', 'between_encounter') ORDER BY dr.created_at DESC LIMIT 1").get(row.id);
     let activeHealth = null;
+    let activeMaxHealth = null;
     if (activeRun?.state_json) {
       const state = JSON.parse(activeRun.state_json);
-      activeHealth = state.participants?.find((participant) => participant.playerId === row.id)?.hp;
+      const participant = state.participants?.find((entry) => entry.playerId === row.id);
+      activeHealth = participant?.hp;
+      const snapshotMax = Number(participant?.maxHp);
+      if (Number.isFinite(snapshotMax) && snapshotMax > 0) activeMaxHealth = snapshotMax;
     }
     const minorPotion = this.db.prepare("SELECT quantity FROM player_consumables WHERE player_id = ? AND consumable_id = 'minor-health-potion'").get(row.id);
     const healthPotions = minorPotion ? Number(minorPotion.quantity || 0) : (row.health_potions ?? 1);
+    const maxHealth = activeMaxHealth ?? effectiveMaxHealth;
     const currentHealth = activeHealth == null
-      ? Math.min(row.max_health, storedHealth + elapsedMinutes)
-      : Math.max(0, Math.min(row.max_health, Number(activeHealth)));
-    return { id: row.id, threadedUserId: row.threaded_user_id, displayName: row.display_name, baseAttack: row.base_attack, maxHealth: row.max_health, currentHealth, healthPotions, healthUpdatedAt: row.health_updated_at, threadDust: row.thread_dust, equippedItemId: row.equipped_item_id };
+      ? Math.min(maxHealth, storedHealth + elapsedMinutes)
+      : Math.max(0, Math.min(maxHealth, Number(activeHealth)));
+    return {
+      id: row.id,
+      threadedUserId: row.threaded_user_id,
+      displayName: row.display_name,
+      baseAttack: row.base_attack,
+      baseMaxHealth,
+      maxHealth,
+      effectiveMaxHealth,
+      currentHealth,
+      healthPotions,
+      healthUpdatedAt: row.health_updated_at,
+      threadDust: row.thread_dust,
+      equippedItemId: row.equipped_item_id,
+    };
   }
 
   #decodeParty(row) {
@@ -591,7 +600,8 @@ export class SQLiteGameRepository {
         health_potions INTEGER NOT NULL DEFAULT 1,
         health_updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         thread_dust INTEGER NOT NULL DEFAULT 0,
-        equipped_item_id TEXT NULL
+        equipped_item_id TEXT NULL,
+        growth_level_applied INTEGER NOT NULL DEFAULT 1
       );
       CREATE TABLE IF NOT EXISTS player_consumables (
         player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -682,6 +692,7 @@ export class SQLiteGameRepository {
     if (!playerColumns.some((column) => column.name === 'current_health')) this.db.exec('ALTER TABLE players ADD COLUMN current_health INTEGER NOT NULL DEFAULT 40');
     if (!playerColumns.some((column) => column.name === 'health_potions')) this.db.exec('ALTER TABLE players ADD COLUMN health_potions INTEGER NOT NULL DEFAULT 1');
     if (!playerColumns.some((column) => column.name === 'health_updated_at')) this.db.exec("ALTER TABLE players ADD COLUMN health_updated_at TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'");
+    if (!playerColumns.some((column) => column.name === 'growth_level_applied')) this.db.exec('ALTER TABLE players ADD COLUMN growth_level_applied INTEGER NOT NULL DEFAULT 1');
     const itemColumns = this.db.prepare('PRAGMA table_info(items)').all();
     if (!itemColumns.some((column) => column.name === 'visual_asset_id')) this.db.exec('ALTER TABLE items ADD COLUMN visual_asset_id TEXT NULL');
     this.db.exec(`

@@ -2,9 +2,8 @@
 
 Phase E presents the server-backed dungeon as a compact Adventure Stream
 surface. The browser shows the current room, enemy identity and HP, player or
-party HP, readiness, and the one action currently legal for the default simple
-dungeon. It does not simulate turns, calculate damage, reset HP, or invent
-boss decisions.
+party HP, readiness, and the action currently legal for the run. It does not
+simulate turns, calculate damage, reset HP, or invent boss decisions.
 
 ## Figma reference map
 
@@ -38,8 +37,8 @@ shared stream command card:
   player HP, party-member HP rows, and a concise “HP carries into the next
   room” note.
 - Between rooms: a durable `between_encounter` state with the next encounter
-  snapshot, current party HP, explicit Continue / Use Potion / Leave Dungeon
-  actions, and visible risk/reward copy. Continue does not heal; Potion is
+  snapshot, current party HP, explicit Continue / Heal / Leave Dungeon
+  actions, and visible risk/reward copy. Continue does not heal; Heal is
   bounded and inventory-backed; Leave keeps carried Gold but forfeits the
   completion reward.
 - Boss: a distinct boss kicker and treatment with the same authoritative enemy
@@ -86,9 +85,13 @@ The server and persisted domain state remain authoritative:
 
 The between-room read model intentionally carries the next encounter snapshot
 so the player can make a real choice without the browser guessing what follows.
-There is no automatic room recovery: Continue preserves the current HP,
-Potion heals only the active Dungeon participant and consumes one persisted
-Potion, and Leave keeps carried Gold but forfeits the completion reward. Death
+There is no automatic room recovery: Continue preserves current HP. In
+canonical shared progression runs, any participant may claim one bounded Heal
+for themself per intermission; a versioned server transition records the
+claimant and only one claim can commit in that window. The action consumes that
+participant's persisted Potion, updates both views after realtime
+refresh/reconnect, and does not start the next room. Continue opens a new
+window. Leave keeps carried Gold but forfeits the completion reward. Death
 uses the existing normal carried-Gold penalty and never includes banked Gold.
 
 ## Default simple dungeon versus legacy compatibility
@@ -105,6 +108,26 @@ combat, Continue, Potion, Retreat, and defeat. Only the owner’s active command
 card has mutation buttons; observers receive the same facts without controls.
 The legacy Figma surface uses the same server read model and exposes the same
 three explicit decisions beside the composer.
+
+## RPG progression replay extension
+
+Canonical progression Dungeons use Area-authored stages and multi-enemy room
+rosters. Their committed battle replay includes all combatants, Mana, skills,
+status changes, room result, and shared run identity. Duel receipts use the
+same `SharedBattleSurface` and reveal the final record only after playback.
+
+The server may commit a result before the client finishes presenting it. While
+a Dungeon replay is `playing`, the card withholds Continue, Heal, Retreat,
+Dungeon Entry/chooser, and later-room outcomes. After playback completes, the
+current room result and legal intermission controls become visible. A reload
+replays the committed receipt, then reconstructs the authoritative
+intermission/claim state from the active run. Heal and Continue remain separate
+commands; a Heal claim cannot silently launch the next room.
+
+Canonical progression Dungeon start validates the challenge's two-ready-human
+gate and source-Area membership before creating a shared run. Persisted legacy
+tactical runs and routes remain supported by the strangler compatibility
+boundary.
 
 ## Verification
 

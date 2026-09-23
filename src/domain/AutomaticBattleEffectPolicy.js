@@ -1,4 +1,7 @@
-export const AUTOMATIC_BATTLE_EFFECT_TYPES = Object.freeze(['fire', 'poison', 'ice', 'psychic']);
+export const AUTOMATIC_BATTLE_EFFECT_TYPES = Object.freeze([
+  'fire', 'poison', 'ice', 'psychic',
+  'attack-up', 'attack-down', 'defense-up', 'defense-down', 'speed-up', 'speed-down',
+]);
 
 export const AUTOMATIC_BATTLE_EFFECT_RULES = Object.freeze({
   maxDurationTurns: 20,
@@ -62,6 +65,12 @@ export function projectCombatantWithAutomaticEffects(combatant = {}) {
       attack = Math.max(1, attack - effect.potency);
       defense = Math.max(0, defense - effect.potency);
     }
+    if (effect.type === 'attack-up') attack += effect.potency;
+    if (effect.type === 'attack-down') attack = Math.max(1, attack - effect.potency);
+    if (effect.type === 'defense-up') defense += effect.potency;
+    if (effect.type === 'defense-down') defense = Math.max(0, defense - effect.potency);
+    if (effect.type === 'speed-up') speed += effect.potency;
+    if (effect.type === 'speed-down') speed = Math.max(1, speed - effect.potency);
   }
 
   return Object.freeze({

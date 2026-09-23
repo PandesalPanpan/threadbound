@@ -10,13 +10,16 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
     enemyName: 'Forest Slime',
     enemyVisualAssetId: 'mob.marsh-blob.v1',
     damageTaken: 4,
-    remainingHp: 36,
-    maxHp: 40,
+    remainingHp: 39,
+    maxHp: 43,
     threadDust: 7,
     xp: 20,
     level: 2,
     leveledUp: true,
     levelsGained: 1,
+    maxHealthIncrease: 3,
+    maxHealth: 43,
+    currentHealth: 39,
     itemId: 'item-1',
     itemName: 'Gleaming Fang',
     itemRarity: 'rare',
@@ -31,16 +34,24 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
   assert.deepEqual(receipt.rewards, { gold: 7, xp: 20 });
   assert.equal(receipt.enemy.visualAssetId, 'mob.marsh-blob.v1');
   assert.equal(receipt.deathPenalty, null);
-  assert.deepEqual(receipt.progression, { level: 2, leveledUp: true, levelsGained: 1 });
-  assert.deepEqual(receipt.loot, { id: 'item-1', name: 'Gleaming Fang', rarity: 'rare', attackBonus: 3 });
+  assert.deepEqual(receipt.progression, { level: 2, leveledUp: true, levelsGained: 1, maxHealthIncrease: 3, maxHealth: 43, currentHealth: 39 });
+  assert.deepEqual(receipt.loot, {
+    id: 'item-1',
+    name: 'Gleaming Fang',
+    slot: null,
+    rarity: 'rare',
+    attackBonus: 3,
+    stats: { attackBonus: 3, defenseBonus: 0, maxHpBonus: 0, speedBonus: 0, critChanceBonus: 0 },
+  });
   assert.deepEqual(receipt.questProgress, [
     { questId: 'slime-hunt', questName: 'Slime Cleanup', current: 4, required: 8, completed: false },
     { questId: 'first-hunt', questName: 'First Hunt', current: 1, required: 1, completed: true },
   ]);
   assert.match(receipt.text, /^Victory — Mira defeated Forest Slime\./);
-  assert.match(receipt.text, /−4 HP · 36\/40 HP/);
+  assert.match(receipt.text, /−4 HP · 39\/43 HP/);
   assert.match(receipt.text, /\+7 Gold · \+20 XP/);
   assert.match(receipt.text, /Level up — 2/);
+  assert.match(receipt.text, /Max HP \+3/);
   assert.match(receipt.text, /Rare Gleaming Fang · \+3 Attack/);
   assert.match(receipt.text, /Quest — Slime Cleanup 4\/8/);
   assert.match(receipt.text, /Quest complete — First Hunt/);

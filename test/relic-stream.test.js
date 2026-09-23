@@ -35,6 +35,25 @@ test('Upgrade creates one readable social progression entry', () => {
   gameRepository.close();
 });
 
+test('Upgrade receipt uses the authoritative slot-specific stat text', () => {
+  const { gameRepository, service, player } = setup();
+  const entry = service.recordDomainEvent({
+    type: 'ItemUpgraded',
+    playerId: player.id,
+    itemId: 'armor-a',
+    itemName: 'Oak Armor',
+    level: 2,
+    maxLevel: 3,
+    attackIncrease: 0,
+    statText: '+4 Max HP',
+    threadDustSpent: 14,
+  });
+
+  assert.match(entry.body, /Upgrade complete — Oak Armor · \+4 Max HP · −14 Gold · Level 2\/3/);
+  assert.doesNotMatch(entry.body, /\+0 Attack/);
+  gameRepository.close();
+});
+
 test('fine-grained relic trigger stays private while the same combat receipt explains its payoff', () => {
   const { gameRepository, service, player } = setup();
   const trigger = service.recordDomainEvent({

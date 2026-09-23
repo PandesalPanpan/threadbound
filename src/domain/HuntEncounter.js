@@ -1,5 +1,7 @@
 import { simulateAutomaticBattle } from './AutomaticBattleSimulator.js';
 import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
+import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
+import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
 
 export const HUNT_ENEMIES = Object.freeze([
   Object.freeze({ id: 'frayed-mite', name: 'Frayed Mite', hp: 8, attack: 4, defense: 0, speed: 10, critChance: 0, retaliation: 2, gold: 1, experience: 10, dropChance: 0.24, visualAssetId: 'mob.mold-mite.v1' }),
@@ -28,7 +30,7 @@ function positiveInteger(value, label) {
  * Hunt owns encounter selection/reward projection while AutomaticBattleSimulator
  * owns HP mutation, initiative, Crit, effects, resistances, and turn history.
  */
-export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, random = Math.random } = {}) {
+export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, encounter = null, random = Math.random } = {}) {
   if (!player || typeof player !== 'object') throw new Error('Hunt requires a player combatant.');
   const playerId = String(player.id || '').trim();
   if (!playerId) throw new Error('Hunt requires a player id.');
@@ -37,34 +39,35 @@ export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, ran
     throw new Error('Hunt requires current Health between 1 and maximum Health.');
   }
 
-  const enemy = pickHuntEnemy(enemyRoll);
+  const enemy = encounter ? { ...encounter } : pickHuntEnemy(enemyRoll);
   const enemyId = `hunt-enemy:${enemy.id}`;
+  const signatureSkillsEnabled = Boolean(enemy.skillCode
+    || player.weaponFamily
+    || player.equipment?.weapon?.weaponFamily
+    || player.equippedItem?.weaponFamily);
+  const playerCombatant = prepareAutomaticBattleCombatant({
+    ...player,
+    id: playerId,
+    hp: currentHealth,
+    maxHp,
+  }, { defaultSkill: signatureSkillsEnabled ? 'threadsong' : null });
+  const enemyCombatant = prepareAutomaticBattleCombatant({
+    ...enemy,
+    id: enemyId,
+    name: enemy.name,
+    displayName: enemy.name,
+    hp: enemy.hp,
+    maxHp: enemy.hp,
+    tags: ['hunt-enemy'],
+  }, { defaultSkill: signatureSkillsEnabled ? 'threadsong' : null });
   const battle = simulateAutomaticBattle(
-    { resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }) },
     {
-      players: [
-        {
-          ...player,
-          id: playerId,
-          hp: currentHealth,
-          maxHp,
-        },
-      ],
-      enemies: [
-        {
-          id: enemyId,
-          name: enemy.name,
-          displayName: enemy.name,
-          hp: enemy.hp,
-          maxHp: enemy.hp,
-          attack: enemy.attack,
-          defense: enemy.defense,
-          speed: enemy.speed,
-          critChance: enemy.critChance,
-          visualAssetId: enemy.visualAssetId || null,
-          tags: ['hunt-enemy'],
-        },
-      ],
+      resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }),
+      ...(signatureSkillsEnabled ? { resolveSkill: resolveAutomaticBattleSkill } : {}),
+    },
+    {
+      players: [playerCombatant],
+      enemies: [enemyCombatant],
       context: { activity: 'hunt', enemyId: enemy.id },
     },
   );

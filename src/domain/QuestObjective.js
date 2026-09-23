@@ -73,13 +73,17 @@ function eventIncrement(objective, event) {
     case 'hunt':
       return event.type === 'HuntResolved' && event.victory === true ? 1 : 0;
     case 'adventure':
-      return event.type === 'AdventureResolved' ? 1 : 0;
+      return event.type === 'AdventureResolved' && event.victory === true ? 1 : 0;
     case 'collect':
       return event.type === 'ItemGenerated'
         && [event.itemId, event.itemTemplateId, event.contentItemId].filter(Boolean).includes(objective.targetId) ? 1 : 0;
     case 'boss':
       return event.type === 'DungeonCompleted' && event.dungeonId === objective.targetId ? 1 : 0;
     case 'visit':
+      if (event.type === 'AreaTraveled') {
+        return event.toArea?.id === objective.targetId ? 1 : 0;
+      }
+      return event.type === 'NpcInteracted' && event.townId === objective.targetId ? 1 : 0;
     case 'speak':
       return event.type === 'NpcInteracted' && event.npcId === objective.targetId ? 1 : 0;
     default:

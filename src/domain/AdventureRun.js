@@ -1,6 +1,7 @@
 import { DUNGEONS, DungeonRun as CombatDungeonRun, RUN_UPGRADES as LEGACY_RUN_UPGRADES } from './DungeonRun.js';
 import { runEventChoice, selectRunEvent, snapshotRunEventSchedule } from './RunEventCatalog.js';
 import { applyRelicCombatAttunement } from './RelicCombatPolicy.js';
+import { AUTOMATIC_BATTLE_RULES } from './AutomaticBattleSkillCatalog.js';
 import { RUN_UPGRADES, runUpgrade } from './RunPowerCatalog.js';
 import { offeredRunUpgradeIds, RUN_UPGRADE_OFFER_VERSION } from './RunUpgradeOfferPolicy.js';
 import {
@@ -89,7 +90,7 @@ function simpleStage(state, encounterIndex) {
   const normalStages = state.dungeonDefinition?.simpleStages || [];
   if (encounterIndex < normalStages.length) return { stage: normalStages[encounterIndex], boss: false };
   if (encounterIndex === normalStages.length && state.dungeonDefinition?.boss) {
-    return { stage: [state.dungeonDefinition.boss], boss: true };
+    return { stage: [state.dungeonDefinition.boss, ...(state.dungeonDefinition.bossAdds || [])], boss: true };
   }
   return null;
 }
@@ -122,6 +123,8 @@ export class AdventureRun {
     this.state.runPowerDraftsEnabled = state.runPowerDraftsEnabled === true;
     this.state.simpleCombat = state.simpleCombat === true;
     if (this.state.simpleCombat) {
+      this.state.intermissionPotionClaimedWindowId ??= null;
+      this.state.intermissionPotionClaimedByPlayerId ??= null;
       // Runs created before multi-enemy combat only persisted `enemy`. Hydrate
       // that singleton into a stable one-member roster without changing its
       // old combat semantics; v2 runs always keep `enemies` authoritative.
@@ -208,6 +211,10 @@ export class AdventureRun {
       syncSimpleCompatibility(state);
       return new AdventureRun(state);
     }
+    for (const participant of state.participants) {
+      participant.mana = AUTOMATIC_BATTLE_RULES.maxMana;
+      participant.maxMana = AUTOMATIC_BATTLE_RULES.maxMana;
+    }
     state.simpleStageCount = preparedSimpleStageCount(state.dungeonDefinition);
     state.enemies = instantiateSimpleStage({
       definition: state.dungeonDefinition,
@@ -235,7 +242,7 @@ export class AdventureRun {
    * per round, followed by every enemy still alive after that phase. The
    * resulting atomic action list is retained for the shared replay projection.
    */
-  resolveSimpleEncounter({ playerActions = {}, now = new Date().toISOString() } = {}) {
+  resolveSimpleEncounter({ playerActions = {}, signatureSkills = false, now = new Date().toISOString() } = {}) {
     if (!this.state.simpleCombat || Number(this.state.simpleCombatVersion || 1) < 2) {
       throw new Error('This run uses the legacy single-enemy combat resolver.');
     }
@@ -250,6 +257,7 @@ export class AdventureRun {
       participants: this.state.participants,
       enemies: this.state.enemies,
       playerActions,
+      signatureSkills,
     });
     this.state.participants = result.participants;
     this.state.enemies = result.enemies;
@@ -284,7 +292,8 @@ export class AdventureRun {
           runId: this.state.id,
           dungeonId: this.state.dungeonId,
           enemyId: this.state.dungeonDefinition?.boss?.id || null,
-          enemyCombatantId: result.actions.find((action) => action.phase === 'player' && action.defeated)?.targetCombatantId || null,
+          enemyCombatantId: result.actions.find((action) => action.phase === 'player' && action.defeated
+            && String(action.targetCombatantId || '').includes(`:${this.state.dungeonDefinition?.boss?.id}:`))?.targetCombatantId || null,
         });
         events.push({
           type: 'DungeonCompleted',
@@ -338,8 +347,10 @@ export class AdventureRun {
       events,
       actions: structuredClone(result.actions),
       rounds: result.rounds,
-      damage: result.actions.filter((action) => action.phase === 'player').reduce((sum, action) => sum + Number(action.damage || 0), 0),
-      retaliation: result.actions.filter((action) => action.phase === 'enemy').reduce((sum, action) => sum + Number(action.damage || 0), 0),
+      damage: signatureSkills
+        ? result.events.filter((event) => event.type === 'EnemyDamaged').reduce((sum, event) => sum + Number(event.damage || 0), 0)
+        : result.actions.filter((action) => action.phase === 'player').reduce((sum, action) => sum + Number(action.damage || 0), 0),
+      retaliation: result.events.filter((event) => event.type === 'PlayerDamaged').reduce((sum, event) => sum + Number(event.damage || 0), 0),
       simpleCombat: true,
     };
   }
@@ -384,6 +395,28 @@ export class AdventureRun {
     };
   }
 
+  intermissionPotionStatus() {
+    if (!this.state.simpleCombat || this.state.phase !== 'between_encounter' || !this.state.nextEncounter) return null;
+    const encounterIndex = Number(this.state.nextEncounter.encounterIndex ?? Number(this.state.encounterIndex || 0) + 1);
+    const windowId = `${this.state.id}:intermission:${encounterIndex}`;
+    const potionClaimed = this.state.intermissionPotionClaimedWindowId === windowId;
+    return Object.freeze({
+      windowId,
+      potionClaimed,
+      claimedByPlayerId: potionClaimed ? this.state.intermissionPotionClaimedByPlayerId || null : null,
+    });
+  }
+
+  assertIntermissionPotionAvailable() {
+    const claim = this.intermissionPotionStatus();
+    if (claim?.potionClaimed) {
+      const error = new Error('The party has already claimed a Health Potion in this Dungeon intermission.');
+      error.code = 'dungeon_potion_intermission_already_claimed';
+      throw error;
+    }
+    return claim;
+  }
+
   usePotionBetweenEncounters({ playerId, healed } = {}) {
     if (!this.state.simpleCombat) throw new Error('Dungeon potions are only available for a simple Dungeon run.');
     if (this.state.phase !== 'between_encounter' || !this.state.nextEncounter) {
@@ -392,12 +425,19 @@ export class AdventureRun {
     const participant = this.participant(playerId);
     if (!participant) throw new Error('Run not found.');
     if (participant.hp <= 0) throw new Error('A downed player cannot use a Dungeon potion.');
+    const claim = this.assertIntermissionPotionAvailable();
+    const nextEncounterIndex = Number(this.state.nextEncounter.encounterIndex ?? Number(this.state.encounterIndex || 0) + 1);
+    const windowId = claim.windowId;
     const amount = Math.floor(Number(healed));
     if (!Number.isInteger(amount) || amount <= 0) throw new Error('Dungeon potion healing must be positive.');
     const beforeHp = participant.hp;
     participant.hp = Math.min(participant.maxHp, participant.hp + amount);
-    const next = this.#activateNextEncounter();
-    const primaryNext = next.enemies.find((enemy) => Number(enemy.hp || 0) > 0) || next.enemies[0] || null;
+    this.state.intermissionPotionClaimedWindowId = windowId;
+    this.state.intermissionPotionClaimedByPlayerId = playerId;
+    const pendingEnemies = Array.isArray(this.state.nextEncounter.enemies)
+      ? this.state.nextEncounter.enemies
+      : (this.state.nextEncounter.enemy ? [this.state.nextEncounter.enemy] : []);
+    const primaryNext = pendingEnemies.find((enemy) => Number(enemy.hp || 0) > 0) || pendingEnemies[0] || null;
     return {
       state: this.toJSON(),
       events: [{
@@ -406,17 +446,19 @@ export class AdventureRun {
         runId: this.state.id,
         dungeonId: this.state.dungeonId,
         healed: participant.hp - beforeHp,
+        intermissionWindowId: windowId,
+        intermissionPotionClaimedByPlayerId: playerId,
         actorHp: participant.hp,
         actorMaxHp: participant.maxHp,
-        phase: this.state.phase,
-        encounterIndex: this.state.encounterIndex,
+        phase: 'between_encounter',
+        encounterIndex: Number(this.state.nextEncounter.encounterIndex),
         enemyId: primaryNext?.id || null,
         enemyName: primaryNext?.name || null,
         enemyVisualAssetId: primaryNext?.visualAssetId || null,
         enemyHp: primaryNext?.hp ?? null,
         enemyMaxHp: primaryNext?.maxHp ?? null,
         enemyIsBoss: Boolean(primaryNext?.isBoss),
-        enemies: structuredClone(next.enemies),
+        enemies: structuredClone(pendingEnemies),
         participantIds: this.state.participants.map((candidate) => candidate.playerId),
         participants: this.state.participants.map((candidate) => ({
           playerId: candidate.playerId,
@@ -735,6 +777,11 @@ export class AdventureRun {
     const pending = this.state.nextEncounter;
     this.state.phase = pending.phase;
     this.state.encounterIndex = pending.encounterIndex;
+    // A potion claim belongs to exactly one pending encounter window. Once
+    // Continue activates that encounter, the prior receipt retains its claimant
+    // history and the run opens a fresh allowance at the next intermission.
+    this.state.intermissionPotionClaimedWindowId = null;
+    this.state.intermissionPotionClaimedByPlayerId = null;
     this.state.enemies = Array.isArray(pending.enemies)
       ? structuredClone(pending.enemies)
       : [compatibilityCombatant(pending.enemy, pending.encounterIndex)];

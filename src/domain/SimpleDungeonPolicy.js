@@ -91,11 +91,16 @@ export function prepareSimpleDungeon(definition) {
     : simpleStages.map((stage) => stage[0]);
   const legacyEncounters = flatLegacySource.map((enemy) => hardenedEnemy(enemy));
   const boss = hardenedEnemy(definition.boss, { boss: true });
+  const bossAdds = (definition.bossAdds || []).map((enemy) => hardenedEnemy(enemy));
+  if (bossAdds.length + (boss ? 1 : 0) > SIMPLE_DUNGEON_RULES.maxEnemiesPerStage) {
+    throw new Error('A simple Dungeon boss stage cannot contain more than three enemies.');
+  }
   return {
     ...structuredClone(definition),
     encounters: legacyEncounters,
     simpleStages,
     boss,
+    bossAdds,
     simpleDifficultyVersion: SIMPLE_DUNGEON_RULES.version,
     simpleBalance: structuredClone(SIMPLE_DUNGEON_RULES),
     recommendedAttack: Number(definition.recommendedAttack || SIMPLE_DUNGEON_RULES.recommendedAttack),
@@ -139,7 +144,7 @@ export function simpleStageBudget(stage, participantCount, { boss = false } = {}
  * the remainder so integer rounding never changes the total room budget.
  */
 export function instantiateSimpleStage({ definition, stage, roomIndex = 0, participantCount = 1, boss = false }) {
-  const sources = (stage || []).map((enemy) => sourceEnemy(enemy, { boss }));
+  const sources = (stage || []).map((enemy) => sourceEnemy(enemy));
   if (!sources.length) throw new Error('Cannot instantiate an empty simple Dungeon stage.');
   if (sources.length > SIMPLE_DUNGEON_RULES.maxEnemiesPerStage) throw new Error('A simple Dungeon stage cannot contain more than three enemies.');
   const budget = simpleStageBudget(sources, participantCount, { boss });
@@ -167,12 +172,23 @@ export function instantiateSimpleStage({ definition, stage, roomIndex = 0, parti
       hp,
       maxHp: hp,
       retaliation,
+      // The shared simulator uses `attack`; keep the balanced room budget as
+      // its value while allowing authored defense, initiative, Crit, and the
+      // server-owned signature skill to survive stage instantiation.
+      attack: retaliation,
+      defense: Math.max(0, Number(enemy.defense || 0)),
+      speed: Math.max(1, Number(enemy.speed || 1)),
+      critChance: Math.max(0, Math.min(1, Number(enemy.critChance || 0))),
+      skillCode: enemy.skillCode || null,
+      mana: Math.max(0, Number(enemy.mana || 0)),
+      maxMana: Math.max(0, Number(enemy.maxMana || 100)),
+      ...(enemy.resistances ? { resistances: structuredClone(enemy.resistances) } : {}),
       targetingProfile: profileFor(enemy),
       abilities: [],
       intentCadence: 999999,
-      isBoss: Boolean(boss || enemy.isBoss),
-      battlePhase: boss ? 1 : 0,
-      phaseName: boss ? 'Stitching' : null,
+      isBoss: Boolean(enemy.isBoss),
+      battlePhase: enemy.isBoss ? 1 : 0,
+      phaseName: enemy.isBoss ? 'Stitching' : null,
       statuses: { exposed: 0 },
       lastTargetPlayerId: null,
       sourceDungeonId: definition?.id || null,

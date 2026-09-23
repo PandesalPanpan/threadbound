@@ -7,17 +7,17 @@ import { AreaProgression, areaIdForNumber, projectArea } from '../src/domain/Are
 import { SQLiteAreaRepository } from '../src/infrastructure/SQLiteAreaRepository.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
-test('Area progression starts in Area 1 and exposes stable generic identity without inventing Arc content', () => {
+test('Area progression starts in canonical Bellbloom content with stable Area identity', () => {
   const progression = new AreaProgression();
 
   assert.deepEqual(progression.toJSON(), {
     currentAreaNumber: 1,
     highestUnlockedAreaNumber: 1,
-    currentArea: { id: 'area-1', number: 1, name: 'Area 1' },
-    highestUnlockedArea: { id: 'area-1', number: 1, name: 'Area 1' },
+    currentArea: { id: 'area-1', number: 1, name: 'Bellbloom Meadows' },
+    highestUnlockedArea: { id: 'area-1', number: 1, name: 'Bellbloom Meadows' },
   });
   assert.equal(areaIdForNumber(3), 'area-3');
-  assert.deepEqual(projectArea(2), { id: 'area-2', number: 2, name: 'Area 2' });
+  assert.deepEqual(projectArea(2), { id: 'area-2', number: 2, name: 'Emberglass Orchard' });
 });
 
 test('Area progression enforces current <= highest unlocked and never moves unlock progress backwards', () => {
@@ -59,7 +59,7 @@ test('SQLite Area repository creates migration-safe defaults and persists curren
     const restored = areas.get(restoredPlayer.id);
     assert.equal(restored.currentAreaNumber, 2);
     assert.equal(restored.highestUnlockedAreaNumber, 3);
-    assert.equal(restored.currentArea.name, 'Area 2');
+    assert.equal(restored.currentArea.name, 'Emberglass Orchard');
     game.close();
   } finally {
     rmSync(directory, { recursive: true, force: true });

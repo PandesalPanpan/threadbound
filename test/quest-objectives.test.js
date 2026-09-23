@@ -18,7 +18,8 @@ const OBJECTIVE_QUEST = new Quest({
     { id: 'adventures', type: 'adventure', count: 1 },
     { id: 'token', type: 'collect', targetId: 'guild-token', targetLabel: 'Guild Token', count: 1 },
     { id: 'boss', type: 'boss', targetId: 'progression-area-1', targetLabel: 'Frayed Hollow guardian', count: 1 },
-    { id: 'visit', type: 'visit', targetId: 'area-1-blacksmith', targetLabel: 'Blacksmith', count: 1 },
+    { id: 'visit-area', type: 'visit', targetId: 'area-1', targetLabel: 'Bellbloom Road', count: 1 },
+    { id: 'visit-town', type: 'visit', targetId: 'area-1-town', targetLabel: 'Bellbloom', count: 1 },
     { id: 'speak', type: 'speak', targetId: 'area-1-blacksmith', targetLabel: 'Blacksmith', count: 1 },
   ],
 });
@@ -49,8 +50,9 @@ test('Quest objective vocabulary is constrained and projects readable labels', (
   assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[2]), 'Adventure');
   assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[3]), 'Collect Guild Token');
   assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[4]), 'Defeat boss Frayed Hollow guardian');
-  assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[5]), 'Visit Blacksmith');
-  assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[6]), 'Speak to Blacksmith');
+  assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[5]), 'Visit Bellbloom Road');
+  assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[6]), 'Visit Bellbloom');
+  assert.equal(describeQuestObjective(OBJECTIVE_QUEST.objectives[7]), 'Speak to Blacksmith');
   assert.throws(() => new Quest({ id: 'bad-objective', title: 'Bad', areaNumber: 1, objectives: [{ type: 'script', count: 1 }] }), /Unsupported Quest objective type/i);
 });
 
@@ -58,7 +60,7 @@ test('QuestService advances kill, Hunt, Adventure, collect, boss, and visit/spea
   const { repository, player, questRepository, eventBus, events, service } = fixture();
   try {
     const accepted = service.accept(player.id, OBJECTIVE_QUEST.id, '2026-09-13T02:00:00.000Z');
-    assert.equal(accepted.progress.objectiveProgress.length, 7);
+    assert.equal(accepted.progress.objectiveProgress.length, 8);
     assert.ok(accepted.progress.objectiveProgress.every((row) => row.current === 0));
 
     eventBus.publish({ type: 'HuntResolved', playerId: player.id, enemyId: 'other-enemy', victory: true });
@@ -69,6 +71,8 @@ test('QuestService advances kill, Hunt, Adventure, collect, boss, and visit/spea
     eventBus.publish({ type: 'HuntResolved', playerId: player.id, enemyId: 'thread-wolf', victory: true });
     eventBus.publish({ type: 'HuntResolved', playerId: player.id, enemyId: 'thread-wolf', victory: true });
     eventBus.publish({ type: 'AdventureResolved', playerId: player.id, enemyId: 'thread-wolf', victory: false });
+    assert.equal(questRepository.get(player.id, OBJECTIVE_QUEST.id).objectiveProgress.find((row) => row.objectiveId === 'adventures').current, 0);
+    eventBus.publish({ type: 'AdventureResolved', playerId: player.id, enemyId: 'thread-wolf', victory: true });
     eventBus.publish({ type: 'ItemGenerated', playerId: player.id, itemId: 'guild-token', source: 'quest-test' });
     eventBus.publish({ type: 'DungeonCompleted', playerId: player.id, dungeonId: 'progression-area-1', runId: 'quest-run-1' });
 
@@ -81,6 +85,18 @@ test('QuestService advances kill, Hunt, Adventure, collect, boss, and visit/spea
     assert.equal(progress.objectiveProgress.find((row) => row.objectiveId === 'boss').current, 1);
 
     eventBus.publish({ type: 'NpcInteracted', playerId: player.id, townId: 'area-1-town', npcId: 'area-1-blacksmith' });
+    progress = questRepository.get(player.id, OBJECTIVE_QUEST.id);
+    assert.equal(progress.objectiveProgress.find((row) => row.objectiveId === 'visit-area').current, 0);
+    assert.equal(progress.objectiveProgress.find((row) => row.objectiveId === 'visit-town').current, 1);
+    assert.equal(progress.objectiveProgress.find((row) => row.objectiveId === 'speak').current, 1);
+
+    eventBus.publish({
+      type: 'AreaTraveled',
+      playerId: player.id,
+      fromArea: { id: 'area-2', number: 2 },
+      toArea: { id: 'area-1', number: 1 },
+      highestUnlockedArea: { id: 'area-2', number: 2 },
+    });
     progress = questRepository.get(player.id, OBJECTIVE_QUEST.id);
     assert.equal(progress.status, 'completed');
     assert.equal(progress.completedAt, '2026-09-13T03:00:00.000Z');

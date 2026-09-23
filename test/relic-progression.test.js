@@ -4,9 +4,10 @@ import { EventBus } from '../src/application/EventBus.js';
 import { GameService } from '../src/application/GameService.js';
 import { InventoryService } from '../src/application/InventoryService.js';
 import { AdventureRun } from '../src/domain/AdventureRun.js';
-import { planRelicUpgrade, relicProgression } from '../src/domain/RelicProgressionPolicy.js';
+import { equipmentSlotUpgrade, planRelicUpgrade, relicProgression } from '../src/domain/RelicProgressionPolicy.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 import { SQLiteInventoryRepository } from '../src/infrastructure/SQLiteInventoryRepository.js';
+import { arcEquipmentBudgetUsed } from '../src/domain/ArcEquipmentTemplatePolicy.js';
 
 const RELIC_LAB = Object.freeze({
   id: 'relic-lab',
@@ -19,14 +20,22 @@ const RELIC_LAB = Object.freeze({
   boss: Object.freeze({ id: 'training-needle', name: 'Training Needle', hp: 200, retaliation: 1 }),
 });
 
-function item(id, { rarity = 'rare', attackBonus = 4, upgradeLevel = 0, attunementCode = null } = {}) {
+function item(id, { slot = 'weapon', rarity = 'rare', attackBonus = 4, upgradeLevel = 0, attunementCode = null, stats = null } = {}) {
+  const canonicalStats = {
+    attackBonus,
+    defenseBonus: 0,
+    maxHpBonus: 0,
+    speedBonus: 0,
+    critChanceBonus: 0,
+    ...(stats || {}),
+  };
   return {
     id,
     definitionId: `def-${id}`,
     name: `Relic ${id}`,
-    slot: 'weapon',
+    slot,
     rarity,
-    attackBonus,
+    attackBonus: canonicalStats.attackBonus,
     effectCode: 'none',
     effect: {
       code: 'none',
@@ -34,6 +43,13 @@ function item(id, { rarity = 'rare', attackBonus = 4, upgradeLevel = 0, attuneme
       description: 'No special effect.',
       upgradeLevel,
       attunementCode,
+      equipmentTemplate: {
+        effectCodes: ['none'],
+        requiredLevel: 1,
+        areaNumber: 1,
+        stats: canonicalStats,
+        budget: { used: arcEquipmentBudgetUsed({ stats: canonicalStats, effects: ['none'] }), limit: 4 },
+      },
     },
     source: 'test',
   };
@@ -100,6 +116,7 @@ test('equipment progression is rarity-capped and new Upgrade is neutral by defau
   assert.equal(first.nextLevel, 1);
   assert.equal(first.attunementCode, null);
   assert.equal(first.attunement, null);
+  assert.deepEqual([first.statKey, first.statText], ['attackBonus', '+1 Attack']);
 
   // Old API callers and persisted items can still carry the tactical attunements until
   // their compatibility path is eventually removed.
@@ -108,6 +125,51 @@ test('equipment progression is rarity-capped and new Upgrade is neutral by defau
   const legacyUpgraded = item('policy', { rarity: 'uncommon', upgradeLevel: 1, attunementCode: 'bulwark' });
   assert.equal(planRelicUpgrade(legacyUpgraded).cost, 14);
   assert.throws(() => planRelicUpgrade(legacyUpgraded, 'mender'), (error) => error.code === 'relic_attunement_locked');
+});
+
+test('each equipment slot upgrades its authoritative stat and advances a coherent budget', () => {
+  const expectations = [
+    ['weapon', { attackBonus: 4 }, 'attackBonus', 5, '+1 Attack', 'attack', 1],
+    ['helmet', { attackBonus: 0, defenseBonus: 2, maxHpBonus: 8 }, 'defenseBonus', 3, '+1 Defense', 'defense', 1],
+    ['armor', { attackBonus: 0, defenseBonus: 2, maxHpBonus: 8 }, 'maxHpBonus', 12, '+4 Max HP', 'maxHp', 4],
+    ['boots', { attackBonus: 0, defenseBonus: 3, speedBonus: 1 }, 'speedBonus', 2, '+1 Speed', 'speed', 1],
+    ['accessory', { attackBonus: 0, critChanceBonus: 0.04 }, 'critChanceBonus', 0.05, '+1% Crit Chance', 'critChance', 0.01],
+  ];
+  const gameRepository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'all-slot-upgrade-player' });
+  const player = gameRepository.getOrCreatePlayer({ threadedUserId: 'all-slot-upgrade', displayName: 'Weaver' });
+  gameRepository.addThreadDust(player.id, 40);
+  for (const [slot, stats] of expectations) {
+    gameRepository.addItem(player.id, item(`upgrade-${slot}`, { slot, stats }));
+  }
+  const inventoryRepository = new SQLiteInventoryRepository({ database: gameRepository.db });
+  const events = [];
+  const eventBus = new EventBus();
+  eventBus.subscribe((event) => events.push(event));
+  const service = new InventoryService({ inventoryRepository, gameRepository, eventBus });
+  const gameService = new GameService({ repository: gameRepository, eventBus });
+
+  for (const [slot, _initialStats, statKey, expectedValue, statText, characterStat, characterIncrease] of expectations) {
+    assert.equal(equipmentSlotUpgrade(slot).statText, statText);
+    const id = `upgrade-${slot}`;
+    gameService.equipItem(player.id, id);
+    const beforeUpgradeStat = gameService.dashboard(player.id).character.stats[characterStat];
+    const result = service.upgrade(player.id, id);
+    const upgraded = result.upgraded;
+    const template = upgraded.effect.equipmentTemplate;
+    assert.equal(upgraded[statKey], expectedValue, `${slot} projection should apply its slot stat`);
+    assert.equal(template.stats[statKey], expectedValue, `${slot} template stat should match its projection`);
+    assert.equal(template.budget.used, arcEquipmentBudgetUsed({ stats: template.stats, effects: template.effectCodes }));
+    assert.equal(template.budget.used, template.budget.limit, 'one budget point is purchased per Upgrade from an initially full profile');
+    assert.equal(template.budget.limit, 5);
+    const event = events.at(-1);
+    assert.equal(event.type, 'ItemUpgraded');
+    assert.equal(event.statText, statText);
+    assert.equal(event.attackIncrease, slot === 'weapon' ? 1 : 0);
+    const afterUpgradeStat = gameService.dashboard(player.id).character.stats[characterStat];
+    assert.ok(Math.abs((afterUpgradeStat - beforeUpgradeStat) - characterIncrease) < 1e-9, `${slot} Upgrade must affect the corresponding character stat`);
+  }
+  assert.equal(gameRepository.getPlayer(player.id).threadDust, 0);
+  gameRepository.close();
 });
 
 test('Upgrading atomically spends Gold, raises Attack, keeps new items neutral, and rejects stale replay', () => {

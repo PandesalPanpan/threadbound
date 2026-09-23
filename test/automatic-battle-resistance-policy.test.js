@@ -127,6 +127,7 @@ test('automatic simulator applies target effects through resistance policy and r
       incomingPotency: 8,
       appliedPotency: 4,
       potencyMultiplier: 0.5,
+      targetId: 'target',
     },
     {
       type: 'ice',
@@ -136,6 +137,7 @@ test('automatic simulator applies target effects through resistance policy and r
       incomingPotency: 8,
       appliedPotency: 0,
       potencyMultiplier: 0,
+      targetId: 'target',
     },
   ]);
 

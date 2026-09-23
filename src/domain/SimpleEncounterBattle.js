@@ -1,4 +1,8 @@
 import { criticalStrike } from './CriticalStrikePolicy.js';
+import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
+import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
+import { AutomaticBattleSimulator } from './AutomaticBattleSimulator.js';
+import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
 
 export const TARGETING_PROFILES = Object.freeze(['random', 'feral', 'bruiser', 'hunter', 'tactical']);
 
@@ -231,6 +235,253 @@ function livingEnemies(enemies) {
   return (enemies || []).filter((enemy) => numberOr(enemy.hp) > 0);
 }
 
+function signatureCombatants(participants, enemies, playerActions) {
+  const players = participants.map((participant) => {
+    const playerAction = playerActions[participant.playerId] || {};
+    return prepareAutomaticBattleCombatant({
+      ...participant,
+      id: String(participant.playerId),
+      playerId: String(participant.playerId),
+      name: actorName(participant),
+      displayName: actorName(participant),
+      hp: numberOr(participant.hp),
+      maxHp: Math.max(1, numberOr(participant.maxHp, 1)),
+      attack: Math.max(1, numberOr(playerAction.attackPower, 1)),
+      defense: Math.max(0, numberOr(playerAction.defense, 0)),
+      speed: Math.max(1, numberOr(playerAction.speed, 1)),
+      critChance: Math.max(0, Math.min(1, numberOr(playerAction.critChance, 0))),
+      mana: numberOr(participant.mana),
+      maxMana: Math.max(0, numberOr(participant.maxMana, 100)),
+      manaGain: Math.max(0, numberOr(participant.manaGain, 35)),
+      manaGainOnDamage: Math.max(0, numberOr(participant.manaGainOnDamage, 12)),
+      skillCode: playerAction.skillCode || null,
+      skills: playerAction.skills || [],
+      equipment: playerAction.equipment || {},
+      equippedItem: playerAction.equippedItem || playerAction.equipment?.weapon || null,
+      weaponFamily: playerAction.weaponFamily || null,
+      visualAssetId: participant.visualAssetId || playerAction.visualAssetId || null,
+      team: 'players',
+    }, { defaultSkill: playerAction.defaultSkill || 'threadsong' });
+  });
+  const foes = enemies.map((enemy) => prepareAutomaticBattleCombatant({
+    ...enemy,
+    id: enemyId(enemy),
+    combatantId: enemyId(enemy),
+    name: enemyName(enemy),
+    displayName: enemyName(enemy),
+    hp: numberOr(enemy.hp),
+    maxHp: Math.max(1, numberOr(enemy.maxHp, 1)),
+    attack: Math.max(1, numberOr(enemy.attack ?? enemy.retaliation, 1)),
+    defense: Math.max(0, numberOr(enemy.defense, 0)),
+    speed: Math.max(1, numberOr(enemy.speed, 1)),
+    critChance: Math.max(0, Math.min(1, numberOr(enemy.critChance, 0))),
+    mana: numberOr(enemy.mana),
+    maxMana: Math.max(0, numberOr(enemy.maxMana, 100)),
+    manaGain: Math.max(0, numberOr(enemy.manaGain, 35)),
+    manaGainOnDamage: Math.max(0, numberOr(enemy.manaGainOnDamage, 12)),
+    team: 'enemies',
+  }));
+  return { players, enemies: foes };
+}
+
+function battlePriorTurns(actions) {
+  return actions.map((action, index) => ({
+    turnNumber: index + 1,
+    actorId: action.actorCombatantId || action.actorId,
+    targetId: action.targetCombatantId || action.targetPlayerId || action.targetId || null,
+    targetDamage: Number(action.damage || 0),
+    selfHealing: Number(action.selfHealing || 0),
+    actorHpBefore: Number(action.actorHpBefore || 0),
+    actorHpAfter: Number(action.actorHpAfter || 0),
+    actorManaBefore: Number(action.manaBefore || 0),
+    actorManaAfter: Number(action.manaAfter || 0),
+    metadata: {
+      actionType: action.actionType || 'basic-attack',
+      skillId: action.skillId || null,
+      critical: Boolean(action.critical),
+    },
+  }));
+}
+
+function resolveSignatureTurn({
+  participants,
+  enemies,
+  playerActions,
+  actions,
+  runId,
+  roomIndex,
+  roundIndex,
+  actionIndex,
+  actorId,
+  targetId,
+  targetSelection = null,
+  recentAttackerId = null,
+}) {
+  const roster = signatureCombatants(participants, enemies, playerActions);
+  const actor = [...roster.players, ...roster.enemies].find((combatant) => combatant.id === actorId);
+  const actorIsPlayer = actor?.team === 'players';
+  const deterministicSeed = `${runId}:${roomIndex}:${roundIndex}:${actionIndex}:${actorId}:${targetId || 'effect'}`;
+  const simulator = new AutomaticBattleSimulator({
+    resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random: () => deterministicRoll(deterministicSeed) }),
+    resolveSkill: resolveAutomaticBattleSkill,
+    selectActor: () => actorId,
+    selectTarget: () => targetId,
+    maxTurns: actions.length + 1,
+  });
+  const result = simulator.simulate({
+    players: roster.players,
+    enemies: roster.enemies,
+    context: { activity: 'simple-dungeon', runId, roomIndex, roundIndex, actionIndex },
+    priorTurns: battlePriorTurns(actions),
+  });
+  const turn = result.turns.at(-1);
+  const updated = new Map(result.combatants.map((combatant) => [combatant.id, combatant]));
+  for (const participant of participants) {
+    const latest = updated.get(String(participant.playerId));
+    if (!latest) continue;
+    participant.hp = latest.hp;
+    participant.mana = latest.mana;
+    participant.maxMana = latest.maxMana;
+    participant.effects = structuredClone(latest.effects || []);
+  }
+  for (const enemy of enemies) {
+    const latest = updated.get(enemyId(enemy));
+    if (!latest) continue;
+    enemy.hp = latest.hp;
+    enemy.mana = latest.mana;
+    enemy.maxMana = latest.maxMana;
+    enemy.effects = structuredClone(latest.effects || []);
+  }
+
+  const currentActor = updated.get(actorId) || actor;
+  const currentTarget = turn?.targetId ? updated.get(turn.targetId) : null;
+  const damageEvents = (turn?.metadata?.damageEvents || []).map((event) => ({ ...event }));
+  const primaryDamage = damageEvents.find((event) => event.targetId === targetId) || damageEvents[0] || null;
+  const healingEvents = (turn?.metadata?.healingEvents || []).map((event) => ({ ...event }));
+  const effectApplications = (turn?.metadata?.effectApplications || []).map((event) => ({ ...event }));
+  const actorSource = actorIsPlayer
+    ? participants.find((participant) => participant.playerId === actorId)
+    : enemies.find((enemy) => enemyId(enemy) === actorId);
+  if (!actorIsPlayer && currentTarget) actorSource.lastTargetPlayerId = currentTarget.playerId || currentTarget.id;
+
+  const action = {
+    type: 'SimpleCombatAction',
+    phase: actorIsPlayer ? 'player' : 'enemy',
+    roundIndex,
+    actionIndex,
+    actorId,
+    ...(actorIsPlayer
+      ? { actorPlayerId: actorId }
+      : { actorCombatantId: actorId, actorDefinitionId: actorSource?.definitionId || actorSource?.id || actorId }),
+    actorName: actorName(actorSource || actor),
+    actorVisualAssetId: actorSource?.visualAssetId || null,
+    targetId: currentTarget?.playerId || currentTarget?.id || targetId || null,
+    ...(actorIsPlayer
+      ? { targetCombatantId: currentTarget?.combatantId || currentTarget?.id || targetId || null }
+      : { targetPlayerId: currentTarget?.playerId || currentTarget?.id || targetId || null }),
+    targetDefinitionId: currentTarget?.definitionId || currentTarget?.id || null,
+    targetName: currentTarget ? actorName(currentTarget) : null,
+    targetVisualAssetId: currentTarget?.visualAssetId || null,
+    targetDamages: damageEvents,
+    damage: Number(primaryDamage?.damage || 0),
+    totalDamage: damageEvents.reduce((sum, event) => sum + Number(event.damage || 0), 0),
+    damageEvents,
+    actorHpBefore: Number(turn?.actorHpBefore ?? currentActor?.hp ?? 0),
+    actorHpAfterEffects: Number(turn?.actorHpAfterEffects ?? turn?.actorHpBefore ?? currentActor?.hp ?? 0),
+    actorHpAfter: Number(turn?.actorHpAfter ?? currentActor?.hp ?? 0),
+    targetHpBefore: Number(primaryDamage?.targetHpBefore ?? currentTarget?.hp ?? 0),
+    targetHpAfter: Number(primaryDamage?.targetHpAfter ?? currentTarget?.hp ?? 0),
+    targetMaxHp: Number(currentTarget?.maxHp || 1),
+    critical: Boolean(turn?.metadata?.critical),
+    defeated: actorIsPlayer && damageEvents.some((event) => updated.get(event.targetId)?.hp <= 0),
+    actionType: turn?.metadata?.actionType || 'effect-tick',
+    skillId: turn?.metadata?.skillId || null,
+    skillName: turn?.metadata?.skillName || null,
+    manaBefore: Number(turn?.actorManaBefore ?? currentActor?.mana ?? 0),
+    manaAfter: Number(turn?.actorManaAfter ?? currentActor?.mana ?? 0),
+    manaEvents: (turn?.metadata?.manaEvents || []).map((event) => ({ ...event })),
+    selfHealing: healingEvents.find((event) => event.targetId === actorId)?.healing || 0,
+    healingEvents,
+    effectDamage: Number(turn?.effectDamage || 0),
+    selfDamage: Number(turn?.selfDamage || 0),
+    effectEvents: [...(turn?.metadata?.effectEvents || []), ...effectApplications],
+    targetingProfile: targetSelection?.targetingProfile || null,
+    targetWeights: targetSelection?.weights || [],
+    targetRoll: targetSelection?.roll ?? null,
+    summary: '',
+  };
+  action.summary = action.actionType === 'skill'
+    ? `${action.actorName} cast ${action.skillName || action.skillId} for ${action.damage} damage${action.selfHealing ? ` and healed ${action.selfHealing} HP` : ''}.`
+    : action.effectDamage && !currentTarget
+      ? `${action.actorName} took ${action.effectDamage} effect damage.`
+      : actionSummary(action);
+
+  const events = [];
+  for (const damage of damageEvents) {
+    const targetCombatant = updated.get(damage.targetId);
+    if (targetCombatant?.team === 'enemies') {
+      events.push({
+        type: 'EnemyDamaged', runId, roomIndex, roundIndex,
+        actorPlayerId: actorIsPlayer ? actorId : null,
+        targetCombatantId: damage.targetId,
+        targetDefinitionId: targetCombatant.definitionId || targetCombatant.id,
+        damage: damage.damage,
+        targetHpBefore: damage.targetHpBefore,
+        targetHpAfter: damage.targetHpAfter,
+        critical: action.critical,
+        skillId: action.skillId,
+        defeated: targetCombatant.hp <= 0,
+      });
+      if (targetCombatant.hp <= 0) events.push({
+        type: 'EnemyDefeated', runId, roomIndex, roundIndex,
+        enemyId: targetCombatant.definitionId || targetCombatant.id,
+        combatantId: targetCombatant.id,
+        definitionId: targetCombatant.definitionId || targetCombatant.id,
+        enemyName: targetCombatant.name,
+        visualAssetId: targetCombatant.visualAssetId,
+        isBoss: Boolean(targetCombatant.isBoss),
+      });
+    } else if (targetCombatant?.team === 'players') {
+      events.push({
+        type: 'PlayerDamaged', runId, roomIndex, roundIndex,
+        actorCombatantId: actorId,
+        actorDefinitionId: actorSource?.definitionId || actorSource?.id || null,
+        targetPlayerId: targetCombatant.playerId || targetCombatant.id,
+        damage: damage.damage,
+        rawDamage: damage.damage,
+        targetHpBefore: damage.targetHpBefore,
+        targetHpAfter: damage.targetHpAfter,
+        targetingProfile: targetSelection?.targetingProfile || null,
+        skillId: action.skillId,
+      });
+    }
+  }
+  if (turn?.effectDamage > 0 && currentActor?.team === 'players') {
+    events.push({
+      type: 'PlayerDamaged', runId, roomIndex, roundIndex,
+      actorCombatantId: actorId,
+      targetPlayerId: actorId,
+      damage: turn.effectDamage,
+      rawDamage: turn.effectDamage,
+      effectDamage: turn.effectDamage,
+      targetHpBefore: turn.actorHpBefore,
+      targetHpAfter: turn.actorHpAfterEffects,
+      cause: 'effect',
+    });
+  }
+  for (const damage of damageEvents) {
+    const source = updated.get(damage.targetId);
+    if (source?.team === 'enemies' && actorIsPlayer) {
+      const participant = participants.find((entry) => entry.playerId === actorId);
+      if (participant) participant.threat = numberOr(participant.threat) + Number(damage.damage || 0);
+    } else if (source?.team === 'players' && !actorIsPlayer) {
+      const participant = participants.find((entry) => entry.playerId === (source.playerId || source.id));
+      if (participant) participant.threat = Math.max(0, numberOr(participant.threat) - Math.max(0, Number(damage.damage || 0) * 0.25));
+    }
+  }
+  return { action, events, recentAttackerId: actorIsPlayer ? actorId : recentAttackerId };
+}
+
 /**
  * Resolve one complete automatic room. A room is made of real rounds: each
  * living Weaver acts once, then each surviving enemy acts once. The committed
@@ -243,6 +494,7 @@ export function resolveSimpleEncounter({
   participants,
   enemies,
   playerActions = {},
+  signatureSkills = false,
   maxRounds = 120,
 }) {
   const nextParticipants = clone(participants || []);
@@ -269,6 +521,26 @@ export function resolveSimpleEncounter({
       const targetBefore = numberOr(target.hp);
       const actorBefore = numberOr(participant.hp);
       const playerAction = playerActions[participant.playerId] || {};
+      if (signatureSkills) {
+        const resolved = resolveSignatureTurn({
+          participants: nextParticipants,
+          enemies: nextEnemies,
+          playerActions,
+          actions,
+          runId,
+          roomIndex,
+          roundIndex,
+          actionIndex,
+          actorId: participant.playerId,
+          targetId: enemyId(target),
+          recentAttackerId,
+        });
+        actions.push(resolved.action);
+        events.push(...resolved.events);
+        recentAttackerId = resolved.recentAttackerId;
+        actionIndex += 1;
+        continue;
+      }
       const action = createPlayerAction({
         participant,
         target,
@@ -334,6 +606,27 @@ export function resolveSimpleEncounter({
       if (!target) break;
       const targetBefore = numberOr(target.hp);
       const actorBefore = numberOr(enemy.hp);
+      if (signatureSkills) {
+        const resolved = resolveSignatureTurn({
+          participants: nextParticipants,
+          enemies: nextEnemies,
+          playerActions,
+          actions,
+          runId,
+          roomIndex,
+          roundIndex,
+          actionIndex,
+          actorId: enemyId(enemy),
+          targetId: target.playerId,
+          targetSelection,
+          recentAttackerId,
+        });
+        actions.push(resolved.action);
+        events.push(...resolved.events);
+        actionIndex += 1;
+        if (!livingParticipants(nextParticipants).length) break;
+        continue;
+      }
       const action = createEnemyAction({
         enemy,
         target,

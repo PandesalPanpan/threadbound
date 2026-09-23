@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { AdventureService } from '../src/application/AdventureService.js';
 import { ADVENTURE_COOLDOWN_SECONDS, resolveAdventureRewards } from '../src/domain/AdventureRewardPolicy.js';
 import { resolveOrdinaryAdventure } from '../src/domain/AdventureEncounter.js';
+import { pickAreaAdventureEncounter } from '../src/content/AreaContentCatalog.js';
+import { itemRewardProfileForArea } from '../src/content/AreaContentCatalog.js';
+import { SQLitePlayerProgressionRepository } from '../src/infrastructure/SQLitePlayerProgressionRepository.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
 function baselinePlayer(overrides = {}) {
@@ -79,13 +82,17 @@ test('AdventureService reads persisted Area, commits rewards/progression, and pu
   const before = repository.getPlayer(player.id).currentHealth;
   const result = service.adventure(player.id);
   const after = repository.getPlayer(player.id).currentHealth;
+  const expectedEncounter = pickAreaAdventureEncounter(1, 0.99);
 
   assert.equal(result.area.id, 'area-1');
-  assert.equal(result.enemy.id, 'thread-wolf');
+  assert.equal(result.enemy.id, expectedEncounter.id);
   assert.equal(after, result.remainingHp);
   assert.ok(after <= before);
   assert.equal(result.rewards.gold, result.victory ? 6 : 0);
   assert.equal(result.rewards.experience, result.victory ? 30 : 0);
+  assert.ok(result.battleReplay, 'ordinary Adventure returns the authoritative replay projection');
+  const enemyReplay = result.battleReplay.details.combatants.find((combatant) => combatant.id === `adventure-enemy:${expectedEncounter.id}`);
+  assert.equal(enemyReplay.signatureSkill.id, expectedEncounter.skillCode);
   assert.equal(result.cooldown.remainingSeconds, ADVENTURE_COOLDOWN_SECONDS);
   assert.equal(result.cooldown.nextReadyAt, '2026-09-13T00:00:45.000Z');
 
@@ -94,10 +101,62 @@ test('AdventureService reads persisted Area, commits rewards/progression, and pu
   assert.equal(receiptEvent.playerId, player.id);
   assert.equal(receiptEvent.areaId, 'area-1');
   assert.equal(receiptEvent.areaNumber, 1);
-  assert.equal(receiptEvent.enemyId, 'thread-wolf');
+  assert.equal(receiptEvent.enemyId, expectedEncounter.id);
+  assert.equal(receiptEvent.battleReplay.receipt.outcome, result.battle.outcome);
   assert.equal(receiptEvent.gold, result.victory ? 6 : 0);
   assert.equal(receiptEvent.experienceGained, result.victory ? 30 : 0);
   assert.equal(receiptEvent.nextAdventureReadyAt, '2026-09-13T00:00:45.000Z');
+});
+
+test('Adventure grants level Max HP after damage, uses Area loot options, and carries its replay', () => {
+  const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'adventure-growth-player' });
+  const player = repository.getOrCreatePlayer({ threadedUserId: 'adventure-growth', displayName: 'Leveling Adventurer' });
+  repository.db.prepare('UPDATE players SET base_attack = 30, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
+  const progressionRepository = new SQLitePlayerProgressionRepository({ database: repository.db });
+  progressionRepository.grantExperience(player.id, 49);
+  const events = [];
+  const service = new AdventureService({
+    repository,
+    eventBus: { publish: (event) => events.push(event) },
+    progressionRepository,
+    rng: () => 0.99,
+    rewardRng: () => 0,
+    storyRng: () => 0.99,
+    now: () => new Date('2026-09-13T00:00:00.000Z'),
+  });
+
+  const result = service.adventure(player.id);
+  const receipt = events.find((event) => event.type === 'AdventureResolved');
+  const item = result.rewards.item;
+  const profile = itemRewardProfileForArea(1);
+  const expectedStats = {
+    attackBonus: Number(item.attackBonus || item.stats?.attackBonus || 0),
+    defenseBonus: Number(item.defenseBonus || item.stats?.defenseBonus || 0),
+    maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
+    speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
+    critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
+  };
+
+  assert.equal(result.enemy.id, pickAreaAdventureEncounter(1, 0.99).id);
+  assert.equal(result.victory, true);
+  assert.ok(result.damageTaken > 0);
+  assert.equal(result.levelsGained, 1);
+  assert.equal(result.maxHealthIncrease, 3);
+  assert.equal(result.remainingHp, result.startingHp - result.damageTaken + 3);
+  assert.equal(result.maxHealth, 43);
+  assert.equal(repository.getPlayer(player.id).currentHealth, result.remainingHp);
+  assert.equal(repository.getPlayer(player.id).maxHealth, 43);
+  assert.ok(result.battleReplay.details.turnCount > 0);
+  assert.equal(receipt.battleReplay.receipt.outcome, result.battle.outcome);
+  assert.equal(receipt.remainingHp, result.remainingHp);
+  assert.equal(receipt.maxHp, 43);
+  assert.equal(receipt.maxHealthIncrease, 3);
+  assert.equal(receipt.levelsGained, 1);
+  assert.ok(item, 'the forced Area reward roll generates loot');
+  assert.ok(profile.equipmentOptions[item.slot].some((option) => option.visualAssetId === item.visualAssetId));
+  assert.equal(receipt.itemSlot, item.slot);
+  assert.deepEqual(receipt.itemStats, expectedStats);
+  repository.close();
 });
 
 test('Adventure cooldown rejects immediate repeats with exact server next-ready projection', () => {

@@ -107,7 +107,7 @@ export function assertSimulatedAdventurerMutationTarget({ adventurerId, targetId
  * reuses the same validated Arc equipment vocabulary/budget as human content;
  * arbitrary executable/item-shaped data is rejected rather than persisted.
  */
-export function materializeValidatedSimulatedAdventurerEquipment({ template, itemId, name }) {
+export function materializeValidatedSimulatedAdventurerEquipment({ template, itemId, name, weaponFamily = null }) {
   if (!template || typeof template !== 'object' || Array.isArray(template) || !isExtendedArcEquipmentTemplate(template)) {
     throw safetyError(
       'simulated_adventurer_invalid_item',
@@ -140,6 +140,7 @@ export function materializeValidatedSimulatedAdventurerEquipment({ template, ite
     effects: Object.freeze([...normalized.effects]),
     requiredLevel: normalized.requiredLevel,
     areaNumber: normalized.areaNumber,
+    ...(weaponFamily || template.weaponFamily || template.family ? { weaponFamily: weaponFamily || template.weaponFamily || template.family } : {}),
     visualAssetId: template.visualAssetId ?? null,
   });
 }

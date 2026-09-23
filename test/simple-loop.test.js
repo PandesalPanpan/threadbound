@@ -121,8 +121,11 @@ test('simple Dungeon pauses between rooms for explicit Continue, Potion, or Leav
   const potion = run.usePotionBetweenEncounters({ playerId: 'p1', healed: 8 });
   assert.equal(potion.healed, 6);
   assert.equal(potion.state.participants[0].hp, 40);
-  assert.equal(potion.state.phase, 'combat');
-  assert.equal(potion.state.enemy.id, 'hollow-stalker');
+  assert.equal(potion.state.phase, 'between_encounter');
+  assert.equal(potion.state.enemy, null);
+  const continued = run.continueEncounter({ playerId: 'p1' });
+  assert.equal(continued.state.phase, 'combat');
+  assert.equal(continued.state.enemy.id, 'hollow-stalker');
 
   const retreatRun = startSimple({ attackPower: 9, maxHealth: 40 }).run;
   state = retreatRun.toJSON();

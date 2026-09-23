@@ -1,15 +1,19 @@
 import { projectTown, townsForArea, townById, npcById } from '../content/TownCatalog.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
+import { SQLiteQuestRepository } from '../infrastructure/SQLiteQuestRepository.js';
 import { SQLiteSimulatedAdventurerRepository } from '../infrastructure/SQLiteSimulatedAdventurerRepository.js';
 import { GuildHallService } from './GuildHallService.js';
 
 export class TownService {
-  constructor({ repository, eventBus = null, areaRepository = null, townCatalog = null, guildHallService = null, arcManifestService = null } = {}) {
+  constructor({ repository, eventBus = null, areaRepository = null, questRepository = null, townCatalog = null, guildHallService = null, arcManifestService = null } = {}) {
     if (!repository) throw new Error('TownService requires the game repository.');
     this.repository = repository;
     this.eventBus = eventBus;
     this.arcManifestService = arcManifestService;
     this.areaRepository = areaRepository || new SQLiteAreaRepository({ database: repository.db });
+    this.questRepository = questRepository || (repository.db
+      ? new SQLiteQuestRepository({ database: repository.db })
+      : null);
     this.townCatalog = townCatalog || { townsForArea, townById, projectTown, npcById };
     this.guildHallService = guildHallService || new GuildHallService({
       repository: new SQLiteSimulatedAdventurerRepository({ database: repository.db }),
@@ -48,23 +52,25 @@ export class TownService {
 
   interact(playerId, townId, npcId) {
     const town = this.get(playerId, townId);
-    const npc = town.npcs.find((candidate) => candidate.id === String(npcId || '').trim().toLowerCase());
-    if (!npc) {
+    const projectedNpc = town.npcs.find((candidate) => candidate.id === String(npcId || '').trim().toLowerCase());
+    if (!projectedNpc) {
       const error = new Error('That NPC is not available in this Town.');
       error.code = 'npc_unavailable';
       throw error;
     }
     if (!this.eventBus) throw new Error('TownService requires the event bus for NPC interactions.');
+    const npc = this.townCatalog.npcById?.(projectedNpc.id) || projectedNpc;
+    const dialogue = this.#dialogueFor(playerId, town, npc);
 
     const interaction = Object.freeze({
       townId: town.id,
       townName: town.name,
       areaNumber: town.areaNumber,
-      npcId: npc.id,
-      npcName: npc.name,
-      role: npc.role,
-      service: npc.service,
-      dialogue: npc.dialogue,
+      npcId: projectedNpc.id,
+      npcName: projectedNpc.name,
+      role: projectedNpc.role,
+      service: projectedNpc.service,
+      dialogue,
     });
 
     this.eventBus.publish({
@@ -94,14 +100,64 @@ export class TownService {
       // player shell until their NPC art is explicitly authored.
       onlyWithExplicitNpcVisual: true,
     }) || [];
-    // An explicitly illustrated generated Town is the authored Arc surface for
-    // this Area; retain foundation Towns alongside it for compatibility.
-    return [...generated, ...foundation];
+    const authoredIds = new Set(foundation.map((town) => town.id));
+    return [...foundation, ...generated.filter((town) => !authoredIds.has(town.id))];
   }
 
   #townById(townId) {
     const foundation = this.townCatalog.townById(townId);
     if (foundation) return foundation;
     return this.arcManifestService?.runtimeTownById(townId, { onlyWithExplicitNpcVisual: true }) || null;
+  }
+
+  #dialogueFor(playerId, town, npc) {
+    const progression = this.areaRepository.get(playerId);
+    const areaContext = progression.highestUnlockedAreaNumber > town.areaNumber
+      ? 'returning'
+      : town.areaNumber === 1 && progression.highestUnlockedAreaNumber === 1
+        ? 'welcome'
+        : 'frontier';
+    const questHistory = this.#questHistoryFor(playerId);
+    const questContext = questHistory.some((entry) => entry.status === 'active')
+      ? 'quest-active'
+      : questHistory.some((entry) => ['completed', 'claimed'].includes(entry.status))
+        ? 'quest-completed'
+        : null;
+    const configuredQuestContext = npc.dialogueByContext?.[questContext];
+    const context = Array.isArray(configuredQuestContext) && configuredQuestContext.length > 0
+      ? questContext
+      : areaContext;
+    const configured = npc.dialogueByContext?.[context];
+    const choices = Array.isArray(configured) && configured.length > 0
+      ? configured
+      : [String(npc.dialogue || `${npc.name} is available in ${town.name}.`)];
+    const historyKey = questHistory
+      .map((entry) => `${entry.status}:${entry.questId}`)
+      .sort()
+      .join(',');
+    let hash = 2166136261;
+    for (const character of `${playerId}:${npc.id}:${context}:${historyKey}`) {
+      hash ^= character.codePointAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return String(choices[(hash >>> 0) % choices.length] || choices[0]);
+  }
+
+  #questHistoryFor(playerId) {
+    try {
+      const rows = this.questRepository?.list?.(playerId);
+      if (!Array.isArray(rows)) return [];
+      return rows
+        .filter((row) => row && ['active', 'completed', 'claimed'].includes(row.status))
+        .map((row) => ({
+          questId: String(row.questId || '').trim().toLowerCase(),
+          status: row.status,
+        }))
+        .filter((entry) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.questId));
+    } catch {
+      // Quest history is optional context; an unavailable read must not block
+      // an otherwise valid Town interaction.
+      return [];
+    }
   }
 }

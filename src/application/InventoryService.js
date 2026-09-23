@@ -60,6 +60,9 @@ export class InventoryService {
       expectedLevel: plan.expectedLevel,
       cost: plan.cost,
       attackIncrease: plan.attackIncrease,
+      statKey: plan.statKey,
+      statIncrease: plan.statIncrease,
+      budgetIncrease: plan.budgetIncrease,
       attunementCode: plan.attunementCode,
     });
     const upgraded = this.gameRepository.getItem(itemId);
@@ -70,7 +73,11 @@ export class InventoryService {
       itemName: upgraded?.name || item.name,
       level: plan.nextLevel,
       maxLevel: plan.maxLevel,
-      attackIncrease: plan.attackIncrease,
+      attackIncrease: result.attackIncrease,
+      statKey: result.statKey,
+      statLabel: result.statLabel,
+      statIncrease: result.statIncrease,
+      statText: result.statText,
       goldSpent: plan.cost,
       // Migration aliases for persisted/event consumers that still use old names.
       threadDustSpent: plan.cost,

@@ -1,5 +1,8 @@
 import { simulateAutomaticBattle } from './AutomaticBattleSimulator.js';
+import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
 import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
+import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
+import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
 
 function combatant(value, label) {
   if (!value || typeof value !== 'object') throw new Error(`Duel requires ${label}.`);
@@ -10,7 +13,20 @@ function combatant(value, label) {
   const stats = value.stats || value;
   const maxHp = Math.max(1, Math.floor(Number(stats.maxHp || value.maxHp || 0)));
   if (!Number.isFinite(maxHp) || maxHp < 1) throw new Error(`Duel ${label} requires positive Max HP.`);
-  return {
+  // A weapon family's allowlisted signature skill takes precedence. Unarmed
+  // Guild Hall rivals share the same fallback as a new unarmed player so the
+  // starter duel remains a fair stat check rather than an arbitrary enemy-only
+  // skill advantage.
+  const defaultSkill = 'threadsong';
+  const family = value.weaponFamily
+    || value.equipment?.weapon?.weaponFamily
+    || value.equipment?.weapon?.family
+    || value.equippedItem?.weaponFamily
+    || value.equippedItem?.family;
+  const visualAssetId = value.visualAssetId
+    || resolveVisualAssetId({ id, spriteVariant: value.spriteVariant }, 'character')
+    || (label === 'challenger' ? BATTLE_FIGMA_VISUAL_ASSET_IDS['rune-bard'] : BATTLE_FIGMA_VISUAL_ASSET_IDS['bramble-druid']);
+  return prepareAutomaticBattleCombatant({
     id,
     name,
     displayName: name,
@@ -22,9 +38,13 @@ function combatant(value, label) {
     critChance: Math.max(0, Math.min(1, Number(stats.critChance || value.critChance || 0))),
     equipment: value.equipment || {},
     equippedItem: value.equippedItem || value.equipment?.weapon || null,
+    weaponFamily: family || null,
+    skillCode: value.skillCode || value.signatureSkillId || null,
+    skills: value.skills || [],
+    visualAssetId,
     resistances: value.resistances || {},
     tags: ['adventurer', label],
-  };
+  }, { defaultSkill });
 }
 
 /**
@@ -45,7 +65,10 @@ export function resolveDuelBattle({ challenger, opponent, random = Math.random }
   }
 
   const battle = simulateAutomaticBattle(
-    { resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }) },
+    {
+      resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }),
+      resolveSkill: resolveAutomaticBattleSkill,
+    },
     {
       players: [left],
       enemies: [right],

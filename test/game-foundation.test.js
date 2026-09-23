@@ -10,6 +10,7 @@ import { AchievementProjector } from '../src/application/AchievementProjector.js
 import { GameService } from '../src/application/GameService.js';
 import { HoneyPurchaseService } from '../src/application/HoneyPurchaseService.js';
 import { PartyService } from '../src/application/PartyService.js';
+import { generatedEquipmentOptions } from '../src/content/GeneratedEquipmentCatalog.js';
 
 function takeReactiveDomainTurn(run, playerId, attackPower = 6) {
   const state = run.toJSON();
@@ -117,7 +118,7 @@ test('party domain enforces readiness, leadership, and four-player capacity', ()
 test('generated rewards only use registered effect vocabulary', () => {
   const values = [0.1, 0.2, 0.3, 0.4, 0.5];
   let index = 0;
-  const generator = new ItemGenerator({ rng: () => values[(index++) % values.length], idFactory: () => 'item-1' });
+  const generator = new ItemGenerator({ rng: () => values[(index++) % values.length], idFactory: () => 'item-1', equipmentOptions: generatedEquipmentOptions() });
   const item = generator.generateReward();
   assert.ok(Object.hasOwn(ITEM_EFFECTS, item.effectCode));
   assert.ok(item.attackBonus >= 1 && item.attackBonus <= 3);
@@ -133,7 +134,7 @@ test('service layer preserves solo reward, progression, achievements, and equipm
     repository,
     eventBus: bus,
     idFactory: () => 'run-1',
-    itemGenerator: new ItemGenerator({ rng: () => 0.1, idFactory: () => 'reward-1' }),
+    itemGenerator: new ItemGenerator({ rng: () => 0.1, idFactory: () => 'reward-1', equipmentOptions: generatedEquipmentOptions() }),
   });
   const player = service.ensurePlayer({ id: 1001, name: 'Tester' });
   const run = service.startDungeon(player.id, 'frayed-hollow');
@@ -186,7 +187,7 @@ test('two-player party owns one run, leader owns shared discoveries and power dr
     repository,
     eventBus: bus,
     idFactory: () => 'party-run-1',
-    itemGenerator: new ItemGenerator({ rng: () => 0.1, idFactory: () => `coop-reward-${++rewardSequence}` }),
+    itemGenerator: new ItemGenerator({ rng: () => 0.1, idFactory: () => `coop-reward-${++rewardSequence}`, equipmentOptions: generatedEquipmentOptions() }),
   });
   const parties = new PartyService({ repository, idFactory: () => 'party-1', joinCodeFactory: () => 'ABC123' });
   const leader = game.ensurePlayer({ id: 2001, name: 'Leader' });

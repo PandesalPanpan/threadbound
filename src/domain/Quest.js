@@ -40,8 +40,9 @@ function normalizeObjectiveProgress(rows = []) {
 
 /** Immutable Quest definition with a constrained, data-only objective vocabulary. */
 export class Quest {
-  constructor({ id, title, description = '', areaNumber, townId = null, npcId = null, objectives = [] } = {}) {
+  constructor({ id, templateId = null, title, description = '', areaNumber, townId = null, npcId = null, objectives = [], reward = {} } = {}) {
     this.id = requireStableId(id, 'Quest id');
+    this.templateId = optionalStableId(templateId || id, 'Quest template id');
     this.title = requireText(title, 'Quest title');
     this.description = String(description || '').trim();
     this.area = projectArea(areaNumber);
@@ -50,12 +51,18 @@ export class Quest {
     this.npcId = optionalStableId(npcId, 'Quest NPC id');
     if (this.npcId && !this.townId) throw new Error('Quest NPC id requires a Town id.');
     this.objectives = normalizeQuestObjectives(objectives);
+    const gold = Number(reward?.gold ?? 0);
+    const experience = Number(reward?.experience ?? 0);
+    if (!Number.isSafeInteger(gold) || gold < 0) throw new Error('Quest Gold reward must be a non-negative integer.');
+    if (!Number.isSafeInteger(experience) || experience < 0) throw new Error('Quest XP reward must be a non-negative integer.');
+    this.reward = Object.freeze({ gold, experience });
     Object.freeze(this);
   }
 
   toJSON() {
     return Object.freeze({
       id: this.id,
+      templateId: this.templateId,
       title: this.title,
       description: this.description,
       area: this.area,
@@ -63,13 +70,21 @@ export class Quest {
       townId: this.townId,
       npcId: this.npcId,
       objectives: this.objectives,
+      reward: this.reward,
     });
   }
 }
 
+function normalizeDefinition(definition, questId) {
+  if (!definition) return null;
+  const model = definition instanceof Quest ? definition : new Quest(definition);
+  if (model.id !== questId) throw new Error('Persisted Quest definition id must match its instance id.');
+  return model.toJSON();
+}
+
 /** Durable per-player lifecycle and objective counters for a Quest definition. */
 export class QuestProgress {
-  constructor({ questId, status = 'active', acceptedAt = null, completedAt = null, claimedAt = null, objectiveProgress = [] } = {}) {
+  constructor({ questId, status = 'active', acceptedAt = null, completedAt = null, claimedAt = null, objectiveProgress = [], definition = null } = {}) {
     this.questId = requireStableId(questId, 'Quest id');
     this.status = String(status || '').trim().toLowerCase();
     if (!QUEST_STATUS_SET.has(this.status)) throw new Error(`Unsupported Quest status: ${this.status || '(empty)'}.`);
@@ -77,6 +92,7 @@ export class QuestProgress {
     this.completedAt = completedAt;
     this.claimedAt = claimedAt;
     this.objectiveProgress = normalizeObjectiveProgress(objectiveProgress);
+    this.definition = normalizeDefinition(definition, this.questId);
     if (this.status === 'active' && (completedAt || claimedAt)) throw new Error('Active Quest progress cannot have completion timestamps.');
     if (this.status === 'completed' && !completedAt) throw new Error('Completed Quest progress requires completedAt.');
     if (this.status === 'claimed' && (!completedAt || !claimedAt)) throw new Error('Claimed Quest progress requires completion and claim timestamps.');
@@ -112,6 +128,7 @@ export class QuestProgress {
       completedAt: this.completedAt,
       claimedAt: this.claimedAt,
       objectiveProgress: this.objectiveProgress,
+      ...(this.definition ? { definition: this.definition } : {}),
     });
   }
 }

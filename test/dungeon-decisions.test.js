@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { ActivityStreamService } from '../src/application/ActivityStreamService.js';
 import { EventBus } from '../src/application/EventBus.js';
 import { GameService } from '../src/application/GameService.js';
+import { PartyService } from '../src/application/PartyService.js';
 import { SimpleDungeonService } from '../src/application/SimpleDungeonService.js';
+import { AdventureRun } from '../src/domain/AdventureRun.js';
 import { SQLiteBankRepository } from '../src/infrastructure/SQLiteBankRepository.js';
 import { SQLiteActivityStreamRepository } from '../src/infrastructure/SQLiteActivityStreamRepository.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
@@ -74,7 +76,7 @@ test('shared simple rooms auto-resolve once, preserve HP, and emit one replay re
 });
 
 test('Dungeon pause is an authoritative active run and Potion spends persisted inventory atomically', () => {
-  const { repository, game, simpleDungeon } = setup();
+  const { repository, game, simpleDungeon, activityStream } = setup();
   const player = game.ensurePlayer({ id: 'dungeon-potion-player', name: 'Potion Tester' });
   const started = simpleDungeon.startDungeon(player.id, 'frayed-hollow');
   attackUntilDecision(game, repository, started.id, player.id);
@@ -85,18 +87,39 @@ test('Dungeon pause is an authoritative active run and Potion spends persisted i
   assert.ok(paused.participants[0].hp > 0 && paused.participants[0].hp < paused.participants[0].maxHp);
   assert.equal(repository.getPlayer(player.id).healthPotions, 1);
 
+  const receiptCountBeforeHeal = activityStream.recent().filter((entry) => entry.runId === started.id).length;
   const result = game.useDungeonPotion(player.id, started.id);
   assert.equal(result.recovery.method, 'dungeon_health_potion');
   assert.equal(result.recovery.healed, Math.min(8, paused.participants[0].maxHp - paused.participants[0].hp));
   assert.equal(result.recovery.healthPotions, 0);
-  assert.equal(result.battleReplay.status, 'room_clear');
-  assert.equal(result.battleReplay.recovery.currentHealth, Math.min(40, paused.participants[0].hp + 8));
+  assert.equal(result.battleReplay, null, 'healing is a separate intermission command, not an implicit Continue');
+  assert.equal(result.run.phase, 'between_encounter');
+  assert.equal(result.intermission.potionClaimed, true);
+  assert.equal(result.intermission.claimedByPlayerId, player.id);
+  assert.equal(result.run.intermissionPotionClaimedWindowId, `${started.id}:intermission:${paused.encounterIndex + 1}`);
   assert.equal(repository.getRun(started.id).phase, 'between_encounter');
+  assert.equal(repository.getRun(started.id).intermissionPotionClaimedByPlayerId, player.id);
   assert.ok(repository.getRun(started.id).participants[0].hp > 0);
   assert.equal(repository.getPlayer(player.id).currentHealth, repository.getRun(started.id).participants[0].hp);
   assert.equal(repository.getPlayer(player.id).healthPotions, 0);
+  const healReceipts = activityStream.recent().filter((entry) => entry.runId === started.id && entry.eventType === 'DungeonPotionUsed');
+  assert.equal(healReceipts.length, 1, 'one explicit shared Heal command creates one public receipt');
+  assert.equal(activityStream.recent().filter((entry) => entry.runId === started.id).length, receiptCountBeforeHeal + 1);
+  assert.match(healReceipts[0].body, new RegExp(`INTERMISSION HEAL · Potion Tester used Minor Health Potion · \\+${result.recovery.healed} HP · ${result.run.participants[0].hp}/${result.run.participants[0].maxHp} HP · Intermission heal used\\.`));
 
-  assert.throws(() => game.useDungeonPotion(player.id, started.id), /between Dungeon encounters|no health potions|currently in combat/i);
+  assert.throws(() => game.useDungeonPotion(player.id, started.id), (error) => (
+    ['dungeon_potion_intermission_already_claimed', 'no_health_potions'].includes(error.code)
+  ));
+  const continued = game.continueDungeon(player.id, started.id);
+  assert.equal(continued.continued, true);
+  assert.equal(continued.previousPhase, 'between_encounter');
+  assert.ok(continued.battleReplay, 'Continue starts and resolves the next room separately');
+  assert.equal(continued.battleReplay.roomIndex, paused.encounterIndex + 1);
+  assert.equal(continued.run.intermissionPotionClaimedWindowId, null);
+  const nextWindow = new AdventureRun(continued.run).intermissionPotionStatus();
+  assert.ok(nextWindow, 'the next cleared room opens a new intermission window');
+  assert.equal(nextWindow.potionClaimed, false);
+  assert.notEqual(nextWindow.windowId, result.intermission.windowId);
   repository.close();
 });
 
@@ -115,9 +138,63 @@ test('Dungeon retreat releases the party run without securing completion reward'
   repository.close();
 });
 
+test('any party participant may claim one own-potion heal per persisted intermission window', () => {
+  const { repository, game, simpleDungeon } = setup();
+  const leader = game.ensurePlayer({ id: 'intermission-leader', name: 'Intermission Leader' });
+  const partner = game.ensurePlayer({ id: 'intermission-partner', name: 'Intermission Partner' });
+  repository.db.prepare('UPDATE players SET base_attack = 9, max_health = 100, current_health = 100 WHERE id IN (?, ?)')
+    .run(leader.id, partner.id);
+  repository.setPlayerHealth(partner.id, 60);
+  const parties = new PartyService({ repository, idFactory: () => 'intermission-party', joinCodeFactory: () => 'HEAL42' });
+  parties.createParty(leader.id);
+  parties.joinParty(partner.id, 'heal42');
+  parties.setReady(partner.id, true);
+
+  const started = simpleDungeon.startDungeon(leader.id, 'frayed-hollow');
+  attackUntilDecision(game, repository, started.id, leader.id);
+  const paused = repository.getRun(started.id);
+  const originalLeaderHp = paused.participants.find((participant) => participant.playerId === leader.id).hp;
+  const originalPartnerHp = paused.participants.find((participant) => participant.playerId === partner.id).hp;
+  assert.ok(originalPartnerHp < paused.participants.find((participant) => participant.playerId === partner.id).maxHp);
+  assert.equal(repository.getPlayer(partner.id).healthPotions, 1);
+  assert.equal(repository.getPlayer(leader.id).healthPotions, 1);
+
+  // Model two requests that both read the same version before either commits.
+  const firstRequest = new AdventureRun(paused);
+  const staleRequest = new AdventureRun(paused);
+  const firstOutcome = firstRequest.usePotionBetweenEncounters({ playerId: partner.id, healed: 8 });
+  const staleOutcome = staleRequest.usePotionBetweenEncounters({ playerId: leader.id, healed: 8 });
+  const firstCommit = repository.saveRunWithPotion(firstOutcome.state, partner.id);
+  assert.throws(
+    () => repository.saveRunWithPotion(staleOutcome.state, leader.id),
+    (error) => error.code === 'stale_run_version',
+  );
+
+  const persisted = repository.getRun(started.id);
+  const refreshed = new AdventureRun(persisted).toJSON();
+  assert.equal(refreshed.phase, 'between_encounter');
+  assert.equal(refreshed.intermissionPotionClaimedWindowId, `${started.id}:intermission:${paused.encounterIndex + 1}`);
+  assert.equal(refreshed.intermissionPotionClaimedByPlayerId, partner.id);
+  assert.equal(persisted.participants.find((participant) => participant.playerId === leader.id).hp, originalLeaderHp);
+  assert.equal(persisted.participants.find((participant) => participant.playerId === partner.id).hp, Math.min(
+    persisted.participants.find((participant) => participant.playerId === partner.id).maxHp,
+    originalPartnerHp + 8,
+  ));
+  assert.equal(firstCommit.quantity, 0);
+  assert.equal(repository.getPlayer(partner.id).healthPotions, 0);
+  assert.equal(repository.getPlayer(leader.id).healthPotions, 1);
+  assert.throws(
+    () => game.useDungeonPotion(leader.id, started.id),
+    (error) => error.code === 'dungeon_potion_intermission_already_claimed',
+  );
+  assert.equal(repository.getPlayer(leader.id).healthPotions, 1, 'the other participant keeps their own potion');
+  repository.close();
+});
+
 test('Dungeon defeat applies carried-Gold risk atomically while banked Gold stays safe', () => {
   const { repository, game, simpleDungeon, bank } = setup();
   const player = game.ensurePlayer({ id: 'dungeon-death-player', name: 'Risk Tester' });
+  repository.db.prepare('UPDATE players SET base_attack = 1, max_health = 40, current_health = 1 WHERE id = ?').run(player.id);
   repository.addThreadDust(player.id, 50);
   bank.deposit(player.id, 10);
   const before = bank.getBalance(player.id);

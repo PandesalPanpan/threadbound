@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Town, TOWN_SERVICE_TYPES } from '../src/domain/Town.js';
-import { FOUNDATION_NPCS, FOUNDATION_TOWNS, npcById, projectTown, townById, townsForArea } from '../src/content/TownCatalog.js';
+import { AREA_TOWNS, FOUNDATION_NPCS, FOUNDATION_TOWNS, WORLD_NPCS, npcById, projectTown, townById, townsForArea } from '../src/content/TownCatalog.js';
 import { TownService } from '../src/application/TownService.js';
 import { AreaService } from '../src/application/AreaService.js';
 import { AreaProgression } from '../src/domain/AreaProgression.js';
@@ -20,7 +20,7 @@ test('Town is an immutable Area-owned hub with constrained service and NPC refer
   assert.deepEqual(town.toJSON(), {
     id: 'test-town',
     name: 'Test Town',
-    area: { id: 'area-2', number: 2, name: 'Area 2' },
+    area: { id: 'area-2', number: 2, name: 'Emberglass Orchard' },
     areaNumber: 2,
     services: ['shop', 'bank', 'guild_hall'],
     npcIds: ['merchant-one', 'guild-master'],
@@ -51,19 +51,75 @@ test('Town rejects invalid Area identity, unsupported services, and duplicate hu
   );
 });
 
-test('foundation Town catalog stays neutral while projecting stable generated-sprite NPC identities', () => {
+test('world Town catalog exposes four Area hubs and stable generated-sprite NPC identities', () => {
   assert.equal(FOUNDATION_TOWNS.length, 1);
-  assert.equal(FOUNDATION_NPCS.length, 4);
+  assert.equal(AREA_TOWNS.length, 3);
+  assert.equal(WORLD_NPCS.length, 18);
+  assert.equal(FOUNDATION_NPCS.length, 5);
   assert.equal(townById('area-1-town')?.areaNumber, 1);
   assert.deepEqual(townsForArea(1).map((town) => town.id), ['area-1-town']);
-  assert.deepEqual(townsForArea(2), []);
+  assert.deepEqual(townsForArea(2).map((town) => town.id), ['area-2-town']);
+  assert.deepEqual(townsForArea(3).map((town) => town.id), ['area-3-town']);
+  assert.deepEqual(townsForArea(4).map((town) => town.id), ['area-4-town']);
   assert.deepEqual(townsForArea(0), []);
   assert.equal(npcById('area-1-shopkeeper')?.service, 'shop');
   assert.match(npcById('area-1-shopkeeper')?.dialogue || '', /supplies/i);
+  assert.equal(npcById('mae-bramble')?.kind, 'background');
+  assert.equal(npcById('mae-bramble')?.service, 'quest');
   const projected = projectTown(townById('area-1-town'));
   assert.deepEqual(projected.npcs.map((npc) => npc.id), FOUNDATION_NPCS.map((npc) => npc.id));
   assert.ok(projected.npcs.every((npc) => ['male', 'female'].includes(npc.spriteVariant)));
   assert.ok(projected.npcs.every((npc) => typeof npc.dialogue === 'string' && npc.dialogue.length > 0));
+});
+
+test('background NPC dialogue uses the current Area context and the same authorized receipt path', () => {
+  const events = [];
+  const { repository, player, areaRepository, service } = fixture({ eventBus: { publish: (event) => events.push(event) } });
+  try {
+    areaRepository.save(player.id, new AreaProgression({ currentAreaNumber: 3, highestUnlockedAreaNumber: 3 }));
+    const npc = npcById('rook-gale');
+    const interaction = service.interact(player.id, 'area-3-town', 'rook-gale');
+    assert.equal(interaction.townName, 'Kitewatch');
+    assert.equal(interaction.npcName, 'Rook Gale');
+    assert.ok(npc.dialogueByContext.frontier.includes(interaction.dialogue));
+    assert.equal(events.length, 1);
+    assert.deepEqual(events[0], { type: 'NpcInteracted', playerId: player.id, ...interaction });
+    assert.throws(() => service.interact(player.id, 'area-2-town', 'rook-gale'), (error) => error.code === 'town_unavailable');
+    assert.throws(() => service.interact(player.id, 'area-3-town', 'area-1-shopkeeper'), (error) => error.code === 'npc_unavailable');
+    assert.equal(events.length, 1);
+  } finally {
+    repository.close();
+  }
+});
+
+test('Mae uses authored dialogue for the player’s accepted and claimed Quest history', () => {
+  const { repository, player, areaRepository } = fixture({ eventBus: { publish() {} } });
+  try {
+    const mae = npcById('mae-bramble');
+    const questRepository = {
+      list: () => [{ questId: 'welcome-to-bellbloom', status: 'active' }],
+    };
+    const service = new TownService({
+      repository,
+      eventBus: { publish() {} },
+      areaRepository,
+      questRepository,
+    });
+
+    const interaction = service.interact(player.id, 'area-1-town', 'mae-bramble');
+    assert.ok(mae.dialogueByContext['quest-active'].includes(interaction.dialogue));
+
+    const completedQuestService = new TownService({
+      repository,
+      eventBus: { publish() {} },
+      areaRepository,
+      questRepository: { list: () => [{ questId: 'welcome-to-bellbloom', status: 'claimed' }] },
+    });
+    const completedInteraction = completedQuestService.interact(player.id, 'area-1-town', 'mae-bramble');
+    assert.ok(mae.dialogueByContext['quest-completed'].includes(completedInteraction.dialogue));
+  } finally {
+    repository.close();
+  }
 });
 
 function fixture({ eventBus = null } = {}) {
@@ -80,13 +136,13 @@ test('TownService exposes only Town hubs and NPC read models belonging to the au
     const area1 = service.browse(player.id);
     assert.equal(area1.currentArea.id, 'area-1');
     assert.deepEqual(area1.towns.map((town) => town.id), ['area-1-town']);
-    assert.equal(area1.towns[0].npcs.length, 4);
-    assert.equal(service.get(player.id, 'area-1-town').npcs[0].id, 'area-1-shopkeeper');
+    assert.equal(area1.towns[0].npcs.length, FOUNDATION_NPCS.length);
+    assert.ok(service.get(player.id, 'area-1-town').npcs.some((npc) => npc.id === 'area-1-shopkeeper'));
 
     areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(2).withCurrentArea(2));
     const area2 = service.browse(player.id);
     assert.equal(area2.currentArea.id, 'area-2');
-    assert.deepEqual(area2.towns, []);
+    assert.deepEqual(area2.towns.map((town) => town.id), ['area-2-town']);
     assert.throws(
       () => service.get(player.id, 'area-1-town'),
       (error) => error.code === 'town_unavailable' && /current Area/i.test(error.message),
@@ -103,14 +159,15 @@ test('TownService interaction validates current Town residency and publishes one
     const interaction = service.interact(player.id, 'area-1-town', 'area-1-shopkeeper');
     assert.deepEqual(interaction, {
       townId: 'area-1-town',
-      townName: 'Area 1 Town',
+      townName: 'Bellbloom',
       areaNumber: 1,
       npcId: 'area-1-shopkeeper',
       npcName: 'Shopkeeper',
       role: 'Shop',
       service: 'shop',
-      dialogue: 'Need supplies? I keep the essentials close and the prices clear.',
+      dialogue: interaction.dialogue,
     });
+    assert.match(interaction.dialogue, /supplies|Welcome to Bellbloom/i);
     assert.equal(events.length, 1);
     assert.deepEqual(events[0], { type: 'NpcInteracted', playerId: player.id, ...interaction });
 
@@ -139,10 +196,19 @@ test('AreaService composes the current-Area Town read projection without moving 
   try {
     const area1 = service.browse(player.id);
     assert.deepEqual(area1.towns.map((town) => town.id), ['area-1-town']);
-    assert.deepEqual(area1.towns[0].npcs.map((npc) => npc.service), ['shop', 'upgrade', 'bank', 'heal']);
+    assert.deepEqual(area1.towns[0].npcs.map((npc) => npc.service), ['quest', 'shop', 'upgrade', 'bank', 'heal']);
+    assert.equal(area1.nextLockedArea.progressionChallenge.dungeonId, 'brightbell-trial');
+    assert.equal(area1.nextLockedArea.progressionChallenge.requiredHumanPlayers, 2);
+    assert.match(area1.nextLockedArea.lockReason, /2 ready human players/i);
+    assert.throws(() => service.travel(player.id, 2), (error) => error.code === 'area_locked');
 
     areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(2).withCurrentArea(2));
-    assert.deepEqual(service.browse(player.id).towns, []);
+    const area2 = service.browse(player.id);
+    assert.deepEqual(area2.towns.map((town) => town.id), ['area-2-town']);
+    assert.equal(area2.nextLockedArea.progressionChallenge.dungeonId, 'emberglass-procession');
+    areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(4).withCurrentArea(4));
+    assert.equal(service.browse(player.id).nextLockedArea, null);
+    assert.throws(() => service.travel(player.id, 5), (error) => error.code === 'area_unavailable');
   } finally {
     repository.close();
   }

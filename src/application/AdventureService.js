@@ -1,4 +1,6 @@
 import { Character } from '../domain/Character.js';
+import { projectAutomaticBattleResult } from './AutomaticBattleReadModel.js';
+import { adventureRewardForArea, itemRewardProfileForArea, pickAreaAdventureEncounter } from '../content/AreaContentCatalog.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
 import { ADVENTURE_COOLDOWN_SECONDS, capAdventureLoot, resolveAdventureRewards } from '../domain/AdventureRewardPolicy.js';
 import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
@@ -117,13 +119,14 @@ export class AdventureService {
       },
       currentHealth: player.currentHealth,
       areaNumber: area.currentAreaNumber,
-      encounterRoll: this.rng(),
+      encounter: pickAreaAdventureEncounter(area.currentAreaNumber, this.rng()),
       random: this.rng,
     });
+    const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
 
-    const progressionBefore = progressionForExperience(this.progressionRepository.get(playerId).experience);
     const rewards = resolveAdventureRewards({
       areaNumber: area.currentAreaNumber,
+      rewardProfile: adventureRewardForArea(area.currentAreaNumber),
       victory: result.victory,
       lootRoll: this.rewardRng(),
       storyRoll: this.storyRng(),
@@ -131,11 +134,17 @@ export class AdventureService {
 
     let item = null;
     let deathPenalty = null;
+    let growth = null;
     if (result.victory) {
       this.repository.addThreadDust(playerId, rewards.gold);
-      this.progressionRepository.addExperience(playerId, rewards.experience);
+      growth = this.progressionRepository.grantExperience(playerId, rewards.experience, {
+        currentHealthAfterCombat: result.remainingHp,
+      });
       if (rewards.drop) {
-        item = capAdventureLoot(this.itemGenerator.generateReward({ source: 'adventure' }));
+        item = capAdventureLoot(this.itemGenerator.generateReward({
+          source: 'adventure',
+          ...itemRewardProfileForArea(area.currentAreaNumber),
+        }));
         this.repository.addItem(playerId, item);
       }
     } else if (result.remainingHp <= 0) {
@@ -150,10 +159,19 @@ export class AdventureService {
       });
     }
 
-    this.repository.setPlayerHealth(playerId, result.remainingHp);
+    if (!growth) this.repository.setPlayerHealth(playerId, result.remainingHp);
     const fightBuffsConsumed = this.fightBuffRepository.consumeFight(playerId);
     const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
-    const levelsGained = progression.level - progressionBefore.level;
+    const levelsGained = growth?.levelsGained || 0;
+    const remainingHp = growth?.currentHealth ?? result.remainingHp;
+    const maxHp = growth?.maxHealth ?? result.maxHealth;
+    const itemStats = item ? {
+      attackBonus: Number(item.attackBonus || item.stats?.attackBonus || 0),
+      defenseBonus: Number(item.defenseBonus || item.stats?.defenseBonus || 0),
+      maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
+      speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
+      critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
+    } : null;
     this.eventBus.publish({
       type: 'AdventureResolved',
       playerId,
@@ -166,8 +184,11 @@ export class AdventureService {
       enemyHp: result.enemy.hp,
       victory: result.victory,
       startingHp: result.startingHp,
-      remainingHp: result.remainingHp,
-      maxHp: result.maxHealth,
+      remainingHp,
+      maxHp,
+      currentHealth: remainingHp,
+      maxHealth: maxHp,
+      maxHealthIncrease: growth?.maxHealthIncrease || 0,
       damageTaken: result.damageTaken,
       gold: rewards.gold,
       experienceGained: rewards.experience,
@@ -182,6 +203,9 @@ export class AdventureService {
       itemId: item?.id || null,
       itemName: item?.name || null,
       itemRarity: item?.rarity || null,
+      itemSlot: item?.slot || null,
+      itemVisualAssetId: item?.visualAssetId || null,
+      itemStats,
       storyEvent: rewards.storyEvent,
       adventureCooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
       adventureBaseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
@@ -189,17 +213,24 @@ export class AdventureService {
       nextAdventureReadyAt: cooldown.nextReadyAt,
       battleOutcome: result.battle.outcome,
       battleTurnCount: result.battle.turns.length,
+      battle: result.battle,
+      battleReplay,
       fightBuffsConsumed,
     });
     if (item) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: 'adventure', silentStream: true });
 
     return Object.freeze({
       ...result,
+      remainingHp,
+      battleReplay,
       area: area.currentArea,
       rewards: Object.freeze({ ...rewards, item: item ? this.repository.getItem(item.id) : null }),
       progression,
       levelsGained,
       leveledUp: levelsGained > 0,
+      maxHealthIncrease: growth?.maxHealthIncrease || 0,
+      currentHealth: remainingHp,
+      maxHealth: maxHp,
       deathPenalty,
       fightBuffs: Object.freeze({
         modifiers: fightBuffs.modifiers,

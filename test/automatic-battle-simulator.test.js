@@ -28,7 +28,7 @@ test('automatic battle owns HP mutation, turn history, and terminal victory', ()
   assert.deepEqual(result.turns.map((turn) => [turn.actorId, turn.targetId, turn.targetDamage]), [
     ['hero', 'wolf', 4],
     ['wolf', 'hero', 2],
-    ['hero', 'wolf', 4],
+    ['hero', 'wolf', 3],
   ]);
   assert.equal(result.combatants.find((entry) => entry.id === 'hero').hp, 10);
   assert.equal(result.combatants.find((entry) => entry.id === 'wolf').hp, 0);
@@ -199,6 +199,41 @@ test('one shared simulator resolves every 1-to-3 party and enemy collection size
       assert.equal(result.loserIds.length, enemyCount);
     }
   }
+});
+
+test('effect-only defeat of one actor does not end a battle while its team still has living combatants', () => {
+  const result = simulateAutomaticBattle({
+    resolveAction: () => ({ targetDamage: 1 }),
+    selectActor: ({ turnNumber }) => ['player', 'poisoned-enemy', 'player'][turnNumber - 1],
+    selectTarget: ({ actor }) => actor.team === 'players' ? 'healthy-enemy' : 'player',
+    maxTurns: 5,
+  }, {
+    players: [{ id: 'player', team: 'players', hp: 10, maxHp: 10, attack: 2, defense: 0, speed: 10 }],
+    enemies: [
+      { id: 'poisoned-enemy', team: 'enemies', hp: 5, maxHp: 5, attack: 1, defense: 0, speed: 8, effects: [{ type: 'poison', potency: 5, remainingTurns: 1 }] },
+      { id: 'healthy-enemy', team: 'enemies', hp: 2, maxHp: 2, attack: 1, defense: 0, speed: 6 },
+    ],
+  });
+
+  assert.equal(result.outcome, 'victory');
+  assert.equal(result.turns.length, 3);
+  assert.equal(result.turns[1].actorId, 'poisoned-enemy');
+  assert.equal(result.turns[1].targetId, null);
+  assert.equal(result.combatants.find((combatant) => combatant.id === 'healthy-enemy').hp, 0);
+});
+
+test('explicit team input supports the real maximum party of four against three enemies', () => {
+  const result = simulateAutomaticBattle({ resolveAction: () => ({ targetDamage: 1 }) }, {
+    players: [1, 2, 3, 4].map((index) => ({ id: `party-${index}`, hp: 40, maxHp: 40, attack: 5, speed: 10 })),
+    enemies: [1, 2, 3].map((index) => ({ id: `enemy-${index}`, hp: 100, maxHp: 100, attack: 1, speed: 1 })),
+  });
+
+  assert.equal(result.combatants.length, 7);
+  assert.equal(result.combatants.filter((combatant) => combatant.team === 'players').length, 4);
+  assert.equal(result.combatants.filter((combatant) => combatant.team === 'enemies').length, 3);
+  assert.deepEqual(new Set(result.combatants.map((combatant) => combatant.id)), new Set([
+    'party-1', 'party-2', 'party-3', 'party-4', 'enemy-1', 'enemy-2', 'enemy-3',
+  ]));
 });
 
 test('automatic teams retarget a defeated target deterministically and never let defeated actors act', () => {

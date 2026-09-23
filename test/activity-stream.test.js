@@ -51,7 +51,10 @@ test('status, inventory, and shop views are immutable public snapshots', () => {
         gold: 17,
         healthPotions: 2,
         stats: { attack: 9, defense: 4, speed: 10, critChancePercent: 5 },
-        equipment: { weapon: { id: 'sword-1', name: 'Thread Sword', slot: 'weapon', rarity: 'rare', attackBonus: 3, visualAssetId: 'item.test' } },
+        equipment: {
+          weapon: { id: 'sword-1', name: 'Thread Sword', slot: 'weapon', rarity: 'rare', attackBonus: 3, visualAssetId: 'item.test' },
+          armor: { id: 'armor-1', name: 'Steel Armor', slot: 'armor', rarity: 'uncommon', defenseBonus: 4, maxHpBonus: 12, visualAssetId: 'item.armor.test' },
+        },
       },
       activeFightBuffs: [{ code: 'spiced-thread', name: 'Spiced Thread', description: 'A small edge.', remainingFights: 1 }],
     },
@@ -62,19 +65,32 @@ test('status, inventory, and shop views are immutable public snapshots', () => {
       vendor: { id: 'shopkeeper', name: 'Shopkeeper', tagline: 'Keep the essentials close.' },
       currency: { balance: 17 },
       available: true,
-      offers: [{ sku: 'potion-1', kind: 'health_potion', name: 'Health Potion', description: 'Restore HP.', cost: 5, quantity: 1, affordable: true, available: true }],
+      offers: [{ sku: 'armor-1', kind: 'equipment', name: 'Steel Armor', description: 'A sturdy cuirass.', cost: 30, quantity: 1, affordable: true, available: true, item: { slot: 'armor', rarity: 'uncommon', defenseBonus: 4, maxHpBonus: 12, visualAssetId: 'item.armor.test' } }],
+    },
+  });
+  const inventory = service.recordInventoryView({
+    playerId: a.id,
+    dashboard: {
+      character: { displayName: a.displayName, gold: 17, currentHealth: 28, maxHealth: 52, equipment: { armor: { id: 'armor-1', name: 'Steel Armor', slot: 'armor', defenseBonus: 4, maxHpBonus: 12 } } },
+      inventory: [{ id: 'armor-1', name: 'Steel Armor', slot: 'armor', defenseBonus: 4, maxHpBonus: 12, visualAssetId: 'item.armor.test' }],
     },
   });
 
   assert.equal(status.eventType, 'StatusViewed');
   assert.equal(status.metadata.publicSnapshot, true);
   assert.equal(status.metadata.character.stats.attack, 9);
+  assert.equal(status.metadata.equipment.armor.defenseBonus, 4);
+  assert.equal(status.metadata.equipment.armor.maxHpBonus, 12);
   assert.equal(status.metadata.activeBuffs[0].remainingFights, 1);
   assert.equal(shop.eventType, 'ShopViewed');
   assert.equal(shop.metadata.publicSnapshot, true);
-  assert.equal(shop.metadata.offers[0].sku, 'potion-1');
+  assert.equal(shop.metadata.offers[0].sku, 'armor-1');
+  assert.equal(shop.metadata.offers[0].item.defenseBonus, 4);
+  assert.equal(shop.metadata.offers[0].item.maxHpBonus, 12);
   assert.equal(Object.prototype.hasOwnProperty.call(shop.metadata.offers[0], 'itemTemplate'), false);
-  assert.equal(service.recent().length, 2);
+  assert.equal(inventory.metadata.inventory[0].defenseBonus, 4);
+  assert.equal(inventory.metadata.inventory[0].maxHpBonus, 12);
+  assert.equal(service.recent().length, 3);
 });
 
 test('Hunt receipt projects canonical rewards, loot, level-up, and optional quest results in one entry', () => {
@@ -87,15 +103,17 @@ test('Hunt receipt projects canonical rewards, loot, level-up, and optional ques
     enemyVisualAssetId: 'mob.ridge-wolf.v1',
     victory: true,
     damageTaken: 8,
-    remainingHp: 32,
-    maxHp: 40,
+    remainingHp: 35,
+    maxHp: 43,
     gold: 12,
     experienceGained: 20,
     leveledUp: true,
     level: 2,
+    maxHealthIncrease: 3,
     itemName: 'Wolfguard Helm',
+    itemSlot: 'helmet',
     itemRarity: 'rare',
-    itemAttackBonus: 3,
+    itemStats: { attackBonus: 0, defenseBonus: 3, maxHpBonus: 8, speedBonus: 0, critChanceBonus: 0 },
     healthPotionsFound: 1,
     questProgress: [
       { questId: 'wolf-watch', questName: 'Wolf Watch', current: 3, required: 8, completed: false },
@@ -103,7 +121,7 @@ test('Hunt receipt projects canonical rewards, loot, level-up, and optional ques
     ],
   });
 
-  assert.equal(receipt.body, 'Victory — Local Weaver A defeated Thread Wolf. −8 HP · 32/40 HP. +12 Gold · +20 XP. Level up — 2. Loot — Rare Wolfguard Helm · +3 Attack. +1 Health Potion. Quest — Wolf Watch 3/8. Quest complete — First Hunt.');
+  assert.equal(receipt.body, 'Victory — Local Weaver A defeated Thread Wolf. −8 HP · 35/43 HP. +12 Gold · +20 XP. Level up — 2. Max HP +3. Loot — Rare Wolfguard Helm · +3 Defense · +8 Max HP. +1 Health Potion. Quest — Wolf Watch 3/8. Quest complete — First Hunt.');
   assert.doesNotMatch(receipt.body, /Dust|Relic|Temper/);
   assert.equal(receipt.metadata.gold, 12);
   assert.equal(receipt.metadata.enemyVisualAssetId, 'mob.ridge-wolf.v1');
@@ -152,6 +170,88 @@ test('NPC interaction becomes one concise shared stream receipt', () => {
   assert.equal(receipt.body, 'Local Weaver A spoke with Shopkeeper in Area 1 Town. “Need supplies? I keep the essentials close and the prices clear.”');
   assert.equal(receipt.metadata.npcId, 'area-1-shopkeeper');
   assert.equal(service.recent().length, 1);
+});
+
+test('Quest claim receipt includes its rewards and level-derived Max HP growth', () => {
+  const { service, a } = setup();
+  const receipt = service.recordDomainEvent({
+    type: 'QuestClaimed',
+    playerId: a.id,
+    questId: 'orchard-scouting',
+    questTitle: 'Orchard Scouting',
+    goldAwarded: 25,
+    experienceAwarded: 40,
+    levelsGained: 2,
+    progression: { level: 4 },
+    maxHealthIncrease: 6,
+    maxHealth: 49,
+    currentHealth: 37,
+  });
+
+  assert.equal(receipt.body, 'Local Weaver A completed Quest: Orchard Scouting · +25 Gold · +40 XP · LEVEL UP → 4 · Max HP +6.');
+  assert.equal(receipt.metadata.maxHealthIncrease, 6);
+  assert.equal(service.recent().length, 1);
+});
+
+test('equipment receipt names the stats provided by the equipped slot', () => {
+  const { service, gameRepository, a } = setup();
+  gameRepository.getItem = (itemId) => itemId === 'armor-1' ? {
+    id: 'armor-1',
+    name: 'Steel Armor',
+    slot: 'armor',
+    attackBonus: 0,
+    defenseBonus: 4,
+    maxHpBonus: 12,
+    speedBonus: 0,
+    critChanceBonus: 0,
+  } : null;
+
+  const receipt = service.recordDomainEvent({ type: 'ItemEquipped', playerId: a.id, itemId: 'armor-1', slot: 'armor' });
+
+  assert.equal(receipt.body, 'Local Weaver A equipped Steel Armor · +4 Defense · +12 Max HP.');
+});
+
+test('Adventure loot receipt reports Armor bonuses instead of displaying Attack-only loot', () => {
+  const { service, a } = setup();
+  const receipt = service.recordDomainEvent({
+    type: 'AdventureResolved',
+    playerId: a.id,
+    areaName: 'Emberglass Orchard',
+    enemyName: 'Emberwing Hornet',
+    victory: true,
+    damageTaken: 6,
+    remainingHp: 37,
+    maxHp: 40,
+    gold: 24,
+    experienceGained: 55,
+    itemName: 'Sturdy Steel Armor',
+    itemSlot: 'armor',
+    itemRarity: 'uncommon',
+    itemStats: { attackBonus: 0, defenseBonus: 4, maxHpBonus: 12, speedBonus: 0, critChanceBonus: 0 },
+  });
+
+  assert.equal(receipt.body, 'Local Weaver A Adventured in Emberglass Orchard and defeated Emberwing Hornet. −6 HP · 37/40 HP · +55 XP · +24 Gold · Found Sturdy Steel Armor (Uncommon) · +4 Defense · +12 Max HP.');
+});
+
+test('Dungeon intermission potion receipt makes the shared heal token state visible without continuing', () => {
+  const { service, a } = setup();
+  const receipt = service.recordDomainEvent({
+    type: 'DungeonPotionUsed',
+    playerId: a.id,
+    runId: 'run-a',
+    dungeonId: 'brightbell-trial',
+    potionName: 'Minor Health Potion',
+    healed: 8,
+    actorHp: 28,
+    actorMaxHp: 43,
+    healthPotions: 0,
+    intermissionWindowId: 'run-a:intermission:1',
+    intermissionPotionClaimedByPlayerId: a.id,
+  });
+
+  assert.equal(receipt.body, 'INTERMISSION HEAL · Local Weaver A used Minor Health Potion · +8 HP · 28/43 HP · Intermission heal used.');
+  assert.equal(receipt.metadata.intermissionPotionClaimedByPlayerId, a.id);
+  assert.doesNotMatch(receipt.body, /next room|begins now/i);
 });
 
 test('one explicit combat command becomes one useful system result message', () => {

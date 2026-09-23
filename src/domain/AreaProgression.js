@@ -1,3 +1,5 @@
+import { areaContentForNumber } from '../content/AreaContentCatalog.js';
+
 export const STARTING_AREA_NUMBER = 1;
 
 function requireAreaNumber(value, label) {
@@ -14,20 +16,23 @@ export function areaIdForNumber(areaNumber) {
 
 export function projectArea(areaNumber) {
   const number = requireAreaNumber(areaNumber, 'Area number');
+  let content = null;
+  try { content = areaContentForNumber(number); } catch (error) {
+    if (error.code !== 'area_content_unavailable') throw error;
+  }
   return Object.freeze({
     id: areaIdForNumber(number),
     number,
-    name: `Area ${number}`,
+    name: content?.name || `Area ${number}`,
   });
 }
 
 /**
  * Player-owned world position for the ordered Area progression foundation.
  *
- * M5-01 intentionally models only durable position/unlock state. Area content,
- * travel presentation, Adventure use cases, and progression unlock commands are
- * later ordered milestones. Because the world unlock path is contiguous, the
- * highest unlocked Area is sufficient to prove which prior Areas are available.
+ * Durable position and unlock state stays separate from authored Area content.
+ * The contiguous unlock path means highest unlocked Area is sufficient to
+ * prove which earlier Areas a player can visit.
  */
 export class AreaProgression {
   constructor({ currentAreaNumber = STARTING_AREA_NUMBER, highestUnlockedAreaNumber = STARTING_AREA_NUMBER } = {}) {

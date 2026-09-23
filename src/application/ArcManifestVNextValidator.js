@@ -103,6 +103,9 @@ export class ArcManifestVNextValidator {
       if (!stockIds.has(shop.stockId)) addError(`${path}.stockId`, 'unknown_shop_stock_reference', `Unknown shopStocks ID "${shop.stockId}".`);
     });
 
+    const knownItemIds = new Set((manifest.itemPools || []).flatMap((pool) => Array.isArray(pool?.items) ? pool.items.map((item) => item?.id) : []).filter(text));
+    const enemyIds = new Set([...(manifest.enemies || []), ...(manifest.bosses || [])].map((entry) => entry?.id).filter(text));
+    const dungeonIds = new Set((manifest.dungeons || []).map((entry) => entry?.id).filter(text));
     manifest.quests.forEach((quest, index) => {
       const path = `quests[${index}]`;
       if (!object(quest)) return addError(path, 'invalid_quest', 'Quest must be an object.');
@@ -113,15 +116,18 @@ export class ArcManifestVNextValidator {
       else quest.objectives.forEach((objective, objectiveIndex) => {
         const objectivePath = `${path}.objectives[${objectiveIndex}]`;
         if (!object(objective)) return addError(objectivePath, 'invalid_quest_objective', 'Quest objective must be an object.');
-        if (!QUEST_TYPES.has(objective.type)) addError(`${objectivePath}.type`, 'unsupported_quest_objective', `Unsupported Quest objective type "${objective.type}".`);
+        const type = String(objective.type || '').trim().toLowerCase();
+        if (!QUEST_TYPES.has(type)) addError(`${objectivePath}.type`, 'unsupported_quest_objective', `Unsupported Quest objective type "${objective.type}".`);
         if (!positiveInteger(objective.count ?? 1)) addError(`${objectivePath}.count`, 'invalid_quest_objective_count', 'Quest objective count must be a positive integer.');
-        if (['visit', 'speak'].includes(objective.type) && !text(objective.targetId)) addError(`${objectivePath}.targetId`, 'quest_target_required', `${objective.type} objectives require targetId.`);
-        if (objective.type === 'visit' && text(objective.targetId) && !areaIds.has(objective.targetId) && !townIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_visit_target', `Unknown Area/Town target "${objective.targetId}".`);
-        if (objective.type === 'speak' && text(objective.targetId) && !npcIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_npc_reference', `Unknown NPC target "${objective.targetId}".`);
+        if (['kill', 'collect', 'boss', 'visit', 'speak'].includes(type) && !text(objective.targetId)) addError(`${objectivePath}.targetId`, 'quest_target_required', `${type} objectives require targetId.`);
+        if (type === 'kill' && text(objective.targetId) && !enemyIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_kill_target', `Unknown enemy target "${objective.targetId}".`);
+        if (type === 'collect' && text(objective.targetId) && !knownItemIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_collect_target', `Unknown item template target "${objective.targetId}".`);
+        if (type === 'boss' && text(objective.targetId) && !dungeonIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_boss_target', `Unknown Dungeon target "${objective.targetId}".`);
+        if (type === 'visit' && text(objective.targetId) && !areaIds.has(objective.targetId) && !townIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_visit_target', `Unknown Area/Town target "${objective.targetId}".`);
+        if (type === 'speak' && text(objective.targetId) && !npcIds.has(objective.targetId)) addError(`${objectivePath}.targetId`, 'unknown_npc_reference', `Unknown NPC target "${objective.targetId}".`);
       });
     });
 
-    const knownItemIds = new Set((manifest.itemPools || []).flatMap((pool) => Array.isArray(pool?.items) ? pool.items.map((item) => item?.id) : []).filter(text));
     const validateRecipeItems = (recipe, path) => {
       for (const [ingredientIndex, ingredient] of recipe.ingredients.entries()) {
         if (!knownItemIds.has(ingredient.itemDefinitionId)) addError(`${path}.ingredients[${ingredientIndex}].itemDefinitionId`, 'unknown_recipe_item', `Unknown itemDefinitionId "${ingredient.itemDefinitionId}".`);
@@ -153,7 +159,6 @@ export class ArcManifestVNextValidator {
       }
     });
 
-    const dungeonIds = new Set((manifest.dungeons || []).map((entry) => entry?.id).filter(text));
     manifest.progressionChallenges.forEach((challenge, index) => {
       const path = `progressionChallenges[${index}]`;
       if (!object(challenge)) return addError(path, 'invalid_progression_challenge', 'Progression challenge must be an object.');

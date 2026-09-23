@@ -18,10 +18,11 @@ function rivalLoadout() {
       effects: ['none'],
       requiredLevel: 15,
       areaNumber: 5,
-      visualAssetId: 'equipment.weapon.basic-sword',
+      visualAssetId: 'item.threadsteel-longsword.v1',
     },
     itemId: 'guild-rook-veteran-blade',
     name: 'Veteran Blade',
+    weaponFamily: 'sword',
   });
   const armor = materializeValidatedSimulatedAdventurerEquipment({
     template: {
@@ -34,7 +35,7 @@ function rivalLoadout() {
       effects: ['none'],
       requiredLevel: 12,
       areaNumber: 4,
-      visualAssetId: null,
+      visualAssetId: 'item.ironroot-cuirass.v1',
     },
     itemId: 'guild-rook-veteran-armor',
     name: 'Veteran Armor',

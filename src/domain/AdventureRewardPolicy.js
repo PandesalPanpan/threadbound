@@ -28,8 +28,13 @@ export function adventureRewardForArea(areaNumber) {
   return reward;
 }
 
-export function resolveAdventureRewards({ areaNumber, victory, lootRoll = 1, storyRoll = 1 } = {}) {
-  const reward = adventureRewardForArea(areaNumber);
+export function resolveAdventureRewards({ areaNumber, rewardProfile = null, victory, lootRoll = 1, storyRoll = 1 } = {}) {
+  const reward = rewardProfile || adventureRewardForArea(areaNumber);
+  if (!reward || !Number.isFinite(Number(reward.gold)) || !Number.isFinite(Number(reward.experience))) {
+    const error = new Error(`No ordinary Adventure reward is configured for Area ${Number(areaNumber)}.`);
+    error.code = 'adventure_reward_unavailable';
+    throw error;
+  }
   if (!victory) {
     return Object.freeze({ gold: 0, experience: 0, drop: false, storyEvent: null, dropChance: 0 });
   }
@@ -49,13 +54,9 @@ export function resolveAdventureRewards({ areaNumber, victory, lootRoll = 1, sto
 }
 
 export function capAdventureLoot(item) {
-  if (!item || typeof item !== 'object') return item;
-  const tier = Number(item.rarityTier || 1);
-  if (tier <= 3) return item;
-  return Object.freeze({
-    ...item,
-    rarity: 'rare',
-    rarityTier: 3,
-    attackBonus: Math.min(4, Math.max(3, Number(item.attackBonus || 3))),
-  });
+  // Compatibility export retained for callers that used to cap ordinary loot.
+  // Generated equipment now carries stats across all five slots, so rewriting its
+  // rarity without regenerating every stat and nested budget would mislabel its
+  // power. Keep the authored rarity and complete stat identity together.
+  return item;
 }

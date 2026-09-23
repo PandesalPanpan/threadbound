@@ -1,4 +1,5 @@
 import { selectActorBySpeed } from './AutomaticBattleInitiativePolicy.js';
+import { AUTOMATIC_BATTLE_RULES, automaticBattleSkill } from './AutomaticBattleSkillCatalog.js';
 import {
   mergeAutomaticBattleEffect,
   normalizeAutomaticBattleEffects,
@@ -53,11 +54,11 @@ function normalizeCombatant(combatant, index, team) {
   const hp = requireNonNegativeInteger(combatant.hp ?? maxHp, `${id} hp`);
   if (hp > maxHp) throw new Error(`${id} hp cannot exceed maxHp.`);
 
-  const maxMana = requireNonNegativeInteger(combatant.maxMana ?? 100, `${id} maxMana`);
+  const maxMana = requireNonNegativeInteger(combatant.maxMana ?? AUTOMATIC_BATTLE_RULES.maxMana, `${id} maxMana`);
   const mana = normalizeMana(combatant.mana ?? 0, `${id} mana`, maxMana);
-  const skills = Array.isArray(combatant.skills)
-    ? combatant.skills.map((skill) => (skill && typeof skill === 'object' ? { ...skill } : skill))
-    : [];
+  const skills = Array.isArray(combatant.skills) ? combatant.skills.map(normalizeSkill).filter(Boolean) : [];
+  const manaGain = requireNonNegativeInteger(combatant.manaGain ?? AUTOMATIC_BATTLE_RULES.manaPerBasicAttack, `${id} manaGain`);
+  const manaGainOnDamage = requireNonNegativeInteger(combatant.manaGainOnDamage ?? AUTOMATIC_BATTLE_RULES.manaOnDamage, `${id} manaGainOnDamage`);
 
   return {
     ...combatant,
@@ -67,6 +68,8 @@ function normalizeCombatant(combatant, index, team) {
     maxHp,
     mana,
     maxMana,
+    manaGain,
+    manaGainOnDamage,
     skills,
     effects: [...normalizeAutomaticBattleEffects(combatant.effects || [])],
     resistances: { ...normalizeAutomaticBattleResistances(combatant.resistances || {}) },
@@ -268,14 +271,59 @@ function applyTargetEffects(target, targetEffects = []) {
   return applications;
 }
 
+function applyEffectPayload(action, actor, target, combatants) {
+  const applications = [];
+  const apply = (recipient, effects) => {
+    if (!recipient || recipient.hp <= 0) return;
+    applications.push(...applyTargetEffects(recipient, effects).map((entry) => ({
+      ...entry,
+      targetId: recipient.id,
+    })));
+  };
+
+  apply(target, action.targetEffects ?? []);
+  if (action.targetEffectsByTarget != null) {
+    if (!Array.isArray(action.targetEffectsByTarget)) throw new Error('Automatic battle targetEffectsByTarget must be an array.');
+    for (const entry of action.targetEffectsByTarget) {
+      if (!entry || typeof entry !== 'object') continue;
+      const recipient = combatants.find((combatant) => combatant.id === String(entry.targetId || '').trim()
+        && combatant.hp > 0
+        && combatant.id !== actor.id
+        && combatant.team !== actor.team);
+      apply(recipient, entry.effects || []);
+    }
+  }
+  apply(actor, action.selfEffects ?? []);
+  if (action.allyEffects != null) {
+    if (!Array.isArray(action.allyEffects)) throw new Error('Automatic battle allyEffects must be an array.');
+    for (const entry of action.allyEffects) {
+      if (!entry || typeof entry !== 'object') continue;
+      const recipient = combatants.find((combatant) => combatant.id === String(entry.targetId || '').trim()
+        && combatant.hp > 0
+        && combatant.id !== actor.id
+        && combatant.team === actor.team);
+      apply(recipient, entry.effects || []);
+    }
+  }
+  return applications;
+}
+
+function normalizeLifestealPercent(value) {
+  const percent = Number(value ?? 0);
+  if (!Number.isFinite(percent) || percent < 0 || percent > 1) {
+    throw new Error('Automatic battle lifestealPercent must be between 0 and 1.');
+  }
+  return percent;
+}
+
 function normalizeBattleInput({ combatants, players, enemies } = {}) {
   const hasTeams = Array.isArray(players) || Array.isArray(enemies);
   if (hasTeams) {
     if (!Array.isArray(players) || !Array.isArray(enemies)) {
       throw new Error('Automatic battle requires both players and enemies arrays.');
     }
-    if (players.length < 1 || players.length > 3 || enemies.length < 1 || enemies.length > 3) {
-      throw new Error('Automatic battle supports 1 to 3 players and 1 to 3 enemies.');
+    if (players.length < 1 || players.length > 4 || enemies.length < 1 || enemies.length > 3) {
+      throw new Error('Automatic battle supports 1 to 4 players and 1 to 3 enemies.');
     }
     return {
       legacyMode: false,
@@ -295,8 +343,8 @@ function normalizeBattleInput({ combatants, players, enemies } = {}) {
     const normalized = combatants.map((combatant, index) => normalizeCombatant(combatant, index, normalizeTeam(combatant?.team || combatant?.side || combatant?.faction)));
     const playerCount = normalized.filter((combatant) => combatant.team === PLAYER_TEAM).length;
     const enemyCount = normalized.filter((combatant) => combatant.team === ENEMY_TEAM).length;
-    if (playerCount < 1 || playerCount > 3 || enemyCount < 1 || enemyCount > 3) {
-      throw new Error('Automatic battle supports 1 to 3 players and 1 to 3 enemies.');
+    if (playerCount < 1 || playerCount > 4 || enemyCount < 1 || enemyCount > 3) {
+      throw new Error('Automatic battle supports 1 to 4 players and 1 to 3 enemies.');
     }
     return { legacyMode: false, combatants: normalized };
   }
@@ -315,10 +363,10 @@ function normalizeBattleInput({ combatants, players, enemies } = {}) {
 }
 
 function normalizeSkill(skill, index) {
-  if (!skill || typeof skill !== 'object') return null;
-  const id = String(skill.id || skill.skillId || skill.name || `skill-${index + 1}`).trim();
-  const cost = requireNonNegativeInteger(skill.manaCost ?? skill.cost ?? 100, `${id} manaCost`);
-  return { ...skill, id, manaCost: cost };
+  if (skill == null) return null;
+  const id = String((typeof skill === 'string' ? skill : skill.id || skill.skillId) || '').trim();
+  if (!id) throw new Error(`Automatic battle skill ${index + 1} requires an allowlisted id.`);
+  return automaticBattleSkill(id);
 }
 
 function readySkill(actor) {
@@ -524,8 +572,13 @@ export class AutomaticBattleSimulator {
           cause: 'effect',
         });
         const effectOutcome = battleOutcome(state, input.legacyMode);
-        appendEvent('BattleCompleted', { ...effectOutcome, turnNumber }, { snapshot: true });
-        return finalizeResult({ combatants: state, turns, events, outcome: effectOutcome, context, legacyMode: input.legacyMode });
+        if (effectOutcome) {
+          appendEvent('BattleCompleted', { ...effectOutcome, turnNumber }, { snapshot: true });
+          return finalizeResult({ combatants: state, turns, events, outcome: effectOutcome, context, legacyMode: input.legacyMode });
+        }
+        // A periodic effect can defeat one actor without ending a multi-unit
+        // battle. Record the skipped action, then continue the shared timeline.
+        continue;
       }
 
       let targetId = this.selectTarget({
@@ -599,8 +652,21 @@ export class AutomaticBattleSimulator {
 
       const targetHpBefore = target.hp;
       const actorHpAfterEffects = actor.hp;
+      const requestedSelfDamage = positiveDelta(action.selfDamage ?? 0, `Turn ${turnNumber} selfDamage`);
+      const selfDamage = Math.min(requestedSelfDamage, Math.max(0, actor.hp - 1));
+      actor.hp -= selfDamage;
+      if (selfDamage > 0) {
+        appendEvent('SelfDamageApplied', {
+          turnNumber,
+          combatantId: actor.id,
+          damage: selfDamage,
+          hpBefore: actorHpAfterEffects,
+          hpAfter: actor.hp,
+          cause: skill?.id || 'action',
+        });
+      }
       const actionManaCost = positiveDelta(action.manaCost ?? (skill ? skill.manaCost : 0), `Turn ${turnNumber} manaCost`);
-      const defaultManaGain = skill ? 0 : positiveDelta(actor.manaGain ?? actor.manaPerAttack ?? 12, `${actor.id} manaGain`);
+      const defaultManaGain = skill ? 0 : positiveDelta(actor.manaGain ?? actor.manaPerAttack ?? AUTOMATIC_BATTLE_RULES.manaPerBasicAttack, `${actor.id} manaGain`);
       const actionManaGain = positiveDelta(action.manaGain ?? defaultManaGain, `Turn ${turnNumber} manaGain`);
       if (actionManaCost > actor.mana) throw new Error(`Turn ${turnNumber} cannot spend more Mana than the actor has.`);
       actor.mana = Math.min(actor.maxMana, actor.mana - actionManaCost + actionManaGain);
@@ -613,11 +679,12 @@ export class AutomaticBattleSimulator {
           && (!actor.team || !combatant.team || combatant.team !== actor.team));
         if (!damagedTarget || entry.damage <= 0) continue;
         const hpBefore = damagedTarget.hp;
-        damagedTarget.hp = Math.max(0, damagedTarget.hp - entry.damage);
+        const actualDamage = Math.min(hpBefore, entry.damage);
+        damagedTarget.hp = Math.max(0, damagedTarget.hp - actualDamage);
         const damageEvent = {
           actorId: actor.id,
           targetId: damagedTarget.id,
-          damage: entry.damage,
+          damage: actualDamage,
           targetHpBefore: hpBefore,
           targetHpAfter: damagedTarget.hp,
           critical: Boolean(action.metadata?.critical),
@@ -633,8 +700,35 @@ export class AutomaticBattleSimulator {
         }
       }
 
+      const damageManaEvents = [];
+      for (const damageEvent of damageEvents) {
+        const recipient = state.find((combatant) => combatant.id === damageEvent.targetId && combatant.hp > 0);
+        if (!recipient) continue;
+        const amount = positiveDelta(recipient.manaGainOnDamage, `${recipient.id} manaGainOnDamage`);
+        if (amount === 0) continue;
+        const manaBefore = recipient.mana;
+        recipient.mana = Math.min(recipient.maxMana, recipient.mana + amount);
+        const actualGain = recipient.mana - manaBefore;
+        if (actualGain <= 0) continue;
+        const manaEvent = {
+          combatantId: recipient.id,
+          sourceActorId: damageEvent.actorId,
+          manaBefore,
+          manaAfter: recipient.mana,
+          delta: actualGain,
+          reason: 'damage-taken',
+        };
+        damageManaEvents.push(manaEvent);
+        appendEvent('ManaChanged', { turnNumber, ...manaEvent });
+      }
+
       const healingEvents = [];
-      for (const entry of healingEntries(action, actor)) {
+      const lifestealPercent = normalizeLifestealPercent(action.lifestealPercent);
+      const lifestealHealing = Math.floor(damageEvents.reduce((sum, entry) => sum + entry.damage, 0) * lifestealPercent);
+      const healingAction = lifestealHealing > 0
+        ? { ...action, selfHealing: positiveDelta(action.selfHealing ?? 0, `Turn ${turnNumber} selfHealing`) + lifestealHealing }
+        : action;
+      for (const entry of healingEntries(healingAction, actor)) {
         const healed = state.find((combatant) => combatant.id === entry.targetId
           && combatant.hp > 0
           && combatant.team === actor.team);
@@ -654,7 +748,7 @@ export class AutomaticBattleSimulator {
         appendEvent('HealingApplied', { turnNumber, ...healingEvent });
       }
 
-      const manaEvents = [{
+      const manaEvents = [...damageManaEvents, {
         combatantId: actor.id,
         manaBefore: actorManaBefore,
         manaAfter: actor.mana,
@@ -681,7 +775,7 @@ export class AutomaticBattleSimulator {
         appendEvent('ManaChanged', { turnNumber, ...manaEvent });
       }
 
-      const effectApplications = applyTargetEffects(target, action.targetEffects ?? []);
+      const effectApplications = applyEffectPayload(action, actor, target, state);
       const turn = {
         turnNumber,
         actorId: actor.id,
@@ -692,6 +786,8 @@ export class AutomaticBattleSimulator {
         actorHpBefore,
         actorHpAfterEffects,
         actorHpAfter: actor.hp,
+        selfDamage,
+        lifestealHealing,
         actorManaBefore,
         actorManaAfter: actor.mana,
         targetHpBefore,
@@ -701,6 +797,7 @@ export class AutomaticBattleSimulator {
           kind: actionType === 'skill' ? 'skill' : action.metadata?.kind || 'basic-attack',
           actionType,
           skillId: skill?.id || action.skillId || null,
+          skillName: skill ? String(skill.name || skill.label || skill.id) : action.skillName || null,
           manaCost: actionManaCost,
           manaGain: actionManaGain,
           manaBefore: actorManaBefore,
@@ -710,6 +807,8 @@ export class AutomaticBattleSimulator {
           damageEvents: damageEvents.map((event) => ({ ...event })),
           healingEvents: healingEvents.map((event) => ({ ...event })),
           manaEvents: manaEvents.map((event) => ({ ...event })),
+          selfDamage,
+          lifestealHealing,
         },
       };
       turns.push(turn);

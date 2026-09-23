@@ -6,6 +6,8 @@ import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcMani
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
 import { ALLOWED_ENEMY_ABILITIES, ALLOWED_QUEST_OBJECTIVES, ArcManifestValidator } from '../src/application/ArcManifestValidator.js';
 import { ArcAchievementProjector } from '../src/application/ArcAchievementProjector.js';
+import { EventBus } from '../src/application/EventBus.js';
+import { GameService } from '../src/application/GameService.js';
 import { DungeonRun } from '../src/domain/DungeonRun.js';
 
 function validManifest() {
@@ -218,6 +220,40 @@ test('publishing projects lore/history and exposes runtime dungeon plus manifest
   const history = codexRepository.listWorldHistory();
   assert.ok(history.some((entry) => entry.eventType === 'arc_published'));
   assert.ok(history.some((entry) => entry.eventType === 'arc_started' && entry.title === 'Test Ashen Thread begins'));
+  gameRepository.close();
+});
+
+test('GameService completion grants the published Arc dungeon reward instead of generated Area gear', () => {
+  const { gameRepository, service: arcManifestService } = setup();
+  arcManifestService.publish(arcManifestService.saveDraft(validManifest()).id);
+  const game = new GameService({
+    repository: gameRepository,
+    eventBus: new EventBus(),
+    arcManifestService,
+    idFactory: () => 'arc-reward-integration-run',
+  });
+  const player = game.ensurePlayer({ id: 'arc-reward-integration-player', name: 'Arc Reward Tester' });
+  gameRepository.db.prepare('UPDATE players SET base_attack = 100, max_health = 1000, current_health = 1000 WHERE id = ?').run(player.id);
+  const run = game.startDungeon(player.id, 'test-cinder-vault');
+
+  for (let turn = 0; turn < 10 && gameRepository.getRun(run.id).phase !== 'complete'; turn += 1) {
+    const state = gameRepository.getRun(run.id);
+    if (state.phase === 'upgrade') game.chooseUpgrade(player.id, run.id, state.runUpgradeOfferIds[0]);
+    else if (state.phase === 'event') game.chooseUpgrade(player.id, run.id, state.runEvent.choices[0].id);
+    else if (state.enemyIntent?.reaction === 'interrupt') game.interrupt(player.id, run.id);
+    else if (state.enemyIntent) game.guard(player.id, run.id);
+    else game.attack(player.id, run.id);
+  }
+
+  assert.equal(gameRepository.getRun(run.id).phase, 'complete');
+  const [reward] = gameRepository.listItems(player.id);
+  assert.equal(gameRepository.listItems(player.id).length, 1);
+  assert.match(reward.name, /Test Ember Needle of the Loom/);
+  assert.equal(reward.definitionId, 'test-ember-needle');
+  assert.equal(reward.slot, 'weapon');
+  assert.equal(reward.attackBonus, 3);
+  assert.equal(reward.effectCode, 'boss_bane');
+  assert.equal(reward.visualAssetId, 'item.fire-dagger.v1');
   gameRepository.close();
 });
 

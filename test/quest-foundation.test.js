@@ -25,13 +25,15 @@ const AREA_TWO_QUEST = new Quest({
 test('Quest definitions are immutable world references with constrained objective data', () => {
   assert.deepEqual(QUEST.toJSON(), {
     id: 'first-errand',
+    templateId: 'first-errand',
     title: 'First Errand',
     description: 'A neutral foundation Quest used to prove lifecycle boundaries.',
-    area: { id: 'area-1', number: 1, name: 'Area 1' },
+    area: { id: 'area-1', number: 1, name: 'Bellbloom Meadows' },
     areaNumber: 1,
     townId: 'area-1-town',
     npcId: 'area-1-shopkeeper',
     objectives: [],
+    reward: { gold: 0, experience: 0 },
   });
   assert.equal(Object.isFrozen(QUEST), true);
   assert.deepEqual(QUEST_PROGRESS_STATUSES, ['active', 'completed', 'claimed']);
@@ -106,8 +108,42 @@ test('QuestService derives available state from authoritative Area and persists 
     assert.equal(events.length, 1);
 
     areaRepository.save(player.id, new AreaProgression().withHighestUnlockedArea(2).withCurrentArea(2));
-    assert.deepEqual(service.browse(player.id).quests.map((quest) => quest.id), ['second-errand']);
-    assert.throws(() => service.accept(player.id, QUEST.id), (error) => error.code === 'quest_unavailable');
+    assert.deepEqual(service.browse(player.id).quests.map((quest) => [quest.id, quest.state]), [
+      ['first-errand', 'active'],
+      ['second-errand', 'available'],
+    ]);
+    assert.throws(() => service.accept(player.id, QUEST.id), (error) => error.code === 'quest_area_mismatch');
+  } finally {
+    service.dispose();
+    repository.close();
+  }
+});
+
+test('QuestService prioritizes published Arc-authored offers and snapshots them on acceptance', () => {
+  const { repository, player, areaRepository, questRepository } = fixture();
+  const authored = new Quest({
+    id: 'arc-road-report',
+    title: 'Arc Road Report',
+    description: 'A published Arc task for this Area.',
+    areaNumber: 1,
+    townId: 'area-1-town',
+    npcId: 'area-1-shopkeeper',
+    objectives: [{ id: 'complete-a-hunt', type: 'hunt', count: 1 }],
+    reward: { gold: 16, experience: 40 },
+  });
+  const service = new QuestService({
+    repository,
+    areaRepository,
+    questRepository,
+    questCatalog: [QUEST],
+    arcManifestService: { runtimeQuests: () => [authored] },
+  });
+  try {
+    const board = service.browse(player.id);
+    assert.deepEqual(board.quests.map((quest) => quest.id), ['arc-road-report', 'first-errand']);
+    const accepted = service.accept(player.id, authored.id);
+    assert.equal(accepted.quest.title, authored.title);
+    assert.deepEqual(accepted.progress.definition, authored.toJSON());
   } finally {
     service.dispose();
     repository.close();

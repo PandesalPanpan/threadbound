@@ -8,6 +8,7 @@ import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository
 import { SQLiteCodexRepository } from '../src/infrastructure/SQLiteCodexRepository.js';
 import { SQLiteArcManifestRepository } from '../src/infrastructure/SQLiteArcManifestRepository.js';
 import { ArcManifestService } from '../src/application/ArcManifestService.js';
+import { AUTOMATIC_BATTLE_EFFECT_TYPES } from '../src/domain/AutomaticBattleEffectPolicy.js';
 
 function equipment(id, overrides = {}) {
   return {
@@ -29,14 +30,14 @@ function manifestV2() {
   return {
     manifestVersion: 2,
     arc: { id: 'vnext-test-arc', title: 'VNext Test Arc', premise: 'A complete generated-world contract fixture.', progression: { metric: 'dungeon_clears', target: 1 } },
-    lore: [],
+    lore: [{ id: 'vnext-road-note', title: 'A Bell Along the Road', summary: 'Roadside bells carry a warning between towns.', body: 'The bells answer one another across the petals.', tags: ['vnext-road'] }],
     enemies: [{ id: 'vnext-enemy', name: 'VNext Enemy', baseHp: 8, retaliation: 1, abilities: ['basic_retaliation'], resistances: { fire: 'resistant', psychic: 'immune' } }],
     bosses: [{ id: 'vnext-boss', name: 'VNext Boss', baseHp: 16, retaliation: 2, abilities: ['basic_retaliation'], resistances: { poison: 'high-resistant' } }],
     dungeons: [{ id: 'vnext-dungeon', name: 'VNext Dungeon', recommendedPlayers: 2, encounters: ['vnext-enemy'], bossId: 'vnext-boss', rewardPoolId: 'vnext-pool' }],
     itemPools: [{ id: 'vnext-pool', items: [equipment('vnext-blade'), equipment('vnext-helm', { slot: 'helmet', attackBonus: 0, stats: { attackBonus: 0, defenseBonus: 1, maxHpBonus: 0, speedBonus: 0, critChanceBonus: 0 } })] }],
     achievements: [],
     historicalConsequences: [],
-    areas: [{ id: 'vnext-area-1', number: 1, name: 'Sunpetal Road', recommendedLevel: { min: 1, max: 8 } }],
+    areas: [{ id: 'vnext-area-1', number: 1, name: 'Sunpetal Road', recommendedLevel: { min: 1, max: 8 }, loreTags: ['vnext-road'] }],
     towns: [{ id: 'vnext-town-1', areaId: 'vnext-area-1', name: 'Petalrest' }],
     npcs: [{ id: 'vnext-smith', townId: 'vnext-town-1', name: 'Mina', role: 'blacksmith', visualAssetId: 'character.road-sellsword.v1' }],
     quests: [{ id: 'vnext-quest-1', areaId: 'vnext-area-1', title: 'Meet the Smith', objectives: [{ type: 'speak', targetId: 'vnext-smith', count: 1 }] }],
@@ -82,6 +83,31 @@ test('Arc Manifest vNext fails closed on broken world references, invalid effect
   assert.ok(result.errors.some((error) => error.code === 'unknown_recipe_item'));
 });
 
+test('Arc Manifest vNext rejects Quest kill, collect, and boss objectives that cannot match game events', () => {
+  const manifest = manifestV2();
+  manifest.quests[0].objectives = [
+    { type: 'kill', targetId: 'missing-enemy', count: 1 },
+    { type: 'collect', targetId: 'missing-item', count: 1 },
+    { type: 'boss', targetId: 'missing-dungeon', count: 1 },
+  ];
+  const result = new ArcManifestVNextValidator().validate(manifest);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.code === 'unknown_kill_target'));
+  assert.ok(result.errors.some((error) => error.code === 'unknown_collect_target'));
+  assert.ok(result.errors.some((error) => error.code === 'unknown_boss_target'));
+});
+
+test('Arc Manifest vNext accepts Quest kill, collect, and boss targets used by authoritative game events', () => {
+  const manifest = manifestV2();
+  manifest.quests[0].objectives = [
+    { type: 'kill', targetId: 'vnext-enemy', count: 1 },
+    { type: 'collect', targetId: 'vnext-blade', count: 1 },
+    { type: 'boss', targetId: 'vnext-dungeon', count: 1 },
+  ];
+  const result = new ArcManifestVNextValidator().validate(manifest);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
 test('Arc Manifest vNext keeps NPC artwork optional but accepts only character visual assets', () => {
   const validator = new ArcManifestVNextValidator();
   const withoutArtwork = manifestV2();
@@ -103,7 +129,7 @@ test('legacy manifests remain supported while the public vNext contract advertis
   const contract = publicArcManifestVNextContract();
   assert.equal(contract.manifestVersion, ARC_MANIFEST_VNEXT_VERSION);
   assert.deepEqual(contract.supportedVersions, [1, 2]);
-  assert.deepEqual(contract.effectTypes, ['fire', 'poison', 'ice', 'psychic']);
+  assert.deepEqual(contract.effectTypes, [...AUTOMATIC_BATTLE_EFFECT_TYPES]);
   assert.ok(contract.requiredCollections.includes('areas'));
   assert.ok(contract.requiredCollections.includes('progressionChallenges'));
 });
@@ -123,6 +149,15 @@ test('published v2 Town projections preserve optional NPC character art without 
   assert.equal(town.npcs[0].visualAssetId, 'character.road-sellsword.v1');
   assert.equal(Object.hasOwn(town.npcs[0], 'src'), false);
   assert.equal(service.runtimeTowns({ onlyWithExplicitNpcVisual: true }).some((entry) => entry.id === town.id), true);
+  const authoredQuests = service.runtimeQuests();
+  const authoredQuest = authoredQuests.find((entry) => entry.id === 'vnext-quest-1');
+  assert.ok(authoredQuest);
+  assert.equal(authoredQuest.areaNumber, 1);
+  assert.equal(authoredQuest.description, 'Roadside bells carry a warning between towns. Objective: speak Mina.');
+  assert.equal(authoredQuest.townId, town.id);
+  assert.equal(authoredQuest.npcId, 'vnext-smith');
+  assert.deepEqual(authoredQuest.objectives, [{ id: 'vnext-quest-1-objective-1', type: 'speak', targetId: 'vnext-smith', targetLabel: 'Mina', count: 1 }]);
+  assert.ok(authoredQuest.reward.gold > 0 && authoredQuest.reward.experience > 0);
 
   gameRepository.close();
 });

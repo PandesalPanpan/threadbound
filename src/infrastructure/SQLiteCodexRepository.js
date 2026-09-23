@@ -1,18 +1,4 @@
-function decodeItem(row) {
-  return {
-    id: row.id,
-    playerId: row.player_id,
-    definitionId: row.definition_id,
-    name: row.name,
-    slot: row.slot,
-    rarity: row.rarity,
-    attackBonus: row.attack_bonus,
-    effectCode: row.effect_code,
-    effect: JSON.parse(row.effect_json),
-    source: row.source,
-    createdAt: row.created_at,
-  };
-}
+import { mapSQLiteItemRow } from './SQLiteItemMapper.js';
 
 export class SQLiteCodexRepository {
   constructor({ database }) {
@@ -22,7 +8,7 @@ export class SQLiteCodexRepository {
   }
 
   listCodexItems() {
-    return this.db.prepare('SELECT * FROM items ORDER BY created_at DESC, id DESC LIMIT 500').all().map(decodeItem);
+    return this.db.prepare('SELECT * FROM items ORDER BY created_at DESC, id DESC LIMIT 500').all().map(mapSQLiteItemRow);
   }
 
   publishContentEntry({ id, type = 'lore', title, summary, body, arcId = null, source = 'generated', version = 1, tags = [], publishedAt = new Date().toISOString() }) {

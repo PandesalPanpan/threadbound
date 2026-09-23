@@ -1,75 +1,100 @@
-# Quest foundation
+# Quest foundation and renewable Area loop
 
-M6-04 introduced the authoritative Quest lifecycle boundary. M6-05 added constrained readable objectives and durable server-owned progress. M6-06 projected that state into the Adventure Stream. M6-07 now lets Arc authors compose generated Story Quest definitions from the same constrained objective vocabulary without giving generated content executable gameplay authority.
+Status: **Area-linked Quest offers, durable progress, contextual NPC hooks, and atomic XP/Gold rewards are implemented and branch-verified. Delivery remains pending merge and green `main` CI.**
 
-## Boundaries
+The Quest system uses a constrained objective vocabulary and server-owned
+progress. `QuestService` coordinates reads and commands, `QuestObjective`
+owns event matching, and `SQLiteQuestRepository` owns persistence and claim
+transactions. The browser renders the resulting Quest cards and receipts; it
+does not advance progress or compute rewards.
 
-- `src/domain/Quest.js` owns immutable Quest identity/world placement and the durable per-player lifecycle states `active`, `completed`, and `claimed`.
-- `src/domain/QuestObjective.js` owns the allowlisted objective vocabulary, validation, readable labels, event matching, capped counters, and all-objectives-complete decision.
-- Supported objective types are `kill`, `hunt`, `adventure`, `collect`, `boss`, `visit`, and `speak`. They are data only; generated content cannot inject executable objective behavior.
-- `src/infrastructure/SQLiteQuestRepository.js` owns durable player/Quest lifecycle and objective-counter persistence in the shared SQLite database.
-- `src/application/QuestService.js` coordinates authoritative Quest browsing, acceptance, event-driven progress, and claiming. The browser never increments Quest progress or promotes lifecycle state.
-- `src/content/QuestCatalog.js` supplies a minimal neutral foundation Quest so the card can exercise the lifecycle without publishing a new Arc.
+## Area offers and durable instances
 
-## Rich-card presentation
+`src/content/QuestCatalog.js` contains 16 authored templates, four for each
+supported Area. The three currently offered opportunities rotate as templates
+are claimed, so the player sees several useful choices per Area and additional
+work after finishing claims. A previously claimed template can be accepted
+again under a distinct stable instance id; an active or completed-but-unclaimed
+template does not appear as a duplicate offer.
 
-`quest` / `/quest` opens one rich card inside the existing Adventure Stream command-card surface. It does not create a Quest page or alternate application shell.
+Templates are grounded in Area data: real local enemy IDs, resident NPCs,
+Towns, and progression challenge IDs. Rewards use authored Gold and XP amounts
+appropriate to Area and objective difficulty. Objectives remain data, not
+arbitrary executable content.
 
-The API projects domain state into four player-facing states:
+Accepting a Quest persists an immutable definition snapshot alongside its
+instance ID and objective progress. Catalog rotation or later template edits
+do not rewrite an accepted Quest. Reload and reconnect reconstruct the same
+accepted definition and counters.
 
-- no persisted progress -> `available`;
-- domain `active` -> `active`;
-- domain `completed` -> `claimable`;
-- domain `claimed` -> `completed`.
+## Domain objective vocabulary
 
-Accept and Claim are authoritative POST actions. They each create one concise Adventure Stream receipt. Automatic objective progress and the automatic completion transition do not create extra standalone stream messages, avoiding message multiplication when a Hunt or Adventure already owns the command receipt.
+`src/domain/QuestObjective.js` owns the supported objective types:
 
-Quest claim still does not invent rewards. Reward transactions belong with a later explicitly specified reward policy rather than browser presentation or generated manifest data.
+- `kill`
+- `hunt`
+- `adventure`
+- `collect`
+- `boss`
+- `visit`
+- `speak`
 
-## Arc-generated Story Quest composition
+Validation rejects executable-looking fields, unknown types, invalid counts,
+and malformed targets. Progress advances only from matching authoritative
+gameplay events, caps at the requested count, and promotes the Quest to its
+completed state only after every objective is done.
 
-Arc Manifest v1 may now optionally include `storyQuests`. This field is optional so existing manifests and bundled content remain migration-compatible.
+## Claim rewards and receipts
 
-Each Story Quest definition contains only:
+Claiming is an authoritative transaction that changes Quest state and awards
+the snapshotted Gold and XP. Quest progression XP uses the shared
+`SQLitePlayerProgressionRepository`; level-derived Max HP is committed in the
+same database transaction. Duplicate or incomplete claims fail without paying
+out a second reward. The claim receipt shows the reward and any Level/Max HP
+gain in one concise result.
 
-- stable Quest id;
-- title and optional description;
-- an Area number placeholder;
-- one or more constrained objective objects.
+Automatic objective progress does not create a second stream message. The
+Hunt, Adventure, NPC interaction, or Dungeon command owns its public result;
+Quest cards refresh from the projected persisted Quest state.
 
-Objective mechanics are not duplicated in the Arc Manifest validator. `ArcManifestValidator` imports the domain-owned Quest objective vocabulary and normalizer, so generated definitions can only use `kill`, `hunt`, `adventure`, `collect`, `boss`, `visit`, or `speak` with the same target/count rules as normal Quest definitions.
+## Town and lore context
 
-Generated objective objects may only contain `id`, `type`, `targetId`, `targetLabel`, and `count`. Fields such as `script`, formulas, callbacks, or arbitrary mechanics are rejected rather than ignored. The world-context export exposes the same objective allowlist to AI/human authors, and the JSON Schema mirrors the data-only contract.
+The four Area Town cards include service NPCs and authored background
+characters. `TownService` chooses from constrained authored dialogue using
+stable server-side context such as Area, unlocked frontier, and Quest history.
+NPC interaction posts one shared receipt and advances `speak`/`visit`
+objectives from the same authoritative event. An NPC reference in a Quest is
+validated against the Town/Area catalog.
 
-M6-07 deliberately stops at authoring/validation composition. Publishing a v1 Arc preserves validated `storyQuests` in the manifest record, but does not dynamically replace the live Quest catalog or invent new Area/Town/NPC bindings. Full generated-world Quest placement belongs to the Arc Manifest vNext work in M10-01, where Areas, Towns, NPCs, Shops, and Quests can be validated as one referential package.
+Service NPC conversation can point to relevant work but does not silently
+mutate Heal, Bank, Shop, Upgrade, or Quest state. The existing service APIs
+remain authoritative for those actions.
 
-## Authoritative event mapping
+## Arc Story Quest composition
 
-- `kill` advances only on victorious `HuntResolved` or `AdventureResolved` events whose `enemyId` matches the objective target.
-- `hunt` advances on each authoritative `HuntResolved` event.
-- `adventure` advances on each authoritative `AdventureResolved` event.
-- `collect` advances on `ItemGenerated` when its stable item/content identifier matches the objective target.
-- `boss` advances on the per-player `DungeonCompleted` event for the targeted progression/dungeon id; aggregate completion events without a player id are ignored.
-- `visit` and `speak` advance on authoritative `NpcInteracted` events for the targeted NPC.
-- Once every objective is complete, the Quest lifecycle transitions to `completed`. Already-completed Quests are not advanced again.
+Arc Manifest v1 may optionally include `storyQuests`. This authoring field is
+validated against the same objective vocabulary and rejects arbitrary script,
+formula, callback, or mechanic fields. Publishing an Arc preserves validated
+Story Quest data, but does not dynamically replace the live authored Area
+catalog. Full generated-world Quest placement remains part of a future
+manifest-boundary decision.
 
-## Deliberate deferrals
+## Chat presentation
 
-- M10-01 owns full Arc Manifest vNext world binding for generated Areas, Towns, NPCs, Quests, Shops, equipment, and progression challenges.
-- Quest reward/economy policy remains separate from generated Story Quest composition.
-- Generated Story Quest definitions do not gain executable behavior or browser-owned progress rules.
-- No new Arc content, tactical dashboard, or headline currency is introduced by this foundation.
-
-This preserves the modular-monolith split: Domain Model/Policy owns objective semantics and lifecycle invariants, the Service Layer coordinates use cases and event-driven progress, repositories own persistence, Arc Manifest validation constrains untrusted generated data, and the chat card remains a Presentation Model over server-owned facts.
+`quest` / `/quest` opens a rich card in the Adventure Stream. Available,
+active, claimable, and recently completed/claimed states are server-projected.
+Accept and Claim are explicit actions and each creates one concise receipt.
+Historical cards collapse through the shared rich-card snapshot boundary.
 
 ## Verification
 
-- `test/quest-foundation.test.js` covers immutable definition validation, lifecycle transitions, durable SQLite persistence/idempotent acceptance, current-Area availability, and exactly-one acceptance publication.
-- `test/quest-objectives.test.js` covers the entire objective allowlist, readable labels, authoritative event matching, counter caps, durable reconstruction, completion, and exactly-once completion behavior.
-- `test/quest-rich-card.test.js` covers available -> active -> claimable -> completed projection, authoritative claiming, invalid claims, and concise stream receipt policy.
-- `test/e2e/quest-rich-card.spec.js` covers the real chat command, authoritative Accept/Hunt/Claim journey, duplicate-claim rejection, 390×844 layout width, and 44px mobile actions.
-- `test/arc-manifest.test.js` covers Story Quest persistence, all seven allowlisted objective types, world-context export, legacy manifests without Story Quests, duplicate objective ids, unsupported objective types, and executable-looking field rejection.
+Focused tests cover Quest identity/objective validation, lifecycle and durable
+snapshots, rotation and repeat instance IDs, event-driven progress, exact
+Area/NPC references, reward transaction rollback/idempotency, receipt facts,
+and mobile rich-card behavior. Current suites include
+`test/quest-foundation.test.js`, `test/quest-objectives.test.js`,
+`test/quest-rewards.test.js`, `test/quest-rich-card.test.js`,
+`test/town-foundation.test.js`, and the Quest/Town Playwright journeys.
 
-## Handoff
-
-After M6-07 is merged and green on `main`, Phase 6 is complete. Continue **M7-01** by extending Arc Manifest equipment templates with familiar slot, rarity, stats, constrained effects, level/Area budget, and `visualAssetId` while preserving the existing Story Quest validation boundary.
+Do not mark master-plan work complete until combined verification, these docs,
+merge, and green `main` CI are all done.

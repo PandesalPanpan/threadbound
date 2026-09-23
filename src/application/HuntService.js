@@ -1,5 +1,6 @@
 import { Character } from '../domain/Character.js';
 import { projectAutomaticBattleResult } from './AutomaticBattleReadModel.js';
+import { itemRewardProfileForArea, pickAreaHuntEncounter } from '../content/AreaContentCatalog.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS } from '../content/VisualAssetCatalog.js';
 import { selectPotionForUse } from '../content/PotionCatalog.js';
 import { resolveActivityCooldown } from '../domain/ActivityCooldownPolicy.js';
@@ -7,7 +8,8 @@ import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
 import { applyFightBuffs } from '../domain/FightBuffPolicy.js';
 import { resolveHealAction } from '../domain/HealingPolicy.js';
 import { HUNT_COOLDOWN_SECONDS } from '../domain/HuntCooldownPolicy.js';
-import { ITEM_EFFECTS, ItemGenerator } from '../domain/ItemGenerator.js';
+import { capAdventureLoot } from '../domain/AdventureRewardPolicy.js';
+import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { resolveAutomaticHunt } from '../domain/HuntEncounter.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { SQLiteBankRepository } from '../infrastructure/SQLiteBankRepository.js';
@@ -17,7 +19,6 @@ import { SQLiteFightBuffRepository } from '../infrastructure/SQLiteFightBuffRepo
 import { SQLiteHuntCooldownRepository } from '../infrastructure/SQLiteHuntCooldownRepository.js';
 import { SQLitePlayerProgressionRepository } from '../infrastructure/SQLitePlayerProgressionRepository.js';
 
-const RARITY_TIERS = Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 });
 const HUNT_WEAVER_VISUALS = Object.freeze([
   BATTLE_FIGMA_VISUAL_ASSET_IDS['bramble-druid'],
   BATTLE_FIGMA_VISUAL_ASSET_IDS['rune-bard'],
@@ -56,19 +57,6 @@ function configuredHuntCooldownSeconds() {
   const value = Number(raw);
   if (!Number.isFinite(value) || value < 0) throw new Error('THREADBOUND_HUNT_COOLDOWN_SECONDS must be a non-negative number.');
   return Math.floor(value);
-}
-
-function capHuntDrop(item) {
-  const tier = Number(item.rarityTier || RARITY_TIERS[item.rarity] || 1);
-  if (tier <= 3) return item;
-  return {
-    ...item,
-    rarity: 'rare',
-    rarityTier: 3,
-    attackBonus: Math.min(4, Math.max(3, Number(item.attackBonus || 3))),
-    effectCode: item.effectCode || 'none',
-    effect: item.effect || { ...ITEM_EFFECTS.none, upgradeLevel: 0, attunementCode: null },
-  };
 }
 
 /**
@@ -118,6 +106,7 @@ export class HuntService {
     const equipment = this.equipmentRepository.getLoadout(playerId);
     const equipped = equipment.weapon || (player.equippedItemId ? this.repository.getItem(player.equippedItemId) : null);
     const character = new Character({ ...player, equippedItem: equipped, equipment });
+    const area = this.areaRepository.get(playerId);
     if (player.currentHealth <= 0) {
       const error = new Error('You are too wounded to Hunt. Heal with a health potion or recover naturally over time.');
       error.code = 'too_wounded_to_hunt';
@@ -146,6 +135,7 @@ export class HuntService {
     }
 
     const stats = fightBuffs.stats;
+    const encounter = pickAreaHuntEncounter(area.currentAreaNumber, this.rng());
     const result = resolveAutomaticHunt({
       player: {
         id: player.id,
@@ -161,22 +151,26 @@ export class HuntService {
         equippedItem: equipped,
       },
       currentHealth: player.currentHealth,
-      enemyRoll: this.rng(),
+      encounter,
       random: this.rng,
     });
     const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
     const battleLoadout = battleLoadoutSnapshot(equipment);
-    const progressionBefore = progressionForExperience(this.progressionRepository.get(playerId).experience);
-
     let item = null;
     let healthPotionsFound = 0;
     let deathPenalty = null;
+    let growth = null;
     if (result.victory) {
       // SQLite still stores this balance in the legacy thread_dust column during migration.
       this.repository.addThreadDust(playerId, result.gold);
-      this.progressionRepository.addExperience(playerId, result.experience);
+      growth = this.progressionRepository.grantExperience(playerId, result.experience, {
+        currentHealthAfterCombat: result.remainingHp,
+      });
       if (this.rng() < result.dropChance) {
-        item = capHuntDrop(this.itemGenerator.generateReward({ source: 'hunt' }));
+        item = capAdventureLoot(this.itemGenerator.generateReward({
+          source: 'hunt',
+          ...itemRewardProfileForArea(area.currentAreaNumber),
+        }));
         this.repository.addItem(playerId, item);
       }
       if (this.rng() < 0.2) {
@@ -194,11 +188,20 @@ export class HuntService {
         goldLost: applied.goldLost,
       });
     }
-    this.repository.setPlayerHealth(playerId, result.remainingHp);
+    if (!growth) this.repository.setPlayerHealth(playerId, result.remainingHp);
     const fightBuffsConsumed = this.fightBuffRepository.consumeFight(playerId);
 
     const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
-    const levelsGained = progression.level - progressionBefore.level;
+    const levelsGained = growth?.levelsGained || 0;
+    const remainingHp = growth?.currentHealth ?? result.remainingHp;
+    const maxHp = growth?.maxHealth ?? result.maxHealth;
+    const itemStats = item ? {
+      attackBonus: Number(item.attackBonus || item.stats?.attackBonus || 0),
+      defenseBonus: Number(item.defenseBonus || item.stats?.defenseBonus || 0),
+      maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
+      speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
+      critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
+    } : null;
     this.eventBus.publish({
       type: 'HuntResolved',
       playerId,
@@ -208,8 +211,11 @@ export class HuntService {
       attackPower: result.attackPower,
       attacksRequired: result.attacksRequired,
       damageTaken: result.damageTaken,
-      remainingHp: result.remainingHp,
-      maxHp: result.maxHealth,
+      remainingHp,
+      maxHp,
+      currentHealth: remainingHp,
+      maxHealth: maxHp,
+      maxHealthIncrease: growth?.maxHealthIncrease || 0,
       victory: result.victory,
       gold: result.gold,
       goldLost: deathPenalty?.goldLost || 0,
@@ -242,7 +248,10 @@ export class HuntService {
       itemId: item?.id || null,
       itemName: item?.name || null,
       itemRarity: item?.rarity || null,
-      itemAttackBonus: item?.attackBonus || 0,
+      itemSlot: item?.slot || null,
+      itemVisualAssetId: item?.visualAssetId || null,
+      itemStats,
+      itemAttackBonus: itemStats?.attackBonus || 0,
       healthPotionsFound,
       // Phase 6 may populate this projection after authoritative quest progress is
       // introduced. Keeping the shape explicit prevents the browser from inferring it.
@@ -254,11 +263,14 @@ export class HuntService {
     const gold = Number(refreshed.gold ?? refreshed.threadDust ?? character.gold ?? 0);
     return {
       ...result,
+      remainingHp,
+      maxHealth: maxHp,
       progression,
       battleReplay,
       battleLoadout,
       levelsGained,
       leveledUp: levelsGained > 0,
+      maxHealthIncrease: growth?.maxHealthIncrease || 0,
       deathPenalty,
       fightBuffs: {
         modifiers: fightBuffs.modifiers,
@@ -275,8 +287,8 @@ export class HuntService {
       item: item ? this.repository.getItem(item.id) : null,
       character: {
         attackPower: stats.attack,
-        maxHealth: stats.maxHp,
-        currentHealth: result.remainingHp,
+        maxHealth: maxHp,
+        currentHealth: remainingHp,
         healthPotions: refreshed.healthPotions ?? player.healthPotions,
         potions: this.repository.listConsumables(playerId),
         gold,

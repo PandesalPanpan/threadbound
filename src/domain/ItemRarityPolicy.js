@@ -37,3 +37,21 @@ export function rarityFromRoll(value) {
   if (normalized >= 0.42) return ITEM_RARITIES.uncommon;
   return ITEM_RARITIES.common;
 }
+
+export function rarityFromWeightedRoll(value, weights = null) {
+  if (!weights || typeof weights !== 'object') return rarityFromRoll(value);
+  const normalizedWeights = ITEM_RARITY_IDS.map((id) => {
+    const weight = Number(weights[id]);
+    return Number.isFinite(weight) ? Math.max(0, weight) : 0;
+  });
+  const total = normalizedWeights.reduce((sum, weight) => sum + weight, 0);
+  if (!(total > 0)) return rarityFromRoll(value);
+  const numeric = Number(value);
+  const roll = Number.isFinite(numeric) ? Math.max(0, Math.min(0.999999999, numeric)) : 0;
+  let boundary = 0;
+  for (let index = 0; index < normalizedWeights.length; index += 1) {
+    boundary += normalizedWeights[index] / total;
+    if (roll < boundary || index === normalizedWeights.length - 1) return ITEM_RARITIES[ITEM_RARITY_IDS[index]];
+  }
+  return ITEM_RARITIES.common;
+}

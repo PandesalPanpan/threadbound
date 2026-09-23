@@ -1,33 +1,5 @@
 import { emptyEquipmentLoadout, normalizeEquipmentSlot } from '../domain/EquipmentSlotPolicy.js';
-
-function decodeItem(row) {
-  if (!row) return null;
-  const effect = JSON.parse(row.effect_json);
-  const template = effect?.equipmentTemplate || {};
-  const stats = template.stats || {};
-  return {
-    id: row.id,
-    playerId: row.player_id,
-    definitionId: row.definition_id,
-    name: row.name,
-    slot: row.slot,
-    rarity: row.rarity,
-    attackBonus: row.attack_bonus,
-    defenseBonus: Number(stats.defenseBonus || 0),
-    maxHpBonus: Number(stats.maxHpBonus || 0),
-    speedBonus: Number(stats.speedBonus || 0),
-    critChanceBonus: Number(stats.critChanceBonus || 0),
-    effectCode: row.effect_code,
-    effectCodes: Array.isArray(template.effectCodes) ? [...template.effectCodes] : [row.effect_code].filter(Boolean),
-    effect,
-    requiredLevel: Number(template.requiredLevel || 1),
-    areaNumber: Number(template.areaNumber || 1),
-    equipmentBudget: template.budget ? { ...template.budget } : null,
-    visualAssetId: row.visual_asset_id || null,
-    source: row.source,
-    createdAt: row.created_at,
-  };
-}
+import { mapSQLiteItemRow } from './SQLiteItemMapper.js';
 
 export function isItemLossProtected(item) {
   if (!item || typeof item !== 'object') return true;
@@ -51,7 +23,7 @@ export class SQLiteEquipmentRepository {
       JOIN items i ON i.id = pe.item_id
       WHERE pe.player_id = ?
     `).all(playerId);
-    for (const row of rows) loadout[normalizeEquipmentSlot(row.slot)] = decodeItem(row);
+    for (const row of rows) loadout[normalizeEquipmentSlot(row.slot)] = mapSQLiteItemRow(row);
     return loadout;
   }
 
@@ -76,7 +48,7 @@ export class SQLiteEquipmentRepository {
       // Keep it synchronized only for Weapon until those callers move to the loadout model.
       if (slot === 'weapon') this.db.prepare('UPDATE players SET equipped_item_id = ? WHERE id = ?').run(itemId, playerId);
       this.db.exec('COMMIT');
-      return { slot, item: decodeItem(item) };
+      return { slot, item: mapSQLiteItemRow(item) };
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
@@ -107,7 +79,7 @@ export class SQLiteEquipmentRepository {
         error.code = 'item_loss_not_equipped';
         throw error;
       }
-      const item = decodeItem(row);
+      const item = mapSQLiteItemRow(row);
       if (isItemLossProtected(item)) {
         const error = new Error('Bound or protected equipment cannot be lost on death.');
         error.code = 'item_loss_protected';

@@ -29,7 +29,7 @@ test('shop browse projects server-owned equipment and potion stock in Gold with 
     { sku: 'single', kind: 'health_potion', cost: 5, affordable: true },
     { sku: 'satchel', kind: 'health_potion', cost: 12, affordable: false },
   ]);
-  assert.equal(shop.offers[0].visualAssetId, 'item.steel-sword.v1');
+  assert.equal(shop.offers[0].visualAssetId, 'item.bronze-wardblade.v1');
   assert.equal('itemTemplate' in shop.offers[0], false, 'private item construction data is not projected to the browser');
 });
 
@@ -66,7 +66,7 @@ test('shop equipment purchase atomically spends Gold and persists a normal owned
   assert.equal(items[0].name, 'Bronze Sword');
   assert.equal(items[0].slot, 'weapon');
   assert.equal(items[0].rarity, 'common');
-  assert.equal(items[0].visualAssetId, 'item.steel-sword.v1');
+  assert.equal(items[0].visualAssetId, 'item.bronze-wardblade.v1');
   assert.equal(repository.getPlayer(player.id).threadDust, 2);
   assert.equal(events.at(-2).type, 'ShopEquipmentPurchased');
   assert.equal(events.at(-2).itemId, 'shop-item-1');

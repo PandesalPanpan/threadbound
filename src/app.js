@@ -31,6 +31,7 @@ import { decorateRunUpgradeOffers } from './domain/RunUpgradeOfferPolicy.js';
 import { RealtimeHub } from './infrastructure/RealtimeHub.js';
 import { SQLiteActivityStreamRepository } from './infrastructure/SQLiteActivityStreamRepository.js';
 import { SQLiteInventoryRepository } from './infrastructure/SQLiteInventoryRepository.js';
+import { SQLitePlayerProgressionRepository } from './infrastructure/SQLitePlayerProgressionRepository.js';
 import { SQLiteRunCommandRepository } from './infrastructure/SQLiteRunCommandRepository.js';
 import { SQLiteSessionStore } from './infrastructure/SQLiteSessionStore.js';
 
@@ -98,6 +99,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const streamRepository = new SQLiteActivityStreamRepository({ database: repository.db });
   const inventoryRepository = new SQLiteInventoryRepository({ database: repository.db });
   const runCommandRepository = new SQLiteRunCommandRepository({ database: repository.db });
+  const progressionRepository = new SQLitePlayerProgressionRepository({ database: repository.db });
   const sessionStore = new SQLiteSessionStore({ database: repository.db });
   app.locals.sessionStore = sessionStore;
   const activityStream = new ActivityStreamService({ streamRepository, gameRepository: repository });
@@ -137,10 +139,10 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       console.error('Activity stream projection failed:', error);
     }
   });
-  const gameService = new GameService({ repository, eventBus, arcManifestService });
+  const gameService = new GameService({ repository, eventBus, arcManifestService, progressionRepository });
   const battleSimulationService = new BattleSimulationService({ gameService });
-  const huntService = new HuntService({ repository, eventBus });
-  const adventureService = new AdventureService({ repository, eventBus });
+  const huntService = new HuntService({ repository, eventBus, progressionRepository });
+  const adventureService = new AdventureService({ repository, eventBus, progressionRepository });
   const duelService = new DuelService({ repository, eventBus });
   const shopService = new ShopService({ repository, eventBus });
   const simpleDungeonService = new SimpleDungeonService({ repository, eventBus, arcManifestService });
@@ -149,7 +151,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const partyService = new PartyService({ repository, eventBus });
   const townService = new TownService({ repository, eventBus, arcManifestService });
   const areaService = new AreaService({ repository, eventBus, townService });
-  const questService = new QuestService({ repository, eventBus, questCatalog: QUEST_CATALOG });
+  const questService = new QuestService({ repository, eventBus, progressionRepository, arcManifestService, catalog: QUEST_CATALOG });
   const codexService = new CodexService({ gameRepository: repository, codexRepository, arcManifestService });
   const purchaseService = threadedGateway ? new HoneyPurchaseService({ repository, threadedGateway }) : null;
   const runCommandIdempotency = new RunCommandIdempotencyService({ repository: runCommandRepository });
@@ -498,17 +500,26 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const started = simpleDungeonService.startDungeon(playerId, request.params.dungeonId, { sharedSurface: false });
     return response.status(201).json({ run: started });
   });
-  app.post('/api/dungeons/:dungeonId/start-shared', requireConnection, (request, response) => {
+  app.post('/api/dungeons/:dungeonId/start-shared', requireConnection, idempotentRunCommand, (request, response) => {
     const playerId = request.session.threaded.playerId;
     const started = simpleDungeonService.startDungeon(playerId, request.params.dungeonId, { sharedSurface: true });
     const resolved = gameService.resolveSimpleEncounter(playerId, started.id);
     return response.status(201).json({ run: resolved.run, battleReplay: resolved.battleReplay || null });
   });
 
-  // Legacy tactical start remains during migration so old persisted journeys and focused
-  // regression fixtures can still exercise the former combat model. The player UI no
-  // longer calls this route.
-  app.post('/api/dungeons/:dungeonId/start', requireConnection, (request, response) => response.status(201).json({ run: gameService.startDungeon(request.session.threaded.playerId, request.params.dungeonId) }));
+  // Canonical Area progression challenges use the guarded shared run path even
+  // through this compatibility URL. Other legacy dungeon IDs retain their old
+  // tactical start behavior for persisted journeys and migration coverage.
+  app.post('/api/dungeons/:dungeonId/start', requireConnection, (request, response) => {
+    const playerId = request.session.threaded.playerId;
+    const dungeonId = request.params.dungeonId;
+    if (simpleDungeonService.definition(dungeonId)?.progressionAdventure) {
+      const started = simpleDungeonService.startDungeon(playerId, dungeonId, { sharedSurface: true });
+      const resolved = gameService.resolveSimpleEncounter(playerId, started.id);
+      return response.status(201).json({ run: resolved.run, battleReplay: resolved.battleReplay || null });
+    }
+    return response.status(201).json({ run: gameService.startDungeon(playerId, dungeonId) });
+  });
   app.use('/api/runs/:runId', requireConnection, idempotentRunCommand);
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/continue', requireConnection, (request, response) => response.json(gameService.continueDungeon(request.session.threaded.playerId, request.params.runId)));
@@ -587,6 +598,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'potion_during_dungeon',
       'heal_during_dungeon',
       'too_wounded_to_enter_dungeon',
+      'progression_challenge_area_mismatch',
       'potion_not_found',
       'potion_unavailable',
       'potion_locked',
@@ -595,9 +607,11 @@ export function createApp({ config, threadedGateway, repository, codexRepository
       'unsupported_shop_offer',
       'simple_combat_attack_only',
       'area_locked',
+      'area_unavailable',
       'town_unavailable',
       'npc_unavailable',
       'quest_unavailable',
+      'quest_area_mismatch',
       'quest_already_accepted',
       'quest_not_accepted',
       'quest_not_complete',

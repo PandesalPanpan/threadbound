@@ -32,29 +32,29 @@ test('existing players start at zero XP and Hunt progression is persisted and pr
   });
 
   const result = huntService.hunt(player.id);
-  assert.equal(result.enemy.name, 'Thread Wolf');
-  assert.equal(result.experience, 20);
-  assert.equal(result.progression.experience, 60);
+  assert.equal(result.enemy.name, 'Ribbon Boar');
+  assert.equal(result.experience, 18);
+  assert.equal(result.progression.experience, 58);
   assert.equal(result.progression.level, 2);
   assert.equal(result.leveledUp, true);
   assert.equal(result.levelsGained, 1);
-  assert.equal(progressionRepository.get(player.id).experience, 60);
+  assert.equal(progressionRepository.get(player.id).experience, 58);
 
   const huntEvent = events.find((event) => event.type === 'HuntResolved');
-  assert.equal(huntEvent.experienceGained, 20);
-  assert.equal(huntEvent.xp, 20);
-  assert.equal(huntEvent.experience, 60);
+  assert.equal(huntEvent.experienceGained, 18);
+  assert.equal(huntEvent.xp, 18);
+  assert.equal(huntEvent.experience, 58);
   assert.equal(huntEvent.level, 2);
   assert.equal(huntEvent.leveledUp, true);
   assert.equal(huntEvent.levelsGained, 1);
 
   const gameService = new GameService({ repository, progressionRepository, eventBus });
   const dashboard = gameService.dashboard(player.id);
-  assert.equal(dashboard.character.experience, 60);
-  assert.equal(dashboard.character.xp, 60);
+  assert.equal(dashboard.character.experience, 58);
+  assert.equal(dashboard.character.xp, 58);
   assert.equal(dashboard.character.level, 2);
-  assert.equal(dashboard.character.levelProgression.experienceIntoLevel, 10);
-  assert.equal(dashboard.character.levelProgression.experienceToNextLevel, 90);
+  assert.equal(dashboard.character.levelProgression.experienceIntoLevel, 8);
+  assert.equal(dashboard.character.levelProgression.experienceToNextLevel, 92);
 
   repository.close();
 });

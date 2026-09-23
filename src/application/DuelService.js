@@ -6,6 +6,11 @@ import { FOUNDATION_GUILD_HALL_ROSTERS } from '../content/FoundationGuildHallCat
 import { SQLiteDuelRepository } from '../infrastructure/SQLiteDuelRepository.js';
 import { SQLiteEquipmentRepository } from '../infrastructure/SQLiteEquipmentRepository.js';
 import { SQLiteSimulatedAdventurerRepository } from '../infrastructure/SQLiteSimulatedAdventurerRepository.js';
+import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
+
+function playerVisualAssetId(playerId) {
+  return resolveVisualAssetId({ id: playerId }, 'character') || BATTLE_FIGMA_VISUAL_ASSET_IDS['rune-bard'];
+}
 
 function catalogOpponent(opponentId) {
   const id = String(opponentId || '').trim();
@@ -48,6 +53,38 @@ export class DuelService {
   }
 
   duel(playerId, opponentId, { duelId = null } = {}) {
+    const targetId = String(opponentId || '').trim();
+    const requestedIdentity = String(duelId || '').trim();
+    if (requestedIdentity) {
+      const existing = this.duelRepository.get(requestedIdentity);
+      if (existing) {
+        if (existing.challengerId !== playerId || existing.opponentId !== targetId) {
+          const error = new Error('Duel id was already used for a different battle.');
+          error.code = 'duel_replay_mismatch';
+          throw error;
+        }
+        const storedOpponent = existing.battleReplay?.details?.combatants?.find((combatant) => combatant.id === targetId) || null;
+        const seededOpponent = catalogOpponent(targetId);
+        return Object.freeze({
+          duelId: requestedIdentity,
+          opponent: Object.freeze({
+            id: targetId,
+            name: storedOpponent?.label || seededOpponent?.name || targetId,
+            level: seededOpponent?.level ?? null,
+            stats: storedOpponent?.stats || seededOpponent?.stats || null,
+            equipment: storedOpponent?.equipment || seededOpponent?.equipment || null,
+            visualAssetId: storedOpponent?.visualAssetId || seededOpponent?.visualAssetId || null,
+            signatureSkill: storedOpponent?.signatureSkill || null,
+          }),
+          outcome: existing.outcome,
+          replayed: true,
+          record: this.duelRepository.recordFor(playerId),
+          opponentRecord: this.duelRepository.recordFor(targetId),
+          battle: existing.battleReplay,
+        });
+      }
+    }
+
     if (this.repository.getActiveRun(playerId)) {
       const error = new Error('Finish the active dungeon before starting a Duel.');
       error.code = 'duel_during_dungeon';
@@ -56,7 +93,6 @@ export class DuelService {
 
     const player = this.repository.getPlayer(playerId);
     if (!player) throw new Error('Player not found.');
-    const targetId = String(opponentId || '').trim();
     const seeded = catalogOpponent(targetId);
     if (!seeded) {
       const error = new Error('Duel opponent is not available in the Guild Hall.');
@@ -64,6 +100,8 @@ export class DuelService {
       throw error;
     }
     const opponentState = this.simulatedAdventurerRepository.ensure(seeded).adventurer;
+    const identity = requestedIdentity || String(this.idFactory() || '').trim();
+    if (!identity) throw new Error('Duel id is required.');
     const equipment = this.equipmentRepository.getLoadout(playerId);
     const challenger = new Character({
       ...player,
@@ -78,6 +116,7 @@ export class DuelService {
         stats: challenger.stats,
         equipment,
         equippedItem: equipment.weapon || null,
+        visualAssetId: playerVisualAssetId(playerId),
       },
       opponent: {
         id: opponentState.id,
@@ -85,11 +124,12 @@ export class DuelService {
         stats: opponentState.stats,
         equipment: opponentState.equipment,
         equippedItem: opponentState.equipment.weapon || null,
+        visualAssetId: resolveVisualAssetId({ id: opponentState.id, spriteVariant: seeded.spriteVariant }, 'character'),
+        spriteVariant: seeded.spriteVariant,
       },
       random: this.random,
     });
     const readModel = projectAutomaticBattleResult(result.battle, { viewerId: playerId });
-    const identity = String(duelId || this.idFactory()).trim();
     const recorded = this.duelRepository.recordResult({
       duelId: identity,
       challengerId: playerId,
@@ -98,6 +138,7 @@ export class DuelService {
       winnerId: result.winnerId,
       loserId: result.loserId,
       turnCount: result.battle.turns.length,
+      battleReplay: readModel,
     });
 
     if (recorded.applied) {
@@ -114,6 +155,7 @@ export class DuelService {
         challengerRecord: this.duelRepository.recordFor(playerId),
         opponentRecord: this.duelRepository.recordFor(opponentState.id),
         receiptText: readModel.receipt.text,
+        battleReplay: readModel,
       });
     }
 
@@ -124,12 +166,15 @@ export class DuelService {
         name: opponentState.name,
         level: opponentState.level,
         stats: opponentState.stats,
+        equipment: opponentState.equipment,
+        visualAssetId: readModel.details.combatants.find((combatant) => combatant.id === opponentState.id)?.visualAssetId || null,
+        signatureSkill: readModel.details.combatants.find((combatant) => combatant.id === opponentState.id)?.signatureSkill || null,
       }),
       outcome: result.outcome,
       replayed: recorded.replayed,
       record: this.duelRepository.recordFor(playerId),
       opponentRecord: this.duelRepository.recordFor(opponentState.id),
-      battle: readModel,
+      battle: recorded.duel?.battleReplay || readModel,
     });
   }
 }

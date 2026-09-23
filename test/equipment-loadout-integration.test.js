@@ -5,6 +5,11 @@ import { EQUIPMENT_SLOTS } from '../src/domain/EquipmentSlotPolicy.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
 function item(id, slot, attackBonus = 1) {
+  const stats = slot === 'helmet' ? { defenseBonus: 1, maxHpBonus: 4 }
+    : slot === 'armor' ? { defenseBonus: 2, maxHpBonus: 8 }
+      : slot === 'boots' ? { speedBonus: 2 }
+        : slot === 'accessory' ? { critChanceBonus: 0.1 }
+          : { attackBonus };
   return {
     id,
     definitionId: `definition-${id}`,
@@ -17,6 +22,7 @@ function item(id, slot, attackBonus = 1) {
       code: 'none',
       name: 'Plain',
       description: 'Integration test equipment.',
+      equipmentTemplate: { effectCodes: ['none'], stats },
       upgradeLevel: 0,
       attunementCode: null,
     },
@@ -58,8 +64,15 @@ test('GameService projects five-slot equipment and canonical readable stats whil
   assert.equal(dashboard.character.equipment.helmet.id, 'item-helmet');
   assert.equal(dashboard.character.equipment.weapon, null);
   assert.equal(dashboard.character.equippedItem, null);
+  assert.equal(dashboard.character.stats.defense, 3);
+  assert.equal(dashboard.character.stats.maxHp, 44);
   assert.equal(repository.getPlayer(player.id).equippedItemId, null, 'non-Weapon slots must not overload the legacy pointer');
   assert.equal(dashboard.character.stats.attack, 6, 'non-Weapon legacy attackBonus does not silently change Attack');
+  assert.equal(dashboard.inventory.find((entry) => entry.id === 'item-helmet').maxHpBonus, 4);
+  assert.equal(dashboard.inventory.find((entry) => entry.id === 'item-armor').defenseBonus, 2);
+  assert.equal(dashboard.inventory.find((entry) => entry.id === 'item-boots').speedBonus, 2);
+  assert.equal(dashboard.inventory.find((entry) => entry.id === 'item-accessory').critChanceBonus, 0.1);
+  assert.equal(repository.getPlayer(player.id).maxHealth, 44, 'equipped Max HP bonuses also define the persistent health cap');
 
   service.equipItem(player.id, 'item-weapon');
   dashboard = service.dashboard(player.id);
@@ -70,8 +83,8 @@ test('GameService projects five-slot equipment and canonical readable stats whil
   assert.equal(dashboard.character.stats.attack, dashboard.character.baseAttack + 3);
   assert.equal(dashboard.character.attack, dashboard.character.stats.attack);
   assert.equal(dashboard.character.attackPower, dashboard.character.stats.attack, 'legacy attackPower alias follows the canonical policy');
-  assert.equal(dashboard.character.defense, 2);
-  assert.equal(dashboard.character.maxHp, 40);
+  assert.equal(dashboard.character.defense, 3);
+  assert.equal(dashboard.character.maxHp, 44);
   assert.equal(dashboard.character.maxHealth, dashboard.character.maxHp, 'legacy maxHealth alias follows the canonical policy');
   assert.equal(dashboard.character.speed, 10);
   assert.equal(dashboard.character.critChance, 0.05);

@@ -1,8 +1,7 @@
 /**
  * The canonical healing consumables. Inventory quantities live in SQLite;
  * this catalog owns names, bounded healing, progression gates, and stable ids.
- * The visual ids intentionally reuse the existing potion art until the asset
- * catalog grows distinct tier artwork.
+ * Each healing tier keeps an explicit visualAssetId for inventory and shop reuse.
  */
 export const POTION_CATALOG = Object.freeze([
   Object.freeze({
@@ -12,7 +11,7 @@ export const POTION_CATALOG = Object.freeze([
     heal: 8,
     tier: 1,
     requiredArea: 1,
-    visualAssetId: 'item.health-potion.v1',
+    visualAssetId: 'item.minor-healing-flask.v1',
   }),
   Object.freeze({
     id: 'health-potion',
@@ -21,7 +20,7 @@ export const POTION_CATALOG = Object.freeze([
     heal: 16,
     tier: 2,
     requiredArea: 2,
-    visualAssetId: 'item.health-potion.v1',
+    visualAssetId: 'item.healing-flask.v1',
   }),
   Object.freeze({
     id: 'greater-health-potion',
@@ -30,7 +29,7 @@ export const POTION_CATALOG = Object.freeze([
     heal: 28,
     tier: 3,
     requiredArea: 3,
-    visualAssetId: 'item.greater-health-potion.v1',
+    visualAssetId: 'item.greater-healing-flask.v1',
   }),
   Object.freeze({
     id: 'major-health-potion',
@@ -39,7 +38,7 @@ export const POTION_CATALOG = Object.freeze([
     heal: 40,
     tier: 4,
     requiredArea: 4,
-    visualAssetId: 'item.greater-health-potion.v1',
+    visualAssetId: 'item.major-healing-flask.v1',
   }),
 ]);
 

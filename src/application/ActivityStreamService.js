@@ -10,6 +10,51 @@ function titleize(value) {
     .join(' ') || 'Unknown';
 }
 
+function itemStatValues(item) {
+  const stats = item?.itemStats || item?.stats || {};
+  return {
+    attackBonus: Number(item?.attackBonus ?? item?.itemAttackBonus ?? stats.attackBonus ?? 0),
+    defenseBonus: Number(item?.defenseBonus ?? item?.itemDefenseBonus ?? stats.defenseBonus ?? 0),
+    maxHpBonus: Number(item?.maxHpBonus ?? item?.maxHealthBonus ?? item?.itemMaxHpBonus ?? stats.maxHpBonus ?? stats.maxHealthBonus ?? 0),
+    speedBonus: Number(item?.speedBonus ?? item?.itemSpeedBonus ?? stats.speedBonus ?? 0),
+    critChanceBonus: Number(item?.critChanceBonus ?? item?.itemCritChanceBonus ?? stats.critChanceBonus ?? 0),
+  };
+}
+
+function projectSignatureSkill(skill) {
+  if (!skill?.id) return null;
+  return {
+    id: String(skill.id),
+    name: String(skill.name || skill.label || skill.id),
+    description: String(skill.description || ''),
+    manaCost: Number(skill.manaCost || 0),
+  };
+}
+
+function itemStatSummary(item) {
+  if (!item) return '';
+  const stats = itemStatValues(item);
+  const bonuses = [
+    [stats.attackBonus, 'Attack'],
+    [stats.defenseBonus, 'Defense'],
+    [stats.maxHpBonus, 'Max HP'],
+    [stats.speedBonus, 'Speed'],
+  ].filter(([value]) => Number.isFinite(value) && value > 0)
+    .map(([value, label]) => `+${value} ${label}`);
+  const critChanceBonus = stats.critChanceBonus;
+  if (Number.isFinite(critChanceBonus) && critChanceBonus > 0) {
+    const percent = Math.round(critChanceBonus * 1000) / 10;
+    bonuses.push(`+${Number.isInteger(percent) ? percent : percent.toFixed(1)}% Crit`);
+  }
+  return bonuses.length ? ` · ${bonuses.join(' · ')}` : '';
+}
+
+function levelGrowthSummary(event) {
+  if (!event?.leveledUp) return '';
+  const increase = Math.max(0, Math.floor(Number(event.maxHealthIncrease) || 0));
+  return ` · LEVEL UP → ${Number(event.level) || 1}${increase > 0 ? ` · Max HP +${increase}` : ''}`;
+}
+
 function relicTriggerCopy(trigger) {
   if (!trigger) return '';
   if (trigger.effect === 'bonus_focus') return ` · ◇ ${trigger.name}: +${trigger.amount} Focus`;
@@ -66,8 +111,7 @@ export class ActivityStreamService {
       name: item.name,
       slot: item.slot || null,
       rarity: item.rarity || 'common',
-      attackBonus: Number(item.attackBonus || 0),
-      defenseBonus: Number(item.defenseBonus || 0),
+      ...itemStatValues(item),
       effect: item.effect ? {
         code: item.effect.code || item.effectCode || null,
         name: item.effect.name || null,
@@ -93,6 +137,7 @@ export class ActivityStreamService {
           currentHealth: Number(character.currentHealth || 0),
           maxHealth: Number(character.maxHealth ?? character.maxHp ?? 1),
           healthPotions: Number(character.healthPotions || 0),
+          signatureSkill: projectSignatureSkill(character.signatureSkill),
           potions: Array.isArray(character.potions) ? character.potions.map((potion) => ({
             id: potion.id || potion.consumableId,
             name: potion.name,
@@ -121,8 +166,7 @@ export class ActivityStreamService {
       name: item.name,
       slot: item.slot || null,
       rarity: item.rarity || 'common',
-      attackBonus: Number(item.attackBonus || 0),
-      defenseBonus: Number(item.defenseBonus || 0),
+      ...itemStatValues(item),
       effect: item.effect ? {
         name: item.effect.name || null,
         description: item.effect.description || null,
@@ -161,6 +205,7 @@ export class ActivityStreamService {
           },
           gold: Number(character.gold ?? character.threadDust ?? 0),
           healthPotions: Number(character.healthPotions || 0),
+          signatureSkill: projectSignatureSkill(character.signatureSkill),
         },
         equipment: Object.fromEntries(Object.entries(equipment).map(([slot, item]) => [slot, compactItem(item)])),
         activeBuffs: (dashboard?.activeFightBuffs || []).map((buff) => ({
@@ -193,8 +238,7 @@ export class ActivityStreamService {
       item: offer.item || offer.itemTemplate ? {
         slot: (offer.item || offer.itemTemplate).slot || null,
         rarity: (offer.item || offer.itemTemplate).rarity || 'common',
-        attackBonus: Number((offer.item || offer.itemTemplate).attackBonus || 0),
-        defenseBonus: Number((offer.item || offer.itemTemplate).defenseBonus || 0),
+        ...itemStatValues(offer.item || offer.itemTemplate),
         effect: (offer.item || offer.itemTemplate).effect ? {
           code: (offer.item || offer.itemTemplate).effect.code || (offer.item || offer.itemTemplate).effectCode || null,
           name: (offer.item || offer.itemTemplate).effect.name || null,
@@ -348,11 +392,11 @@ export class ActivityStreamService {
         const outcome = event.victory ? 'defeated' : 'fell to';
         const health = `${event.remainingHp}/${event.maxHp} HP`;
         const rewards = event.victory ? ` · +${event.experienceGained || 0} XP · +${event.gold || 0} Gold` : '';
-        const loot = event.itemName ? ` · Found ${event.itemName}${event.itemRarity ? ` (${titleize(event.itemRarity)})` : ''}` : '';
+        const loot = event.itemName ? ` · Found ${event.itemName}${event.itemRarity ? ` (${titleize(event.itemRarity)})` : ''}${itemStatSummary(event)}` : '';
         const story = event.storyEvent?.text ? ` · ${event.storyEvent.text}` : '';
         const loss = Number(event.goldLost || 0) > 0 ? ` · −${event.goldLost} carried Gold · Bank safe` : '';
         const cooldown = event.nextAdventureReadyAt ? ` · Next Adventure ${event.nextAdventureReadyAt}` : '';
-        const levelUp = event.leveledUp ? ` · LEVEL UP → ${event.level}` : '';
+        const levelUp = levelGrowthSummary(event);
         return {
           actorPlayerId: event.playerId || null,
           actorName: 'THREADBOUND',
@@ -397,7 +441,7 @@ export class ActivityStreamService {
         return {
           actorPlayerId: event.playerId || null,
           actorName: 'THREADBOUND',
-          body: `${actorName || 'A Weaver'} used ${event.potionName || 'a Health Potion'} between encounters. +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · ${event.healthPotions ?? 0} Minor left. ${event.enemyName || enemyName || 'The next room'} begins now.`,
+          body: `INTERMISSION HEAL · ${actorName || 'A Weaver'} used ${event.potionName || 'a Health Potion'} · +${event.healed || 0} HP · ${event.actorHp}/${event.actorMaxHp} HP · Intermission heal used.`,
         };
       case 'DungeonRetreated':
         return {
@@ -510,30 +554,41 @@ export class ActivityStreamService {
           actorName: 'THREADBOUND',
           body: `${actorName || 'Adventurer'} accepted Quest: ${event.questTitle || titleize(event.questId)}.`,
         };
-      case 'QuestClaimed':
-        return {
-          actorPlayerId: event.playerId,
-          actorName: 'THREADBOUND',
-          body: `${actorName || 'Adventurer'} completed Quest: ${event.questTitle || titleize(event.questId)}.`,
-        };
+      case 'QuestClaimed': {
+          const gold = Math.max(0, Math.floor(Number(event.goldAwarded) || 0));
+          const xp = Math.max(0, Math.floor(Number(event.experienceAwarded) || 0));
+          const rewards = event.goldAwarded != null || event.experienceAwarded != null
+            ? ` · +${gold} Gold · +${xp} XP`
+            : '';
+          const growth = event.levelsGained > 0
+            ? ` · LEVEL UP → ${Number(event.progression?.level) || Number(event.level) || 1}${Number(event.maxHealthIncrease) > 0 ? ` · Max HP +${Number(event.maxHealthIncrease)}` : ''}`
+            : '';
+          return {
+            actorPlayerId: event.playerId,
+            actorName: 'THREADBOUND',
+            body: `${actorName || 'Adventurer'} completed Quest: ${event.questTitle || titleize(event.questId)}${rewards}${growth}.`,
+          };
+      }
       case 'QuestProgressed':
       case 'QuestCompleted':
         return null;
       case 'ItemGenerated': {
         if (event.silentStream) return null;
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'equipment'}. Open Inventory to equip, Upgrade, compare, or Sell it.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} found ${item?.name || 'equipment'}${itemStatSummary(item)}. Open Inventory to equip, Upgrade, compare, or Sell it.` };
       }
       case 'ItemEquipped': {
         const item = this.gameRepository.getItem(event.itemId);
-        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'equipment'}${item ? ` (+${item.attackBonus} Attack)` : ''}.` };
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} equipped ${item?.name || 'equipment'}${itemStatSummary(item)}.` };
       }
-      case 'ItemUpgraded':
+      case 'ItemUpgraded': {
+        const statText = String(event.statText || `+${Number(event.attackIncrease) || 0} Attack`);
         return {
           actorPlayerId: event.playerId,
           actorName,
-          body: `Upgrade complete — ${event.itemName || 'equipment'} · +${event.attackIncrease} Attack · −${event.threadDustSpent} Gold · Level ${event.level}/${event.maxLevel}${event.attunementName ? ` · ${event.attunementName}` : ''}.`,
+          body: `Upgrade complete — ${event.itemName || 'equipment'} · ${statText} · −${event.threadDustSpent} Gold · Level ${event.level}/${event.maxLevel}${event.attunementName ? ` · ${event.attunementName}` : ''}.`,
         };
+      }
       case 'ItemSold':
       case 'ItemSalvaged': {
         const gold = Math.max(0, Math.floor(Number(event.gold ?? event.threadDust ?? 0) || 0));

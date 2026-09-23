@@ -14,7 +14,7 @@ export const SHOP_OFFERS = Object.freeze([
     kind: 'equipment',
     name: 'Bronze Sword',
     description: 'Common Weapon · +1 Attack',
-    visualAssetId: 'item.steel-sword.v1',
+    visualAssetId: 'item.bronze-wardblade.v1',
     cost: 8,
     quantity: 1,
     itemTemplate: Object.freeze({
@@ -25,7 +25,7 @@ export const SHOP_OFFERS = Object.freeze([
       attackBonus: 1,
       effectCode: 'none',
       effect: Object.freeze({ code: 'none', name: 'Plain', description: 'Reliable starter equipment.', upgradeLevel: 0, attunementCode: null }),
-      visualAssetId: 'item.steel-sword.v1',
+      visualAssetId: 'item.bronze-wardblade.v1',
     }),
   }),
   Object.freeze({
