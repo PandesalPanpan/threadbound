@@ -184,7 +184,7 @@ Never mark these from automation or agent judgment alone.
 - [ ] **PV2-K04 HUMAN** Cooperation, dungeon attrition, and bosses feel clear and meaningful.
 - [ ] **PV2-K05 HUMAN** Mobile and desktop feel like one coherent chat game.
 
-Use the two-person session protocol and evidence prompts in [PLAYER_EXPERIENCE_ACCEPTANCE.md](PLAYER_EXPERIENCE_ACCEPTANCE.md) to review these gates. The boxes remain open until two people have completed the review and their evidence has been assessed.
+Use the two-reviewer guide and worksheet in [PLAYER_EXPERIENCE_ACCEPTANCE.md](PLAYER_EXPERIENCE_ACCEPTANCE.md) to review these gates. The boxes remain open until two people have completed the review and their evidence has been assessed.
 
 ### Phase L — production lifecycle gates
 

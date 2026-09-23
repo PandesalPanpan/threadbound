@@ -135,34 +135,92 @@ For every substantial player-facing change:
 6. Record HUMAN items as questions for future real-player sessions; never convert a scripted click into evidence of genuine motivation.
 7. Do not call the build production-ready while any PRODUCTION GATE item is unresolved.
 
-## Threadbound RPG progression session — PV2-K01–K05
+## Two-reviewer guide — PV2-K01–K05
 
-This protocol gathers human evidence for the five Phase K gates in `THREADBOUND_MASTER_PLAN.md`. Automated Playwright runs prepare the build but do not count as human sign-off.
+Use this run sheet to collect human evidence for the five Phase K gates in `THREADBOUND_MASTER_PLAN.md`. Allow about 2½ hours, plus setup. Automated Playwright runs prepare the build but do not count as human sign-off.
 
-### Participants and setup
+### People and materials
 
-- Use two people who have not read developer documentation or been coached through the game. Record each person's RPG and chat-game familiarity before play; do not let them compare answers until both have completed their notes.
-- Use two separate local-auth browser sessions joined to the same party, backed by a fresh local database. Do not use production accounts or a Threaded wallet.
-- Exercise both supported layouts: 390×844 mobile and 1440×960 desktop. Start one participant on each layout, then swap so both people use both.
-- The observer records pauses, wrong turns, requests for help, and the participant's exact description of their current goal. Do not explain a control unless safety or access requires it; record any intervention.
+- **Host:** prepares the test environment, reads the task cards, and takes observation notes. The host does not explain game controls or strategy during play.
+- **Reviewer A and Reviewer B:** people who have not read developer documentation or been coached through Threadbound. Record each person's familiarity with RPGs and chat games before starting.
+- Two separate local-auth browser sessions on a fresh local database. Join the reviewers to the same party for the shared part of the review. Do not use production accounts or a Threaded wallet.
+- Two browser windows set to **390×844** and **1440×960**. Start one reviewer on each size, then swap so both use both layouts.
+- A copy of the worksheet below for each reviewer. Do not show the progression task card until the free-play hour is over.
 
-### Session flow
+### Invite and opening script
 
-1. Let both people play freely for up to one hour without a developer-provided task list. At natural pauses ask only, “What are you trying to do next?” Record the answer before offering a hint.
-2. After the unprompted hour, play the connected progression route together: Inventory and Area 1 Hunt; acquire and equip non-weapon gear; claim and replace a Quest; talk with a local NPC; enter a multi-enemy Dungeon; use the shared intermission Heal and continue through the boss; unlock and visit Area 2; Hunt there, review its local Quest/NPC context, then Duel a Guild Hall rival.
-3. Have each person submit independent observations before discussing the session. Include the step/Area, viewport, what happened, exact player words, any facilitator hint, and a Yes / Mixed / No verdict for each gate.
+Send this before the session:
 
-### Evidence for each gate
+> Could you spend about 2½ hours trying Threadbound with one other person? It is a chat-first RPG. You do not need to prepare or know how to play. I’m checking whether the game explains itself, so I’ll observe and take notes instead of teaching. You can stop or take a break whenever you need to.
 
-| Gate | Evidence to record |
+At the start, say:
+
+> Please play as you normally would and say what you are looking for or expecting. I can fix a technical problem, but I will not explain game choices during the first part. If you get stuck, tell me what you expected to happen.
+
+### Run of show
+
+| Time | Activity | Host instructions |
+| --- | --- | --- |
+| 0–10 min | Welcome and setup | Confirm both sessions are separate players in the same party. Set the two viewport sizes. Ask each reviewer about RPG and chat-game familiarity. Do not tour the interface. |
+| 10–70 min | Unprompted first hour | Let them play together from the fresh starting state. Do not provide a task list or hint. At natural pauses, ask only “What are you trying to do next?” and “What did you expect to happen?” Record who acted, who helped, dead ends, pauses, and the exact words used. |
+| 70–115 min | Connected progression tasks | Before showing the task card, have each reviewer privately write their current goal and next step. Keep those answers separate. Then read the card below. Give goals only; do not name buttons, commands, or where to find them. Let both reviewers take actions. Record each step they finish, any hint or workaround, and which viewport they used. |
+| 115–130 min | Viewport swap | Swap the 390×844 and 1440×960 layouts. Have each person repeat one Inventory action and one active game action. Note discovery, clipping, text density, and any layout difference that changes meaning. |
+| 130–150 min | Separate debrief and notes | Ask each reviewer the questions below one at a time. They complete their worksheets independently before comparing answers. |
+
+Take breaks as needed. If the connected route takes longer, record the last completed step and the blocker rather than rushing or coaching them through it. If a technical/accessibility problem requires intervention, fix it and record exactly what happened; do not count a taught step as independent success.
+
+### Progression task card
+
+Read this only after the unprompted hour:
+
+> Together, improve your readiness using the starting Area. Find a useful non-weapon piece of equipment and equip it. Make progress on a Quest and speak with someone in Town. Then take on a multi-enemy Dungeon as a party. Decide whether and when the shared Heal is worth using, and continue toward the boss. If you earn access to another Area, travel there, try a Hunt, look at the local Quest and Town help, and challenge a Guild Hall rival to a Duel.
+
+Do not tell reviewers how to complete a step. The route is evidence gathering, not a race. If an earlier misunderstanding prevents later steps, record it and move on only when the host needs to gather evidence for another gate.
+
+### Debrief questions
+
+Ask both people separately, without suggesting an answer:
+
+1. “In your own words, what were you trying to accomplish? What would you do next if you had five minutes?”
+2. “Pick a recent Hunt. What changed for your character, and what could you do after seeing the result?”
+3. “Where did you expect Inventory, Shop, Quest, Area, and Town actions to happen? Was anything awkward to find?”
+4. “In your own words, who could Heal, when was it available, who spent the party Heal, and what did Continue do? What made the risk of the next fight clear or unclear?”
+5. “What changed when you switched screen sizes? Did you lose an action, detail, or sense of where you were?”
+6. “What was the most satisfying moment? What was the most confusing moment? What would you change first?”
+
+### Reviewer worksheet
+
+Complete one copy per person before comparing notes. Use **Yes**, **Mixed**, or **No** and include a concrete example; do not score from memory alone.
+
+**Reviewer:** A / B · **Date/build:** · **RPG familiarity:** · **Chat-game familiarity:** · **Starting viewport:**
+
+| Gate | Verdict | Step, viewport, and observed behavior | Exact quote or question asked | Host/partner help? |
+| --- | --- | --- | --- | --- |
+| **PV2-K01** First-hour comprehension |  |  |  |  |
+| **PV2-K02** Hunt and long-session receipts |  |  |  |  |
+| **PV2-K03** Rich cards in chat |  |  |  |  |
+| **PV2-K04** Co-op and Dungeon |  |  |  |  |
+| **PV2-K05** Mobile/desktop coherence |  |  |  |  |
+
+**Most satisfying moment:**
+
+**Most confusing moment or dead end:**
+
+**What would you do next without a hint?**
+
+### Assessing the gates
+
+| Gate | Count it as a “Yes” only when… |
 | --- | --- |
-| **PV2-K01** First-hour comprehension | Can each person explain their current goal and choose a useful next action without developer docs or an observer hint? Record the time and any dead ends. |
-| **PV2-K02** Hunt and long-session receipts | After repeated Hunts, can each person scan the result, identify HP/reward/progression changes, and understand what can happen next? Ask whether they would choose another Hunt or stop, and why. |
-| **PV2-K03** Rich cards in chat | Observe Inventory, Shop, Quest, Area, and NPC tasks. Record whether embedded cards kept context and made the next action easier to find, or whether either person expected to leave chat. |
-| **PV2-K04** Co-op and Dungeon | Ask each person to explain who can Heal, why only one party Heal is available in an intermission, what Continue does, and what made the boss/HP attrition understandable or confusing. Record whether both players contributed meaningfully. |
-| **PV2-K05** Mobile/desktop coherence | After each person uses both viewports, record whether the same actions and state are discoverable, whether the stream remains the game surface, and any clipping, dense text, or layout change that alters the experience. |
+| **PV2-K01** | Both reviewers can describe their goal and choose a useful next step after free play without developer docs or a host hint. Record partner help separately so it is clear whether the game, the partner, or both supplied the missing context. |
+| **PV2-K02** | Both can scan a Hunt receipt and identify the outcome, HP change, rewards/progression, and a sensible next action. Record whether they wanted to continue Hunts and why. |
+| **PV2-K03** | Both complete the observed Inventory, Shop, Quest, Area, and NPC tasks in context and can find the next action without expressing a need to leave chat. Note any exception by task. |
+| **PV2-K04** | Both can explain the shared Heal opportunity and Continue choice in their own words, understand the Dungeon risk, and describe a meaningful contribution they made. |
+| **PV2-K05** | Both use both viewport sizes and can find the same important state/actions without clipping, unreadable density, or layout changes that alter their understanding. |
 
-Keep the Phase K boxes open until evidence from two people has been reviewed against every gate. A “No” or “Mixed” answer is useful evidence, not a failed test to hide; record the friction and repair it before reconsidering the relevant gate. Do not infer one person's experience from the other person's notes.
+Use **Mixed** if one person succeeds and the other struggles, or a hint/workaround is needed. Use **No** if both misunderstand or cannot complete the criterion. A single reviewer’s issue must stay visible; do not average it away. Capture any screen or device in question, then assess the evidence together after both worksheets are complete. A “No” or “Mixed” is useful evidence: fix the friction and repeat the affected task with reviewers before proposing that gate as green.
+
+Keep the Phase K boxes open until both people's evidence has been reviewed against every gate. Do not infer one person's experience from the other's notes, and do not convert a scripted click or automated assertion into human sign-off.
 
 ## Current release interpretation
 
