@@ -67,6 +67,7 @@ test('Hunt consumes shared Speed and constrained equipment-effect semantics', ()
 test('HuntService persists the shared simulator result while retaining one-command rewards and event compatibility', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'hunt-player' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'hunt-user', displayName: 'Adventurer' });
+  repository.db.prepare('UPDATE players SET base_attack = 1, max_health = 1000, current_health = 1000 WHERE id = ?').run(player.id);
   const events = [];
   const service = new HuntService({
     repository,
@@ -79,6 +80,11 @@ test('HuntService persists the shared simulator result while retaining one-comma
 
   assert.equal(result.battle.context.activity, 'hunt');
   assert.equal(result.battle.outcome, 'victory');
+  const playerSkill = result.battle.turns.find((turn) => turn.actorId === player.id && turn.metadata.actionType === 'skill');
+  assert.ok(playerSkill, 'a real Area Hunt can build Mana to a signature skill cast');
+  assert.equal(playerSkill.metadata.skillId, 'threadsong');
+  assert.equal(playerSkill.actorManaBefore, 100);
+  assert.equal(playerSkill.actorManaAfter, 0);
   assert.equal(repository.getPlayer(player.id).currentHealth, result.remainingHp);
   assert.equal(repository.getPlayer(player.id).threadDust, result.gold);
   assert.equal(event.battleOutcome, result.battle.outcome);

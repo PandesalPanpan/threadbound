@@ -68,6 +68,7 @@ test('Adventure reward policy is more rewarding than Area 1 Hunt and projects co
 test('AdventureService reads persisted Area, commits rewards/progression, and publishes authoritative cooldown projection', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-1' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'adventure-user', displayName: 'Adventurer' });
+  repository.db.prepare('UPDATE players SET base_attack = 1, max_health = 1000, current_health = 1000 WHERE id = ?').run(player.id);
   const events = [];
   const now = new Date('2026-09-13T00:00:00.000Z');
   const service = new AdventureService({
@@ -90,6 +91,11 @@ test('AdventureService reads persisted Area, commits rewards/progression, and pu
   assert.ok(after <= before);
   assert.equal(result.rewards.gold, result.victory ? 6 : 0);
   assert.equal(result.rewards.experience, result.victory ? 30 : 0);
+  const playerSkill = result.battle.turns.find((turn) => turn.actorId === player.id && turn.metadata.actionType === 'skill');
+  assert.ok(playerSkill, 'a real Area Adventure can build Mana to a signature skill cast');
+  assert.equal(playerSkill.metadata.skillId, 'threadsong');
+  assert.equal(playerSkill.actorManaBefore, 100);
+  assert.equal(playerSkill.actorManaAfter, 0);
   assert.ok(result.battleReplay, 'ordinary Adventure returns the authoritative replay projection');
   const enemyReplay = result.battleReplay.details.combatants.find((combatant) => combatant.id === `adventure-enemy:${expectedEncounter.id}`);
   assert.equal(enemyReplay.signatureSkill.id, expectedEncounter.skillCode);
