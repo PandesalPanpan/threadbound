@@ -206,6 +206,9 @@ function simpleBattleReplay({ repository, initial, final, beats = [], actions = 
     const ending = finalEnemies.find((candidate) => String(candidate.combatantId || candidate.id || candidate.definitionId) === combatantId);
     const last = lastActionByEnemy.get(combatantId);
     const endingHp = ending?.hp ?? last?.targetHpAfter ?? last?.actorHpAfter ?? 0;
+    const signatureSkill = (() => {
+      try { return automaticBattleSkillForCombatant(source); } catch { return null; }
+    })();
     const visualAssetId = resolveVisualAssetId(source, source.isBoss ? 'boss' : 'mob') || source.visualAssetId || null;
     return {
       id: combatantId,
@@ -218,6 +221,17 @@ function simpleBattleReplay({ repository, initial, final, beats = [], actions = 
       startingHp: Number(source.hp || source.maxHp || 0),
       endingHp: Number(endingHp),
       maxHp: Number(source.maxHp || 1),
+      startingMana: Number(source.mana ?? 0),
+      endingMana: Number(ending?.mana ?? last?.actorManaAfter ?? source.mana ?? 0),
+      maxMana: Number(source.maxMana ?? 0),
+      skillCode: signatureSkill?.id || source.skillCode || null,
+      signatureSkill: signatureSkill ? {
+        id: signatureSkill.id,
+        name: signatureSkill.name,
+        description: signatureSkill.description,
+        manaCost: signatureSkill.manaCost,
+      } : null,
+      effects: structuredClone(ending?.effects || source.effects || []),
     };
   });
   const primaryEnemy = enemies[0] || {

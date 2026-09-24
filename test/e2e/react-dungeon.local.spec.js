@@ -284,7 +284,7 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     await leader.setViewportSize({ width: 1440, height: 960 });
     await thirdLeaderCard.scrollIntoViewIfNeeded();
     await expect(thirdLeaderCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(2);
-    await expect(thirdLeaderCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+    await expect(thirdLeaderCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(5);
     await expect(leader.getByTestId('shell-dungeon-card')).toHaveCount(0);
     expect(await leader.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
     expect(await thirdLeaderCard.evaluate((card) => card.scrollWidth - card.clientWidth)).toBeLessThanOrEqual(1);

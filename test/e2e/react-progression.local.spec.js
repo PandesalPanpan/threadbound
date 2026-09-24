@@ -183,6 +183,17 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     expect(afterLevelHunt.character.level).toBe(2);
     expect(afterLevelHunt.character.maxHealth).toBe(beforeLevelHunt.character.maxHealth + 3);
 
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const partnerState = await dashboard(partnerContext);
+      if (partnerState.character.currentHealth < partnerState.character.maxHealth && partnerState.character.healthPotions > 0) break;
+      const hunt = await partnerContext.request.post('/api/hunt');
+      expect(hunt.ok()).toBe(true);
+    }
+    const healEligiblePartner = await dashboard(partnerContext);
+    expect(healEligiblePartner.character.currentHealth).toBeLessThan(healEligiblePartner.character.maxHealth);
+    expect(healEligiblePartner.character.currentHealth).toBeGreaterThan(0);
+    expect(healEligiblePartner.character.healthPotions).toBeGreaterThan(0);
+
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
     const joinCode = (await created.json()).party.joinCode;
@@ -209,6 +220,14 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     runId = run.id;
     expect(run.simpleCombat).toBe(true);
     expect(result.battleReplay.actions.some((action) => action.actionType === 'skill' && action.manaBefore === 100 && action.manaAfter === 0)).toBe(true);
+    const replayEnemyIds = new Set((result.battleReplay.enemies || []).map((enemy) => String(enemy.combatantId || enemy.id || '')));
+    expect(result.battleReplay.enemies.every((enemy) => Number.isFinite(enemy.startingMana)
+      && Number.isFinite(enemy.maxMana)
+      && enemy.maxMana > 0
+      && enemy.signatureSkill?.name)).toBe(true);
+    const enemySkillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill'
+      && replayEnemyIds.has(String(action.actorCombatantId || action.actorId || '')));
+    expect(enemySkillAction).toBeTruthy();
     const moments = replayMoments(result.battleReplay);
     const skillMomentIndex = moments.findIndex((moment) => moment.actionType === 'skill');
     expect(skillMomentIndex).toBeGreaterThanOrEqual(0);
@@ -224,7 +243,8 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     expect(await reconnectReplay.getAttribute('data-replay-battle-id')).toContain(runId);
     await expect(reconnectCard.locator('[data-testid^="shared-battle-player"]')).toHaveCount(2);
     await expect(reconnectCard.locator('[data-testid^="shared-battle-enemy"]')).toHaveCount(2);
-    await expect(reconnectCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(2);
+    await expect(reconnectCard.locator('[data-testid^="shared-battle-mana-"]')).toHaveCount(4);
+    await expect(reconnectCard.locator('[data-testid^="shared-battle-enemy"] .shared-battle-signature')).toHaveCount(2);
     const partnerLiveCard = partner.getByTestId('stream-dungeon-rich-card').last();
     const partnerLiveReplay = partnerLiveCard.getByTestId('shared-battle-surface');
     await expect(partnerLiveReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
@@ -243,14 +263,27 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await expect(partnerLiveCard.getByTestId('shared-battle-status-updates')).toContainText(`+${manaEvent.delta} Mana`);
     expect(await replayUnitState(reconnectCard)).toEqual(await replayUnitState(partnerLiveCard));
 
-    const skillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill');
-    const skillActorId = skillAction.actorId;
-    const playbackAtSkill = Date.parse(battleEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
+    const changedPlayer = result.battleReplay.players.find((player) => {
+      const playerId = String(player.playerId || player.id || '');
+      const committed = run.participants.find((participant) => String(participant.playerId || participant.id || '') === playerId);
+      return committed && Number(player.startingHp) !== Number(committed.hp);
+    });
+    expect(changedPlayer).toBeTruthy();
+    const changedPlayerId = String(changedPlayer.playerId || changedPlayer.id);
+    const changedParticipant = run.participants.find((participant) => String(participant.playerId || participant.id || '') === changedPlayerId);
+    const changedPlayerPage = changedPlayerId === String((await dashboard(leaderContext)).character.id) ? leader : partner;
+    await expect(changedPlayerPage.getByTestId('game-shell-health')).toHaveText(`${changedPlayer.startingHp}/${changedParticipant.maxHp}`);
+    await expect(changedPlayerPage.getByTestId('live-context-health')).toHaveText(`${changedPlayer.startingHp}/${changedParticipant.maxHp}`);
+
+    const enemySkillMomentIndex = moments.findIndex((moment) => moment.actionType === 'skill' && replayEnemyIds.has(String(moment.actorId || '')));
+    expect(enemySkillMomentIndex).toBeGreaterThanOrEqual(0);
+    const playbackAtSkill = Date.parse(battleEntry.createdAt) + enemySkillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
     await Promise.all([pinReplayClock(leader, playbackAtSkill), pinReplayClock(partner, playbackAtSkill)]);
-    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
-    await expect(reconnectCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', '0');
-    await expect(partnerLiveReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
-    await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', '0');
+    const enemySkillActorId = String(enemySkillAction.actorCombatantId || enemySkillAction.actorId);
+    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(enemySkillAction.skillName || enemySkillAction.skillId);
+    await expect(reconnectCard.getByTestId(`shared-battle-mana-${enemySkillActorId}`)).toHaveAttribute('data-mana', String(enemySkillAction.actorManaAfter ?? enemySkillAction.manaAfter));
+    await expect(partnerLiveReplay.locator('.shared-battle-action-label')).toContainText(enemySkillAction.skillName || enemySkillAction.skillId);
+    await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${enemySkillActorId}`)).toHaveAttribute('data-mana', String(enemySkillAction.actorManaAfter ?? enemySkillAction.manaAfter));
     expect(await replayUnitState(reconnectCard)).toEqual(await replayUnitState(partnerLiveCard));
     await Promise.all([restoreReplayClock(leader), restoreReplayClock(partner)]);
     expect(await reconnectCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.getAttribute('data-combatant-id')))).toEqual(
@@ -266,7 +299,7 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
       await expect(leaderCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
 
       if (run.phase === 'between_encounter') {
-        const needsHeal = run.participants.some((participant) => participant.hp < participant.maxHp - 8);
+        const needsHeal = run.participants.some((participant) => participant.hp < participant.maxHp);
         if (needsHeal && !run.intermissionPotionClaimedWindowId) {
           const partnerDashboard = await dashboard(partnerContext);
           if (partnerDashboard.character.healthPotions > 0) {
@@ -299,6 +332,13 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
         expect(continued.ok()).toBe(true);
         result = await continued.json();
         run = result.run;
+        const partnerReplayCard = partner.getByTestId('stream-dungeon-rich-card').filter({ has: partner.getByTestId('shared-battle-surface') }).last();
+        const partnerReplaySurface = partnerReplayCard.getByTestId('shared-battle-surface');
+        await expect(partnerReplaySurface).toHaveAttribute('data-replay-battle-id', result.battleReplay.battleId, { timeout: 7000 });
+        await expect(partnerReplaySurface).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+        expect(await partnerReplayCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.dataset.combatantId))).toEqual(
+          (result.battleReplay.enemies || []).map((enemy) => enemy.combatantId || enemy.id),
+        );
         terminalReplay = result.battleReplay;
         replaySkillSeen ||= (result.battleReplay?.actions || []).some((action) => action.actionType === 'skill');
         if (run.phase !== 'complete') {

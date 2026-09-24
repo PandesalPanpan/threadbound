@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generatedEquipmentOptions } from '../src/content/GeneratedEquipmentCatalog.js';
+import { generatedEquipmentOptions, OFFICIAL_EQUIPMENT_VISUALS } from '../src/content/GeneratedEquipmentCatalog.js';
 import { AREA_CONTENT, itemRewardProfileForArea } from '../src/content/AreaContentCatalog.js';
 import { EQUIPMENT_SLOTS } from '../src/domain/EquipmentSlotPolicy.js';
 import { ItemGenerator } from '../src/domain/ItemGenerator.js';
-import { rarityFromWeightedRoll } from '../src/domain/ItemRarityPolicy.js';
+import { ITEM_RARITY_IDS, rarityFromWeightedRoll } from '../src/domain/ItemRarityPolicy.js';
 import { arcEquipmentBudgetUsed } from '../src/domain/ArcEquipmentTemplatePolicy.js';
 import { capAdventureLoot } from '../src/domain/AdventureRewardPolicy.js';
 import { publicItemProjection } from '../src/application/GameService.js';
@@ -14,6 +14,48 @@ import { SQLiteEquipmentRepository } from '../src/infrastructure/SQLiteEquipment
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
 const officialItemIds = new Set(VISUAL_ASSETS.filter((asset) => asset.kind === 'item').map((asset) => asset.id));
+
+test('official equipment names retain their authored material family regardless of library order', () => {
+  const familyByLabel = new Map(OFFICIAL_EQUIPMENT_VISUALS.map(({ label, materialFamily }) => [label, materialFamily]));
+  const representativeFamilies = {
+    'Ember Edge': 'fire',
+    'Cinder Cleaver': 'fire',
+    'Cinder Pike': 'fire',
+    'Ember Helm': 'fire',
+    'Cinder Mantle': 'fire',
+    'Cinder Boots': 'leather',
+    'Frostglass Dagger': 'ice',
+    'Warden Spear': 'holy',
+    'Nightcoil Tome': 'void',
+    'Starfall Staff': 'arcane',
+    'Goldleaf Charm': 'gold',
+    'Emberstone Ring': 'sun',
+  };
+
+  for (const [label, expectedFamily] of Object.entries(representativeFamilies)) {
+    assert.equal(familyByLabel.get(label), expectedFamily, `${label} should keep its authored family`);
+  }
+  for (const [label, materialFamily] of familyByLabel) {
+    if (/^(Cinder|Ember)/.test(label)) {
+      assert.notEqual(materialFamily, 'ice', `${label} should not be tagged as ice`);
+    }
+  }
+});
+
+test('every Area, slot, and rarity has a non-empty official equipment option pool', () => {
+  for (const area of AREA_CONTENT) {
+    for (const rarity of ITEM_RARITY_IDS) {
+      const optionsBySlot = generatedEquipmentOptions({ itemFamilies: area.itemFamilies, rarity });
+      for (const slot of EQUIPMENT_SLOTS) {
+        const options = optionsBySlot[slot];
+        assert.ok(options.length > 0, `${area.id} ${rarity} ${slot} needs an official item`);
+        assert.ok(options.every((option) => area.itemFamilies[slot].includes(option.materialFamily)));
+        assert.ok(options.every((option) => officialItemIds.has(option.visualAssetId)));
+        assert.ok(options.every((option) => option.sourceCollection === 'figma-item-library-v1'));
+      }
+    }
+  }
+});
 
 test('generated rewards cover all slots with slot-specific stats and official semantic visuals', () => {
   const equipmentOptions = generatedEquipmentOptions();
@@ -56,7 +98,7 @@ test('Area family options filter data-only official item templates and weighted 
   const itemFamilies = {
     weapon: ['wood'],
     helmet: ['leather'],
-    armor: ['wood'],
+    armor: ['iron'],
     boots: ['leather'],
     accessory: ['lucky'],
   };

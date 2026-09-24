@@ -1,6 +1,101 @@
 import { FIGMA_EQUIPMENT_LIBRARY } from './FigmaItemLibrary.js';
-import { AREA_ITEM_FAMILIES } from './AreaItemFamilyCatalog.js';
 import { ITEM_RARITY_IDS } from '../domain/ItemRarityPolicy.js';
+
+// These family tags describe the authored equipment itself. Keep the mapping
+// label-based so rearranging the Figma library cannot silently change an item's
+// material identity.
+const MATERIAL_FAMILY_GROUPS = Object.freeze({
+  wood: [
+    'Ashbite Sword', 'Ashen Broadsword', 'Ashwood Axe', 'Ashstring Bow',
+    'Threadwind Bow', 'Ashen Sling',
+  ],
+  iron: [
+    'Guildwatch Blade', 'Ironroot Greatsword', 'Bronze Wardblade', 'Coilblade',
+    'Guildbreaker Mace', 'Ironroot Hammer', 'Copperhead Axe', 'Guildwatch Longbow',
+    'Ironroot Shortbow', 'Copper Sparkstaff', 'Bronze Repeater', 'Bronzeweave Coat',
+  ],
+  leather: ['Bonecrest Helm', 'Cinder Boots', 'Crownless Cloak'],
+  lucky: ['Briar Gauntlets'],
+  white: ['Glasswind Gloves'],
+  steel: [
+    'Threadsteel Longsword', 'Threadpiercer', 'Hearthsteel Sword', 'Threadsteel Axe',
+    'Threadhook Scythe', 'Threadcaster Orb', 'Guildplate Coat', 'Stormglass Helm',
+  ],
+  nature: [
+    'Bramble Falchion', 'Mirefang', 'Honeyed Blade', 'Copperleaf Sword', 'Briar Knife',
+    'Briar Halberd', 'Honeycomb Mace', 'Mirehook Glaive', 'Bronzebloom Hammer',
+    'Ironvine Axe', 'Skyroot Poleaxe', 'Ironvine Tome', 'Ironroot Cuirass',
+    'Honeycomb Belt', 'Mirehide Gloves', 'Briar Throwing Knife', 'Mirethorn Darts',
+    'Ironvine Gauntlets',
+  ],
+  fire: [
+    'Ember Edge', 'Cinder Cleaver', 'Emberthorn', 'Ember Maul', 'Cinder Pike',
+    'Hearth Maul', 'Emberbell Flail', 'Cinderwake Scythe', 'Ashcoil Mace',
+    'Ember Crossbow', 'Cinder Javelin', 'Hearth Wand', 'Embercoil Wand',
+    'Cinder Quiver', 'Ember Helm', 'Cinder Mantle', 'Hearthstone Band', 'Guildspark Cannon',
+  ],
+  royal: ['Warden Boots', 'Guildmark Belt'],
+  silver: ['Copperloop Ring'],
+  water: [
+    'Glasswind Scimitar', 'Glasswind Glaive', 'Rainspike Spear', 'Stormstake Spear', 'Stormcurve Blade',
+    'Glasswind Chakram', 'Rain Orb', 'Stormglass Bow', 'Rainthread Pendant',
+  ],
+  ice: [
+    'Moonlit Saber', 'Frostglass Dagger', 'Moonspike Spear', 'Frostbranch Axe',
+    'Moonshot Dart', 'Frostbranch Wand', 'Moonstep Greaves',
+  ],
+  gold: [
+    'Vaultbreaker', 'Vault Mace', 'Crownsplitter Axe', 'Goldleaf Halberd',
+    'Goldleaf Focus', 'Goldleaf Charm',
+  ],
+  moon: ['Frostweave Sash'],
+  arcane: [
+    'Violet Needle', 'Violet Repeater', 'Runebreaker', 'Lantern Knife', 'Prism Edge', 'Violet Warhammer',
+    'Starfall Greatblade', 'Starfall Hammer', 'Lantern Poleaxe', 'Prism Maul', 'Vault Grimoire',
+    'Starfall Staff', 'Honey Rune Tome', 'Lantern Arcbow', 'Prism Staff',
+    'Starfall Cloak', 'Vault Amulet', 'Prism Ring', 'Skyshard Pendant',
+    'Skyshard Blade', 'Skyshard Orb', 'Dusklight Focus',
+  ],
+  void: [
+    'Hollow Fang', 'Nightweave Dirk', 'Crownless Sword', 'Riftglass Saber',
+    'Duskwire Knife', 'Gloam Razor', 'Bonewhite Dagger', 'Gravehook Saber',
+    'Duskhook Halberd', 'Gravewake Scythe', 'Rift Pike', 'Bonewheel Mace',
+    'Nightbell Flail', 'Gloam Pike', 'Gloam Staff', 'Graveglass Orb',
+    'Rift Scepter', 'Bonewire Crossbow', 'Nightcoil Tome', 'Crownless Wand',
+    'Violet Visor', 'Dusk Mantle', 'Gloam Greaves', 'Graveward Charm', 'Rift Brooch',
+    'Nightcoil Amulet',
+  ],
+  holy: [
+    'Dawn Rapier', 'Sunspoke Sword', 'Warden Shortsword', 'Wanderer’s Blade',
+    'Sunforge Hammer', 'Warden Spear', 'Guildstone Maul',
+    'Wanderer’s Spear', 'Sunforge Hand Cannon', 'Warden Longbow', 'Wanderer’s Focus',
+    'Sunforge Plate', 'Wanderer’s Brooch',
+  ],
+  sun: ['Emberstone Ring'],
+  angel: ['Threadbound Belt'],
+});
+
+function materialFamiliesByLabel() {
+  const byLabel = new Map();
+  for (const [materialFamily, labels] of Object.entries(MATERIAL_FAMILY_GROUPS)) {
+    for (const label of labels) {
+      if (byLabel.has(label)) {
+        throw new Error(`Equipment label ${label} has more than one material family.`);
+      }
+      byLabel.set(label, materialFamily);
+    }
+  }
+
+  const equipmentLabels = new Set(FIGMA_EQUIPMENT_LIBRARY.map(({ label }) => label));
+  const missing = [...equipmentLabels].filter((label) => !byLabel.has(label));
+  const unknown = [...byLabel.keys()].filter((label) => !equipmentLabels.has(label));
+  if (missing.length || unknown.length) {
+    throw new Error(`Equipment material family mapping mismatch (missing: ${missing.join(', ') || 'none'}; unknown: ${unknown.join(', ') || 'none'}).`);
+  }
+  return byLabel;
+}
+
+const MATERIAL_FAMILY_BY_LABEL = materialFamiliesByLabel();
 
 // Each area's slot families are ordered from its entry material to its most
 // advanced material. Rarity selects a progressively later family; if an Area
@@ -15,19 +110,13 @@ const RARITY_FAMILY_INDEX = Object.freeze({
 });
 
 function officialEquipmentVisuals() {
-  const ordinalBySlot = new Map();
   const entries = FIGMA_EQUIPMENT_LIBRARY.map((authored) => {
-    const ordinal = ordinalBySlot.get(authored.slot) || 0;
-    ordinalBySlot.set(authored.slot, ordinal + 1);
-    const areaNumber = (ordinal % 4) + 1;
-    const areaItemIndex = Math.floor(ordinal / 4);
-    const materialFamilies = AREA_ITEM_FAMILIES[areaNumber][authored.slot];
     return Object.freeze({
       visualAssetId: authored.visualAssetId,
       label: authored.label,
       slot: authored.slot,
       family: authored.family,
-      materialFamily: materialFamilies[areaItemIndex % materialFamilies.length],
+      materialFamily: MATERIAL_FAMILY_BY_LABEL.get(authored.label),
       sourceNodeId: authored.sourceNodeId,
       sourceCollection: authored.sourceCollection,
     });

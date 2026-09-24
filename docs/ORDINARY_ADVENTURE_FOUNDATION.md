@@ -1,6 +1,6 @@
 # Ordinary Adventure foundation
 
-Status: M5-05 complete on `main`; the canonical checklist is updated only after the implementation merged and full `main` CI passed.
+Status: M5-05's Area 1 ordinary Adventure foundation is complete on `main`. This branch locally extends ordinary Adventure content and rewards through Areas 1–4 and adds the Area 1→2→3→4 progression challenge chain. Those extensions remain unmerged and have no green `main` CI result; do not mark canonical checklist work merged or complete from this branch alone.
 
 ## Player contract
 
@@ -20,16 +20,64 @@ Ordinary Adventure uses a 45-second base cooldown. A repeat attempt during that 
 
 ## World/content scope
 
-The initial Area 1 ordinary encounter intentionally reuses the already-shipped `Thread Wolf` identity. It is a fixed Area snapshot and does not scale automatically to player level. M5-05 adds only a small neutral Area-1 story observation (`area-trail-signs`) so the projection contract is real without introducing a new Arc, named Area, currency, Town, quest, or progression-boss content.
+`AdventureService` reads the player's persisted current Area and selects a fixed
+authored encounter from that Area's `adventureEncounters` pool. Encounters do
+not scale with player level. `AdventureRewardPolicy` consumes that Area's
+reward definition, while loot generation uses its item-family and rarity
+profile. The generated rarity and complete slot-stat profile are preserved;
+the reward path does not rewrite rarity after item generation.
 
-Area 1 Adventure victory currently grants 6 Gold and 30 XP with a 50% constrained equipment-drop chance; generated Adventure drops are capped at Rare for this foundation. Areas without an ordinary Adventure encounter/reward definition fail closed rather than generating ad-hoc content.
+The current feature-branch world defines three ordinary Adventure opponents
+for each supported Area:
 
-## Verification target
+| Area | Name | Recommended Level | Victory Gold | Victory XP | Equipment-drop chance |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1 | Bellbloom Meadows | 1–6 | 6 | 30 | 50% |
+| 2 | Emberglass Orchard | 7–12 | 18 | 62 | 56% |
+| 3 | Kitewind Heights | 13–18 | 36 | 104 | 64% |
+| 4 | The Mirrorfen | 19–24 | 68 | 172 | 72% |
 
-Authoritative tests cover Area-owned encounter selection, shared automatic battle context, persisted HP, Gold/XP progression, reward/story projection, durable cooldown rejection, and wounded-player rejection. Active mobile-width Playwright coverage enters `adventure` through the Adventure Stream, verifies visible XP/Gold/next-ready projection, confirms the persisted Area metadata, and proves an immediate repeat is server-rejected.
+Each Area has its own encounter pool, story observations, Town context, and
+equipment material/rarity profile. The Area 1 pool includes the existing
+`Thread Wolf`; Areas 2–4 use their own authored opponents. Unsupported Areas
+fail closed rather than generating ad-hoc encounters.
+
+### Separate co-op progression challenge chain
+
+Progression challenges are authored separately from the single-fight ordinary
+Adventure command. Each requires exactly two ready human participants and
+clearing one unlocks the next Area for both participants:
+
+- Area 1: Brightbell Parade Trial → Area 2
+- Area 2: Emberglass Procession → Area 3
+- Area 3: Kitewind Summit → Area 4
+
+Area 4 is the final currently supported Area, so it has no onward unlock
+challenge. Its ordinary Adventure pool and the regular Mirrorfen Descent
+Dungeon remain available. Unlocking is server-owned, persisted, monotonic, and
+idempotent; travel still validates against each player's unlocked frontier.
+
+## Verification target and current evidence
+
+`test/area-content-catalog.test.js` checks the four authored Adventure pools,
+semantic encounter art, Area reward growth, improving rare-or-better odds, and
+the two-human challenge chain. `test/ordinary-adventure.test.js` covers shared
+automatic combat, the Area 1 Adventure reward/receipt path, and cooldown and
+health rules. `test/progression-adventure.test.js` and
+`test/progression-area-unlock.test.js` cover two-human challenge readiness and
+participant unlock persistence/idempotency. The continuous mobile
+`test/e2e/react-progression.local.spec.js` journey proves Area 1→2 travel,
+Area 2 Town/Quest context, and a stronger Area 2 Hunt; it does not traverse the
+ordinary Adventure loop across Areas 2–4. The A2/A3 challenge-chain service
+test injects synthetic encounters and boosted stats, so it proves unlock
+coordination rather than realistic challenge balance. A real-content balanced
+run through those later gates remains an integration verification gap.
 
 The presentation change is additive text inside the existing compact stream receipt rather than a new layout/card family; the established 390×844 mobile stream hierarchy remains the visual baseline.
 
-## Next ordered task
+## Delivery status
 
-The next earliest milestone is **M5-06 — implement progression Adventure/boss requiring both human players by default**.
+The Area 2–4 ordinary Adventure expansion and challenge chain are branch-local
+work. Review and merge the feature, run the required gates, and confirm green
+`main` CI before treating the increment as delivered or updating canonical
+checklists.

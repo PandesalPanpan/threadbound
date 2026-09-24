@@ -1,6 +1,6 @@
 # Quest foundation and renewable Area loop
 
-Status: **Area-linked Quest offers, durable progress, contextual NPC hooks, and atomic XP/Gold rewards are implemented and branch-verified. Delivery remains pending merge and green `main` CI.**
+Status: **Area-linked Quest offers, durable progress, contextual NPC hooks, Arc-authored Quest composition, and atomic XP/Gold rewards are implemented and branch-verified on `feat/rpg-progression-loop`. This branch-local work remains unmerged and has no green `main` CI result.**
 
 The Quest system uses a constrained objective vocabulary and server-owned
 progress. `QuestService` coordinates reads and commands, `QuestObjective`
@@ -10,17 +10,32 @@ does not advance progress or compute rewards.
 
 ## Area offers and durable instances
 
-`src/content/QuestCatalog.js` contains 16 authored templates, four for each
-supported Area. The three currently offered opportunities rotate as templates
-are claimed, so the player sees several useful choices per Area and additional
-work after finishing claims. A previously claimed template can be accepted
-again under a distinct stable instance id; an active or completed-but-unclaimed
+`src/content/QuestCatalog.js` supplies 16 authored fallback templates, four
+for each supported Area. `QuestService` composes these with
+`ArcManifestService.runtimeQuests()`, which reads published Arc manifests:
+Manifest v1 `storyQuests` and Manifest v2 `quests` both become constrained
+Quest definitions for supported Areas. When an Arc Quest uses the same ID as a
+foundation template, the published Arc definition takes priority; additional
+Arc Quest IDs join the Area's eligible template pool alongside the fallbacks.
+Bundled published content
+is included through the normal Arc publication path.
+
+The board normally presents three available opportunities for the player's
+current Area. Offers rotate as templates are claimed, so more work becomes
+available after claims. A previously claimed template can be accepted again
+under a distinct stable instance ID; an active or completed-but-unclaimed
 template does not appear as a duplicate offer.
 
-Templates are grounded in Area data: real local enemy IDs, resident NPCs,
-Towns, and progression challenge IDs. Rewards use authored Gold and XP amounts
-appropriate to Area and objective difficulty. Objectives remain data, not
-arbitrary executable content.
+Foundation templates are grounded in Area data: local enemy IDs, resident
+NPCs, Towns, and progression challenge IDs. Arc Quests use manifest-owned
+Area, Town, NPC, enemy, boss, item, and lore references. Manifest validation
+keeps objectives inside the constrained vocabulary and rejects executable
+content; runtime projection omits Arc kill Quests whose target is not in that
+Area's Hunt or Adventure pool. Arc-authored descriptions and rewards are
+preserved. When omitted, a description can be composed from the matching
+Area lore summary and objective, and Gold/XP are derived from Area and
+objective difficulty. Foundation rewards are authored for their Area and
+objective difficulty.
 
 Accepting a Quest persists an immutable definition snapshot alongside its
 instance ID and objective progress. Catalog rotation or later template edits
@@ -70,14 +85,22 @@ Service NPC conversation can point to relevant work but does not silently
 mutate Heal, Bank, Shop, Upgrade, or Quest state. The existing service APIs
 remain authoritative for those actions.
 
-## Arc Story Quest composition
+## Arc Quest composition and scope
 
-Arc Manifest v1 may optionally include `storyQuests`. This authoring field is
-validated against the same objective vocabulary and rejects arbitrary script,
-formula, callback, or mechanic fields. Publishing an Arc preserves validated
-Story Quest data, but does not dynamically replace the live authored Area
-catalog. Full generated-world Quest placement remains part of a future
-manifest-boundary decision.
+Arc Manifest v1 `storyQuests` and v2 Area-bound `quests` are projected into
+the live Quest board only from published manifests. The Service Layer maps
+manifest Area IDs to supported Area numbers, projects objective labels from
+manifest references, and derives missing narrative/reward fields from the
+published Arc and matching Area lore. Published definitions win over
+same-ID foundation fallbacks. The accepted Quest stores its definition
+snapshot, so a later publication or catalog rotation does not rewrite active
+progress or claim rewards.
+
+This composes Arc-authored Quest data with the existing Area/Town/player
+systems; it does not publish a new Area or allow arbitrary executable Quest
+logic. The supported world currently has Areas 1–4. Arc quests that reference
+unsupported Area content or a kill target unavailable in their Area are not
+offered.
 
 ## Chat presentation
 
@@ -89,9 +112,11 @@ Historical cards collapse through the shared rich-card snapshot boundary.
 ## Verification
 
 Focused tests cover Quest identity/objective validation, lifecycle and durable
-snapshots, rotation and repeat instance IDs, event-driven progress, exact
-Area/NPC references, reward transaction rollback/idempotency, receipt facts,
-and mobile rich-card behavior. Current suites include
+snapshots, published Arc offer priority, rotation and repeat instance IDs,
+event-driven progress, exact Area/NPC references, reward transaction
+rollback/idempotency, receipt facts, and mobile rich-card behavior. The
+continuous progression journey also checks a lore-derived published Arc Quest,
+claim replacement offers, and Area 2 Quest/Town/NPC context. Current suites include
 `test/quest-foundation.test.js`, `test/quest-objectives.test.js`,
 `test/quest-rewards.test.js`, `test/quest-rich-card.test.js`,
 `test/town-foundation.test.js`, and the Quest/Town Playwright journeys.
