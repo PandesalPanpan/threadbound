@@ -1,0 +1,62 @@
+export const ACTIVE_TIMING_CONFIG = Object.freeze({
+  player: Object.freeze({ maxHp: 84, attackDamage: 14, potionCount: 1, potionHeal: 26 }),
+  enemy: Object.freeze({ id: 'threadbound-training-boar', name: 'Ribbon Boar', maxHp: 148 }),
+  attack: Object.freeze({
+    durationMs: 1560,
+    targetMs: 900,
+    windows: Object.freeze({ perfectMs: 95, goodMs: 220, normalMs: 380 }),
+    multipliers: Object.freeze({ PERFECT: 1.35, GOOD: 1.15, NORMAL: 1, MISS: 0.75 }),
+  }),
+  skill: Object.freeze({
+    targetHoldMs: 1080,
+    durationMs: 1900,
+    windows: Object.freeze({ perfectMs: 110, goodMs: 250, normalMs: 430 }),
+    damage: 17,
+    multipliers: Object.freeze({ PERFECT: 1.45, GOOD: 1.22, NORMAL: 1, POOR: 0.72 }),
+  }),
+  defense: Object.freeze({
+    perfectMs: 125,
+    guardMs: 270,
+    perfectDamageMultiplier: 0.22,
+    guardDamageMultiplier: 0.55,
+    missDamageMultiplier: 1,
+    guardActionDamageMultiplier: 0.7,
+    guardWindowBonusMs: 75,
+  }),
+  enemyPatterns: Object.freeze([
+    Object.freeze({
+      id: 'quick-strike',
+      name: 'Quick Strike',
+      telegraph: 'It crouches low, ready to spring.',
+      telegraphMs: 520,
+      timingDurationMs: 980,
+      hits: Object.freeze([Object.freeze({ label: 'Quick strike', targetMs: 570, damage: 11 })]),
+    }),
+    Object.freeze({
+      id: 'heavy-slam',
+      name: 'Heavy Slam',
+      telegraph: 'It draws back for a heavy swing.',
+      telegraphMs: 720,
+      timingDurationMs: 1260,
+      hits: Object.freeze([Object.freeze({ label: 'Heavy slam', targetMs: 820, damage: 18 })]),
+    }),
+    Object.freeze({
+      id: 'double-bounce',
+      name: 'Double Bounce',
+      telegraph: 'It bounces twice. Watch for both impacts.',
+      telegraphMs: 600,
+      timingDurationMs: 980,
+      hits: Object.freeze([
+        Object.freeze({ label: 'First bounce', targetMs: 500, damage: 7 }),
+        Object.freeze({ label: 'Second bounce', targetMs: 500, damage: 7 }),
+      ]),
+    }),
+  ]),
+  feedback: Object.freeze({
+    playerImpactMs: 470,
+    enemyImpactMs: 400,
+    doubleHitPauseMs: 310,
+    nextTurnMs: 320,
+    hitStopMs: 70,
+  }),
+});

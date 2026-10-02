@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
-  testMatch: ['**/react-*.local.spec.js'],
+  testMatch: ['**/react-*.local.spec.js', '**/active-timing-prototype.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

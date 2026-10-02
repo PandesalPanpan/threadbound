@@ -221,6 +221,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const serveReactGame = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
   const serveLegacyGame = (request, response) => request.session.threaded ? response.type('html').send(gamePage(config.authMode, sessionCapabilities(request.session.threaded))) : response.redirect('/');
   const serveReactCodex = (request, response, next) => response.sendFile('react-battle/index.html', { root: 'public' }, (error) => error ? next(error) : undefined);
+  // Public route for the browser-local timing experiment; it has no player or save dependency.
+  app.get('/active-timing', serveReactGame);
   const serveLegacyCodex = (request, response) => request.session.threaded ? response.type('html').send(codexPage(config.authMode, sessionCapabilities(request.session.threaded))) : response.redirect('/');
   app.get('/game', (request, response, next) => {
     if (!request.session.threaded?.playerId) return response.redirect('/');

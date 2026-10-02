@@ -1,0 +1,167 @@
+.active-timing-page { min-height: 100dvh; display: flex; flex-direction: column; color: var(--tb-text); }
+.active-timing-topbar { position: sticky; z-index: 5; top: 0; min-height: 54px; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 18px; padding: 0 max(16px, calc((100vw - 900px) / 2)); background: rgba(15, 17, 23, .94); border-bottom: 1px solid var(--tb-border); backdrop-filter: blur(16px); }
+.active-timing-brand { display: inline-flex; align-items: center; gap: 9px; width: max-content; color: var(--tb-text); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+.active-timing-brand span { display: grid; width: 24px; height: 24px; place-items: center; color: #191522; background: var(--tb-purple); border-radius: 7px; font-size: 12px; letter-spacing: 0; }
+.active-timing-topbar__tag { display: grid; gap: 1px; text-align: right; }
+.active-timing-topbar__tag span, .active-timing-topbar__tag strong, .active-timing-kicker, .active-timing-turnline, .active-timing-arena__header, .active-timing-health__line span, .active-timing-meter__labels, .active-timing-controls__label, .active-timing-local, .active-timing-result__stats span, .active-timing-debug__title, .active-timing-debug dt { font-family: var(--tb-mono); text-transform: uppercase; letter-spacing: .11em; }
+.active-timing-topbar__tag span { color: var(--tb-muted-blue); font-size: 8px; }
+.active-timing-topbar__tag strong { color: var(--tb-purple-bright); font-size: 9px; }
+.active-timing-debug-toggle { min-height: 34px; padding: 0 11px; color: var(--tb-muted); background: transparent; border: 1px solid var(--tb-border); border-radius: 8px; cursor: pointer; font-family: var(--tb-mono); font-size: 9px; letter-spacing: .08em; }
+.active-timing-debug-toggle:hover, .active-timing-debug-toggle.is-open { color: var(--tb-text); border-color: var(--tb-purple); background: rgba(158, 120, 255, .12); }
+.active-timing-main { width: min(820px, 100%); margin: 0 auto; padding: 18px clamp(12px, 3vw, 24px) 15px; display: flex; flex: 1; flex-direction: column; gap: 12px; }
+.active-timing-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.active-timing-kicker { color: var(--tb-muted-blue); font-size: 8px; font-weight: 700; }
+.active-timing-heading h1 { margin: 3px 0 0; font-size: clamp(20px, 4vw, 27px); line-height: 1.08; letter-spacing: -.045em; }
+.active-timing-local { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; color: var(--tb-green); font-size: 8px; font-weight: 700; }
+.active-timing-local i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.active-timing-turnline { min-height: 29px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; color: var(--tb-muted); background: rgba(15, 17, 23, .68); border: 1px solid var(--tb-border-soft); border-radius: 8px; font-size: 9px; font-weight: 700; }
+.active-timing-turnline strong { color: var(--tb-purple-bright); font-weight: 800; }
+
+.active-timing-arena { --hitstop-duration: 70ms; position: relative; isolation: isolate; min-height: clamp(300px, 39svh, 385px); overflow: hidden; display: block; padding: 11px 12px 10px; border: 1px solid rgba(141, 122, 186, .34); border-radius: 16px; background: radial-gradient(ellipse at 50% 66%, rgba(86, 65, 135, .27), transparent 54%), linear-gradient(155deg, #292830 0%, #1d1d24 49%, #17191f 100%); box-shadow: inset 0 1px rgba(255,255,255,.035), 0 14px 34px rgba(0,0,0,.2); outline: none; touch-action: none; user-select: none; -webkit-user-select: none; cursor: default; }
+.active-timing-arena:focus-visible { outline: 2px solid var(--tb-purple-bright); outline-offset: 3px; }
+.active-timing-arena__stars { position: absolute; z-index: -1; inset: 0; opacity: .28; background-image: radial-gradient(circle at 18% 25%, rgba(255,255,255,.9) 0 1px, transparent 1.4px), radial-gradient(circle at 74% 21%, rgba(255,255,255,.8) 0 1px, transparent 1.4px), radial-gradient(circle at 52% 39%, rgba(255,255,255,.7) 0 1px, transparent 1.3px), radial-gradient(circle at 89% 48%, rgba(255,255,255,.8) 0 1px, transparent 1.3px), radial-gradient(circle at 29% 54%, rgba(255,255,255,.5) 0 1px, transparent 1.3px); }
+.active-timing-arena__header { position: absolute; z-index: 2; top: 10px; left: 12px; right: 12px; min-height: 15px; display: flex; justify-content: space-between; gap: 8px; color: var(--tb-muted-blue); font-size: 8px; font-weight: 700; }
+.active-timing-arena__header span:last-child { color: var(--tb-gold); }
+.active-timing-health { position: absolute; z-index: 2; top: 31px; width: calc(50% - 32px); display: grid; gap: 4px; }
+.active-timing-health--enemy { right: 12px; }
+.active-timing-health--player { left: 12px; }
+.active-timing-health__line { display: flex; justify-content: space-between; gap: 8px; color: var(--tb-muted); font-size: 8px; }
+.active-timing-health__line span { font-size: 7px; font-weight: 700; }
+.active-timing-health__line strong { color: var(--tb-text); font-family: var(--tb-mono); font-size: 9px; }
+.active-timing-health__track { height: 6px; overflow: hidden; background: rgba(10, 11, 15, .86); border: 1px solid rgba(255,255,255,.08); border-radius: 99px; }
+.active-timing-health__track span { display: block; height: 100%; background: linear-gradient(90deg, #9e78ff, #c7abff); border-radius: inherit; transition: width 220ms ease-out; }
+.active-timing-health--enemy .active-timing-health__track span { background: linear-gradient(90deg, #fd6473, #ffb06a); }
+.active-timing-health--enemy .active-timing-health__track { border-color: rgba(255,92,102,.24); }
+.active-timing-scene { position: absolute; inset: 64px 8px 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 7%; pointer-events: none; }
+.active-timing-threadline { position: absolute; z-index: -1; left: 22%; right: 22%; top: 56%; height: 1px; background: linear-gradient(90deg, transparent, rgba(158,120,255,.7), rgba(245,176,71,.72), transparent); box-shadow: 0 0 16px rgba(158,120,255,.38); }
+.active-timing-threadline span, .active-timing-threadline i, .active-timing-threadline b { position: absolute; top: 50%; width: 7px; height: 7px; transform: translateY(-50%) rotate(45deg); background: #bca4ff; box-shadow: 0 0 10px rgba(158,120,255,.8); }
+.active-timing-threadline span { left: 24%; }.active-timing-threadline i { left: 50%; width: 5px; height: 5px; background: #f5b047; }.active-timing-threadline b { right: 24%; }
+.active-timing-unit { position: relative; width: 36%; max-width: 180px; display: grid; justify-items: center; align-content: center; gap: 4px; }
+.active-timing-unit img { position: relative; z-index: 1; width: min(100%, 142px); height: clamp(106px, 18svh, 158px); object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 9px 9px rgba(0,0,0,.42)); }
+.active-timing-unit--player img { width: min(87%, 120px); }
+.active-timing-unit strong { color: #c8c5d3; font-family: var(--tb-mono); font-size: 8px; letter-spacing: .1em; }
+.active-timing-unit__halo { position: absolute; top: 27%; width: 72%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(158,120,255,.16), transparent 70%); }
+.active-timing-unit--enemy .active-timing-unit__halo { background: radial-gradient(circle, rgba(255,129,108,.2), transparent 70%); }
+.active-timing-unit__fallback { display: grid; width: 90px; height: 100px; place-items: center; color: var(--tb-purple-bright); font-size: 46px; }
+.active-timing-arena.is-player-attacking .active-timing-unit--player { animation: active-timing-lunge 280ms ease-in-out; }
+.active-timing-arena.is-enemy-telegraph .active-timing-unit--enemy { animation: active-timing-windup 440ms ease-in-out infinite alternate; }
+.active-timing-arena.is-enemy-timing .active-timing-unit--enemy { filter: drop-shadow(0 0 12px rgba(255,92,102,.38)); }
+.active-timing-arena.is-player-timing .active-timing-unit--enemy .active-timing-unit__halo { box-shadow: 0 0 0 2px rgba(245,176,71,.35), 0 0 24px rgba(245,176,71,.25); }
+.active-timing-arena.has-player-impact .active-timing-unit--enemy img, .active-timing-arena.has-enemy-impact .active-timing-unit--player img { animation: active-timing-recoil var(--hitstop-duration) steps(2, end), active-timing-flash 160ms ease-out; }
+.active-timing-arena.has-player-impact .active-timing-unit--enemy .active-timing-unit__halo { background: radial-gradient(circle, rgba(255,255,255,.38), rgba(255,92,102,.28) 38%, transparent 72%); }
+.active-timing-arena.has-enemy-impact .active-timing-unit--player .active-timing-unit__halo { background: radial-gradient(circle, rgba(255,255,255,.3), rgba(255,92,102,.24) 38%, transparent 72%); }
+@keyframes active-timing-lunge { 50% { transform: translateX(35px) scale(1.04); } }
+@keyframes active-timing-windup { to { transform: translateX(-8px) scale(.96); } }
+@keyframes active-timing-recoil { 25% { transform: translateX(5px); } 60% { transform: translateX(-4px); } }
+@keyframes active-timing-flash { 50% { filter: brightness(1.8); } }
+.active-timing-meter { position: absolute; z-index: 2; right: 14px; bottom: 49px; left: 14px; margin: 0 4px 2px; display: grid; gap: 5px; }
+.active-timing-meter__labels { display: flex; justify-content: space-between; color: #c1b9d2; font-size: 7px; font-weight: 700; }
+.active-timing-meter__labels span:last-child { color: var(--tb-gold); }
+.active-timing-meter__track { position: relative; height: 13px; overflow: visible; background: rgba(10, 11, 15, .88); border: 1px solid rgba(255,255,255,.17); border-radius: 99px; }
+.active-timing-meter__good, .active-timing-meter__perfect, .active-timing-meter__target, .active-timing-meter__cursor { position: absolute; top: 0; bottom: 0; }
+.active-timing-meter__good { background: rgba(97,173,255,.3); border-radius: 99px; }
+.active-timing-meter__perfect { background: rgba(89,209,140,.74); border-radius: 99px; }
+.active-timing-meter__target { top: -3px; bottom: -3px; width: 2px; transform: translateX(-50%); background: #f9f6ff; box-shadow: 0 0 7px rgba(255,255,255,.95); }
+.active-timing-meter__cursor { z-index: 2; width: 5px; top: -3px; bottom: -3px; transform: translateX(-50%); border-radius: 4px; background: var(--tb-gold); box-shadow: 0 0 8px rgba(245,176,71,.95); }
+.active-timing-meter--skill .active-timing-meter__good { background: rgba(245,176,71,.26); }
+.active-timing-meter--skill .active-timing-meter__perfect { background: rgba(245,176,71,.78); }
+.active-timing-meter--defense .active-timing-meter__good { background: rgba(158,120,255,.34); }
+.active-timing-meter--defense .active-timing-meter__perfect { background: rgba(89,209,140,.8); }
+.active-timing-hit { position: absolute; z-index: 4; top: 38%; left: 50%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 1px; padding: 7px 12px; color: #fff; background: rgba(15,17,23,.83); border: 1px solid rgba(255,255,255,.3); border-radius: 9px; box-shadow: 0 6px 22px rgba(0,0,0,.32); text-align: center; animation: active-timing-pop 170ms cubic-bezier(.2,.8,.2,1) both; pointer-events: none; }
+.active-timing-hit strong { font-family: var(--tb-mono); font-size: clamp(14px, 4vw, 21px); font-weight: 900; letter-spacing: .05em; }
+.active-timing-hit span { color: var(--tb-gold); font-family: var(--tb-mono); font-size: 11px; font-weight: 800; }
+.active-timing-hit--player { border-color: rgba(89,209,140,.6); }.active-timing-hit--player strong { color: #7ff0ae; }
+.active-timing-hit--enemy { border-color: rgba(255,92,102,.65); }.active-timing-hit--enemy strong { color: #ff8490; }
+.active-timing-hit--item { border-color: rgba(97,173,255,.55); }.active-timing-hit--item strong { color: #8bc5ff; }
+@keyframes active-timing-pop { from { opacity: 0; transform: translate(-50%, -40%) scale(.88); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.active-timing-telegraph { position: absolute; z-index: 3; left: 50%; top: 39%; width: min(75%, 340px); display: grid; gap: 3px; padding: 9px 12px; transform: translate(-50%, -50%); background: rgba(20, 15, 20, .91); border: 1px solid rgba(255,92,102,.58); border-radius: 10px; box-shadow: 0 0 28px rgba(255,92,102,.2); pointer-events: none; animation: active-timing-pop 160ms ease-out both; }
+.active-timing-telegraph span { color: #ff8490; font-family: var(--tb-mono); font-size: 7px; font-weight: 800; letter-spacing: .14em; }
+.active-timing-telegraph strong { font-size: 14px; line-height: 1.1; }
+.active-timing-telegraph small { color: #c7bfc5; font-size: 10px; line-height: 1.3; }
+.active-timing-prompt { position: absolute; z-index: 2; right: 10px; bottom: 8px; left: 10px; min-height: 27px; display: grid; justify-items: center; align-content: center; gap: 3px; color: #f0edf6; text-align: center; pointer-events: none; }
+.active-timing-prompt strong { font-size: 11px; line-height: 1.3; }
+.active-timing-prompt span { color: var(--tb-gold); font-family: var(--tb-mono); font-size: 7px; font-weight: 700; letter-spacing: .1em; }
+
+.active-timing-controls { padding: 10px; background: rgba(15,17,23,.84); border: 1px solid var(--tb-border); border-radius: 12px; box-shadow: 0 8px 22px rgba(0,0,0,.12); }
+.active-timing-controls__label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--tb-muted-blue); font-size: 8px; font-weight: 800; }
+.active-timing-controls__label small { color: var(--tb-muted); font-family: var(--tb-font); font-size: 10px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.active-timing-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.active-timing-actions button { min-width: 0; min-height: 65px; display: flex; align-items: center; justify-content: flex-start; gap: 9px; padding: 8px 10px; color: var(--tb-text); background: linear-gradient(180deg, #2c2d33, #24252a); border: 1px solid #41434b; border-radius: 10px; cursor: pointer; text-align: left; transition: border-color 120ms ease, transform 120ms ease, background 120ms ease; }
+.active-timing-actions button:hover:not(:disabled) { border-color: var(--tb-purple); background: #302b3a; transform: translateY(-1px); }
+.active-timing-actions button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
+.active-timing-actions button:disabled { opacity: .43; cursor: not-allowed; }
+.active-timing-actions button > span:last-child { min-width: 0; display: grid; gap: 3px; }
+.active-timing-actions button strong { display: block; font-family: var(--tb-mono); font-size: 10px; letter-spacing: .045em; white-space: nowrap; }
+.active-timing-actions button em { color: var(--tb-gold); font-size: 9px; font-style: normal; }
+.active-timing-actions button small { color: var(--tb-muted); font-size: 9px; line-height: 1.2; white-space: nowrap; }
+.active-timing-action__icon { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; color: #c9b2ff; background: rgba(158,120,255,.13); border: 1px solid rgba(158,120,255,.23); border-radius: 9px; font-size: 16px; }
+.active-timing-action__icon--skill { color: #ffd37b; background: rgba(245,176,71,.1); border-color: rgba(245,176,71,.24); }
+.active-timing-action__icon--item { color: #8bc5ff; background: rgba(97,173,255,.1); border-color: rgba(97,173,255,.22); }
+.active-timing-action__icon--guard { color: #91dfb3; background: rgba(89,209,140,.1); border-color: rgba(89,209,140,.22); }
+.active-timing-controls--ready { display: grid; gap: 9px; }
+.active-timing-controls--ready p { margin: 0; color: var(--tb-muted); font-size: 11px; line-height: 1.4; }
+.active-timing-start, .active-timing-fight-again { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #17131f; background: linear-gradient(110deg, #b99aff, #9e78ff); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; box-shadow: 0 7px 20px rgba(115,78,191,.21); cursor: pointer; font-family: var(--tb-mono); font-size: 12px; font-weight: 900; letter-spacing: .08em; }
+.active-timing-start:hover, .active-timing-fight-again:hover { filter: brightness(1.09); }
+.active-timing-start span, .active-timing-fight-again span { font-size: 18px; }
+.active-timing-controls--waiting { min-height: 81px; display: flex; align-items: center; gap: 11px; }
+.active-timing-controls--waiting > div:nth-child(2) { min-width: 0; display: grid; gap: 4px; }
+.active-timing-controls--waiting > div:nth-child(2) strong { font-size: 12px; line-height: 1.25; }
+.active-timing-waiting-mark { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; background: rgba(158,120,255,.1); border: 1px solid rgba(158,120,255,.23); border-radius: 10px; }
+.active-timing-waiting-mark span { width: 11px; height: 11px; border: 2px solid var(--tb-purple-bright); border-radius: 50%; box-shadow: 0 0 12px rgba(158,120,255,.55); animation: active-timing-pulse 800ms ease-in-out infinite alternate; }
+@keyframes active-timing-pulse { to { transform: scale(1.42); opacity: .62; } }
+.active-timing-guard-chip { margin-left: auto; padding: 6px 8px; color: #8de7b2; background: rgba(89,209,140,.1); border: 1px solid rgba(89,209,140,.27); border-radius: 7px; font-family: var(--tb-mono); font-size: 7px; font-weight: 800; white-space: nowrap; }
+.active-timing-footnote { margin: auto 0 0; padding-top: 1px; color: #737783; font-size: 9px; line-height: 1.35; text-align: center; }
+
+.active-timing-result { display: grid; gap: 9px; }
+.active-timing-result__banner { display: grid; gap: 3px; padding: 8px 11px; background: rgba(89,209,140,.09); border: 1px solid rgba(89,209,140,.28); border-radius: 9px; }
+.active-timing-result__banner > span { color: var(--tb-green); font-family: var(--tb-mono); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.active-timing-result__banner strong { font-size: 14px; }
+.active-timing-result__banner.is-loss { background: rgba(255,92,102,.08); border-color: rgba(255,92,102,.25); }.active-timing-result__banner.is-loss > span { color: #ff8490; }
+.active-timing-result__stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; }
+.active-timing-result__stats > div { min-height: 48px; display: grid; align-content: center; gap: 3px; padding: 6px 8px; background: rgba(37,38,42,.9); border: 1px solid var(--tb-border-soft); border-radius: 8px; }
+.active-timing-result__stats span { color: var(--tb-muted-blue); font-size: 7px; font-weight: 700; }
+.active-timing-result__stats strong { overflow: hidden; color: var(--tb-text); font-size: 9px; line-height: 1.2; text-overflow: ellipsis; }
+.active-timing-rating { min-width: 0; margin: 0; padding: 7px 9px 8px; border: 1px solid var(--tb-border-soft); border-radius: 9px; }
+.active-timing-rating legend { padding: 0 4px; color: var(--tb-text); font-size: 11px; font-weight: 700; }
+.active-timing-rating > div { display: flex; gap: 7px; }
+.active-timing-rating button { width: 38px; height: 38px; color: var(--tb-muted); background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 9px; cursor: pointer; font-family: var(--tb-mono); font-weight: 800; }
+.active-timing-rating button:hover, .active-timing-rating button.is-selected { color: #17131f; background: var(--tb-gold); border-color: var(--tb-gold); }
+.active-timing-rating small { display: block; margin-top: 5px; color: var(--tb-muted); font-size: 9px; }
+.active-timing-fight-again { min-height: 46px; }
+.active-timing-debug { position: fixed; z-index: 20; right: max(12px, calc((100vw - 880px) / 2)); top: 62px; width: min(320px, calc(100vw - 24px)); padding: 12px; background: rgba(15,17,23,.97); border: 1px solid var(--tb-purple); border-radius: 11px; box-shadow: 0 14px 50px rgba(0,0,0,.48); }
+.active-timing-debug__title { display: flex; justify-content: space-between; gap: 8px; color: var(--tb-purple-bright); font-size: 8px; }
+.active-timing-debug__title span { color: var(--tb-muted); font-family: var(--tb-font); font-size: 9px; letter-spacing: 0; text-transform: none; }
+.active-timing-debug dl { margin: 10px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; }
+.active-timing-debug dl div { display: contents; }
+.active-timing-debug dt { color: var(--tb-muted); font-size: 8px; }
+.active-timing-debug dd { margin: 0; color: var(--tb-text); font-family: var(--tb-mono); font-size: 9px; text-align: right; }
+
+@media (max-width: 680px) {
+  .active-timing-topbar { min-height: 50px; grid-template-columns: 1fr auto auto; gap: 9px; padding: 0 12px; }
+  .active-timing-brand { gap: 7px; font-size: 9px; }.active-timing-brand span { width: 22px; height: 22px; }
+  .active-timing-topbar__tag span { font-size: 6px; }.active-timing-topbar__tag strong { font-size: 7px; }
+  .active-timing-debug-toggle { min-height: 32px; padding: 0 8px; font-size: 8px; }
+  .active-timing-main { gap: 9px; padding: 12px 10px 10px; }
+  .active-timing-heading h1 { font-size: 20px; }.active-timing-kicker { font-size: 7px; }.active-timing-local { font-size: 7px; }
+  .active-timing-arena { min-height: clamp(285px, 37svh, 350px); padding: 9px 9px 8px; border-radius: 13px; }
+  .active-timing-scene { inset: 64px 3px 80px; padding: 0 4%; }
+  .active-timing-unit { width: 40%; }.active-timing-unit img { height: clamp(100px, 15svh, 130px); }.active-timing-unit--player img { width: min(84%, 105px); }
+  .active-timing-health { width: calc(50% - 32px); }.active-timing-health__line span { font-size: 6px; }.active-timing-health__line strong { font-size: 8px; }
+  .active-timing-prompt strong { font-size: 10px; }.active-timing-prompt span { font-size: 6px; }
+  .active-timing-controls { padding: 8px; }.active-timing-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+  .active-timing-actions button { min-height: 56px; gap: 8px; padding: 6px 9px; }
+  .active-timing-actions button strong { font-size: 9px; }.active-timing-actions button small { font-size: 8px; }
+  .active-timing-action__icon { width: 28px; height: 28px; flex-basis: 28px; font-size: 14px; }
+  .active-timing-controls--waiting { min-height: 70px; }.active-timing-footnote { font-size: 8px; }
+  .active-timing-result__stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 370px) {
+  .active-timing-main { padding-inline: 8px; }
+  .active-timing-unit img { height: 98px; }
+  .active-timing-arena { min-height: 278px; }
+  .active-timing-actions button { padding-inline: 7px; }
+  .active-timing-actions button small { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .active-timing-page *, .active-timing-page *::before, .active-timing-page *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
