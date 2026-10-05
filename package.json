@@ -15,7 +15,7 @@
     "test:e2e": "npm run test:e2e:threaded && npm run test:e2e:simple-local && npm run test:e2e:react-local && npm run test:e2e:workshop",
     "test:e2e:threaded": "playwright test --config=playwright.config.js",
     "test:e2e:simple-local": "playwright test --config=playwright.simple.local.config.js",
-    "test:e2e:react-local": "playwright test --config=playwright.react.local.config.js",
+    "test:e2e:react-local": "npm run build:frontend && playwright test --config=playwright.react.local.config.js",
     "test:e2e:workshop": "playwright test --config=playwright.workshop.config.js",
     "test:e2e:legacy-local": "playwright test --config=playwright.local.config.js",
     "test:e2e:legacy-encounters": "playwright test --config=playwright.encounters.local.config.js",
