@@ -1,6 +1,6 @@
 # Threadbound Presentation v2 Master Plan
 
-> Status: canonical product direction and ordered execution checklist as of 2026-09-14.
+> Status: canonical product direction and ordered execution checklist as of 2026-10-05.
 >
 > Goal: rebuild the presentation layer from the canonical Figma v2 design, then connect it to the existing Threadbound application/domain/API behavior. This plan supersedes the incremental legacy presentation checklist.
 >
@@ -20,7 +20,7 @@ The owner selected the overhead Arena Lab as the authoritative combat system for
 
 This is an explicit product decision to integrate live combat alongside the still-open Phase K human experience gates. It does not check those gates or change the chat-first shell. Extract the arena simulator into reusable domain code, use the real participants/enemies/equipment/stats/abilities for each encounter, and provide explicit encounter configuration instead of copied simulators. Preserve existing combat and progression mechanics where they fit; document and resolve conflicts with the spatial timeline, including sparse explicit boss decisions. Define bounded domain-owned stat-to-attack/movement-speed mappings, deterministic timing/ties/randomness, movement interruption, defeat, and timeout behavior. Commit outcomes and versioned replay data through existing authoritative persistence boundaries, keep old saved runs and historical replays readable, and preserve concise receipts, idempotency, optimistic concurrency, and party/reconnect correctness.
 
-The independent attack and movement speed refinement is checkpointed locally in `f98694d` after the accepted arena baseline `20c9c27`; it adds continuous travel and destination reservations to the comparison lab. These checkpoints are implementation inputs, not merged milestones. The active-timing lab and fixed-roster Arena Lab remain explicitly isolated comparison experiments and never supply live combat rosters or results. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md) and the implementation checklist in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md).
+The accepted arena baseline (`20c9c27`) and independent attack/movement speed refinement (`f98694d`) are merged on `main`; live integration landed in `edd1a82`. The active-timing lab and fixed-roster Arena Lab remain isolated comparison experiments and never supply live combat rosters or results. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md) and the completed implementation checklist in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md).
 
 ## 2. Canonical Figma scope
 
@@ -196,7 +196,7 @@ Use the two-reviewer guide and worksheet in [PLAYER_EXPERIENCE_ACCEPTANCE.md](PL
 
 ### Phase M — approved authoritative arena combat integration (parallel to Phase K)
 
-This owner-approved implementation track may proceed while the Phase K human reviews are arranged. It does not replace or satisfy any Phase K gate. The scope-specific work is implemented, tested, documented, merged, and green on `main`; its combat-path audit, compatibility notes, screenshots, and handoff are recorded in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md). CI evidence is [run 37272243336](https://github.com/PandesalPanpan/threadbound/actions/runs/37272243336) for `512bbd4`.
+This owner-approved implementation track proceeded while the Phase K human reviews are arranged. It does not replace or satisfy any Phase K gate. The scope-specific work is implemented, tested, documented, merged, and green on `main`; its combat-path audit, compatibility notes, screenshots, and handoff are recorded in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md). The integration handoff was green in [main CI run 37273597455](https://github.com/PandesalPanpan/threadbound/actions/runs/37273597455) for `4effd0b`.
 
 - [x] **PV2-M01** Audit and inventory every live combat entry point, simulator, replay contract, renderer, and persisted battle format; document compatibility and conflict decisions.
 - [x] **PV2-M02** Extract the arena simulator into bounded, deterministic server-side domain code with authoritative character/equipment stat mappings and explicit encounter configuration.

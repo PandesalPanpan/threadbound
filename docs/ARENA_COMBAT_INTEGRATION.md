@@ -1,9 +1,10 @@
 # Authoritative arena combat integration
 
 Status: implementation complete on `main` as of 2026-10-05. The combat
-integration landed in `edd1a82`; the final test reliability fixes landed in
-`512bbd4`, whose [CI run](https://github.com/PandesalPanpan/threadbound/actions/runs/37272243336)
-passed both workflow jobs. Phase K human reviews remain open.
+integration landed in `edd1a82`; final test reliability fixes landed in
+`512bbd4`. At this documentation checkpoint, `main` at `4effd0b` passed both
+workflow jobs in [CI run 37273597455](https://github.com/PandesalPanpan/threadbound/actions/runs/37273597455).
+Phase K human reviews remain open.
 
 ## Intended result
 
@@ -97,9 +98,9 @@ its own tests, review, merge, and green `main` CI.
 
 Use [THREADBOUND_MASTER_PLAN.md](THREADBOUND_MASTER_PLAN.md)'s Phase M as the
 canonical ordered checklist. The implementation commit is `edd1a82`; the test
-reliability follow-up is `512bbd4`. Green `main` CI for `512bbd4` is recorded in
-[run 37272243336](https://github.com/PandesalPanpan/threadbound/actions/runs/37272243336).
-That run passed `npm run check`, `npm test`, and the full browser E2E workflow.
+reliability follow-up is `512bbd4`. Green `main` CI at this handoff checkpoint
+is recorded in [run 37273597455](https://github.com/PandesalPanpan/threadbound/actions/runs/37273597455)
+for `4effd0b`. It passed `npm run check`, `npm test`, and the full browser E2E workflow.
 The unit suite reports 522 passing tests; E2E groups passed 24 threaded, 21
 simple-local, 29 React-local, and 7 Workshop tests. Coverage exercises Hunt,
 ordinary Adventure, Duel, single/multi-enemy and legacy Dungeon runs,

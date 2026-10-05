@@ -182,12 +182,12 @@ watch automatic movement, targeting, attacks, and skills. Pause, playback speed,
 replay, and reposition controls help compare formations. These prototypes do
 not grant rewards or save player progress. See `docs/ARENA_COMBAT_PROTOTYPE.md`.
 
-The overhead arena is the owner-approved authoritative combat direction for
-every live encounter. The current Arena Lab remains an isolated comparison
-experiment while the reusable server-side engine is integrated across Hunt,
-Adventure, Duel, Dungeon, and Arc encounters. See
-[`docs/ARENA_COMBAT_INTEGRATION.md`](docs/ARENA_COMBAT_INTEGRATION.md) and the
-parallel Phase M checklist in the master plan.
+The overhead arena is the owner-approved authoritative system for every live
+encounter. The reusable server-side engine now resolves Hunt, Adventure, Duel,
+Dungeon, and Arc combat; the Arena Lab remains an isolated comparison
+experiment. Phase M is complete on `main`, with Phase K human reviews still
+open. See [`docs/ARENA_COMBAT_INTEGRATION.md`](docs/ARENA_COMBAT_INTEGRATION.md)
+and the ordered [master plan](docs/THREADBOUND_MASTER_PLAN.md).
 
 ## Tests
 
