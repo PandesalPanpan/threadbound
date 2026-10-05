@@ -31,6 +31,12 @@ async function statusCard(page) {
   return card;
 }
 
+async function latestStreamCard(page, testId) {
+  const cards = page.getByTestId(testId);
+  await expect(cards.last()).toBeVisible();
+  return cards.nth((await cards.count()) - 1);
+}
+
 async function readVisibleStats(card) {
   return card.locator('.shell-stat-grid--five .shell-stat').evaluateAll((rows) => Object.fromEntries(rows.map((row) => [
     row.querySelector('span')?.textContent?.trim(),
@@ -51,7 +57,10 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   for (let attempt = 0; !earnedGold && attempt < 10; attempt += 1) {
     await command(page, 'hunt');
     const hunt = page.getByTestId('stream-hunt-rich-card').last();
-    await expect(hunt.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30_000 });
+    const replay = hunt.getByTestId('shared-battle-surface');
+    await expect(replay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
+    await replay.getByRole('button', { name: 'Skip to battle result' }).click();
+    await expect(replay).toHaveAttribute('data-replay-state', 'complete', { timeout: 7000 });
     state = await dashboard(context);
     const huntStream = await context.request.get('/api/stream');
     expect(huntStream.ok()).toBe(true);
@@ -90,7 +99,7 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   expect(purchasedState.character.gold).toBe(beforeDashboard.character.gold - 8);
 
   await command(page, 'inventory');
-  let inventory = page.getByTestId('stream-inventory-rich-card').last();
+  let inventory = await latestStreamCard(page, 'stream-inventory-rich-card');
   const armorTile = inventory.locator(`[data-testid="stream-inventory-item"][data-item-id="${armor.id}"]`);
   await expect(armorTile.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
   await armorTile.getByRole('button', { name: 'Inspect Bronzeweave Coat' }).click();
@@ -98,7 +107,7 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   await expect.poll(async () => (await dashboard(context)).character.equipment.armor?.id).toBe(armor.id);
 
   await command(page, 'inventory');
-  inventory = page.getByTestId('stream-inventory-rich-card').last();
+  inventory = await latestStreamCard(page, 'stream-inventory-rich-card');
   await expect(inventory.getByTestId('equipment-slot-armor')).toContainText('Bronzeweave Coat');
   await expect(inventory.getByTestId('equipment-slot-armor')).toContainText('+1 Defense · +4 Max HP');
   await expect(inventory.getByTestId('equipment-slot-armor').locator('img')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
@@ -124,4 +133,56 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   expect(desktopLayout.overflow).toBeLessThanOrEqual(1);
   await expect(desktopStatus.getByTestId('equipment-slot-armor')).toContainText('+1 Defense · +4 Max HP');
   await desktopStatus.screenshot({ path: `${REVIEW_DIR}/react-equipment-status-desktop.png` });
+
+  await command(page, 'shop');
+  let loadoutShop = page.getByTestId('stream-shop-rich-card').last();
+  const bowOffer = loadoutShop.locator('[data-testid="stream-shop-item"][data-item-id="ashstring-bow"]');
+  await bowOffer.getByRole('button', { name: 'Inspect Ashstring Bow' }).click();
+  await expect(bowOffer.getByTestId('shop-item-loadout-ashstring-bow')).toContainText('Ranged');
+  await expect(bowOffer.getByTestId('shop-item-loadout-ashstring-bow')).toContainText('80% Attack damage');
+  await bowOffer.getByRole('button', { name: 'Buy' }).click();
+  await expect.poll(async () => (await dashboard(context)).inventory.some((item) => item.source === 'shop:ashstring-bow')).toBe(true);
+
+  await command(page, 'shop');
+  loadoutShop = page.getByTestId('stream-shop-rich-card').last();
+  const staffOffer = loadoutShop.locator('[data-testid="stream-shop-item"][data-item-id="copper-sparkstaff"]');
+  await staffOffer.getByRole('button', { name: 'Inspect Copper Sparkstaff' }).click();
+  await expect(staffOffer.getByTestId('shop-item-loadout-copper-sparkstaff')).toContainText('Healer');
+  await expect(staffOffer.getByTestId('shop-item-loadout-copper-sparkstaff')).toContainText('Mending Chorus');
+  await staffOffer.getByRole('button', { name: 'Buy' }).click();
+  await expect.poll(async () => (await dashboard(context)).inventory.some((item) => item.source === 'shop:copper-sparkstaff')).toBe(true);
+
+  state = await dashboard(context);
+  const bow = state.inventory.find((item) => item.source === 'shop:ashstring-bow');
+  const staff = state.inventory.find((item) => item.source === 'shop:copper-sparkstaff');
+  expect(bow?.id).toBeTruthy();
+  expect(staff?.id).toBeTruthy();
+  await command(page, 'inventory');
+  let inventoryCard = await latestStreamCard(page, 'stream-inventory-rich-card');
+  let bowTile = inventoryCard.locator(`[data-testid="stream-inventory-item"][data-item-id="${bow.id}"]`);
+  await bowTile.getByRole('button', { name: 'Inspect Ashstring Bow' }).click();
+  await expect(bowTile.getByTestId(`item-loadout-${bow.id}`)).toContainText('Ranged');
+  await expect(bowTile.getByTestId(`item-loadout-${bow.id}`)).toContainText('80% Attack damage');
+  await bowTile.getByRole('button', { name: 'Equip' }).click();
+  await expect.poll(async () => (await dashboard(context)).character.combatLoadout.role).toBe('Ranged');
+
+  await command(page, 'inventory');
+  inventoryCard = await latestStreamCard(page, 'stream-inventory-rich-card');
+  const staffTile = inventoryCard.locator(`[data-testid="stream-inventory-item"][data-item-id="${staff.id}"]`);
+  await staffTile.getByRole('button', { name: 'Inspect Copper Sparkstaff' }).click();
+  await expect(staffTile.getByTestId(`item-loadout-${staff.id}`)).toContainText('Healer');
+  await expect(staffTile.getByTestId(`item-loadout-${staff.id}`)).toContainText('Mending Chorus');
+  await staffTile.getByRole('button', { name: 'Equip' }).click();
+  await expect.poll(async () => (await dashboard(context)).character.combatLoadout.role).toBe('Healer');
+  const healerDashboard = await dashboard(context);
+  expect(healerDashboard.character.signatureSkill.name).toBe('Mending Chorus');
+  await command(page, 'status');
+  const healerStatus = page.getByTestId('stream-player-status').last();
+  await expect(healerStatus.getByTestId('status-combat-loadout')).toContainText('Healer');
+  await expect(healerStatus.getByTestId('status-combat-loadout')).toContainText('Heal an injured ally');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await healerStatus.screenshot({ path: `${REVIEW_DIR}/react-equipment-healer-loadout-mobile.png` });
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await healerStatus.screenshot({ path: `${REVIEW_DIR}/react-equipment-healer-loadout-desktop.png` });
+  expect(healerDashboard.character.equipment.weapon.id).toBe(staff.id);
 });

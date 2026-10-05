@@ -75,6 +75,11 @@ function publicItemProjection(item) {
     maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
     speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
     critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
+    healingPowerBonus: Number(item.healingPowerBonus || item.stats?.healingPowerBonus || 0),
+    attackSpeedBonus: Number(item.attackSpeedBonus || item.stats?.attackSpeedBonus || 0),
+    movementSpeedBonus: Number(item.movementSpeedBonus || item.stats?.movementSpeedBonus || 0),
+    healingPowerBonus: Number(item.healingPowerBonus || item.stats?.healingPowerBonus || 0),
+    combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
   });
 }
 

@@ -143,6 +143,7 @@ export function resolveArenaDungeonEncounter({
   participants,
   enemies,
   playerActions = {},
+  placements = {},
   signatureSkills = false,
   legacyIntent = null,
   durationMs,
@@ -159,12 +160,14 @@ export function resolveArenaDungeonEncounter({
   const battle = simulateArenaCombat({
     players,
     enemies: foes,
+    placements,
     ...(durationMs === undefined ? {} : { durationMs }),
     context: {
       activity: 'simple-dungeon',
       battleId: `dungeon:${runId}:room:${roomIndex}:state:${fingerprint({ participants: players.map(({ id, hp, mana, threat }) => ({ id, hp, mana, threat })), enemies: foes.map(({ id, hp, mana, threat, lastTargetPlayerId }) => ({ id, hp, mana, threat, lastTargetPlayerId })) })}`,
       runId: String(runId),
       roomIndex: Number(roomIndex),
+      formationSnapshot: Object.fromEntries(players.map((player) => [player.id, placements[player.id] || null])),
       ...(legacyIntent ? { legacyIntent: structuredClone(legacyIntent) } : {}),
     },
   });

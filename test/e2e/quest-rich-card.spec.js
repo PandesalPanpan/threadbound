@@ -28,6 +28,12 @@ async function command(page, value) {
   await page.getByTestId('stream-send').click();
 }
 
+async function dashboard(context) {
+  const response = await context.request.get('/api/dashboard');
+  expect(response.ok()).toBe(true);
+  return response.json();
+}
+
 test('Quest rich card tracks available, active, claimable, and completed state inside the Adventure Stream', async ({ page, context }) => {
   await login(page);
   let card = await openQuest(page);
@@ -117,13 +123,19 @@ test('Quest rich card tracks available, active, claimable, and completed state i
   const shopCard = page.getByTestId('stream-command-card');
   await expect(shopCard).toHaveAttribute('data-rich-card-kind', 'shop');
   await expect(shopCard.getByRole('img', { name: 'Bronze Sword' })).toBeVisible();
+  const beforePurchaseResponse = await context.request.get('/api/dashboard');
+  expect(beforePurchaseResponse.ok()).toBe(true);
+  const beforePurchase = await beforePurchaseResponse.json();
+  const systemEntriesBeforePurchase = await page.getByTestId('stream-system-entry').count();
   await shopCard.getByTestId('stream-shop-bronze-sword').click();
-  await expect(page.getByTestId('adventure-stream-log')).toContainText('Bronze Sword');
+  await expect.poll(async () => (await dashboard(context)).inventory.length).toBe(beforePurchase.inventory.length + 1);
+  await expect.poll(async () => (await dashboard(context)).character.gold).toBe(beforePurchase.character.gold - 8);
+  await expect.poll(async () => page.getByTestId('stream-system-entry').count()).toBeGreaterThan(systemEntriesBeforePurchase);
 
   const afterPurchase = await context.request.get('/api/dashboard');
   expect(afterPurchase.ok()).toBe(true);
   const purchasedDashboard = await afterPurchase.json();
-  const purchasedSword = purchasedDashboard.inventory.find((item) => item.name === 'Bronze Sword');
+  const purchasedSword = purchasedDashboard.inventory.find((item) => item.source === 'shop:bronze-sword' && !beforePurchase.inventory.some((existing) => existing.id === item.id));
   expect(purchasedSword?.visualAssetId).toBe('item.bronze-wardblade.v1');
   await command(page, 'inventory');
   const inventoryCard = page.getByTestId('stream-command-card');

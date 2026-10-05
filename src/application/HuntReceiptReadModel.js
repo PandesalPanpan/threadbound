@@ -57,6 +57,9 @@ function normalizeItemStats(event) {
     maxHpBonus: nonNegativeNumber(source.maxHpBonus ?? source.maxHealthBonus ?? event.itemMaxHpBonus),
     speedBonus: nonNegativeNumber(source.speedBonus ?? event.itemSpeedBonus),
     critChanceBonus: nonNegativeNumber(source.critChanceBonus ?? event.itemCritChanceBonus),
+    healingPowerBonus: nonNegativeNumber(source.healingPowerBonus ?? event.itemHealingPowerBonus),
+    attackSpeedBonus: nonNegativeNumber(source.attackSpeedBonus ?? event.itemAttackSpeedBonus),
+    movementSpeedBonus: nonNegativeNumber(source.movementSpeedBonus ?? event.itemMovementSpeedBonus),
   });
 }
 
@@ -103,6 +106,8 @@ export function projectHuntReceipt(event, { actorName = 'Adventurer', fallbackEn
     slot: event.itemSlot || null,
     rarity: event.itemRarity ? String(event.itemRarity) : null,
     ...(event.itemVisualAssetId ? { visualAssetId: String(event.itemVisualAssetId) } : {}),
+    ...(event.itemCombatProfileCode ? { combatProfileCode: String(event.itemCombatProfileCode) } : {}),
+    ...(event.itemWeaponFamily ? { weaponFamily: String(event.itemWeaponFamily) } : {}),
     attackBonus: itemStats.attackBonus,
     stats: itemStats,
   }) : null;

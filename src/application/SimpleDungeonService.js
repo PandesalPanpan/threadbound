@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Character } from '../domain/Character.js';
 import { AdventureRun, DUNGEONS } from '../domain/AdventureRun.js';
 import { Party } from '../domain/Party.js';
+import { defaultArenaFormation, validateArenaPlacements } from '../domain/ArenaCombatPolicy.js';
 import { dungeonReadiness } from '../domain/SimpleDungeonPolicy.js';
 import { progressionAdventureRequirement, requireProgressionAdventureParty } from '../domain/ProgressionAdventurePolicy.js';
 import { applyProgressionBossEnrage } from '../domain/ProgressionBossEnragePolicy.js';
@@ -356,6 +357,58 @@ export class SimpleDungeonService {
       dungeonDefinition,
       sharedSurface,
     });
+    if (sharedSurface) {
+      const placementRoster = participantPlayers.map((participant) => {
+        const equipment = this.equipmentRepository.getLoadout(participant.id);
+        const weaponFamily = equipment.weapon?.weaponFamily || equipment.weapon?.family || null;
+        return {
+          id: String(participant.id),
+          team: 'players',
+          equipment,
+          equippedItem: equipment.weapon,
+          ...(weaponFamily ? { weaponFamily } : {}),
+        };
+      });
+      const defaults = defaultArenaFormation(placementRoster, []);
+      const arenaFormation = {};
+      const occupied = new Set();
+      for (const participant of participantPlayers) {
+        const saved = this.repository.getArenaFormation?.(participant.id)?.position;
+        if (!saved) continue;
+        const key = `${saved.x},${saved.y}`;
+        if (occupied.has(key)) {
+          const error = new Error('Two saved party placements use the same starting tile. Change one position in the Party card.');
+          error.code = 'arena_formation_tile_occupied';
+          throw error;
+        }
+        arenaFormation[String(participant.id)] = saved;
+        occupied.add(key);
+      }
+      for (const participant of participantPlayers) {
+        const id = String(participant.id);
+        if (arenaFormation[id]) continue;
+        let position = defaults[id];
+        if (occupied.has(`${position.x},${position.y}`)) {
+          position = null;
+          for (let y = 5; y <= 7 && !position; y += 1) {
+            for (let x = 0; x < 8; x += 1) {
+              if (!occupied.has(`${x},${y}`)) { position = { x, y }; break; }
+            }
+          }
+        }
+        if (!position) throw new Error('There are no open player deployment tiles.');
+        arenaFormation[id] = position;
+        occupied.add(`${position.x},${position.y}`);
+      }
+      const arenaEnemies = (run.state.enemies || []).map((enemy) => ({
+        ...enemy,
+        id: String(enemy.combatantId || enemy.id || enemy.definitionId || 'enemy'),
+      }));
+      const validatedFormation = validateArenaPlacements(placementRoster, arenaEnemies, arenaFormation);
+      run.state.arenaFormation = Object.fromEntries(placementRoster.map((combatant) => [combatant.id, validatedFormation[combatant.id]]));
+      run.state.formationReady = Object.fromEntries(participantPlayers.map((participant) => [String(participant.id), true]));
+      run.state.formationRevision = 0;
+    }
     const persisted = this.repository.createRun(run.toJSON());
     const actor = persisted.participants.find((participant) => participant.playerId === playerId);
     const enrage = dungeonDefinition.progressionEnrage || null;

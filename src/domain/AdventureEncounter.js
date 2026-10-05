@@ -36,7 +36,7 @@ export function ordinaryAdventureEncounterForArea(areaNumber, roll = 0) {
  * used by Hunt. Area selection stays outside the generic simulator so world/content
  * identity remains an Area policy instead of player-level scaling.
  */
-export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, encounterRoll = 0, encounter: authoredEncounter = null, context = {}, random = Math.random } = {}) {
+export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, encounterRoll = 0, encounter: authoredEncounter = null, context = {}, placements = {}, random = Math.random } = {}) {
   if (!player || typeof player !== 'object') throw new Error('Adventure requires a player combatant.');
   const playerId = String(player.id || '').trim();
   if (!playerId) throw new Error('Adventure requires a player id.');
@@ -74,7 +74,8 @@ export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, en
   const battle = simulateArenaCombat({
     players: [playerCombatant],
     enemies: [enemyCombatant],
-    context: { ...context, activity: 'adventure', areaNumber: Number(areaNumber), enemyId: encounter.id },
+    placements,
+    context: { ...context, activity: 'adventure', areaNumber: Number(areaNumber), enemyId: encounter.id, formationSnapshot: placements },
   });
 
   const playerAfter = battle.combatants.find((combatant) => combatant.id === playerId);

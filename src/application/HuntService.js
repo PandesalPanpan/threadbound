@@ -46,6 +46,11 @@ function battleLoadoutSnapshot(equipment = {}) {
     slot: item.slot || slot,
     rarity: item.rarity || null,
     attackBonus: Number(item.attackBonus || 0),
+    combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
+    weaponFamily: item.weaponFamily || item.effect?.equipmentTemplate?.weaponFamily || null,
+    healingPowerBonus: Number(item.healingPowerBonus || item.effect?.equipmentTemplate?.stats?.healingPowerBonus || 0),
+    attackSpeedBonus: Number(item.attackSpeedBonus || item.effect?.equipmentTemplate?.stats?.attackSpeedBonus || 0),
+    movementSpeedBonus: Number(item.movementSpeedBonus || item.effect?.equipmentTemplate?.stats?.movementSpeedBonus || 0),
     effectCode: item.effectCode || null,
     visualAssetId: item.visualAssetId || null,
   } : null]));
@@ -157,6 +162,9 @@ export class HuntService {
         areaId: area.currentArea?.id || null,
         areaNumber: area.currentAreaNumber,
       },
+      placements: this.repository.getArenaFormation?.(playerId)?.position ? {
+        [String(playerId)]: this.repository.getArenaFormation(playerId).position,
+      } : {},
       random: this.rng,
     });
     const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
@@ -219,6 +227,9 @@ export class HuntService {
         maxHpBonus: Number(itemSnapshot.maxHpBonus || itemSnapshot.stats?.maxHpBonus || 0),
         speedBonus: Number(itemSnapshot.speedBonus || itemSnapshot.stats?.speedBonus || 0),
         critChanceBonus: Number(itemSnapshot.critChanceBonus || itemSnapshot.stats?.critChanceBonus || 0),
+        healingPowerBonus: Number(itemSnapshot.healingPowerBonus || itemSnapshot.stats?.healingPowerBonus || 0),
+        attackSpeedBonus: Number(itemSnapshot.attackSpeedBonus || itemSnapshot.stats?.attackSpeedBonus || 0),
+        movementSpeedBonus: Number(itemSnapshot.movementSpeedBonus || itemSnapshot.stats?.movementSpeedBonus || 0),
       } : null;
       const refreshed = this.repository.getPlayer(playerId) || player;
       const gold = Number(refreshed.gold ?? refreshed.threadDust ?? character.gold ?? 0);
@@ -326,6 +337,8 @@ export class HuntService {
       itemRarity: item?.rarity || null,
       itemSlot: item?.slot || null,
       itemVisualAssetId: item?.visualAssetId || null,
+      itemCombatProfileCode: item?.combatProfileCode || null,
+      itemWeaponFamily: item?.weaponFamily || null,
       itemStats,
       itemAttackBonus: itemStats?.attackBonus || 0,
       healthPotionsFound,

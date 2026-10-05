@@ -26,6 +26,7 @@ function combatant(value, label) {
     || (label === 'challenger' ? BATTLE_FIGMA_VISUAL_ASSET_IDS['rune-bard'] : BATTLE_FIGMA_VISUAL_ASSET_IDS['bramble-druid']);
   return prepareAutomaticBattleCombatant({
     id,
+    team: label === 'challenger' ? 'players' : 'enemies',
     name,
     displayName: name,
     hp: maxHp,
@@ -53,7 +54,7 @@ function combatant(value, label) {
  * effects and resistance handling, and the battle does not mutate either
  * combatant's normal Hunt/Adventure health or economy state.
  */
-export function resolveDuelBattle({ challenger, opponent, duelId = null, random = Math.random } = {}) {
+export function resolveDuelBattle({ challenger, opponent, duelId = null, placements = {}, random = Math.random } = {}) {
   const left = combatant(challenger, 'challenger');
   const right = combatant(opponent, 'opponent');
   if (left.id === right.id) {
@@ -65,7 +66,8 @@ export function resolveDuelBattle({ challenger, opponent, duelId = null, random 
   const battle = simulateArenaCombat({
     players: [left],
     enemies: [right],
-    context: { activity: 'duel', battleId: duelId || null, challengerId: left.id, opponentId: right.id },
+    placements,
+    context: { activity: 'duel', battleId: duelId || null, challengerId: left.id, opponentId: right.id, formationSnapshot: placements },
   });
 
   const outcome = battle.outcome === 'draw'

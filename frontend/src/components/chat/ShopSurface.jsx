@@ -15,10 +15,14 @@ function ItemTile({ item, assets, owner = false, onRequest, busy = false, toolti
     ['defenseBonus', 'Defense'],
     ['maxHpBonus', 'Max HP'],
     ['speedBonus', 'Speed'],
+    ['healingPowerBonus', 'Healing Power'],
   ].map(([key, label]) => {
     const value = Number(item[key] ?? source[key] ?? (key === 'maxHpBonus' ? (item.maxHealthBonus ?? source.maxHealthBonus) : 0)) || 0;
     return value ? `${value > 0 ? '+' : ''}${value} ${label}` : null;
   }).filter(Boolean);
+  if (Number(item.attackSpeedBonus ?? source.attackSpeedBonus ?? 0) > 0) itemStats.push(`+${Math.round(Number(item.attackSpeedBonus ?? source.attackSpeedBonus) * 100)}% Attack Speed`);
+  if (Number(item.movementSpeedBonus ?? source.movementSpeedBonus ?? 0) > 0) itemStats.push(`+${Number(item.movementSpeedBonus ?? source.movementSpeedBonus)} tiles/s Movement`);
+  const combatLoadout = item.combatLoadout || source.combatLoadout || null;
   const effect = source.effect?.description || source.effect?.name || null;
   const available = item.available !== false;
   const affordable = item.affordable !== false;
@@ -27,7 +31,7 @@ function ItemTile({ item, assets, owner = false, onRequest, busy = false, toolti
       {asset ? <img className="stream-item-tile__asset" src={asset.src} alt="" data-visual-asset-id={asset.id} /> : <span className="stream-item-tile__asset stream-item-tile__asset--fallback" aria-hidden="true">✦</span>}
       <span className="stream-item-tile__name">{itemName}</span><span className={`rarity-chip rarity-chip--${rarity}`}>{rarity}</span><span className="stream-item-tile__cost">{item.cost ?? 0} Gold</span>
     </button>
-    <div className="stream-item-tooltip" id={id} role="tooltip"><strong>{itemName}</strong><span>{rarity} · {slot}</span><span>{itemStats.join(' · ') || 'No listed bonuses'}</span>{effect ? <span>Effect · {effect}</span> : null}<span>{available ? (affordable ? 'Available and affordable' : 'Need more Gold') : 'Unavailable during the active Dungeon'}</span></div>
+    <div className="stream-item-tooltip" id={id} role="tooltip"><strong>{itemName}</strong><span>{rarity} · {slot}</span><span>{itemStats.join(' · ') || 'No listed bonuses'}</span>{combatLoadout ? <span data-testid={`shop-item-loadout-${item.sku}`}>{combatLoadout.role} · {combatLoadout.basicAction}{combatLoadout.signatureSkill ? ` · ${combatLoadout.signatureSkill}` : ''}</span> : null}{effect ? <span>Effect · {effect}</span> : null}<span>{available ? (affordable ? 'Available and affordable' : 'Need more Gold') : 'Unavailable during the active Dungeon'}</span></div>
     {owner && open ? <div className="stream-item-tile__actions"><PanelButton primary disabled={busy || !available || !affordable} onClick={() => onRequest(`buy ${itemName}`, `/api/shop/purchases/${encodeURIComponent(item.sku)}`, { method: 'POST' })}>{!available ? 'Unavailable' : affordable ? 'Buy' : 'Need Gold'}</PanelButton></div> : null}
   </article>;
 }

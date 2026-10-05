@@ -116,6 +116,7 @@ function officialEquipmentVisuals() {
       label: authored.label,
       slot: authored.slot,
       family: authored.family,
+      combatProfileCode: authored.combatProfileCode || null,
       materialFamily: MATERIAL_FAMILY_BY_LABEL.get(authored.label),
       sourceNodeId: authored.sourceNodeId,
       sourceCollection: authored.sourceCollection,

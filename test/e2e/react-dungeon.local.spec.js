@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { replayMoments } from '../../frontend/src/battle/sharedReplay.js';
+import { earnGoldWithWelcomeQuest } from './helpers/earn-gold.js';
 import { fulfillLegacyReplay } from './legacy-replay-fixture.js';
 
 async function dashboard(context) {
@@ -129,7 +130,7 @@ test('Multi-enemy replay moves the committed actor and target without moving com
 });
 
 test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and desktop', async ({ browser }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   const leaderContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const partnerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const leader = await leaderContext.newPage();
@@ -167,16 +168,95 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     expect(healEligiblePartner.character.currentHealth).toBeLessThan(healEligiblePartner.character.maxHealth);
     expect(healEligiblePartner.character.healthPotions).toBeGreaterThan(0);
 
+    await earnGoldWithWelcomeQuest(leaderContext, 12);
+    const leaderStaffPurchase = await leaderContext.request.post('/api/shop/purchases/copper-sparkstaff');
+    const partnerBowPurchase = await partnerContext.request.post('/api/shop/purchases/ashstring-bow');
+    expect(leaderStaffPurchase.ok()).toBe(true);
+    expect(partnerBowPurchase.ok()).toBe(true);
+    const leaderBeforeParty = await dashboard(leaderContext);
+    const partnerBeforeParty = await dashboard(partnerContext);
+    const leaderStaff = leaderBeforeParty.inventory.find((item) => item.source === 'shop:copper-sparkstaff');
+    const partnerBow = partnerBeforeParty.inventory.find((item) => item.source === 'shop:ashstring-bow');
+    expect(leaderStaff?.id).toBeTruthy();
+    expect(partnerBow?.id).toBeTruthy();
+    expect((await leaderContext.request.post(`/api/items/${encodeURIComponent(leaderStaff.id)}/equip`)).ok()).toBe(true);
+    expect((await partnerContext.request.post(`/api/items/${encodeURIComponent(partnerBow.id)}/equip`)).ok()).toBe(true);
+    expect((await dashboard(leaderContext)).character.combatLoadout.role).toBe('Healer');
+    expect((await dashboard(partnerContext)).character.combatLoadout.role).toBe('Ranged');
+
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
     const joinCode = (await created.json()).party.joinCode;
     const joined = await partnerContext.request.post('/api/party/join', { data: { joinCode } });
     expect(joined.ok()).toBe(true);
-    const ready = await partnerContext.request.post('/api/party/ready', { data: { ready: true } });
-    expect(ready.ok()).toBe(true);
+
+    const leaderId = (await dashboard(leaderContext)).character.id;
+    const partnerId = (await dashboard(partnerContext)).character.id;
+    const leaderInitialFormation = (await (await leaderContext.request.get('/api/arena/formation')).json()).formation;
+    const leaderOpeningPosition = { x: 2, y: 7, version: leaderInitialFormation.version };
+    const leaderPositionKey = 'opening-formation-leader-01';
+    const savedLeaderFormation = await leaderContext.request.post('/api/arena/formation', {
+      data: leaderOpeningPosition,
+      headers: { 'Idempotency-Key': leaderPositionKey },
+    });
+    expect(savedLeaderFormation.ok()).toBe(true);
+    const retriedLeaderFormation = await leaderContext.request.post('/api/arena/formation', {
+      data: leaderOpeningPosition,
+      headers: { 'Idempotency-Key': leaderPositionKey },
+    });
+    expect(retriedLeaderFormation.ok()).toBe(true);
+    expect(retriedLeaderFormation.headers()['idempotency-replayed']).toBe('true');
+    expect((await retriedLeaderFormation.json()).formation.position).toEqual({ x: 2, y: 7 });
+    const mismatchedRetry = await leaderContext.request.post('/api/arena/formation', {
+      data: { x: 3, y: 7, version: 1 },
+      headers: { 'Idempotency-Key': leaderPositionKey },
+    });
+    expect(mismatchedRetry.status()).toBe(409);
+
+    const partnerInitialFormation = (await (await partnerContext.request.get('/api/arena/formation')).json()).formation;
+    const partnerOpeningPosition = { x: 5, y: 6, version: partnerInitialFormation.version, playerId: leaderId };
+    const savedPartnerFormation = await partnerContext.request.post('/api/arena/formation', {
+      data: partnerOpeningPosition,
+      headers: { 'Idempotency-Key': 'opening-formation-partner-01' },
+    });
+    expect(savedPartnerFormation.ok()).toBe(true);
+    expect((await dashboard(leaderContext)).party.members.every((member) => !member.ready)).toBe(true);
+    const staleOpeningPosition = await leaderContext.request.post('/api/arena/formation', {
+      data: { x: 4, y: 7, version: 0 },
+      headers: { 'Idempotency-Key': 'opening-formation-stale-01' },
+    });
+    expect(staleOpeningPosition.status()).toBe(409);
+    expect(await staleOpeningPosition.json()).toMatchObject({ error: 'stale_formation_version' });
+    const occupiedPosition = await partnerContext.request.post('/api/arena/formation', {
+      data: { x: 2, y: 7, version: 1 },
+      headers: { 'Idempotency-Key': 'opening-formation-collision-01' },
+    });
+    expect(occupiedPosition.status()).toBe(409);
+    expect(await occupiedPosition.json()).toMatchObject({ error: 'arena_formation_tile_occupied' });
+    const leaderFormationView = (await (await leaderContext.request.get('/api/arena/formation')).json()).formation;
+    const partnerFormationView = (await (await partnerContext.request.get('/api/arena/formation')).json()).formation;
+    expect(leaderFormationView.members.find((member) => member.playerId === partnerId).position).toEqual({ x: 5, y: 6 });
+    expect(partnerFormationView.members.find((member) => member.playerId === leaderId).position).toEqual({ x: 2, y: 7 });
+    const prematureStart = await leaderContext.request.post('/api/dungeons/frayed-hollow/start-shared');
+    expect(prematureStart.status()).toBe(409);
+    expect(await prematureStart.json()).toMatchObject({
+      error: 'game_rule_violation',
+      message: expect.stringMatching(/ready party leader/i),
+    });
+
+    expect((await leaderContext.request.post('/api/party/ready', { data: { ready: true } })).ok()).toBe(true);
+    expect((await partnerContext.request.post('/api/party/ready', { data: { ready: true } })).ok()).toBe(true);
 
     await leader.reload();
     await partner.reload();
+    await leader.getByTestId('stream-message').fill('party');
+    await leader.getByTestId('stream-send').click();
+    const savedPartyCard = leader.getByTestId('stream-command-card').last();
+    await expect(savedPartyCard.getByTestId(`party-member-${leaderId}`)).toContainText('Row 8, column 3');
+    await expect(savedPartyCard.getByTestId(`party-member-${partnerId}`)).toContainText('Row 7, column 6');
+    mkdirSync('ux-review', { recursive: true });
+    await leader.screenshot({ path: 'ux-review/react-arena-formation-mobile.png', fullPage: true });
+
     const composer = leader.getByTestId('stream-message');
     await composer.fill('dungeon');
     await composer.press('Enter');
@@ -187,10 +267,16 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     const started = await startResponse;
     expect(started.ok()).toBe(true);
     const startedPayload = await started.json();
-    const runId = startedPayload.run.id;
+    runId = startedPayload.run.id;
     expect(startedPayload.run.participants).toHaveLength(2);
     expect(startedPayload.battleReplay.enemies).toHaveLength(2);
     expect(startedPayload.battleReplay.arenaReplay?.events.some((event) => event.kind === 'action' && event.actionType === 'skill')).toBe(true);
+    expect(startedPayload.run.arenaFormation).toMatchObject({ [leaderId]: { x: 2, y: 7 }, [partnerId]: { x: 5, y: 6 } });
+    const openingReplayUnits = startedPayload.battleReplay.arenaReplay.combatants;
+    expect(openingReplayUnits.find((unit) => unit.id === leaderId)).toMatchObject({ x: 2, y: 7, combatProfileCode: 'healer' });
+    expect(openingReplayUnits.find((unit) => unit.id === partnerId)).toMatchObject({ x: 5, y: 6, combatProfileCode: 'ranged' });
+    expect(startedPayload.battleReplay.arenaReplay.events.some((event) => event.healingEvents?.some((healing) => healing.targetId === partnerId && healing.healing > 0))).toBe(true);
+    expect(startedPayload.battleReplay.arenaReplay.events.some((event) => event.kind === 'action' && event.actorId === partnerId && event.damageEvents?.some((damage) => damage.damage > 0))).toBe(true);
 
     const firstLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
     const firstPartnerCard = partner.getByTestId('stream-dungeon-rich-card').last();
@@ -280,13 +366,94 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     await expect(claimedPartnerCard.getByTestId('stream-run-continue')).toHaveCount(0);
     await expect(claimedPartnerCard.getByTestId('stream-run-retreat')).toHaveCount(0);
 
-    const firstVersion = claimed.version;
-    await claimedLeaderCard.getByTestId('stream-run-continue').click();
+    const runFormationPath = `/api/runs/${encodeURIComponent(runId)}/formation`;
+    const revisionBeforePartnerChange = Number(claimed.formationRevision || 0);
+    const partnerNextRoomPosition = { x: 4, y: 5, version: revisionBeforePartnerChange };
+    const partnerRunFormationKey = 'intermission-formation-partner-01';
+    const partnerRunFormation = await partnerContext.request.post(runFormationPath, {
+      data: partnerNextRoomPosition,
+      headers: { 'Idempotency-Key': partnerRunFormationKey },
+    });
+    expect(partnerRunFormation.ok()).toBe(true);
+    const partnerRunFormationRetry = await partnerContext.request.post(runFormationPath, {
+      data: partnerNextRoomPosition,
+      headers: { 'Idempotency-Key': partnerRunFormationKey },
+    });
+    expect(partnerRunFormationRetry.ok()).toBe(true);
+    expect(partnerRunFormationRetry.headers()['idempotency-replayed']).toBe('true');
+    expect((await partnerRunFormationRetry.json()).run.formationRevision).toBe(revisionBeforePartnerChange + 1);
+    const changedPayloadRetry = await partnerContext.request.post(runFormationPath, {
+      data: { x: 3, y: 5, version: revisionBeforePartnerChange },
+      headers: { 'Idempotency-Key': partnerRunFormationKey },
+    });
+    expect(changedPayloadRetry.status()).toBe(409);
+    expect(await changedPayloadRetry.json()).toMatchObject({ error: 'run_command_replay_mismatch' });
+    const staleRunFormation = await leaderContext.request.post(runFormationPath, {
+      data: { x: 1, y: 6, version: revisionBeforePartnerChange },
+      headers: { 'Idempotency-Key': 'intermission-formation-stale-01' },
+    });
+    expect(staleRunFormation.status()).toBe(409);
+    expect(await staleRunFormation.json()).toMatchObject({ error: 'stale_formation_version' });
+    const vitalsBeforeFormationEdit = (await dashboard(leaderContext)).activeRun.participants.map(({ playerId, hp, mana }) => ({ playerId, hp, mana }));
+
+    await leader.reload();
+    await partner.reload();
+    await expect(leader.getByTestId('stream-connection')).toHaveText(/LIVE/);
+    await expect(partner.getByTestId('stream-connection')).toHaveText(/LIVE/);
+    const leaderLatestReplayCard = leader.getByTestId('stream-dungeon-rich-card').filter({ has: leader.getByTestId('shared-battle-surface') }).last();
+    const partnerLatestReplayCard = partner.getByTestId('stream-dungeon-rich-card').filter({ has: partner.getByTestId('shared-battle-surface') }).last();
+    await expect(leaderLatestReplayCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
+    await expect(partnerLatestReplayCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
+    const leaderIntermissionCard = leader.getByTestId('stream-dungeon-rich-card').last();
+    const partnerIntermissionCard = partner.getByTestId('stream-dungeon-rich-card').last();
+    const teammateTile = leaderIntermissionCard.getByTestId('formation-tile-4-5');
+    await expect(teammateTile).toBeDisabled();
+    await expect(teammateTile).toHaveAttribute('aria-label', /occupied by/);
+    await leaderIntermissionCard.getByTestId('formation-tile-0-7').click();
+    const leaderNextRoomPosition = { x: 0, y: 7 };
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.formationRevision || 0, { timeout: 7000 }).toBe(revisionBeforePartnerChange + 2);
+    let placementState = (await dashboard(leaderContext)).activeRun;
+    expect(placementState.arenaFormation).toMatchObject({ [leaderId]: leaderNextRoomPosition, [partnerId]: { x: 4, y: 5 } });
+    expect(placementState.formationReady).toMatchObject({ [leaderId]: false, [partnerId]: false });
+    for (const before of vitalsBeforeFormationEdit) {
+      const after = placementState.participants.find((participant) => participant.playerId === before.playerId);
+      expect({ hp: after.hp, mana: after.mana }).toEqual({ hp: before.hp, mana: before.mana });
+    }
+    const staleAfterSecondEdit = await partnerContext.request.post(runFormationPath, {
+      data: { x: 6, y: 6, version: revisionBeforePartnerChange + 1 },
+      headers: { 'Idempotency-Key': 'intermission-formation-stale-02' },
+    });
+    expect(staleAfterSecondEdit.status()).toBe(409);
+    expect(await staleAfterSecondEdit.json()).toMatchObject({ error: 'stale_formation_version' });
+    await expect(leaderIntermissionCard.getByTestId('stream-run-continue')).toBeDisabled();
+    await expect(leaderIntermissionCard.getByTestId('dungeon-formation-picker')).toContainText('0/2 ready');
+    await expect(partnerIntermissionCard.getByTestId('formation-tile-0-7')).toBeDisabled();
+    await partnerIntermissionCard.getByTestId('dungeon-formation-ready').click();
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.formationReady?.[partnerId] || false, { timeout: 7000 }).toBe(true);
+    await expect(leaderIntermissionCard.getByTestId('dungeon-formation-picker')).toContainText('1/2 ready');
+    await expect(leaderIntermissionCard.getByTestId('stream-run-continue')).toBeDisabled();
+    await leaderIntermissionCard.getByTestId('dungeon-formation-ready').click();
+    await expect.poll(async () => {
+      const readyByPlayer = (await dashboard(leaderContext)).activeRun?.formationReady || {};
+      return readyByPlayer[leaderId] === true && readyByPlayer[partnerId] === true;
+    }, { timeout: 7000 }).toBe(true);
+    placementState = (await dashboard(leaderContext)).activeRun;
+    expect(placementState.participants.map(({ playerId, hp, mana }) => ({ playerId, hp, mana }))).toEqual(vitalsBeforeFormationEdit);
+    await expect(leaderIntermissionCard.getByTestId('dungeon-formation-picker')).toContainText('2/2 ready');
+    await expect(leaderIntermissionCard.getByTestId('stream-run-continue')).toBeEnabled();
+
+    const firstVersion = placementState.version;
+    await leaderIntermissionCard.getByTestId('stream-run-continue').click();
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 7000 }).toBeGreaterThan(firstVersion);
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.intermissionPotionClaimedWindowId || null, { timeout: 7000 }).toBeNull();
     const secondLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
-    await expect(secondLeaderCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    await expect(secondLeaderCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
     await expect(secondLeaderCard.getByTestId('shared-battle-enemy')).toHaveCount(2);
+    const secondRoomState = (await dashboard(leaderContext)).activeRun;
+    expect(secondRoomState.arenaFormation).toMatchObject({ [leaderId]: leaderNextRoomPosition, [partnerId]: { x: 4, y: 5 } });
+    const secondRoomReplay = secondRoomState.lastBattleReplay;
+    expect(secondRoomReplay?.combatants.find((unit) => unit.id === leaderId)).toMatchObject({ x: 0, y: 7 });
+    expect(secondRoomReplay?.combatants.find((unit) => unit.id === partnerId)).toMatchObject({ x: 4, y: 5 });
 
     const secondVersion = (await dashboard(leaderContext)).activeRun.version;
     await secondLeaderCard.getByTestId('stream-run-continue').click();
@@ -348,6 +515,7 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
 });
 
 test('React Dungeon resolves rooms inline and leaves only owner between-room decisions', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');

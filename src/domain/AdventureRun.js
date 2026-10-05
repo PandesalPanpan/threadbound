@@ -255,6 +255,7 @@ export class AdventureRun {
       participants: this.state.participants,
       enemies: this.state.enemies,
       playerActions,
+      placements: this.state.arenaFormation || {},
       signatureSkills,
     });
     this.state.participants = result.participants;
@@ -318,6 +319,7 @@ export class AdventureRun {
           enemies: nextEnemies,
           enemy: nextEnemies[0],
         };
+        this.state.formationReady = Object.fromEntries(this.state.participants.map((participant) => [String(participant.playerId), true]));
         this.state.phase = 'between_encounter';
         this.state.enemies = [];
         this.state.enemy = null;

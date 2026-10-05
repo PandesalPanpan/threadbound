@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { stripArenaReplayFromEntry } from './legacy-replay-fixture.js';
 import { replayMoments, SHARED_REPLAY_BEAT_MS } from '../../frontend/src/battle/sharedReplay.js';
@@ -120,9 +121,11 @@ test('React battle simulation replays the authoritative Figma 3v3 event stream',
 });
 
 test('Hunt replays the committed roster inline without browser-side simulation', async ({ page }) => {
+  mkdirSync('ux-review', { recursive: true });
   await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await page.evaluate(() => window.localStorage.removeItem('threadbound:arena-replay-speed'));
   await page.getByTestId('local-login-d').click();
   await page.context().request.post('/api/party/leave');
 
@@ -163,6 +166,9 @@ test('Hunt replays the committed roster inline without browser-side simulation',
   await expect(sharedHunt.getByTestId('stream-watch-hunt-battle')).toHaveCount(0);
   await expect(sharedHunt.getByTestId('hunt-replay-pending')).toBeVisible();
   await expect(sharedHunt.getByTestId('hunt-final-facts')).toHaveCount(0);
+  const durationMs = Number(hunt.battleReplay.arenaReplay.durationMs);
+  expect(durationMs).toBeGreaterThan(1000);
+  await expect(replay).toHaveAttribute('data-replay-duration-ms', String(durationMs));
 
   const simulationRequests = [];
   const huntRequests = [];
@@ -172,26 +178,72 @@ test('Hunt replays the committed roster inline without browser-side simulation',
   });
   await expect(sharedHunt.getByTestId('shared-battle-player')).toContainText(player.displayName);
   await expect(replay.locator('.arena-replay-board [data-visual-asset-id]')).toHaveCount(2);
-  const speedTwo = replay.getByRole('group', { name: 'Replay speed' }).getByRole('button', { name: '2×' });
-  await speedTwo.click();
-  await expect(speedTwo).toHaveAttribute('aria-pressed', 'true');
+  const speedControls = replay.getByRole('group', { name: 'Replay speed' });
+  const speedOne = speedControls.getByRole('button', { name: '1×' });
+  const speedTwo = speedControls.getByRole('button', { name: '2×' });
+  const speedFour = speedControls.getByRole('button', { name: '4×' });
+  const resetAndPauseReplay = async () => {
+    await replay.getByRole('button', { name: 'Restart battle replay' }).click();
+    await page.waitForFunction((surface) => Number(surface.getAttribute('data-replay-progress')) < 0.1, await replay.elementHandle(), { polling: 'raf' });
+    await replay.getByRole('button', { name: 'Pause battle replay' }).click();
+    await expect(replay.getByRole('button', { name: 'Play battle replay' })).toBeVisible();
+  };
+  await speedOne.click();
+  await expect(speedOne).toHaveAttribute('aria-pressed', 'true');
+  await resetAndPauseReplay();
+  const progressBeforeOneX = Number(await replay.getAttribute('data-replay-progress'));
+  await replay.getByRole('button', { name: 'Play battle replay' }).click();
+  const startedAtOneX = Date.now();
+  await page.waitForTimeout(350);
+  const elapsedAtOneX = Date.now() - startedAtOneX;
+  const progressAfterOneX = Number(await replay.getAttribute('data-replay-progress'));
+  const simulatedElapsedAtOneX = (progressAfterOneX - progressBeforeOneX) * durationMs;
+  expect(simulatedElapsedAtOneX).toBeGreaterThan(elapsedAtOneX - 150);
+  expect(simulatedElapsedAtOneX).toBeLessThan(elapsedAtOneX + 250);
+  await page.screenshot({ path: 'ux-review/react-arena-replay-speed-mobile.png', fullPage: true });
+
   await replay.getByRole('button', { name: 'Pause battle replay' }).click();
   await expect(replay.getByRole('button', { name: 'Play battle replay' })).toBeVisible();
+  const pausedProgress = Number(await replay.getAttribute('data-replay-progress'));
+  await page.waitForTimeout(350);
+  expect(Number(await replay.getAttribute('data-replay-progress'))).toBeCloseTo(pausedProgress, 3);
+  await speedFour.click();
+  await expect(replay).toHaveAttribute('data-replay-speed', '4');
+  await resetAndPauseReplay();
+  const progressBeforeFourX = Number(await replay.getAttribute('data-replay-progress'));
   await replay.getByRole('button', { name: 'Play battle replay' }).click();
-  await replay.getByRole('button', { name: 'Restart battle replay' }).click();
-  await page.screenshot({ path: 'test-results/arena-replay-mobile.png', fullPage: true });
+  const startedAtFourX = Date.now();
+  await page.waitForTimeout(300);
+  const elapsedAtFourX = Date.now() - startedAtFourX;
+  const progressAfterFourX = Number(await replay.getAttribute('data-replay-progress'));
+  const simulatedElapsedAtFourX = (progressAfterFourX - progressBeforeFourX) * durationMs;
+  expect(simulatedElapsedAtFourX).toBeGreaterThan(elapsedAtFourX * 2);
+  expect(simulatedElapsedAtFourX).toBeLessThan(elapsedAtFourX * 5.5);
+  await speedTwo.click();
+  await expect(speedTwo).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('threadbound:arena-replay-speed'))).toBe('2');
   await page.setViewportSize({ width: 1440, height: 960 });
-  await page.screenshot({ path: 'test-results/arena-replay-desktop.png', fullPage: true });
+  await page.screenshot({ path: 'ux-review/react-arena-replay-speed-desktop.png', fullPage: true });
   await replay.getByRole('button', { name: 'Skip to battle result' }).click();
   await expect(replay.getByTestId('shared-battle-result')).toBeVisible();
   expect(simulationRequests).toEqual([]);
   expect(huntRequests).toEqual([]);
   await expect(replay).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
   await expect(sharedHunt.getByTestId('hunt-final-facts')).toBeVisible();
+  await page.reload();
+  const restoredReplay = page.getByTestId('stream-hunt-rich-card').last().getByTestId('shared-battle-surface');
+  await expect(restoredReplay).toHaveAttribute('data-replay-speed', '2');
+  await expect(restoredReplay.getByRole('group', { name: 'Replay speed' }).getByRole('button', { name: '2×' })).toHaveAttribute('aria-pressed', 'true');
+  await restoredReplay.getByRole('button', { name: 'Skip to battle result' }).click();
 });
 
 test('shared battle motion stays on the artwork while the HUD and art anchors remain fixed', async ({ page }) => {
-  await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
+  const replayEpoch = Date.now();
+  await page.addInitScript((epoch) => {
+    window.__THREADBOUND_FAST_TEST__ = true;
+    window.__threadboundReplayClock = epoch;
+    Date.now = () => window.__threadboundReplayClock;
+  }, replayEpoch);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.getByTestId('local-login-d').click();
@@ -204,25 +256,28 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
   const enemy = huntPayload.hunt.battle.combatants.find((combatant) => combatant.team === 'enemies');
   expect(player?.id).toBeTruthy();
   expect(enemy?.id).toBeTruthy();
+  const moments = replayMoments(huntPayload.hunt.battleReplay);
+  const playerAttackMomentIndex = moments.findIndex((moment) => moment.actorId === player.id && moment.targetId === enemy.id && moment.damage > 0);
+  expect(playerAttackMomentIndex).toBeGreaterThanOrEqual(0);
 
   await page.route('**/api/stream*', async (route) => {
     const response = await route.fetch();
     const payload = await response.json();
     const latestHuntId = [...(payload.entries || [])].reverse().find((entry) => entry.eventType === 'HuntResolved')?.id;
-    const now = new Date().toISOString();
     const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId
-      ? { ...stripArenaReplayFromEntry(entry), createdAt: now }
+      ? { ...stripArenaReplayFromEntry(entry), createdAt: new Date(replayEpoch).toISOString() }
       : entry);
     await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
   });
   await page.goto('/game');
   await page.reload();
 
-  await expect.poll(async () => page.locator('[data-testid="shared-battle-surface"][data-replay-state="playing"]').count(), { timeout: 4000 }).toBeGreaterThan(0);
-  const liveSurface = page.locator('[data-testid="shared-battle-surface"][data-replay-state="playing"]').last();
-  const replayBattleId = await liveSurface.getAttribute('data-replay-battle-id');
-  const surface = page.locator(`[data-testid="shared-battle-surface"][data-replay-battle-id="${replayBattleId}"]`);
+  const surface = page.locator('[data-testid="shared-battle-surface"]:not(.arena-replay-surface)').last();
   await expect(surface).toBeVisible();
+  await page.evaluate(({ epoch, beatMs, momentIndex }) => {
+    window.__threadboundReplayClock = epoch + beatMs * momentIndex;
+  }, { epoch: replayEpoch, beatMs: SHARED_REPLAY_BEAT_MS, momentIndex: playerAttackMomentIndex });
+  await expect(surface).toHaveAttribute('data-replay-phase', 'windup');
   let windup;
   await expect.poll(async () => {
     const snapshot = await sharedBattleMotionSnapshot(surface);
@@ -237,6 +292,9 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
   expect(windup.target.unitStyle.animationName).toBe('none');
   expect(windup.line).toBeNull();
 
+  await page.evaluate(({ epoch, beatMs, momentIndex }) => {
+    window.__threadboundReplayClock = epoch + beatMs * (momentIndex + 0.3);
+  }, { epoch: replayEpoch, beatMs: SHARED_REPLAY_BEAT_MS, momentIndex: playerAttackMomentIndex });
   let trajectory;
   await expect.poll(async () => {
     const snapshot = await sharedBattleMotionSnapshot(surface);
@@ -258,6 +316,9 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
   expect(Math.abs(trajectory.line.x2 - trajectory.target.center.x)).toBeLessThan(1);
   expect(Math.abs(trajectory.line.y2 - trajectory.target.center.y)).toBeLessThan(1);
 
+  await page.evaluate(({ epoch, beatMs, momentIndex }) => {
+    window.__threadboundReplayClock = epoch + beatMs * (momentIndex + 0.5);
+  }, { epoch: replayEpoch, beatMs: SHARED_REPLAY_BEAT_MS, momentIndex: playerAttackMomentIndex });
   let impact;
   await expect.poll(async () => {
     const snapshot = await sharedBattleMotionSnapshot(surface);

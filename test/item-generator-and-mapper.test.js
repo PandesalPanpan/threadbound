@@ -76,6 +76,9 @@ test('generated rewards cover all slots with slot-specific stats and official se
       maxHpBonus: item.maxHpBonus,
       speedBonus: item.speedBonus,
       critChanceBonus: item.critChanceBonus,
+      healingPowerBonus: item.healingPowerBonus,
+      attackSpeedBonus: item.attackSpeedBonus,
+      movementSpeedBonus: item.movementSpeedBonus,
     });
     if (slot === 'weapon') {
       assert.ok(item.attackBonus > 0);
@@ -85,10 +88,10 @@ test('generated rewards cover all slots with slot-specific stats and official se
       assert.ok(item.maxHpBonus > 0);
       assert.equal(item.attackBonus, 0);
     } else if (slot === 'boots') {
-      assert.ok(item.speedBonus > 0);
+      assert.ok(item.speedBonus > 0 || item.movementSpeedBonus > 0);
       assert.equal(item.attackBonus, 0);
     } else {
-      assert.ok(item.critChanceBonus > 0);
+      assert.ok(item.critChanceBonus > 0 || item.attackSpeedBonus > 0 || item.healingPowerBonus > 0);
       assert.equal(item.attackBonus, 0);
     }
   }
@@ -191,6 +194,9 @@ test('ordinary loot keeps generated rarity, slot stats, and nested budget consis
     maxHpBonus: preserved.maxHpBonus,
     speedBonus: preserved.speedBonus,
     critChanceBonus: preserved.critChanceBonus,
+    healingPowerBonus: preserved.healingPowerBonus,
+    attackSpeedBonus: preserved.attackSpeedBonus,
+    movementSpeedBonus: preserved.movementSpeedBonus,
   });
   assert.deepEqual(preserved.equipmentBudget, template.budget);
   assert.equal(template.budget.used, arcEquipmentBudgetUsed({ stats: template.stats, effects: template.effectCodes }));

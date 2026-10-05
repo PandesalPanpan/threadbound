@@ -13,6 +13,7 @@ Read `CONTEXT.md`, `README.md`, and **`docs/THREADBOUND_MASTER_PLAN.md`** before
 
 ## Architecture
 
+- Read `docs/SYSTEM_BOUNDARIES.md` when changing cross-system interactions. It is the owner-approved module-boundary practice; `docs/CURRENT_COMBAT_SYSTEM_MAP.md` records the inspected baseline and known coupling, not proof that every recommended boundary already exists.
 - Follow the Fowler-style boundaries already adopted by the project where they fit: Domain Model/Policy owns rules, the Service Layer coordinates use cases, repositories own persistence and transactions, and browser code is a Presentation Model. Do not add patterns or services merely for ceremony.
 - Server and persisted domain state are authoritative. Realtime messages and the activity stream are projections, never sources of truth.
 - One explicit game command should produce one concise public result receipt. Fine-grained domain events must not create a message explosion.

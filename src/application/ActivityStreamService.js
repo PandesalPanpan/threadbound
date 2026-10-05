@@ -1,4 +1,5 @@
 import { projectHuntReceipt } from './HuntReceiptReadModel.js';
+import { projectCombatLoadout } from '../domain/CombatLoadoutPolicy.js';
 
 const MAX_CHAT_LENGTH = 500;
 
@@ -18,6 +19,24 @@ function itemStatValues(item) {
     maxHpBonus: Number(item?.maxHpBonus ?? item?.maxHealthBonus ?? item?.itemMaxHpBonus ?? stats.maxHpBonus ?? stats.maxHealthBonus ?? 0),
     speedBonus: Number(item?.speedBonus ?? item?.itemSpeedBonus ?? stats.speedBonus ?? 0),
     critChanceBonus: Number(item?.critChanceBonus ?? item?.itemCritChanceBonus ?? stats.critChanceBonus ?? 0),
+    healingPowerBonus: Number(item?.healingPowerBonus ?? stats.healingPowerBonus ?? 0),
+    attackSpeedBonus: Number(item?.attackSpeedBonus ?? stats.attackSpeedBonus ?? 0),
+    movementSpeedBonus: Number(item?.movementSpeedBonus ?? stats.movementSpeedBonus ?? 0),
+  };
+}
+
+function combatLoadoutProjection(item) {
+  if (item?.slot !== 'weapon') return null;
+  const loadout = projectCombatLoadout({
+    equipment: { weapon: item },
+    equippedItem: item,
+    combatant: { weaponFamily: item.weaponFamily || item.effect?.equipmentTemplate?.weaponFamily || null },
+  });
+  return {
+    profileCode: loadout.profileCode,
+    role: loadout.roleLabel,
+    basicAction: loadout.basicActionLabel,
+    signatureSkill: loadout.signatureSkill?.name || null,
   };
 }
 
@@ -46,6 +65,9 @@ function itemStatSummary(item) {
     const percent = Math.round(critChanceBonus * 1000) / 10;
     bonuses.push(`+${Number.isInteger(percent) ? percent : percent.toFixed(1)}% Crit`);
   }
+  if (stats.healingPowerBonus > 0) bonuses.push(`+${stats.healingPowerBonus} Healing Power`);
+  if (stats.attackSpeedBonus > 0) bonuses.push(`+${Math.round(stats.attackSpeedBonus * 100)}% Attack Speed`);
+  if (stats.movementSpeedBonus > 0) bonuses.push(`+${stats.movementSpeedBonus} tiles/s Movement`);
   return bonuses.length ? ` · ${bonuses.join(' · ')}` : '';
 }
 
@@ -112,6 +134,8 @@ export class ActivityStreamService {
       slot: item.slot || null,
       rarity: item.rarity || 'common',
       ...itemStatValues(item),
+      combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
+      ...(combatLoadoutProjection(item) ? { combatLoadout: combatLoadoutProjection(item) } : {}),
       effect: item.effect ? {
         code: item.effect.code || item.effectCode || null,
         name: item.effect.name || null,
@@ -138,6 +162,7 @@ export class ActivityStreamService {
           maxHealth: Number(character.maxHealth ?? character.maxHp ?? 1),
           healthPotions: Number(character.healthPotions || 0),
           signatureSkill: projectSignatureSkill(character.signatureSkill),
+          combatLoadout: character.combatLoadout || null,
           potions: Array.isArray(character.potions) ? character.potions.map((potion) => ({
             id: potion.id || potion.consumableId,
             name: potion.name,
@@ -167,6 +192,8 @@ export class ActivityStreamService {
       slot: item.slot || null,
       rarity: item.rarity || 'common',
       ...itemStatValues(item),
+      combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
+      ...(combatLoadoutProjection(item) ? { combatLoadout: combatLoadoutProjection(item) } : {}),
       effect: item.effect ? {
         name: item.effect.name || null,
         description: item.effect.description || null,
@@ -197,6 +224,9 @@ export class ActivityStreamService {
             defense: Number(character.stats.defense || 0),
             speed: Number(character.stats.speed || 0),
             critChancePercent: Number(character.stats.critChancePercent || 0),
+            healingPower: Number(character.stats.healingPower || 0),
+            attackSpeedBonus: Number(character.stats.attackSpeedBonus || 0),
+            movementSpeedBonus: Number(character.stats.movementSpeedBonus || 0),
           } : {
             attack: Number(character.attack ?? character.attackPower ?? 0),
             defense: Number(character.defense || 0),
@@ -206,6 +236,7 @@ export class ActivityStreamService {
           gold: Number(character.gold ?? character.threadDust ?? 0),
           healthPotions: Number(character.healthPotions || 0),
           signatureSkill: projectSignatureSkill(character.signatureSkill),
+          combatLoadout: character.combatLoadout || null,
         },
         equipment: Object.fromEntries(Object.entries(equipment).map(([slot, item]) => [slot, compactItem(item)])),
         activeBuffs: (dashboard?.activeFightBuffs || []).map((buff) => ({
@@ -239,6 +270,8 @@ export class ActivityStreamService {
         slot: (offer.item || offer.itemTemplate).slot || null,
         rarity: (offer.item || offer.itemTemplate).rarity || 'common',
         ...itemStatValues(offer.item || offer.itemTemplate),
+        combatProfileCode: (offer.item || offer.itemTemplate).combatProfileCode || null,
+        combatLoadout: (offer.item || offer.itemTemplate).combatLoadout || null,
         effect: (offer.item || offer.itemTemplate).effect ? {
           code: (offer.item || offer.itemTemplate).effect.code || (offer.item || offer.itemTemplate).effectCode || null,
           name: (offer.item || offer.itemTemplate).effect.name || null,
@@ -600,6 +633,16 @@ export class ActivityStreamService {
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} joined a party.` };
       case 'PartyReadyChanged':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} changed party readiness.` };
+      case 'ArenaFormationChanged':
+        return {
+          actorPlayerId: event.playerId,
+          actorName,
+          body: `${actorName} moved to arena tile ${event.position?.x ?? '?'} / ${event.position?.y ?? '?'}.${event.readinessReset ? ' Party readiness reset.' : ''}`,
+        };
+      case 'DungeonFormationChanged':
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} changed their next-room position to ${event.position?.x ?? '?'} / ${event.position?.y ?? '?'}. Party readiness reset.` };
+      case 'DungeonFormationReadied':
+        return { actorPlayerId: event.playerId, actorName, body: `${actorName} readied the next-room formation${event.allReady ? ' · the party is ready to Continue' : ''}.` };
       case 'PartyMemberLeft':
         return { actorPlayerId: event.playerId, actorName, body: `${actorName} left a party.` };
       case 'PartyDisbanded':

@@ -27,6 +27,7 @@ function serializableEquipmentEffect(definition, equipmentTemplate) {
     attunementCode: null,
     equipmentTemplate: {
       effectCodes: [...equipmentTemplate.effects],
+      ...(equipmentTemplate.combatProfileCode ? { combatProfileCode: equipmentTemplate.combatProfileCode } : {}),
       requiredLevel: equipmentTemplate.requiredLevel,
       areaNumber: equipmentTemplate.areaNumber,
       stats: { ...equipmentTemplate.stats },
@@ -458,6 +459,7 @@ export class ArcManifestService {
         areaNumber: equipmentTemplate.areaNumber,
         equipmentBudget: { ...equipmentTemplate.budget },
         ...(template.visualAssetId ? { visualAssetId: template.visualAssetId } : {}),
+        ...(equipmentTemplate.combatProfileCode ? { combatProfileCode: equipmentTemplate.combatProfileCode } : {}),
         source: dungeonId,
       };
     }

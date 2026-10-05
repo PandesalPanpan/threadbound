@@ -7,9 +7,11 @@ import { DUNGEON_REWARD_RULES, projectDungeonRisk } from '../domain/DungeonRiskP
 import { resolveDungeonPotionAction } from '../domain/HealingPolicy.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { automaticBattleSkillForCombatant } from '../domain/AutomaticBattleSkillCatalog.js';
+import { projectCombatLoadout } from '../domain/CombatLoadoutPolicy.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
 import { runBuildModifiers } from '../domain/RunBuildPolicy.js';
 import { Party } from '../domain/Party.js';
+import { formationReadyForParticipants, normalizePlayerArenaPosition } from '../domain/ArenaFormationPolicy.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
 import { areaContentForDungeon, itemRewardProfileForArea } from '../content/AreaContentCatalog.js';
@@ -77,6 +79,10 @@ export function publicItemProjection(item) {
     maxHpBonus: Number(item.maxHpBonus ?? item.stats?.maxHpBonus ?? 0),
     speedBonus: Number(item.speedBonus ?? item.stats?.speedBonus ?? 0),
     critChanceBonus: Number(item.critChanceBonus ?? item.stats?.critChanceBonus ?? 0),
+    healingPowerBonus: Number(item.healingPowerBonus ?? item.stats?.healingPowerBonus ?? 0),
+    attackSpeedBonus: Number(item.attackSpeedBonus ?? item.stats?.attackSpeedBonus ?? 0),
+    movementSpeedBonus: Number(item.movementSpeedBonus ?? item.stats?.movementSpeedBonus ?? 0),
+    combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
     effect: item.effect ? {
       code: item.effect.code || item.effectCode || null,
       name: item.effect.name || null,
@@ -350,9 +356,31 @@ export class GameService {
     const potions = projectPotionInventory(this.repository.listConsumables(playerId), area.currentAreaNumber);
     const generatedDungeons = this.arcManifestService?.runtimeDungeons() || [];
     const allDungeons = [...Object.values(DUNGEONS), ...generatedDungeons];
-    const decorateItem = (item) => item ? { ...item, progression: relicProgression(item) } : null;
+    const decorateItem = (item) => {
+      if (!item) return null;
+      const itemLoadout = item.slot === 'weapon' ? projectCombatLoadout({
+        equipment: { weapon: item },
+        equippedItem: item,
+        combatant: { team: 'players' },
+      }) : null;
+      return {
+        ...item,
+        progression: relicProgression(item),
+        ...(itemLoadout ? { combatLoadout: {
+          profileCode: itemLoadout.profileCode,
+          role: itemLoadout.roleLabel,
+          basicAction: itemLoadout.basicActionLabel,
+          signatureSkill: itemLoadout.signatureSkill?.name || null,
+        } } : {}),
+      };
+    };
     const equipment = Object.fromEntries(Object.entries(loadout).map(([slot, item]) => [slot, decorateItem(item)]));
-    const signatureSkill = automaticBattleSkillForCombatant({
+    const combatLoadout = projectCombatLoadout({
+      equipment,
+      equippedItem: equipment.weapon,
+      combatant: { weaponFamily: equipment.weapon?.weaponFamily || equipment.weapon?.family },
+    });
+    const signatureSkill = combatLoadout.signatureSkill || automaticBattleSkillForCombatant({
       equipment,
       weaponFamily: equipment.weapon?.weaponFamily || equipment.weapon?.family,
     }, { defaultSkill: 'threadsong' });
@@ -363,6 +391,7 @@ export class GameService {
       sourceRecipeId: buff.sourceRecipeId,
       remainingFights: buff.remainingFights,
     }));
+    const arenaFormation = this.repository.getArenaFormation?.(playerId) || { position: null, version: 0 };
 
     return {
       character: {
@@ -402,8 +431,14 @@ export class GameService {
           description: signatureSkill.description,
           manaCost: signatureSkill.manaCost,
         },
+        combatLoadout: {
+          profileCode: combatLoadout.profileCode,
+          role: combatLoadout.roleLabel,
+          basicAction: combatLoadout.basicActionLabel,
+        },
       },
       activeFightBuffs,
+      arenaFormation: { position: arenaFormation.position, version: arenaFormation.version },
       party: party ? this.#decorateParty(party, playerId) : null,
       inventory: this.repository.listItems(playerId).map(decorateItem),
       activeRun: activeRun ? this.#decorateRun(activeRun, playerId) : null,
@@ -751,6 +786,11 @@ export class GameService {
 
   continueDungeon(playerId, runId) {
     const { run, state } = this.#simpleDecisionContext(playerId, runId);
+    if (state.formationReady && !formationReadyForParticipants(state.formationReady, state.participants)) {
+      const error = new Error('Every party member must ready the next-room formation before Continue.');
+      error.code = 'arena_formation_not_ready';
+      throw error;
+    }
     const outcome = run.continueEncounter({ playerId });
     outcome.state = this.repository.saveRun(outcome.state);
     this.eventBus.publishAll(outcome.events.map((event) => ({
@@ -765,6 +805,75 @@ export class GameService {
     }
     const resolved = this.resolveSimpleEncounter(playerId, runId);
     return { ...resolved, continued: true, previousPhase: state.phase };
+  }
+
+  setDungeonFormation(playerId, runId, position, expectedRevision = null) {
+    const { run, state } = this.#simpleDecisionContext(playerId, runId);
+    if (state.phase !== 'between_encounter') {
+      const error = new Error('Formation can only change between Dungeon rooms.');
+      error.code = 'formation_not_between_encounters';
+      throw error;
+    }
+    const actorId = String(playerId);
+    if (!run.hasParticipant(actorId)) throw new Error('Run not found.');
+    if (expectedRevision !== null) {
+      const expected = Number(expectedRevision);
+      if (!Number.isInteger(expected) || expected < 0) {
+        const error = new Error('Formation version is required. Refresh the run card and retry.');
+        error.code = 'invalid_formation_version';
+        throw error;
+      }
+      if (Number(state.formationRevision || 0) !== expected) {
+        const error = new Error('The next-room formation changed before this placement could be saved. Refresh and retry.');
+        error.code = 'stale_formation_version';
+        throw error;
+      }
+    }
+    const normalized = normalizePlayerArenaPosition(position, actorId);
+    const participantIds = state.participants.map((participant) => String(participant.playerId));
+    const previous = state.arenaFormation || {};
+    if (participantIds.some((id) => id !== actorId && previous[id]?.x === normalized.x && previous[id]?.y === normalized.y)) {
+      const error = new Error('Each party member needs a separate starting tile.');
+      error.code = 'arena_formation_tile_occupied';
+      throw error;
+    }
+    if (previous[actorId]?.x === normalized.x && previous[actorId]?.y === normalized.y) {
+      return { run: this.#decorateRun(state, playerId), formationChanged: false };
+    }
+    state.arenaFormation = { ...previous, [actorId]: normalized };
+    state.formationReady = Object.fromEntries(participantIds.map((id) => [id, participantIds.length === 1]));
+    state.formationRevision = Number(state.formationRevision || 0) + 1;
+    const saved = this.repository.saveRun(state);
+    this.eventBus.publish({
+      type: 'DungeonFormationChanged', playerId: actorId, participantIds, runId,
+      dungeonId: saved.dungeonId,
+      encounterIndex: saved.nextEncounter?.encounterIndex ?? saved.encounterIndex,
+      position: normalized,
+      formationRevision: saved.formationRevision,
+    });
+    return { run: this.#decorateRun(saved, playerId), formationChanged: true };
+  }
+
+  setDungeonFormationReady(playerId, runId) {
+    const { run, state } = this.#simpleDecisionContext(playerId, runId);
+    if (state.phase !== 'between_encounter') {
+      const error = new Error('Formation readiness can only change between Dungeon rooms.');
+      error.code = 'formation_not_between_encounters';
+      throw error;
+    }
+    const actorId = String(playerId);
+    if (!run.hasParticipant(actorId)) throw new Error('Run not found.');
+    state.formationReady ||= Object.fromEntries(state.participants.map((participant) => [String(participant.playerId), true]));
+    if (state.formationReady[actorId] === true) return { run: this.#decorateRun(state, playerId), formationReady: true };
+    state.formationReady[actorId] = true;
+    const saved = this.repository.saveRun(state);
+    this.eventBus.publish({
+      type: 'DungeonFormationReadied', playerId: actorId,
+      participantIds: saved.participants.map((participant) => String(participant.playerId)),
+      runId, dungeonId: saved.dungeonId,
+      allReady: formationReadyForParticipants(saved.formationReady, saved.participants),
+    });
+    return { run: this.#decorateRun(saved, playerId), formationReady: true };
   }
 
   useDungeonPotion(playerId, runId, potionSelection = null) {
@@ -1136,6 +1245,10 @@ export class GameService {
     const model = new Party(party);
     return {
       ...party,
+      members: (party.members || []).map((member) => ({
+        ...member,
+        formation: this.repository.getArenaFormation?.(member.playerId)?.position || null,
+      })),
       isLeader: party.leaderPlayerId === viewerPlayerId,
       allReady: model.allReady,
       canStart: model.canStart(viewerPlayerId),

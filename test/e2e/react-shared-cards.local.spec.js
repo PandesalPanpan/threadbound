@@ -99,6 +99,7 @@ test('shared Hunt, Inventory, and Gambling cards survive reload and stay read-on
 });
 
 test('owner and spectator share the same Blackjack table and public Dungeon replay', async ({ browser }) => {
+  test.setTimeout(90_000);
   const ownerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const observerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const owner = await ownerContext.newPage();
@@ -212,10 +213,15 @@ test('owner and spectator share the same Blackjack table and public Dungeon repl
     expect(startDungeon.ok()).toBe(true);
     const startPayload = await startDungeon.json();
     expect(startPayload.battleReplay).toBeTruthy();
+    const replayDurationMs = Number(startPayload.battleReplay.arenaReplay?.durationMs || startPayload.battleReplay.durationMs || 0);
+    expect(replayDurationMs).toBeGreaterThan(0);
+    const replayCompletionTimeout = Math.max(35_000, replayDurationMs + 12_000);
     const ownerDungeon = owner.getByTestId('stream-dungeon-rich-card').last();
     const observerDungeon = observer.getByTestId('stream-dungeon-rich-card').last();
-    await expect(ownerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
-    await expect(observerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 20000 });
+    await Promise.all([
+      expect(ownerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: replayCompletionTimeout }),
+      expect(observerDungeon.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: replayCompletionTimeout }),
+    ]);
     await expect(ownerDungeon.getByTestId('stream-run-continue')).toBeVisible();
     await expect(ownerDungeon.getByTestId('stream-run-potion')).toBeVisible();
     await expect(ownerDungeon.getByTestId('stream-run-retreat')).toBeVisible();

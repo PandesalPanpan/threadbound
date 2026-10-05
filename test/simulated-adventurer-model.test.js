@@ -63,6 +63,9 @@ test('simulated adventurer reuses canonical XP, Area, equipment and derived-stat
     speed: 12,
     critChance: 0.1,
     critChancePercent: 10,
+    healingPower: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   });
   assert.equal(adventurer.attackPower, 10);
   assert.deepEqual(adventurer.achievements, ['first-hunt', 'area-two']);

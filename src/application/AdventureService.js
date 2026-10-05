@@ -127,6 +127,9 @@ export class AdventureService {
         areaId: area.currentArea?.id || null,
         areaNumber: area.currentAreaNumber,
       },
+      placements: this.repository.getArenaFormation?.(playerId)?.position ? {
+        [String(playerId)]: this.repository.getArenaFormation(playerId).position,
+      } : {},
       random: this.rng,
     });
     const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
@@ -195,6 +198,9 @@ export class AdventureService {
           maxHpBonus: Number(itemSnapshot.maxHpBonus || itemSnapshot.stats?.maxHpBonus || 0),
           speedBonus: Number(itemSnapshot.speedBonus || itemSnapshot.stats?.speedBonus || 0),
           critChanceBonus: Number(itemSnapshot.critChanceBonus || itemSnapshot.stats?.critChanceBonus || 0),
+          healingPowerBonus: Number(itemSnapshot.healingPowerBonus || itemSnapshot.stats?.healingPowerBonus || 0),
+          attackSpeedBonus: Number(itemSnapshot.attackSpeedBonus || itemSnapshot.stats?.attackSpeedBonus || 0),
+          movementSpeedBonus: Number(itemSnapshot.movementSpeedBonus || itemSnapshot.stats?.movementSpeedBonus || 0),
         } : null;
         const response = Object.freeze({
           ...result,
@@ -273,6 +279,8 @@ export class AdventureService {
       itemRarity: itemSnapshot?.rarity || null,
       itemSlot: itemSnapshot?.slot || null,
       itemVisualAssetId: itemSnapshot?.visualAssetId || null,
+      itemCombatProfileCode: itemSnapshot?.combatProfileCode || null,
+      itemWeaponFamily: itemSnapshot?.weaponFamily || null,
       itemStats,
       storyEvent: rewards.storyEvent,
       adventureCooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,

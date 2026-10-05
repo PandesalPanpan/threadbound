@@ -128,6 +128,9 @@ export class DuelService {
         spriteVariant: seeded.spriteVariant,
       },
       duelId: identity,
+      placements: this.repository.getArenaFormation?.(playerId)?.position ? {
+        [String(playerId)]: this.repository.getArenaFormation(playerId).position,
+      } : {},
       random: this.random,
     });
     const readModel = projectAutomaticBattleResult(result.battle, { viewerId: playerId });

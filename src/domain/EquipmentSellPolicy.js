@@ -14,8 +14,17 @@ function normalizedRarity(item) {
 
 export function equipmentSellValue(item) {
   const base = SELL_VALUE_BY_RARITY[normalizedRarity(item)];
-  const attackBonus = Math.max(0, Math.floor(Number(item?.attackBonus ?? item?.attack_bonus ?? 0) || 0));
-  return base + Math.floor(attackBonus / 2);
+  const stats = item?.stats || item?.effect?.equipmentTemplate?.stats || {};
+  const bonus = (field, alias = field) => Math.max(0, Number(item?.[field] ?? item?.[alias] ?? stats[field] ?? 0) || 0);
+  const budgetEquivalent = bonus('attackBonus', 'attack_bonus')
+    + bonus('defenseBonus')
+    + bonus('maxHpBonus', 'maxHealthBonus') / 4
+    + bonus('speedBonus')
+    + bonus('healingPowerBonus') * 2
+    + bonus('attackSpeedBonus') * 20
+    + bonus('movementSpeedBonus') * 4
+    + bonus('critChanceBonus') * 100;
+  return base + Math.floor(budgetEquivalent / 2);
 }
 
 export function equipmentSellProtectionReason(item) {

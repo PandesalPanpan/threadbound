@@ -77,6 +77,9 @@ test('extended Arc equipment uses canonical slot, rarity, stats, effects, and pr
     maxHpBonus: 8,
     speedBonus: 1,
     critChanceBonus: 0.02,
+    healingPowerBonus: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   });
   assert.deepEqual(normalized.effects, ['frost_edge', 'mind_edge']);
   assert.deepEqual(normalized.budget, { used: 9, limit: 10 });
@@ -187,9 +190,12 @@ test('published Arc reward materializes and persists all equipment stats and eff
     attack: 6,
     defense: 4,
     maxHp: 48,
-    speed: 11,
-    critChance: 0.07,
-    critChancePercent: 7,
+      speed: 11,
+      critChance: 0.07,
+      critChancePercent: 7,
+      healingPower: 0,
+      attackSpeedBonus: 0,
+      movementSpeedBonus: 0,
   });
   assert.deepEqual(equipmentEffectCodesFromCombatant({ equipment: loadout }), ['frost_edge', 'mind_edge']);
   gameRepository.close();
@@ -200,7 +206,7 @@ test('world context publishes the equipment authoring contract and budget rules'
   const context = service.worldContext();
   assert.deepEqual(context.allowedMechanics.equipmentTemplates.slots, ['weapon', 'helmet', 'armor', 'boots', 'accessory']);
   assert.ok(context.allowedMechanics.equipmentTemplates.rarities.includes('mythic'));
-  assert.deepEqual(context.allowedMechanics.equipmentTemplates.statKeys, ['attackBonus', 'defenseBonus', 'maxHpBonus', 'speedBonus', 'critChanceBonus']);
+  assert.deepEqual(context.allowedMechanics.equipmentTemplates.statKeys, ['attackBonus', 'defenseBonus', 'maxHpBonus', 'speedBonus', 'critChanceBonus', 'healingPowerBonus', 'attackSpeedBonus', 'movementSpeedBonus']);
   assert.ok(context.allowedMechanics.equipmentTemplates.effectCodes.includes('frost_edge'));
   assert.equal(context.balanceBudgets.equipmentTemplates.maxEffectsPerItem, 3);
   assert.equal(context.balanceBudgets.equipmentTemplates.maxCritChanceBonus, 1);

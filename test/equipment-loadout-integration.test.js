@@ -22,7 +22,11 @@ function item(id, slot, attackBonus = 1) {
       code: 'none',
       name: 'Plain',
       description: 'Integration test equipment.',
-      equipmentTemplate: { effectCodes: ['none'], stats },
+      equipmentTemplate: {
+        effectCodes: ['none'],
+        ...(slot === 'weapon' ? { weaponFamily: 'bow', combatProfileCode: 'ranged' } : {}),
+        stats,
+      },
       upgradeLevel: 0,
       attunementCode: null,
     },
@@ -55,6 +59,9 @@ test('GameService projects five-slot equipment and canonical readable stats whil
     speed: 10,
     critChance: 0.05,
     critChancePercent: 5,
+    healingPower: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   });
   assert.equal(initial.character.attackPower, initial.character.stats.attack);
   assert.equal(initial.character.maxHealth, initial.character.stats.maxHp);
@@ -89,6 +96,9 @@ test('GameService projects five-slot equipment and canonical readable stats whil
   assert.equal(dashboard.character.speed, 10);
   assert.equal(dashboard.character.critChance, 0.05);
   assert.equal(dashboard.character.critChancePercent, 5);
+  assert.equal(dashboard.character.equipment.weapon.combatLoadout.role, 'Ranged');
+  assert.match(dashboard.character.equipment.weapon.combatLoadout.basicAction, /80% Attack damage/);
+  assert.equal(dashboard.inventory.find((entry) => entry.id === 'item-weapon').combatLoadout.signatureSkill, 'Thornwake');
 
   assert.deepEqual(
     events.filter((event) => event.type === 'ItemEquipped').map(({ itemId, slot }) => ({ itemId, slot })),

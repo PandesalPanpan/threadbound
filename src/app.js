@@ -21,6 +21,7 @@ import { SimpleDungeonService } from './application/SimpleDungeonService.js';
 import { HoneyPurchaseService } from './application/HoneyPurchaseService.js';
 import { InventoryService } from './application/InventoryService.js';
 import { PartyService } from './application/PartyService.js';
+import { ArenaFormationService } from './application/ArenaFormationService.js';
 import { AreaService } from './application/AreaService.js';
 import { TownService } from './application/TownService.js';
 import { QuestService } from './application/QuestService.js';
@@ -153,6 +154,7 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   const combatPreview = new CombatPreviewService({ repository });
   const inventoryService = new InventoryService({ inventoryRepository, gameRepository: repository, eventBus });
   const partyService = new PartyService({ repository, eventBus });
+  const arenaFormationService = new ArenaFormationService({ repository, eventBus });
   const townService = new TownService({ repository, eventBus, arcManifestService });
   const areaService = new AreaService({ repository, eventBus, townService });
   const questService = new QuestService({ repository, eventBus, progressionRepository, arcManifestService, catalog: QUEST_CATALOG });
@@ -434,6 +436,15 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.post('/api/party/join', requireConnection, (request, response) => response.json({ party: partyService.joinParty(request.session.threaded.playerId, request.body?.joinCode) }));
   app.post('/api/party/ready', requireConnection, (request, response) => response.json({ party: partyService.setReady(request.session.threaded.playerId, Boolean(request.body?.ready)) }));
   app.post('/api/party/leave', requireConnection, (request, response) => { partyService.leaveParty(request.session.threaded.playerId); response.json({ party: null }); });
+  app.get('/api/arena/formation', requireConnection, (request, response) => response.json({ formation: arenaFormationService.get(request.session.threaded.playerId) }));
+  app.post('/api/arena/formation', requireConnection, idempotentRunCommand, (request, response) => {
+    const formation = arenaFormationService.set(
+      request.session.threaded.playerId,
+      { x: Number(request.body?.x), y: Number(request.body?.y) },
+      Number(request.body?.version),
+    );
+    return response.json({ formation, dashboard: gameService.dashboard(request.session.threaded.playerId) });
+  });
 
   app.get('/api/areas', requireConnection, (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
@@ -530,6 +541,8 @@ export function createApp({ config, threadedGateway, repository, codexRepository
   app.use('/api/runs/:runId', requireConnection, idempotentRunCommand);
   app.post('/api/runs/:runId/attack', requireConnection, (request, response) => response.json(gameService.attack(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/continue', requireConnection, (request, response) => response.json(gameService.continueDungeon(request.session.threaded.playerId, request.params.runId)));
+  app.post('/api/runs/:runId/formation', requireConnection, (request, response) => response.json(gameService.setDungeonFormation(request.session.threaded.playerId, request.params.runId, { x: Number(request.body?.x), y: Number(request.body?.y) }, Number(request.body?.version))));
+  app.post('/api/runs/:runId/formation/ready', requireConnection, (request, response) => response.json(gameService.setDungeonFormationReady(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/potion', requireConnection, (request, response) => response.json(gameService.useDungeonPotion(request.session.threaded.playerId, request.params.runId, request.body?.potion || request.body?.potionId || null)));
   app.post('/api/runs/:runId/retreat', requireConnection, (request, response) => response.json(gameService.retreatDungeon(request.session.threaded.playerId, request.params.runId)));
   app.post('/api/runs/:runId/guard', requireConnection, (request, response) => response.json(gameService.guard(request.session.threaded.playerId, request.params.runId)));
@@ -576,6 +589,13 @@ export function createApp({ config, threadedGateway, repository, codexRepository
     const knownMessage = error instanceof Error ? error.message : 'Unknown error';
     const conflictCodes = new Set([
       'stale_run_version',
+      'stale_formation_version',
+      'invalid_formation_version',
+      'invalid_arena_formation',
+      'arena_formation_tile_occupied',
+      'arena_formation_not_ready',
+      'formation_during_run',
+      'formation_not_between_encounters',
       'equipped_item_cannot_be_salvaged',
       'equipped_item_cannot_be_sold',
       'item_sell_during_run',

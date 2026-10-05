@@ -41,7 +41,7 @@ test('projects a structured Hunt receipt from authoritative reward facts and mig
     slot: null,
     rarity: 'rare',
     attackBonus: 3,
-    stats: { attackBonus: 3, defenseBonus: 0, maxHpBonus: 0, speedBonus: 0, critChanceBonus: 0 },
+    stats: { attackBonus: 3, defenseBonus: 0, maxHpBonus: 0, speedBonus: 0, critChanceBonus: 0, healingPowerBonus: 0, attackSpeedBonus: 0, movementSpeedBonus: 0 },
   });
   assert.deepEqual(receipt.questProgress, [
     { questId: 'slime-hunt', questName: 'Slime Cleanup', current: 4, required: 8, completed: false },

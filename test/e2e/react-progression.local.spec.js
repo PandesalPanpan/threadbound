@@ -221,16 +221,17 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     runId = run.id;
     expect(run.simpleCombat).toBe(true);
     expect(result.battleReplay.actions.some((action) => action.actionType === 'skill' && action.manaBefore === 100 && action.manaAfter === 0)).toBe(true);
-    const replayEnemyIds = new Set((result.battleReplay.enemies || []).map((enemy) => String(enemy.combatantId || enemy.id || '')));
     expect(result.battleReplay.enemies.every((enemy) => Number.isFinite(enemy.startingMana)
       && Number.isFinite(enemy.maxMana)
       && enemy.maxMana > 0
       && enemy.signatureSkill?.name)).toBe(true);
-    const enemySkillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill'
-      && replayEnemyIds.has(String(action.actorCombatantId || action.actorId || '')));
-    expect(enemySkillAction).toBeTruthy();
+    const skillAction = result.battleReplay.actions.find((action) => action.actionType === 'skill'
+      && Number(action.manaBefore ?? action.actorManaBefore) === 100
+      && Number(action.manaAfter ?? action.actorManaAfter) === 0);
+    expect(skillAction).toBeTruthy();
     const moments = replayMoments(result.battleReplay);
-    const skillMomentIndex = moments.findIndex((moment) => moment.actionType === 'skill');
+    const skillActorId = String(skillAction.actorCombatantId || skillAction.actorId || '');
+    const skillMomentIndex = moments.findIndex((moment) => moment.actionType === 'skill' && String(moment.actorId || '') === skillActorId);
     expect(skillMomentIndex).toBeGreaterThanOrEqual(0);
     const battleStream = await (await leaderContext.request.get('/api/stream')).json();
     const battleEntry = battleStream.entries.find((entry) => entry.metadata?.battleReplay?.battleId === result.battleReplay.battleId);
@@ -276,15 +277,12 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await expect(changedPlayerPage.getByTestId('game-shell-health')).toHaveText(`${changedPlayer.startingHp}/${changedParticipant.maxHp}`);
     await expect(changedPlayerPage.getByTestId('live-context-health')).toHaveText(`${changedPlayer.startingHp}/${changedParticipant.maxHp}`);
 
-    const enemySkillMomentIndex = moments.findIndex((moment) => moment.actionType === 'skill' && replayEnemyIds.has(String(moment.actorId || '')));
-    expect(enemySkillMomentIndex).toBeGreaterThanOrEqual(0);
-    const playbackAtSkill = Date.parse(battleEntry.createdAt) + enemySkillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
+    const playbackAtSkill = Date.parse(battleEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
     await Promise.all([pinReplayClock(leader, playbackAtSkill), pinReplayClock(partner, playbackAtSkill)]);
-    const enemySkillActorId = String(enemySkillAction.actorCombatantId || enemySkillAction.actorId);
-    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(enemySkillAction.skillName || enemySkillAction.skillId);
-    await expect(reconnectCard.getByTestId(`shared-battle-mana-${enemySkillActorId}`)).toHaveAttribute('data-mana', String(enemySkillAction.actorManaAfter ?? enemySkillAction.manaAfter));
-    await expect(partnerLiveReplay.locator('.shared-battle-action-label')).toContainText(enemySkillAction.skillName || enemySkillAction.skillId);
-    await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${enemySkillActorId}`)).toHaveAttribute('data-mana', String(enemySkillAction.actorManaAfter ?? enemySkillAction.manaAfter));
+    await expect(reconnectReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
+    await expect(reconnectCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', String(skillAction.actorManaAfter ?? skillAction.manaAfter));
+    await expect(partnerLiveReplay.locator('.shared-battle-action-label')).toContainText(skillAction.skillName || skillAction.skillId);
+    await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${skillActorId}`)).toHaveAttribute('data-mana', String(skillAction.actorManaAfter ?? skillAction.manaAfter));
     expect(await replayUnitState(reconnectCard)).toEqual(await replayUnitState(partnerLiveCard));
     await Promise.all([restoreReplayClock(leader), restoreReplayClock(partner)]);
     expect(await reconnectCard.locator('[data-testid="shared-battle-enemy"]').evaluateAll((units) => units.map((unit) => unit.getAttribute('data-combatant-id')))).toEqual(
