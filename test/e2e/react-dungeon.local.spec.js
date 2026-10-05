@@ -139,20 +139,31 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
   try {
     await leader.goto('/');
     await partner.goto('/');
-    await leader.getByTestId('local-login-c').click();
-    await partner.getByTestId('local-login-d').click();
+    await leader.getByTestId('local-login-g').click();
+    await partner.getByTestId('local-login-j').click();
     await leader.goto('/game');
     await partner.goto('/game');
     await leaderContext.request.post('/api/party/leave');
     await partnerContext.request.post('/api/party/leave');
 
+    const potionPurchase = await partnerContext.request.post('/api/shop/purchases/satchel');
+    expect(potionPurchase.ok()).toBe(true);
+
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const partnerState = await dashboard(partnerContext);
-      if (partnerState.character.currentHealth < partnerState.character.maxHealth && partnerState.character.healthPotions > 0) break;
+      if (partnerState.character.currentHealth > 0
+        && partnerState.character.currentHealth < partnerState.character.maxHealth
+        && partnerState.character.healthPotions > 0) break;
+      if (partnerState.character.currentHealth <= 0 && partnerState.character.healthPotions > 0) {
+        const recovered = await partnerContext.request.post('/api/recovery/potion');
+        expect(recovered.ok()).toBe(true);
+        continue;
+      }
       const hunt = await partnerContext.request.post('/api/hunt');
       expect(hunt.ok()).toBe(true);
     }
     const healEligiblePartner = await dashboard(partnerContext);
+    expect(healEligiblePartner.character.currentHealth).toBeGreaterThan(0);
     expect(healEligiblePartner.character.currentHealth).toBeLessThan(healEligiblePartner.character.maxHealth);
     expect(healEligiblePartner.character.healthPotions).toBeGreaterThan(0);
 

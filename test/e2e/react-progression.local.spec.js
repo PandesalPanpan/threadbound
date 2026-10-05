@@ -490,23 +490,41 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await expect(orchardTownCard).toHaveCount(0);
     await expectRecentReceiptVisible(leader);
 
-    const leaderBeforeAreaTwoHunt = await dashboard(leaderContext);
-    if (leaderBeforeAreaTwoHunt.character.currentHealth <= 0) {
-      await command(leader, 'inventory');
-      const inventoryCard = leader.getByTestId('stream-inventory-rich-card').last();
-      await expect(leader.getByTestId('stream-busy')).toHaveCount(0);
+    const huntCandidates = await Promise.all([
+      { page: leader, context: leaderContext },
+      { page: partner, context: partnerContext },
+    ].map(async (candidate) => ({ ...candidate, state: await dashboard(candidate.context) })));
+    const areaTwoHunter = huntCandidates.find(({ state }) => (
+      state.character.currentHealth > 0 || state.character.healthPotions > 0
+    ));
+    expect(areaTwoHunter, 'at least one surviving Weaver or available potion should allow the next Hunt').toBeTruthy();
+    if (areaTwoHunter.state.character.currentHealth <= 0) {
+      await command(areaTwoHunter.page, 'inventory');
+      const inventoryCard = areaTwoHunter.page.getByTestId('stream-inventory-rich-card').last();
+      await expect(areaTwoHunter.page.getByTestId('stream-busy')).toHaveCount(0);
       await expect(inventoryCard.locator('.stream-potion-row').first()).toContainText('Minor Health Potion');
-      const healResponse = leader.waitForResponse((response) => response.url().endsWith('/api/recovery/potion') && response.request().method() === 'POST');
+      const healResponse = areaTwoHunter.page.waitForResponse((response) => response.url().endsWith('/api/recovery/potion') && response.request().method() === 'POST');
       await expect(inventoryCard.getByRole('button', { name: /Heal/ })).toBeEnabled();
       await inventoryCard.getByRole('button', { name: /Heal/ }).click();
       expect((await healResponse).ok()).toBe(true);
-      expect((await dashboard(leaderContext)).character.currentHealth).toBeGreaterThan(0);
+      expect((await dashboard(areaTwoHunter.context)).character.currentHealth).toBeGreaterThan(0);
     }
 
-    await command(leader, 'hunt');
-    const huntCard = leader.getByTestId('stream-hunt-rich-card').last();
+    const areaTwoHunterArea = await areaTwoHunter.context.request.get('/api/areas');
+    expect(areaTwoHunterArea.ok()).toBe(true);
+    if ((await areaTwoHunterArea.json()).area.currentArea.number !== 2) {
+      await command(areaTwoHunter.page, 'area');
+      const areaTwoRow = areaTwoHunter.page.getByTestId('area-rich-card').last().locator('.shell-area-row[data-area-number="2"]');
+      const travelResponse = areaTwoHunter.page.waitForResponse((response) => response.url().endsWith('/api/areas/2/travel') && response.request().method() === 'POST');
+      await areaTwoRow.getByRole('button', { name: 'Travel' }).click();
+      expect((await travelResponse).ok()).toBe(true);
+      await expectRecentReceiptVisible(areaTwoHunter.page);
+    }
+
+    await command(areaTwoHunter.page, 'hunt');
+    const huntCard = areaTwoHunter.page.getByTestId('stream-hunt-rich-card').last();
     await expect(huntCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
-    const stream = await (await leaderContext.request.get('/api/stream')).json();
+    const stream = await (await areaTwoHunter.context.request.get('/api/stream')).json();
     const huntEntry = stream.entries.filter((entry) => entry.eventType === 'HuntResolved').at(-1);
     const areaOneHp = AREA_CONTENT[0].huntEncounters.map((encounter) => encounter.hp);
     const areaTwoHp = AREA_CONTENT[1].huntEncounters.map((encounter) => encounter.hp);
@@ -519,7 +537,7 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     expect(areaTwoEncounter.dropChance).toBeGreaterThan(areaOneEncounter.dropChance);
     expect(AREA_CONTENT[1].rarityWeights.rare).toBeGreaterThan(AREA_CONTENT[0].rarityWeights.rare);
     await expect(huntCard).toContainText(huntEntry.metadata.enemyName);
-    expect(await leader.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    expect(await areaTwoHunter.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
     await leader.goto('/codex');
     await expect(leader.getByTestId('codex-status')).not.toHaveText('Loading…');
