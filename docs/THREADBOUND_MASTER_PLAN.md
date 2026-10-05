@@ -18,7 +18,7 @@ Use obvious player language: Gold, Inventory, Equipment, Upgrade, Heal, Bank, Ar
 
 The owner selected the overhead Arena Lab as the foundation for future combat simulation. Build on its autonomous movement, formation, targeting, role behavior, Mana skills, and deterministic replay, using existing upright semantic character art on an overhead battlefield. The active-timing lab remains a comparison experiment.
 
-The next foundation improvement gives units independent attack and movement speeds so they do not move or strike in lockstep. This explicitly authorized combat work may proceed alongside the open human experience gates. It does not check those gates or replace the Adventure Stream shell. Live integration must retain server-authoritative outcomes, persisted replay projections, concise receipts, and party/reconnect correctness; browser-local simulation remains confined to the lab until that integration is implemented and verified. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md).
+The foundation now has branch-local independent attack and movement speeds, continuous travel, collision reservations, and teammate speed controls so units do not move or strike in lockstep. This explicitly authorized combat work may proceed alongside the open human experience gates. It does not check those gates or replace the Adventure Stream shell. Live integration must retain server-authoritative outcomes, persisted replay projections, concise receipts, and party/reconnect correctness; browser-local simulation remains confined to the lab until that integration is implemented and verified. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md).
 
 ## 2. Canonical Figma scope
 

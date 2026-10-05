@@ -11,30 +11,19 @@ const allies = ARENA_ROSTER.filter((unit) => unit.team === 'allies');
 const percent = (hp, max) => Math.max(0, hp / max * 100);
 const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
-function ArenaEffects({ frame, previous, speed, paused, reducedMotion }) {
-  const root = useRef(null);
-  useGSAP(() => {
-    if (reducedMotion) return;
-    const duration = ARENA_TICK_SECONDS / speed;
-    root.current.querySelectorAll('.arena-float').forEach((element) => {
-      gsap.fromTo(element, { y: 8, opacity: 1 }, { y: -15, opacity: 0.4, duration, paused });
-    });
-    root.current.querySelectorAll('.arena-projectile').forEach((element) => {
-      gsap.to(element, { attr: { cx: element.dataset.endX, cy: element.dataset.endY }, duration: duration * 0.65, ease: 'none', paused });
-    });
-  }, { scope: root, dependencies: [frame.tick, speed, paused, reducedMotion], revertOnUpdate: true });
-  return <svg ref={root} className="arena-effects" viewBox="0 0 800 800" aria-hidden="true">
-    {frame.events.filter((event) => event.type !== 'down').map((event, index) => {
-      const target = frame.units.find((unit) => unit.id === event.target);
-      const source = previous.units.find((unit) => unit.id === event.actor);
-      const tx = target.x * 100 + 50; const ty = target.y * 100 + 40;
-      const sx = source.x * 100 + 50; const sy = source.y * 100 + 40;
+function ArenaEffects({ frame, events, reducedMotion }) {
+  return <svg className="arena-effects" viewBox="0 0 800 800" aria-hidden="true">
+    {events.filter((event) => !['down', 'move'].includes(event.type)).map((event, index) => {
+      const age = frame.tick * ARENA_TICK_SECONDS * 1000 - event.timeMs;
+      const progress = Math.min(1, age / 150);
+      const tx = event.targetX * 100 + 50; const ty = event.targetY * 100 + 40;
+      const sx = event.sourceX * 100 + 50; const sy = event.sourceY * 100 + 40;
       const tone = event.type === 'heal' ? '#59d18c' : event.type === 'shield' ? '#61adff' : event.skill ? '#f5b047' : '#ffeff0';
-      return <g key={`${frame.tick}-${index}`}>
+      return <g key={`${event.timeMs}-${index}`} opacity={1 - age / 350}>
         {event.type === 'heal' || event.type === 'shield' ? <circle cx={tx} cy={ty + 10} r="36" fill="none" stroke={tone} strokeWidth="4" /> : null}
-        {event.type === 'hit' && event.ranged && !reducedMotion ? <><line x1={sx} y1={sy} x2={tx} y2={ty} stroke={tone} strokeWidth="2" opacity=".3" /><circle className="arena-projectile" cx={sx} cy={sy} r={event.skill ? 8 : 5} fill={tone} data-end-x={tx} data-end-y={ty} /></> : null}
+        {event.type === 'hit' && event.ranged && !reducedMotion ? <><line x1={sx} y1={sy} x2={tx} y2={ty} stroke={tone} strokeWidth="2" opacity=".3" /><circle className="arena-projectile" cx={sx + (tx - sx) * progress} cy={sy + (ty - sy) * progress} r={event.skill ? 8 : 5} fill={tone} /></> : null}
         {event.type === 'hit' && !event.ranged ? <path d={`M ${tx - 23} ${ty + 19} Q ${tx + 30} ${ty + 20} ${tx + 19} ${ty - 24}`} fill="none" stroke={tone} strokeWidth={event.skill ? 8 : 5} strokeLinecap="round" /> : null}
-        <text className="arena-float" x={tx} y={Math.max(26, ty - 44)} fill={tone} textAnchor="middle">{event.type === 'heal' ? '+' : event.type === 'shield' ? '◆ +' : '−'}{event.amount}{event.skill ? '!' : ''}</text>
+        <text className="arena-float" x={tx} y={Math.max(26, ty - 44 - (reducedMotion ? 0 : age / 15))} fill={tone} textAnchor="middle">{event.type === 'heal' ? '+' : event.type === 'shield' ? '◆ +' : '−'}{event.amount}{event.skill ? '!' : ''}</text>
       </g>;
     })}
   </svg>;
@@ -44,6 +33,7 @@ export function ArenaCombatPrototypeApp() {
   const root = useRef(null);
   const timelineRef = useRef(null);
   const [placement, setPlacement] = useState({});
+  const [tuning, setTuning] = useState({});
   const [selected, setSelected] = useState('guard');
   const [phase, setPhase] = useState('placement');
   const [speed, setSpeed] = useState(1);
@@ -51,9 +41,9 @@ export function ArenaCombatPrototypeApp() {
   const [cursor, setCursor] = useState(0);
   const [message, setMessage] = useState('Select a teammate, then tap a tile in your deployment zone.');
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const setupUnits = useMemo(() => createArenaUnits(placement), [placement]);
+  const setupUnits = useMemo(() => createArenaUnits(placement, tuning), [placement, tuning]);
   const frame = replay?.frames[cursor] || { tick: 0, units: setupUnits, events: [] };
-  const previous = replay?.frames[Math.max(0, cursor - 1)] || frame;
+  const visibleEffects = replay ? replay.frames.slice(Math.max(0, cursor - 6), cursor + 1).flatMap((item) => item.events) : [];
   const focused = frame.units.find((unit) => unit.id === selected);
   const elapsed = frame.tick * ARENA_TICK_SECONDS;
   const paused = phase !== 'running';
@@ -88,14 +78,19 @@ export function ArenaCombatPrototypeApp() {
         const old = before.units.find((other) => other.id === unit.id);
         const element = root.current.querySelector(`[data-unit="${unit.id}"]`);
         const art = element.querySelector('.arena-unit-art');
-        if (unit.x !== old.x || unit.y !== old.y) {
-          if (reducedMotion) timeline.set(element, { xPercent: unit.x * 100, yPercent: unit.y * 100 }, at + ARENA_TICK_SECONDS);
+        if (unit.renderX !== old.renderX || unit.renderY !== old.renderY) {
+          if (reducedMotion) {
+            if (unit.x !== old.x || unit.y !== old.y) timeline.set(element, { xPercent: unit.x * 100, yPercent: unit.y * 100 }, at + ARENA_TICK_SECONDS);
+          }
           else {
-            timeline.to(element, { xPercent: unit.x * 100, yPercent: unit.y * 100, duration: ARENA_TICK_SECONDS, ease: 'none' }, at);
-            timeline.to(art, { y: -4, duration: ARENA_TICK_SECONDS / 2, repeat: 1, yoyo: true, ease: 'sine.out' }, at);
+            timeline.to(element, { xPercent: unit.renderX * 100, yPercent: unit.renderY * 100, duration: ARENA_TICK_SECONDS, ease: 'none' }, at);
           }
         }
         if (old.hp > 0 && unit.hp === 0) timeline.to(art, { opacity: 0.22, rotation: reducedMotion ? 0 : 70, duration: 0.2 }, at + ARENA_TICK_SECONDS);
+      }
+      if (!reducedMotion) for (const event of current.events.filter((event) => event.type === 'move')) {
+        const art = root.current.querySelector(`[data-unit="${event.actor}"] .arena-unit-art`);
+        timeline.to(art, { y: -3, duration: Math.min(0.18, event.durationMs / 2000), repeat: 1, yoyo: true, ease: 'sine.out' }, event.timeMs / 1000);
       }
       if (!reducedMotion) for (const event of current.events.filter((event) => event.type === 'hit' || event.type === 'heal')) {
         const art = root.current.querySelector(`[data-unit="${event.actor}"] .arena-unit-art`);
@@ -113,7 +108,7 @@ export function ArenaCombatPrototypeApp() {
     timeline.to({ time: 0 }, { time: replay.duration + 0.3, duration: replay.duration + 0.3, ease: 'none' }, 0);
     timeline.timeScale(speed).time(cursor * ARENA_TICK_SECONDS).play();
     return () => { timelineRef.current = null; };
-  }, { scope: root, dependencies: [replay, placement, reducedMotion], revertOnUpdate: true });
+  }, { scope: root, dependencies: [replay, placement, tuning, reducedMotion], revertOnUpdate: true });
 
   useEffect(() => { timelineRef.current?.paused(paused); }, [paused, replay, reducedMotion]);
   useEffect(() => { timelineRef.current?.timeScale(speed); }, [speed, replay, reducedMotion]);
@@ -126,7 +121,7 @@ export function ArenaCombatPrototypeApp() {
     setPlacement((current) => ({ ...current, [selected]: { x, y }, ...(occupant ? { [occupant.id]: { x: moving.x, y: moving.y } } : {}) }));
     setMessage(`${moving.name} placed in row ${y + 1}, column ${x + 1}${occupant ? `. Swapped with ${occupant.name}` : ''}.`);
   }
-  function start() { setCursor(0); setReplay(simulateArena(placement)); setPhase('running'); }
+  function start() { setCursor(0); setReplay(simulateArena(placement, { tuning })); setPhase('running'); }
   function reset() { setReplay(null); setCursor(0); setPhase('placement'); setMessage('Select a teammate, then tap a tile in your deployment zone.'); }
   const resultLabel = replay?.outcome === 'victory' ? 'Your team wins' : replay?.outcome === 'defeat' ? 'Rival team wins' : 'Time limit · draw';
 
@@ -148,7 +143,7 @@ export function ArenaCombatPrototypeApp() {
             <div className="arena-unit-bars" aria-hidden="true"><span className="arena-unit-hp"><i style={{ transform: `scaleX(${unit.hp / unit.maxHp})` }} /></span><span className="arena-unit-mana"><i style={{ transform: `scaleX(${unit.mana / 100})` }} /></span>{unit.shield > 0 ? <b>◆ {unit.shield}</b> : null}</div>
             <span className="arena-unit-role">{unit.role === 'Frontline' ? '◆' : unit.role === 'Ranged' ? '➶' : '+'}</span>
           </div>)}
-          <ArenaEffects key={replay ? 'playback' : 'setup'} frame={frame} previous={previous} speed={speed} paused={paused} reducedMotion={reducedMotion} />
+          <ArenaEffects frame={frame} events={visibleEffects} reducedMotion={reducedMotion} />
           {phase === 'placement' ? <span className="arena-deploy-label">Your deployment zone</span> : null}
           {phase === 'finished' ? <div className="arena-result" role="status"><span>Battle complete</span><h2>{resultLabel}</h2><p>{clock(replay.duration)} · {frame.units.filter((unit) => unit.team === 'allies' && unit.hp > 0).length} allies standing</p></div> : null}
         </div>
@@ -168,6 +163,11 @@ export function ArenaCombatPrototypeApp() {
           </button>;
         })}</div>
         <section className="arena-behavior"><div><span className="arena-role-badge">{focused.role}</span><h3>{focused.name}</h3></div><p>{focused.behavior}</p><dl><div><dt>Skill</dt><dd>{focused.skill}</dd></div><div><dt>Current action</dt><dd data-testid="arena-intent">{focused.intent}</dd></div><div><dt>Target</dt><dd>{frame.units.find((unit) => unit.id === focused.targetId)?.name || '—'}</dd></div><div><dt>Mana</dt><dd>{focused.mana}/100</dd></div></dl></section>
+        <section className="arena-unit-speeds" aria-label="Unit speeds"><h3>Unit speeds</h3><p>Adjust before battle. Each teammate moves and attacks at their own pace.</p>
+          <label>Attack speed <strong>{focused.attackSpeed.toFixed(2)} /s</strong><input type="range" min="0.4" max="3" step="0.05" aria-label="Attack speed" value={focused.attackSpeed} disabled={phase !== 'placement'} onChange={(event) => setTuning((current) => ({ ...current, [selected]: { ...current[selected], attackSpeed: Number(event.target.value) } }))} /></label>
+          <label>Movement speed <strong>{focused.moveSpeed.toFixed(2)} tiles/s</strong><input type="range" min="1" max="4" step="0.05" aria-label="Movement speed" value={focused.moveSpeed} disabled={phase !== 'placement'} onChange={(event) => setTuning((current) => ({ ...current, [selected]: { ...current[selected], moveSpeed: Number(event.target.value) } }))} /></label>
+          <button disabled={phase !== 'placement'} onClick={() => setTuning((current) => { const next = { ...current }; delete next[selected]; return next; })}>Reset unit speeds</button>
+        </section>
         <section className="arena-moments"><h3>Battle moments</h3>{recentEvents.length ? <ol>{recentEvents.map((event, index) => <li key={`${event.tick}-${index}`}><time>{clock(event.tick * ARENA_TICK_SECONDS)}</time><span><strong>{ARENA_ROSTER.find((unit) => unit.id === event.actor).name}</strong>{event.type === 'down' ? ` defeats ${ARENA_ROSTER.find((unit) => unit.id === event.target).name}` : ` · ${event.label}`}</span></li>)}</ol> : <p>Signature skills and defeats will appear here.</p>}</section>
       </aside>
       <footer className="arena-footer">Formation changes the fight. Frontline closes in, ranged keeps distance, support follows injured allies.<span>Sandbox · No rewards or saved progress</span></footer>

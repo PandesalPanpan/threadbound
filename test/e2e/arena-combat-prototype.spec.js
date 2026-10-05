@@ -29,7 +29,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 960 
     await expect(page.getByTestId('arena-board')).toHaveAttribute('data-tick', tick);
     await page.getByRole('button', { name: '4×', exact: true }).click();
     await page.getByRole('button', { name: 'Resume' }).click();
-    await expect.poll(async () => Number(await page.getByTestId('arena-board').getAttribute('data-tick'))).toBeGreaterThan(16);
+    await expect.poll(async () => Number(await page.getByTestId('arena-board').getAttribute('data-tick'))).toBeGreaterThan(100);
     await page.screenshot({ path: `test-results/arena-fighting-${viewport.width}.png`, fullPage: true });
     await expect(page.getByTestId('arena-board')).toHaveAttribute('data-phase', 'finished', { timeout: 20_000 });
     await expect(page.getByRole('heading', { name: /team wins|draw/ })).toBeVisible();
@@ -58,4 +58,27 @@ test('arena supports keyboard deployment and reduced motion', async ({ page }) =
   await page.getByRole('button', { name: '4×', exact: true }).click();
   await page.getByRole('button', { name: 'Start battle' }).click();
   await expect(page.getByTestId('arena-board')).toHaveAttribute('data-phase', 'finished', { timeout: 20_000 });
+});
+
+test('unit speeds can be tuned independently, lock during combat, and survive reposition', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/arena-combat');
+  const attack = page.getByRole('slider', { name: 'Attack speed', exact: true });
+  const movement = page.getByRole('slider', { name: 'Movement speed', exact: true });
+  await attack.focus(); await page.keyboard.press('End');
+  await movement.focus(); await page.keyboard.press('End');
+  await expect(attack).toHaveValue('3'); await expect(movement).toHaveValue('4');
+  await page.getByRole('button', { name: 'Start battle' }).click();
+  await expect(attack).toBeDisabled(); await expect(movement).toBeDisabled();
+  await expect.poll(async () => Number(await page.getByTestId('arena-board').getAttribute('data-tick'))).toBeGreaterThan(25);
+  await page.getByRole('button', { name: 'Pause', exact: false }).click();
+  await expect(page.getByTestId('arena-board')).toHaveAttribute('data-phase', 'paused');
+  const transforms = await page.locator('.arena-unit').evaluateAll((units) => units.map((unit) => getComputedStyle(unit).transform));
+  await page.waitForTimeout(300);
+  expect(await page.locator('.arena-unit').evaluateAll((units) => units.map((unit) => getComputedStyle(unit).transform))).toEqual(transforms);
+  await page.getByRole('button', { name: 'Reposition' }).click();
+  await expect(attack).toBeEnabled(); await expect(attack).toHaveValue('3'); await expect(movement).toHaveValue('4');
+  await page.getByRole('button', { name: 'Reset unit speeds' }).click();
+  await expect(attack).toHaveValue('0.9'); await expect(movement).toHaveValue('1.65');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

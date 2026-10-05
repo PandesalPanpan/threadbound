@@ -65,3 +65,51 @@ test('bounded simulation reports draw instead of declaring a false winner', () =
   assert.equal(replay.outcome, 'draw');
   assert.equal(replay.frames.length, 2);
 });
+
+test('higher attack speed produces more attacks and respects the individual cooldown', () => {
+  const attacks = (speed) => simulateArena({}, { maxTicks: 200, tuning: { archer: { attackSpeed: speed } } })
+    .frames.flatMap((frame) => frame.events).filter((event) => event.actor === 'archer' && event.type === 'hit');
+  const slow = attacks(0.4);
+  const fast = attacks(3);
+  assert.ok(fast.length > slow.length);
+  for (const [speed, events] of [[0.4, slow], [3, fast]]) {
+    for (let index = 1; index < events.length; index += 1) assert.ok(events[index].timeMs - events[index - 1].timeMs >= 1000 / speed - 0.001);
+  }
+});
+
+test('movement speed changes travel duration and fractional positions, independently of attack speed', () => {
+  const slow = simulateArena({}, { maxTicks: 8, tuning: { archer: { moveSpeed: 1 } } });
+  const fast = simulateArena({}, { maxTicks: 8, tuning: { archer: { moveSpeed: 4 } } });
+  const firstMove = (replay) => replay.frames.flatMap((frame) => frame.events).find((event) => event.actor === 'archer' && event.type === 'move');
+  assert.equal(firstMove(slow).durationMs, 1000);
+  assert.equal(firstMove(fast).durationMs, 250);
+  const sample = (replay) => replay.frames[4].units.find((unit) => unit.id === 'archer');
+  assert.ok(Math.hypot(sample(fast).renderX - 2, sample(fast).renderY - 7) > Math.hypot(sample(slow).renderX - 2, sample(slow).renderY - 7));
+  assert.equal(sample(slow).attackSpeed, sample(fast).attackSpeed);
+  assert.ok(!Number.isInteger(sample(slow).renderY));
+});
+
+test('independent motion reserves destinations, and units cannot attack while in transit', () => {
+  const replay = simulateArena();
+  const departures = replay.frames.flatMap((frame) => frame.events).filter((event) => event.type === 'move');
+  assert.ok(new Set(ARENA_ROSTER.map((unit) => departures.find((event) => event.actor === unit.id)?.timeMs)).size > 2);
+  assert.ok(new Set(departures.map((event) => event.durationMs)).size > 2);
+  for (const frame of replay.frames) {
+    const reservations = frame.units.filter((unit) => unit.hp > 0).flatMap((unit) => [
+      `${unit.x},${unit.y}`, ...(unit.motion ? [`${unit.motion.x},${unit.motion.y}`] : []),
+    ]);
+    assert.equal(new Set(reservations).size, reservations.length);
+    for (const event of frame.events.filter((event) => ['hit', 'heal'].includes(event.type))) {
+      assert.equal(frame.units.find((unit) => unit.id === event.actor).motion, null);
+    }
+  }
+});
+
+test('speed tuning rejects invalid stats and never changes the original roster', () => {
+  for (const tuning of [{ archer: { attackSpeed: 0 } }, { archer: { moveSpeed: Infinity } }, { archer: { damage: 100 } }, { unknown: { moveSpeed: 2 } }]) {
+    assert.throws(() => simulateArena({}, { tuning }), /speed|speeds/);
+  }
+  const custom = { archer: { attackSpeed: 3, moveSpeed: 4 } };
+  assert.deepEqual(simulateArena({}, { tuning: custom }), simulateArena({}, { tuning: custom }));
+  assert.equal(ARENA_ROSTER.find((unit) => unit.id === 'archer').attackSpeed, 1.2);
+});

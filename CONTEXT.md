@@ -8,6 +8,14 @@ An experimental battle where the player arranges a team before combat, then unit
 
 A battlefield viewed from above, with upright character art anchored to ground positions by shadows. Characters retain their existing front-facing appearance while moving in two dimensions.
 
+## Arena attack speed
+
+The number of attacks or support casts a unit can perform per second when in range and stationary.
+
+## Arena movement speed
+
+The number of battlefield tiles a unit travels per second. It is independent of attack speed.
+
 ## Arc Manifest
 
 A portable, untrusted content contract that may define narrative, encounters, rewards, and exact allowlisted visual asset references. Publication is explicit and validation remains authoritative.
