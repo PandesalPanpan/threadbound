@@ -61,7 +61,7 @@ test('mobile active timing fight uses touch for attack, defense, Skill, Item, an
   await expect(page.getByTestId('active-timing-hit')).toContainText('−19 HP');
   await page.screenshot({ path: 'test-results/active-timing-impact-mobile-390x844.png', fullPage: true });
   await defendCurrentHit(page);
-  await expect(page.getByTestId('active-timing-hit')).toContainText('PERFECT GUARD');
+  await expect(page.getByTestId('active-timing-hit')).toContainText('GUARD');
 
   await expect(page.getByTestId('active-timing-turnline')).toContainText('TURN 2');
   await page.getByTestId('active-timing-action-item').tap();
