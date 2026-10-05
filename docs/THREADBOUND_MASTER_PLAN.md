@@ -196,15 +196,15 @@ Use the two-reviewer guide and worksheet in [PLAYER_EXPERIENCE_ACCEPTANCE.md](PL
 
 ### Phase M — approved authoritative arena combat integration (parallel to Phase K)
 
-This owner-approved implementation track may proceed while the Phase K human reviews are arranged. It does not replace or satisfy any Phase K gate. Keep every box open until the scope-specific acceptance work is implemented, tested, documented, merged, and green on `main`.
+This owner-approved implementation track may proceed while the Phase K human reviews are arranged. It does not replace or satisfy any Phase K gate. The scope-specific work is implemented, tested, documented, merged, and green on `main`; its combat-path audit, compatibility notes, screenshots, and handoff are recorded in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md). CI evidence is [run 37272243336](https://github.com/PandesalPanpan/threadbound/actions/runs/37272243336) for `512bbd4`.
 
-- [ ] **PV2-M01** Audit and inventory every live combat entry point, simulator, replay contract, renderer, and persisted battle format; document compatibility and conflict decisions.
-- [ ] **PV2-M02** Extract the arena simulator into bounded, deterministic server-side domain code with authoritative character/equipment stat mappings and explicit encounter configuration.
-- [ ] **PV2-M03** Integrate Hunt, ordinary Adventure, and Duel using their real participants, authored enemies, equipment, skills, effects, progression, cooldowns, rewards, death rules, and PvP boundaries.
-- [ ] **PV2-M04** Integrate single/multi-enemy Dungeon rooms, bosses, progression challenges, and published Arc encounters while retaining attrition, intermission healing, gates, and sparse explicit boss commands.
-- [ ] **PV2-M05** Migrate or safely hydrate active legacy runs and retain saved-run, idempotency, optimistic-concurrency, and historical replay compatibility; retire replaced live resolvers only after coverage is green.
-- [ ] **PV2-M06** Persist versioned replay data atomically and render it in existing Battle cards/details with semantic assets, pause/speed/reduced-motion/accessibility, reconnect, and finish/skip controls.
-- [ ] **PV2-M07** Complete domain/service/repository/migration/replay-contract and full player-journey coverage; inspect mobile/desktop playback; merge green work, verify `main` CI, and leave a handoff with any human acceptance gates still open.
+- [x] **PV2-M01** Audit and inventory every live combat entry point, simulator, replay contract, renderer, and persisted battle format; document compatibility and conflict decisions.
+- [x] **PV2-M02** Extract the arena simulator into bounded, deterministic server-side domain code with authoritative character/equipment stat mappings and explicit encounter configuration.
+- [x] **PV2-M03** Integrate Hunt, ordinary Adventure, and Duel using their real participants, authored enemies, equipment, skills, effects, progression, cooldowns, rewards, death rules, and PvP boundaries.
+- [x] **PV2-M04** Integrate single/multi-enemy Dungeon rooms, bosses, progression challenges, and published Arc encounters while retaining attrition, intermission healing, gates, and sparse explicit boss commands.
+- [x] **PV2-M05** Migrate or safely hydrate active legacy runs and retain saved-run, idempotency, optimistic-concurrency, and historical replay compatibility; retire replaced live resolvers only after coverage is green.
+- [x] **PV2-M06** Persist versioned replay data atomically and render it in existing Battle cards/details with semantic assets, pause/speed/reduced-motion/accessibility, reconnect, and finish/skip controls.
+- [x] **PV2-M07** Complete domain/service/repository/migration/replay-contract and full player-journey coverage; inspect mobile/desktop playback; merge green work, verify `main` CI, and leave a handoff with any human acceptance gates still open.
 
 ### Phase L — production lifecycle gates
 

@@ -1,8 +1,9 @@
 # Authoritative arena combat integration
 
-Status: owner-approved implementation track opened 2026-10-05. This work may
-proceed alongside Phase K human reviews. It is not accepted until each scoped
-gate below is implemented, verified, documented, merged, and green on `main`.
+Status: implementation complete on `main` as of 2026-10-05. The combat
+integration landed in `edd1a82`; the final test reliability fixes landed in
+`512bbd4`, whose [CI run](https://github.com/PandesalPanpan/threadbound/actions/runs/37272243336)
+passed both workflow jobs. Phase K human reviews remain open.
 
 ## Intended result
 
@@ -13,22 +14,20 @@ Services coordinate commands and persistence; repositories commit the result
 and replay together; browser surfaces render that committed data. The Arena Lab
 and active-timing lab remain isolated comparison experiments.
 
-## Current combat-path audit
+## Combat-path audit and implemented outcome
 
-| Path | Current authoritative path | Current replay/presentation | Integration decision |
+| Path | Final authoritative path | Replay/presentation | Retained compatibility and boundary |
 | --- | --- | --- | --- |
-| Hunt | `POST /api/hunt` → `HuntService` → `HuntEncounter.resolveAutomaticHunt` → `AutomaticBattleSimulator`; Area enemy choice, Hunt cooldown, health, rewards, equipment drops, Quest progress, and death loss are coordinated by existing policies/services. | `HuntResolved` projection plus `AutomaticBattleReadModel`; React Adventure Stream uses `SharedBattleSurface` and Battle Details. | Replace the live simulator with the arena engine. Preserve the Area roster, current Hunt HP, equipment, skill/effect rules, cooldown, rewards, loot, Quest facts, normal carried-Gold loss, and one concise receipt. |
-| Ordinary Adventure | `POST /api/adventure` → `AdventureService` → `AdventureEncounter.resolveOrdinaryAdventure` → `AutomaticBattleSimulator`; Area and authored opponent are snapshotted before reward/death resolution. | `AdventureResolved` projection and the shared automatic-battle receipt/details contract. | Replace live resolution with the arena engine. Preserve current HP, Area encounter choice, cooldown, equipment, skill/effect rules, XP/Gold/loot, and death behavior. |
-| Duel | `POST /api/duels/:opponentId` → `DuelService` → `DuelBattle.resolveDuelBattle` → `AutomaticBattleSimulator`; actual challenger loadout and persistent simulated Guild Hall opponent are projected for the match. `SQLiteDuelRepository` stores the immutable result. | `DuelResolved` and the same shared battle card/details. | Replace live resolution with the arena engine. Preserve full projected encounter HP, real equipment/skills, draw/win/loss records, no normal HP/economy mutation, and request/result idempotency. |
-| Canonical Dungeon rooms | `/api/dungeons/:dungeonId/start-simple` or the shared start path → `SimpleDungeonService` → persisted `AdventureRun`; room resolution calls `SimpleEncounterBattle.resolveSimpleEncounter`, which repeatedly invokes `AutomaticBattleSimulator` for one action at a time. | `GameService.simpleBattleReplay` stores the shared participant/enemy snapshot and action replay in `CombatActionResolved`; `SharedBattleSurface` replays it. HP/Mana carry between rooms; Potion Heal is an explicit versioned intermission command. | Replace room resolution with the arena engine for singleton, multi-enemy, boss, boss-add, and progression rooms. Preserve room HP/Mana attrition, party gates, intermission healing, rewards/unlocks, Enrage accounting, and atomic run-version commits. |
-| Published Arc Dungeon encounters | `ArcManifestService.runtimeDungeons/resolveDungeon` materializes allowlisted Arc enemies, skills, resistances, targeting profiles, and encounter variants; `SimpleDungeonService` snapshots the resulting definition into an `AdventureRun`. | Same persisted Dungeon action replay and shared battle card. | Use the same engine/configuration path as built-in Dungeons. Arc data stays validated content and cannot supply formulas, scripts, URLs, or executable behavior. |
-| Legacy active and saved Dungeon runs | `/api/dungeons/:dungeonId/start` and legacy run commands (`attack`, `guard`, `interrupt`, `mend`, `revive`, `skills`, upgrades/events) hydrate `AdventureRun`/`DungeonRun`. `DungeonRun` applies `CombatIntentPolicy`, Focus/cooldowns/combos, legacy ability profiles, relic/run-power rules, and persisted run versioning. `/api/dashboard?previews=1` also calls `CombatPreviewService` over this model. | Legacy action events and compatibility surfaces; some records have singleton enemies and no arena replay. | Migrate active runs safely to the new engine at a durable command boundary, retaining explicit sparse boss decisions and owned progression state. Historical completed records remain readable in their original format. Replace or remove stale preview calculations once their displayed contract is understood. |
-| Battle Simulation preview | `GET/POST /api/battle-simulation` → `BattleSimulationService` → `AutomaticBattleSimulator` with a fixed Figma 3v3 roster; it does not persist player results or grant rewards. | `/react-battle` simulation presentation and Battle Details. | Keep as an isolated, clearly labeled comparison lab. Its sample roster and results must never feed live combat or stand in for actual players. |
-| Arena Lab | Public `/arena-combat` imports the browser-local `frontend/src/battle/arenaCombatPrototype.js` 3v3 simulator; no player save, rewards, or game commands. | React overhead prototype, semantic sprite catalog, local pause/speed/replay controls. | Preserve as an isolated comparison lab while moving reusable simulation rules into `src/domain`. Lab controls remain experiment-only. |
-| Active-timing Lab | Public `/active-timing` imports a separate browser-local manual timing experiment; no rewards or saved progression. | React comparison prototype. | Preserve as a separate experiment. It is not a live combat authority. |
-| Simulated Adventurer activity | `SimulatedAdventurerSimulationService` plans bounded schedule actions and commits them through its repository; the inspected service does not run combat. A simulated Adventurer challenged from the Guild Hall is a Duel opponent and follows the Duel path above. | Profile/history and Duel projections. | Keep the schedule/economy simulator separate because it does not create combat encounters. Route every bot Duel through the shared arena engine while preserving the simulated-adventurer ownership and economy policy. |
+| Hunt | `POST /api/hunt` → `HuntService` → `HuntEncounter.resolveAutomaticHunt` → `simulateArenaCombat`. | `HuntResolved` includes the versioned arena replay; the Adventure Stream and Battle Details use the shared replay renderer. | Area enemy choice, current HP, equipment, skill/effect rules, cooldowns, rewards, loot, Quest facts, carried-Gold death loss, and the single receipt remain service/domain policies. |
+| Ordinary Adventure | `POST /api/adventure` → `AdventureService` → `AdventureEncounter.resolveOrdinaryAdventure` → `simulateArenaCombat`. | `AdventureResolved` projects the same arena replay and result-first receipt. | Area encounter selection, current HP, cooldown, equipment, skill/effect rules, XP/Gold/loot, and death behavior remain authoritative application/domain rules. |
+| Duel | `POST /api/duels/:opponentId` → `DuelService` → `DuelBattle.resolveDuelBattle` → `simulateArenaCombat`; `SQLiteDuelRepository` stores the immutable result. | `DuelResolved` uses the shared arena replay and Battle Details. | Uses the actual challenger loadout and Guild Hall opponent. Both enter at projected full HP; a Duel never mutates normal HP or economy. Draw/win/loss and idempotency behavior remain authoritative. |
+| Built-in and published Arc Dungeons | `AdventureRun` delegates each room to `ArenaDungeonEncounter.resolveArenaDungeonEncounter` → `simulateArenaCombat`. Arc manifests materialize validated enemy, skill, resistance, targeting, and encounter snapshots before the run starts. | Versioned arena replay is committed with each run transition and projected in existing Dungeon cards/details. | Singleton, multi-enemy, boss/add, and progression rooms share the engine. HP/Mana attrition, party gates, intermission Heal, rewards/unlocks, Enrage, and run-version checks remain in the run/domain and repository boundaries. Arc content remains data-only. |
+| Active and saved legacy Dungeon runs | `AdventureRun` hydrates the existing persisted run shape and routes the next combat boundary through `ArenaDungeonEncounter`; legacy commands and progression state remain at the existing command boundary. | New room results include a versioned arena replay and retain the legacy timeline projection for old readers. Completed historical records remain readable in their original format. | Preserve run identity, saved state, idempotency, optimistic concurrency, explicit boss decisions, Focus/cooldown/combo state, relic/run-power rules, and migration coverage. |
+| Battle Simulation preview | `GET/POST /api/battle-simulation` → `BattleSimulationService` remains a fixed showcase roster. It does not persist player results or grant rewards. | `/react-battle` simulation presentation and Battle Details. | Isolated comparison lab; it never feeds live combat or substitutes showcase combatants for players. |
+| Arena Lab and Active-timing Lab | Public `/arena-combat` and `/active-timing` remain browser-local experiments without player saves, rewards, or game commands. | React prototypes keep local controls and replay behavior. | Reusable live rules now reside in `src/domain`; lab simulation remains separate and cannot become gameplay authority. |
+| Simulated Adventurers | `SimulatedAdventurerSimulationService` continues to plan bounded schedule/economy actions. Guild Hall Duels use the shared `DuelBattle` path above. | Profile/history projections and arena Duel replay. | Schedule ownership and economy stay separate from combat. |
 
-Current published Arc combat content is dungeon-based: Arc enemy and boss definitions are materialized by `ArcManifestService` and enter through Dungeon stages. Arc Hunt/ordinary Adventure pools are not currently authored as independent manifest encounter paths; Quest kill references are validated against the Area Hunt/Adventure pools. Include any future Arc encounter kind by configuring the same arena engine rather than adding a simulator.
+Published Arc combat content is Dungeon-based. Arc enemies and bosses enter through validated Dungeon stages; there are no independent Arc Hunt or ordinary Adventure pools. Future encounter kinds must configure the shared engine rather than add a live simulator.
 
 The existing readers must also be covered: `AutomaticBattleReadModel`,
 `ActivityStreamService`, `GameService.simpleBattleReplay`, React
@@ -37,69 +36,83 @@ snapshots. Current stored formats include automatic turn histories, simple
 Dungeon action/beat histories, and older legacy events. New arena replays need
 an explicit version and must not be mistaken for old turn-based data.
 
-## Mechanics and migration decisions to finish
+## Implemented mechanics and migration decisions
 
-- Keep current Attack, Defense, Critical Strike, equipment effect, resistance,
-  Mana, signature skill, status, target-tendency, boss phase/ability, reward,
-  cooldown, death, and progression policies at the domain/service boundary.
-  Translate their timing and spatial effects explicitly instead of leaving any
-  live caller on an alternate simulator.
-- Define one validated mapping from authoritative `Speed` and allowlisted
-  encounter role/weapon data to independent attacks-per-second and tiles-per-
-  second values. Keep the mapping bounded in domain policy and document the
-  constants alongside the tests.
-- Use deterministic 50 ms simulation quanta, stable combatant ordering for
-  simultaneous eligibility, and a battle-local seed derived from the committed
-  encounter identity/state. The server alone resolves the selected target,
-  movement path, skill, damage, effects, and terminal outcome.
-- Start routine encounters in server-owned formations without a setup step.
-  The default formation must cover solo and party play and up to three authored
-  enemies, including boss adds. Preserve a path to explicit boss commands at
-  sparse meaningful pauses.
-- Define movement interruption, collision reservation release, status tick
-  timing, same-quantum defeat, simultaneous defeat, and timeout behavior. The
-  accepted prototype timeout is a 60-second simulated draw; activity services
-  must decide how a draw commits for Hunt, Adventure, Duel, and a Dungeon room.
-- Persist an immutable, versioned event/frame projection sufficient to replay
-  positions, combat changes, and terminal results without rerunning rules.
-  Save the replay with the corresponding health/run/reward result inside the
-  existing repository transaction. Preserve retries, stale-version conflicts,
-  participant snapshots, party ownership, reconnect state, and old replay
-  readers.
-- Keep one result-first stream receipt per command. Place overhead playback in
-  the existing battle card/details, use semantic `visualAssetId` resolution,
-  and retain pause, playback speed, reduced motion, accessible combat status,
-  and finish/skip controls.
+- `ArenaCombatEngine` owns live target selection, movement/path reservations,
+  attack timing, skill/status effects, HP/Mana changes, deterministic outcomes,
+  and the replay event/frame projection. Existing equipment, resistance,
+  character-growth, cooldown, rewards, death, and progression policies remain
+  in their domain/service/repository boundaries.
+- `ArenaCombatPolicy` validates an 8×8 board, 1–4 players, 1–3 enemies, Speed
+  from 1–100, bounded stats, starting sides, unique tiles, roles, and attack
+  ranges. It maps Speed independently to attack rate (0.4–3 actions/second)
+  and movement rate (1–4 tiles/second); role can come from explicit encounter
+  data, allowlisted skills, or weapon family.
+- Simulation advances in deterministic 50 ms quanta with stable ordering and
+  a battle-local seed derived from the committed encounter identity/state and
+  roster. The 60-second simulated timeout produces a draw. Movement
+  reservations are released when actors are interrupted or defeated; status
+  ticks and same-quantum outcomes are resolved in the engine.
+- Routine battles use a deterministic server-owned formation without a setup
+  step. It supports solo/party play and up to three enemies, including boss
+  adds. Existing Dungeon command pauses and sparse boss decisions remain
+  explicit run transitions.
+- Replays use `kind: arena-combat-replay`, version 1, and carry the immutable
+  positions, action/effect/resource events, and terminal outcome needed by the
+  renderer without rerunning combat rules. Result and replay are persisted at
+  the same authoritative command boundary; idempotency and stale-run checks
+  remain in the existing services/repositories.
+- `AutomaticBattleReadModel` projects the typed replay while preserving
+  legacy turn and stream history. `ArenaDungeonEncounter` also produces the
+  established timeline summaries so older consumers can read migrated runs.
+  `SharedBattleSurface` and Battle Details render semantic assets and retain
+  pause, speed, reduced-motion, accessible status, reconnect, and finish/skip
+  behavior. Commands still create one concise public result receipt.
 
 ## Delivery checklist
 
 The checkboxes below are release gates and stay open until the work has passed
 its own tests, review, merge, and green `main` CI.
 
-- [ ] **M01** Complete and reconcile the combat-path, simulator, replay,
+- [x] **M01** Complete and reconcile the combat-path, simulator, replay,
   renderer, persistence, and compatibility audit above.
-- [ ] **M02** Extract a reusable server-side arena domain engine, define the
+- [x] **M02** Extract a reusable server-side arena domain engine, define the
   stat/role mapping and deterministic spatial rules, and validate/bound inputs.
-- [ ] **M03** Migrate Hunt, ordinary Adventure, and Duel with real encounter
+- [x] **M03** Migrate Hunt, ordinary Adventure, and Duel with real encounter
   data and preserved activity-specific rules.
-- [ ] **M04** Migrate canonical single/multi-enemy Dungeon rooms, boss/add
+- [x] **M04** Migrate canonical single/multi-enemy Dungeon rooms, boss/add
   encounters, progression challenges, and published Arc encounters.
-- [ ] **M05** Migrate or safely hydrate active legacy runs; remove alternate
+- [x] **M05** Migrate or safely hydrate active legacy runs; remove alternate
   live resolution only after compatibility coverage passes.
-- [ ] **M06** Commit the versioned replay atomically and render it in existing
+- [x] **M06** Commit the versioned replay atomically and render it in existing
   battle cards/details with historical replay compatibility.
-- [ ] **M07** Add domain, service, repository, migration, replay, and Playwright
+- [x] **M07** Add domain, service, repository, migration, replay, and Playwright
   coverage for all combat families, co-op, retry/stale requests, reload, and
   reconnect; inspect mobile and desktop playback.
-- [ ] **M08** Run `npm run check`, `npm test`, relevant Playwright suites, and
+- [x] **M08** Run `npm run check`, `npm test`, relevant Playwright suites, and
   full `npm run test:e2e`; integrate only green work, verify `main` CI, and
   leave a concrete handoff listing any remaining human acceptance gates.
 
-## Acceptance and handoff
+## Verification and handoff
 
 Use [THREADBOUND_MASTER_PLAN.md](THREADBOUND_MASTER_PLAN.md)'s Phase M as the
-canonical ordered checklist. Do not close Phase K from this implementation.
-Human reviewers still need to judge comprehension, pacing, clarity, and whether
-spatial positioning feels meaningful. The completion handoff must name the
-merged commit, `main` CI evidence, tested combat families, inspected viewport
-artifacts, replay migration behavior, and any open human experience decision.
+canonical ordered checklist. The implementation commit is `edd1a82`; the test
+reliability follow-up is `512bbd4`. Green `main` CI for `512bbd4` is recorded in
+[run 37272243336](https://github.com/PandesalPanpan/threadbound/actions/runs/37272243336).
+That run passed `npm run check`, `npm test`, and the full browser E2E workflow.
+The unit suite reports 522 passing tests; E2E groups passed 24 threaded, 21
+simple-local, 29 React-local, and 7 Workshop tests. Coverage exercises Hunt,
+ordinary Adventure, Duel, single/multi-enemy and legacy Dungeon runs,
+progression gates, Arc encounters, co-op, replay reload/reconnect, and stale or
+duplicate commands.
+
+Mobile and desktop replay captures are committed at
+[390×844](../ux-review/react-duel-replay-mobile.png) and
+[1440×960](../ux-review/react-duel-replay-desktop.png). The mobile capture was
+visually inspected for compact readable loadout labels and touch-safe controls;
+both captures supplement DOM/replay assertions.
+
+All Phase M implementation gates are complete. Phase K is deliberately still
+open: two human reviewers must assess first-hour comprehension; long-session
+Hunt receipts; rich-card usability; co-op, attrition and boss clarity; and
+mobile/desktop coherence. The next master-plan task is **PV2-K01 HUMAN**.
