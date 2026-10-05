@@ -31,6 +31,12 @@ async function statusCard(page) {
   return card;
 }
 
+async function latestStreamCard(page, testId) {
+  const cards = page.getByTestId(testId);
+  await expect(cards.last()).toBeVisible();
+  return cards.nth((await cards.count()) - 1);
+}
+
 async function readVisibleStats(card) {
   return card.locator('.shell-stat-grid--five .shell-stat').evaluateAll((rows) => Object.fromEntries(rows.map((row) => [
     row.querySelector('span')?.textContent?.trim(),
@@ -93,7 +99,7 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   expect(purchasedState.character.gold).toBe(beforeDashboard.character.gold - 8);
 
   await command(page, 'inventory');
-  let inventory = page.getByTestId('stream-inventory-rich-card').last();
+  let inventory = await latestStreamCard(page, 'stream-inventory-rich-card');
   const armorTile = inventory.locator(`[data-testid="stream-inventory-item"][data-item-id="${armor.id}"]`);
   await expect(armorTile.locator('img[data-visual-asset-id]')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
   await armorTile.getByRole('button', { name: 'Inspect Bronzeweave Coat' }).click();
@@ -101,7 +107,7 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   await expect.poll(async () => (await dashboard(context)).character.equipment.armor?.id).toBe(armor.id);
 
   await command(page, 'inventory');
-  inventory = page.getByTestId('stream-inventory-rich-card').last();
+  inventory = await latestStreamCard(page, 'stream-inventory-rich-card');
   await expect(inventory.getByTestId('equipment-slot-armor')).toContainText('Bronzeweave Coat');
   await expect(inventory.getByTestId('equipment-slot-armor')).toContainText('+1 Defense · +4 Max HP');
   await expect(inventory.getByTestId('equipment-slot-armor').locator('img')).toHaveAttribute('data-visual-asset-id', 'item.bronzeweave-coat.v1');
@@ -152,7 +158,7 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   expect(bow?.id).toBeTruthy();
   expect(staff?.id).toBeTruthy();
   await command(page, 'inventory');
-  let inventoryCard = page.getByTestId('stream-inventory-rich-card').last();
+  let inventoryCard = await latestStreamCard(page, 'stream-inventory-rich-card');
   let bowTile = inventoryCard.locator(`[data-testid="stream-inventory-item"][data-item-id="${bow.id}"]`);
   await bowTile.getByRole('button', { name: 'Inspect Ashstring Bow' }).click();
   await expect(bowTile.getByTestId(`item-loadout-${bow.id}`)).toContainText('Ranged');
@@ -161,7 +167,7 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   await expect.poll(async () => (await dashboard(context)).character.combatLoadout.role).toBe('Ranged');
 
   await command(page, 'inventory');
-  inventoryCard = page.getByTestId('stream-inventory-rich-card').last();
+  inventoryCard = await latestStreamCard(page, 'stream-inventory-rich-card');
   const staffTile = inventoryCard.locator(`[data-testid="stream-inventory-item"][data-item-id="${staff.id}"]`);
   await staffTile.getByRole('button', { name: 'Inspect Copper Sparkstaff' }).click();
   await expect(staffTile.getByTestId(`item-loadout-${staff.id}`)).toContainText('Healer');
