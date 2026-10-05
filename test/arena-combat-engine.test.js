@@ -45,7 +45,7 @@ test('arena combat uses the supplied roster and produces deterministic replay wi
   assert.equal(first.replay.version, ARENA_COMBAT_RULES.version);
   assert.deepEqual(first.replay, second.replay);
   assert.deepEqual(first.replay.combatants.map(({ id, hp, x, y }) => ({ id, hp, x, y })), [
-    { id: 'player-1', hp: 42, x: 3, y: 6 },
+    { id: 'player-1', hp: 42, x: 3, y: 5 },
     { id: 'enemy-1', hp: 34, x: 3, y: 2 },
   ]);
   assert.ok(first.replay.finalCombatants.find((unit) => unit.id === 'enemy-1').hp < 34);

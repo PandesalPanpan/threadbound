@@ -42,10 +42,10 @@ function areaEffects(primary, enemies, effects) {
   }));
 }
 
-function allyHealing(actor, players, amount) {
+function allyHealing(actor, players, amount, healingPower = 0) {
   return living(players).filter((combatant) => combatant.id !== actor.id).map((combatant) => ({
     targetId: combatant.id,
-    healing: Math.min(integer(amount), Math.max(0, Number(combatant.maxHp || 0) - Number(combatant.hp || 0))),
+    healing: Math.min(integer(amount) + Math.max(0, integer(healingPower)), Math.max(0, Number(combatant.maxHp || 0) - Number(combatant.hp || 0))),
   }));
 }
 
@@ -96,9 +96,10 @@ export function resolveAutomaticBattleSkill({ actor, target, skill, players = []
       .map((combatant) => ({ targetId: combatant.id, effects: effect.allyEffects.map((entry) => ({ ...entry })) }));
   }
   if (effect.selfDamage) action.selfDamage = Math.min(integer(effect.selfDamage), Math.max(0, Number(actor.hp || 0) - 1));
-  if (effect.selfHealing) action.selfHealing = integer(effect.selfHealing);
+  const healingPower = Math.max(0, integer(actor.healingPower || 0));
+  if (effect.selfHealing) action.selfHealing = integer(effect.selfHealing) + healingPower;
   if (effect.lifestealPercent) action.lifestealPercent = Number(effect.lifestealPercent);
-  if (effect.allyHeal) action.allyHealing = allyHealing(actor, allies, effect.allyHeal);
+  if (effect.allyHeal) action.allyHealing = allyHealing(actor, allies, effect.allyHeal, healingPower);
   if (effect.allyMana) action.allyMana = allyMana(actor, allies, effect.allyMana);
   return action;
 }

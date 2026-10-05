@@ -3,6 +3,7 @@ import { projectCombatantWithAutomaticEffects } from './AutomaticBattleEffectPol
 import { AutomaticBattleSimulator } from './AutomaticBattleSimulator.js';
 import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
 import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
+import { COMBAT_LOADOUT_PROFILES, projectCombatLoadout } from './CombatLoadoutPolicy.js';
 import { selectEnemyTarget, selectPlayerTarget } from './SimpleEncounterBattle.js';
 import {
   ARENA_COMBAT_RULES,
@@ -50,10 +51,15 @@ function battleIdentitySeed(combatants, context, seed) {
   const identity = String(context?.battleId || context?.runId || context?.duelId || context?.activity || 'arena-battle');
   const roster = [...combatants]
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(({ id, team, hp, maxHp, attack, defense, speed, critChance, mana, skillCode, skills, effects, resistances, role, targetingProfile, isBoss, threat, lastTargetPlayerId, firstActionDamageBonus, tags, equipment }) => ({
+    .map(({ id, team, hp, maxHp, attack, defense, speed, critChance, mana, skillCode, skills, effects, resistances, role, combatProfileCode, basicActionCode, healingPower, attackSpeedBonus, movementSpeedBonus, targetingProfile, isBoss, threat, lastTargetPlayerId, firstActionDamageBonus, tags, equipment }) => ({
       id, team, hp, maxHp, attack, defense, speed, critChance, mana, skillCode,
       skills: (skills || []).map((skill) => skill.id || skill.skillId || skill),
       role,
+      combatProfileCode,
+      basicActionCode,
+      healingPower,
+      attackSpeedBonus,
+      movementSpeedBonus,
       targetingProfile: targetingProfile || null,
       isBoss: Boolean(isBoss),
       threat: Number(threat || 0),
@@ -68,6 +74,10 @@ function battleIdentitySeed(combatants, context, seed) {
         defenseBonus: item.defenseBonus || 0,
         speedBonus: item.speedBonus || 0,
         critChanceBonus: item.critChanceBonus || 0,
+        healingPowerBonus: item.healingPowerBonus || item.stats?.healingPowerBonus || 0,
+        attackSpeedBonus: item.attackSpeedBonus || item.stats?.attackSpeedBonus || 0,
+        movementSpeedBonus: item.movementSpeedBonus || item.stats?.movementSpeedBonus || 0,
+        combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
         effectCode: item.effectCode || 'none',
       } : null])),
     }));
@@ -124,13 +134,37 @@ function normalizeUnit(source, team, index) {
     effects: clone(source.effects || []),
     resistances: clone(source.resistances || {}),
   });
-  const role = arenaCombatRole(prepared);
-  const ranges = arenaRanges(prepared, role);
-  return {
+  const loadout = projectCombatLoadout({
+    equipment: prepared.equipment || {},
+    equippedItem: prepared.equippedItem || null,
+    combatant: prepared,
+  });
+  const combatantWithLoadout = prepareAutomaticBattleCombatant({
     ...prepared,
+    combatProfileCode: loadout.profileCode,
+    combatRole: loadout.role,
+    role: loadout.role,
+    basicActionCode: loadout.basicActionCode,
+    basicActionLabel: loadout.basicActionLabel,
+    attackRangeTiles: loadout.attackRangeTiles,
+    supportRangeTiles: loadout.supportRangeTiles,
+    healingPower: loadout.bonuses.healingPower,
+    weaponFamily: loadout.weaponFamily || prepared.weaponFamily,
+    ...(loadout.signatureSkillId ? { skillCode: loadout.signatureSkillId } : {}),
+  }, { defaultSkill: null });
+  const role = loadout.role || arenaCombatRole(combatantWithLoadout);
+  const ranges = arenaRanges(combatantWithLoadout, role);
+  return {
+    ...combatantWithLoadout,
     id,
     team,
     role,
+    combatProfileCode: loadout.profileCode,
+    basicActionCode: loadout.basicActionCode,
+    basicActionLabel: loadout.basicActionLabel,
+    healingPower: integerStat(loadout.bonuses.healingPower, `${id} Healing Power`),
+    attackSpeedBonus: loadout.bonuses.attackSpeed,
+    movementSpeedBonus: loadout.bonuses.movementSpeed,
     attackRange: ranges.attack,
     supportRange: ranges.support,
     x: 0,
@@ -142,6 +176,8 @@ function normalizeUnit(source, team, index) {
     shield: integerStat(source.shield ?? 0, `${id} shield`),
     threat: integerStat(source.threat ?? 0, `${id} threat`),
     nextActionAtMs: 0,
+    nextMoveAtMs: 0,
+    retreatedForActionAtMs: null,
     lastTargetPlayerId: source.lastTargetPlayerId || null,
     intent: 'Ready',
   };
@@ -260,6 +296,10 @@ function makeReplayUnit(unit) {
     maxHpBonus: Number(item.maxHpBonus || 0),
     speedBonus: Number(item.speedBonus || 0),
     critChanceBonus: Number(item.critChanceBonus || 0),
+    healingPowerBonus: Number(item.healingPowerBonus || item.stats?.healingPowerBonus || 0),
+    attackSpeedBonus: Number(item.attackSpeedBonus || item.stats?.attackSpeedBonus || 0),
+    movementSpeedBonus: Number(item.movementSpeedBonus || item.stats?.movementSpeedBonus || 0),
+    combatProfileCode: item.combatProfileCode || item.effect?.equipmentTemplate?.combatProfileCode || null,
   } : null]));
   return {
     id: unit.id,
@@ -269,6 +309,12 @@ function makeReplayUnit(unit) {
     displayName: unit.displayName || unit.name,
     team: unit.team,
     role: unit.role,
+    combatProfileCode: unit.combatProfileCode || null,
+    basicActionCode: unit.basicActionCode || null,
+    basicActionLabel: unit.basicActionLabel || null,
+    healingPower: unit.healingPower || 0,
+    attackSpeedBonus: unit.attackSpeedBonus || 0,
+    movementSpeedBonus: unit.movementSpeedBonus || 0,
     visualAssetId: unit.visualAssetId || null,
     attack: unit.attack,
     firstActionDamageBonus: Number(unit.firstActionDamageBonus || 0),
@@ -282,6 +328,8 @@ function makeReplayUnit(unit) {
     isBoss: Boolean(unit.isBoss),
     tags: clone(unit.tags || []),
     attackRange: unit.attackRange,
+    supportRange: unit.supportRange,
+    facing: unit.facing,
     x: unit.x,
     y: unit.y,
     hp: unit.hp,
@@ -329,7 +377,11 @@ function effectiveAttackSpeed(unit, units) {
   const effectiveSpeeds = livingUnits.map(effectiveSpeed);
   const slowestSpeed = Math.min(...effectiveSpeeds);
   const effective = effectiveSpeed(unit);
-  return arenaSpeedProfile(effective, { slowestSpeed, combatantId: unit.id }).attacksPerSecond;
+  return arenaSpeedProfile(effective, {
+    slowestSpeed,
+    combatantId: unit.id,
+    attackSpeedBonus: Number(unit.attackSpeedBonus || 0),
+  }).attacksPerSecond;
 }
 
 function actionCooldownMs(unit, units) {
@@ -338,8 +390,27 @@ function actionCooldownMs(unit, units) {
 }
 
 function movementDurationMs(unit) {
-  const profile = arenaSpeedProfile(unit.speed, { slowestSpeed: unit.speed, combatantId: unit.id });
+  const profile = arenaSpeedProfile(unit.speed, {
+    slowestSpeed: unit.speed,
+    combatantId: unit.id,
+    movementSpeedBonus: Number(unit.movementSpeedBonus || 0),
+  });
   return Math.ceil((1000 / profile.tilesPerSecond) / ARENA_COMBAT_RULES.tickMs) * ARENA_COMBAT_RULES.tickMs;
+}
+
+function startMove(unit, step, atMs, intent, replayEvents, tickEvents) {
+  const durationMs = movementDurationMs(unit);
+  unit.motion = { ...step, startMs: atMs, durationMs };
+  unit.nextMoveAtMs = atMs + durationMs;
+  unit.intent = intent;
+  const moveEvent = {
+    kind: 'move', atMs, unitId: unit.id,
+    fromX: unit.x, fromY: unit.y,
+    toX: step.x, toY: step.y,
+    durationMs,
+  };
+  replayEvents.push(moveEvent);
+  tickEvents.push({ type: 'move', ...moveEvent });
 }
 
 function supportTarget(unit, friends) {
@@ -360,6 +431,15 @@ function supportTarget(unit, friends) {
     || distance(unit, left) - distance(unit, right)
     || left.id.localeCompare(right.id)
   ))[0] || null;
+}
+
+function basicHealingTarget(unit, friends) {
+  if (unit.basicActionCode !== 'heal-or-strike') return null;
+  return friends.filter((friend) => friend.hp > 0
+    && friend.hp / Math.max(1, friend.maxHp) < ARENA_COMBAT_RULES.supportNeedRatio)
+    .sort((left, right) => left.hp / left.maxHp - right.hp / right.maxHp
+      || distance(unit, left) - distance(unit, right)
+      || left.id.localeCompare(right.id))[0] || null;
 }
 
 function selectTarget(unit, friends, opponents, { context, seed, actionIndex, recentAttackerId }) {
@@ -435,20 +515,45 @@ function unitStats(units) {
     name: unit.name,
     team: unit.team,
     role: unit.role,
-    attackSpeed: arenaSpeedProfile(unit.speed, { slowestSpeed: unit.speed, combatantId: unit.id }).attacksPerSecond,
-    movementSpeed: arenaSpeedProfile(unit.speed, { slowestSpeed: unit.speed, combatantId: unit.id }).tilesPerSecond,
+    attackSpeed: arenaSpeedProfile(unit.speed, { slowestSpeed: unit.speed, combatantId: unit.id, attackSpeedBonus: unit.attackSpeedBonus || 0 }).attacksPerSecond,
+    movementSpeed: arenaSpeedProfile(unit.speed, { slowestSpeed: unit.speed, combatantId: unit.id, movementSpeedBonus: unit.movementSpeedBonus || 0 }).tilesPerSecond,
     range: unit.attackRange,
   }));
 }
 
 function createBattleStepper({ units, turns, context, seed, random, actionIndexRef, recentAttackerRef }) {
-  return (unit, target, atMs, supportCast) => {
+  const resolveBasicAttack = createEquipmentAwareAutomaticBasicAttackResolver({ random });
+  return (unit, target, atMs, supportCast, basicHealTarget = null) => {
     const before = units.map((candidate) => clone(candidate));
     const playerUnits = units.filter((candidate) => candidate.team === 'players');
     const enemyUnits = units.filter((candidate) => candidate.team === 'enemies');
     const actionIndex = actionIndexRef.value;
     const simulator = new AutomaticBattleSimulator({
-      resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }),
+      resolveAction: (args) => {
+        if (args.actor.basicActionCode === 'heal-or-strike' && basicHealTarget?.hp > 0) {
+          const healing = Math.min(
+            Math.max(0, Number(basicHealTarget.maxHp || 0) - Number(basicHealTarget.hp || 0)),
+            Math.max(1, 4 + Math.floor(Number(args.actor.attack || 1) / 2) + Number(args.actor.healingPower || 0)),
+          );
+          return {
+            targetDamage: 0,
+            ...(basicHealTarget.id === args.actor.id
+              ? { selfHealing: healing }
+              : { allyHealing: [{ targetId: basicHealTarget.id, healing }] }),
+            manaGain: Number(args.actor.manaGain || 0),
+            metadata: { kind: 'basic-heal', emphasis: 'heal', healedTargetId: basicHealTarget.id },
+          };
+        }
+        const attack = resolveBasicAttack(args);
+        const profile = COMBAT_LOADOUT_PROFILES[args.actor.combatProfileCode] || COMBAT_LOADOUT_PROFILES.frontline;
+        const multiplier = Number(profile.basicAttackDamageMultiplier ?? 1);
+        if (multiplier === 1 || Number(attack.targetDamage || 0) <= 0) return attack;
+        return {
+          ...attack,
+          targetDamage: Math.max(1, Math.floor(Number(attack.targetDamage || 0) * multiplier)),
+          metadata: { ...(attack.metadata || {}), basicAttackDamageMultiplier: multiplier },
+        };
+      },
       resolveSkill: (args) => {
         const action = resolveAutomaticBattleSkill(args);
         const bonus = Math.max(0, Math.floor(Number(args.actor.firstActionDamageBonus || 0)));
@@ -508,7 +613,7 @@ function appendActionEvents({ latest, before, units, atMs, target, actor, target
     atMs,
     turnNumber: latest?.turnNumber ?? null,
     actorId: actor.id,
-    targetId: latest?.targetId || target?.id || null,
+    targetId: metadata.healingEvents?.[0]?.targetId || latest?.targetId || target?.id || null,
     actionType,
     skillId: metadata.skillId || null,
     skillName: metadata.skillName || null,
@@ -619,8 +724,9 @@ export function simulateArenaCombat({
     for (const unit of units) advanceMotion(unit, atMs);
 
     const preferredTeam = tick % 2 === 0 ? 'enemies' : 'players';
-    const due = units.filter((unit) => unit.hp > 0 && !unit.motion && atMs >= unit.nextActionAtMs)
-      .sort((left, right) => left.nextActionAtMs - right.nextActionAtMs
+    const due = units.filter((unit) => unit.hp > 0 && !unit.motion
+      && (atMs >= unit.nextActionAtMs || atMs >= unit.nextMoveAtMs))
+      .sort((left, right) => Math.min(left.nextActionAtMs, left.nextMoveAtMs) - Math.min(right.nextActionAtMs, right.nextMoveAtMs)
         || (left.team === preferredTeam ? -1 : 1) - (right.team === preferredTeam ? -1 : 1)
         || left.id.localeCompare(right.id));
 
@@ -630,34 +736,26 @@ export function simulateArenaCombat({
       const friends = living(units, unit.team);
       const opponents = living(units, teamOf(unit));
       if (!friends.length || !opponents.length) break;
+      const attackReady = atMs >= unit.nextActionAtMs;
+      const moveReady = atMs >= unit.nextMoveAtMs;
 
-      let allySupportTarget = null;
-      let supportCast = false;
-      if (unit.role === 'support') {
-        allySupportTarget = supportTarget(unit, friends);
-        if (allySupportTarget && distance(unit, allySupportTarget) > unit.supportRange) {
-          const step = pathFirstStep(unit, allySupportTarget, units, unit.supportRange);
-          if (step) {
-            const duration = movementDurationMs(unit);
-            unit.motion = { ...step, startMs: atMs, durationMs: duration };
-            unit.intent = `Following ${allySupportTarget.displayName || allySupportTarget.name}`;
-            const moveEvent = {
-              kind: 'move',
-              atMs,
-              unitId: unit.id,
-              fromX: unit.x,
-              fromY: unit.y,
-              toX: step.x,
-              toY: step.y,
-              durationMs: duration,
-            };
-            replayEvents.push(moveEvent);
-            tickEvents.push({ type: 'move', ...moveEvent });
-            continue;
+      const allySupportTarget = unit.role === 'support' ? supportTarget(unit, friends) : null;
+      const healTarget = basicHealingTarget(unit, friends);
+      const supportMovementTarget = allySupportTarget || healTarget;
+      const supportCast = Boolean(allySupportTarget && distance(unit, allySupportTarget) <= unit.supportRange);
+      const basicHealRangeSatisfied = Boolean(healTarget && distance(unit, healTarget) <= unit.supportRange);
+      if (supportMovementTarget && distance(unit, supportMovementTarget) > unit.supportRange) {
+        if (moveReady) {
+          const step = pathFirstStep(unit, supportMovementTarget, units, unit.supportRange);
+          if (step) startMove(unit, step, atMs, `Following ${supportMovementTarget.displayName || supportMovementTarget.name}`, replayEvents, tickEvents);
+          else {
+            unit.nextMoveAtMs = atMs + movementDurationMs(unit);
+            unit.intent = 'Waiting for a clear path to an ally';
           }
-        } else if (allySupportTarget) {
-          supportCast = true;
+        } else {
+          unit.intent = `Following ${supportMovementTarget.displayName || supportMovementTarget.name}`;
         }
+        continue;
       }
 
       const selection = selectTarget(unit, friends, opponents, {
@@ -672,24 +770,12 @@ export function simulateArenaCombat({
       if (target.x !== unit.x) unit.facing = target.x > unit.x ? 1 : -1;
 
       const threats = opponents.filter((opponent) => opponent.role === 'frontline' && distance(unit, opponent) < 2);
-      if (unit.role !== 'frontline' && threats.length) {
+      if (unit.role !== 'frontline' && threats.length && !attackReady && moveReady
+        && unit.retreatedForActionAtMs !== unit.nextActionAtMs) {
         const step = retreatStep(unit, threats, units);
         if (step) {
-          const duration = movementDurationMs(unit);
-          unit.motion = { ...step, startMs: atMs, durationMs: duration };
-          unit.intent = 'Keeping distance';
-          const moveEvent = {
-            kind: 'move',
-            atMs,
-            unitId: unit.id,
-            fromX: unit.x,
-            fromY: unit.y,
-            toX: step.x,
-            toY: step.y,
-            durationMs: duration,
-          };
-          replayEvents.push(moveEvent);
-          tickEvents.push({ type: 'move', ...moveEvent });
+          startMove(unit, step, atMs, 'Keeping distance', replayEvents, tickEvents);
+          unit.retreatedForActionAtMs = unit.nextActionAtMs;
           continue;
         }
       }
@@ -697,32 +783,28 @@ export function simulateArenaCombat({
       const supportSkillRangeSatisfied = supportCast && allySupportTarget
         && distance(unit, allySupportTarget) <= unit.supportRange;
       const attackRangeSatisfied = distance(unit, target) <= unit.attackRange;
-      if (!attackRangeSatisfied && !supportSkillRangeSatisfied) {
-        const step = pathFirstStep(unit, target, units, unit.attackRange);
-        if (step) {
-          const duration = movementDurationMs(unit);
-          unit.motion = { ...step, startMs: atMs, durationMs: duration };
-          unit.intent = 'Closing in';
-          const moveEvent = {
-            kind: 'move',
-            atMs,
-            unitId: unit.id,
-            fromX: unit.x,
-            fromY: unit.y,
-            toX: step.x,
-            toY: step.y,
-            durationMs: duration,
-          };
-          replayEvents.push(moveEvent);
-          tickEvents.push({ type: 'move', ...moveEvent });
+      if (!attackRangeSatisfied && !supportSkillRangeSatisfied && !basicHealRangeSatisfied) {
+        if (moveReady) {
+          const step = pathFirstStep(unit, target, units, unit.attackRange);
+          if (step) startMove(unit, step, atMs, 'Closing in', replayEvents, tickEvents);
+          else {
+            unit.nextMoveAtMs = atMs + movementDurationMs(unit);
+            unit.intent = 'Waiting for a clear path';
+          }
         } else {
-          unit.intent = 'Waiting for a clear path';
+          unit.intent = 'Closing in';
         }
         continue;
       }
 
+      if (!attackReady) {
+        unit.intent = healTarget ? `Preparing to heal ${healTarget.displayName || healTarget.name}` : 'Preparing attack';
+        continue;
+      }
+
       const beforeActionCount = turns.length;
-      const resolved = stepAction(unit, target, atMs, supportSkillRangeSatisfied);
+      const inRangeHealTarget = healTarget && distance(unit, healTarget) <= unit.supportRange ? healTarget : null;
+      const resolved = stepAction(unit, target, atMs, supportSkillRangeSatisfied, inRangeHealTarget);
       const addedTurn = resolved.latest;
       if (addedTurn) {
         appendActionEvents({

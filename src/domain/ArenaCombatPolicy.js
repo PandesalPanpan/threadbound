@@ -1,4 +1,4 @@
-import { automaticBattleSkillForCombatant } from './AutomaticBattleSkillCatalog.js';
+import { projectCombatLoadout } from './CombatLoadoutPolicy.js';
 
 export const ARENA_COMBAT_RULES = Object.freeze({
   version: 1,
@@ -20,17 +20,11 @@ export const ARENA_COMBAT_RULES = Object.freeze({
   maxUnitStat: 10_000,
 });
 
-const ROLES = new Set(['frontline', 'ranged', 'support']);
-const RANGED_WEAPONS = new Set(['bow', 'crossbow']);
 const X_SLOTS = Object.freeze([3, 4, 2, 5]);
 const ROLE_ORDER = Object.freeze({ frontline: 0, ranged: 1, support: 2 });
 
 function finiteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
-}
-
-function skillFor(combatant) {
-  return automaticBattleSkillForCombatant(combatant, { defaultSkill: null });
 }
 
 function isSupportSkill(skill) {
@@ -39,15 +33,6 @@ function isSupportSkill(skill) {
     || Number(effect.selfHealing || 0) > 0
     || Number(effect.allyMana || 0) > 0
     || (Array.isArray(effect.allyEffects) && effect.allyEffects.length > 0);
-}
-
-function weaponFamilyFor(combatant) {
-  return String(combatant?.weaponFamily
-    || combatant?.equipment?.weapon?.weaponFamily
-    || combatant?.equipment?.weapon?.family
-    || combatant?.equippedItem?.weaponFamily
-    || combatant?.equippedItem?.family
-    || '').trim().toLowerCase();
 }
 
 export function normalizeArenaSpeed(value, combatantId = 'Combatant') {
@@ -66,17 +51,29 @@ export function normalizeArenaSpeed(value, combatantId = 'Combatant') {
  * movement uses a bounded tile/second scale. Neither formula lives in browser
  * code, and changing one clock does not derive it from the other.
  */
-export function arenaSpeedProfile(speed, { slowestSpeed = speed, combatantId = 'Combatant' } = {}) {
+export function arenaSpeedProfile(speed, {
+  slowestSpeed = speed,
+  combatantId = 'Combatant',
+  attackSpeedBonus = 0,
+  movementSpeedBonus = 0,
+} = {}) {
   const rawSpeed = normalizeArenaSpeed(speed, combatantId);
   const slowest = normalizeArenaSpeed(slowestSpeed, 'Slowest combatant');
+  if (!finiteNumber(attackSpeedBonus) || attackSpeedBonus < 0 || attackSpeedBonus > 0.5) {
+    throw new Error(`${combatantId} Attack Speed bonus must be from 0 to 0.5.`);
+  }
+  if (!finiteNumber(movementSpeedBonus) || movementSpeedBonus < 0 || movementSpeedBonus > 2) {
+    throw new Error(`${combatantId} Movement Speed bonus must be from 0 to 2.`);
+  }
   const effectiveAttackSpeed = Math.min(rawSpeed, slowest * 2);
-  const attacksPerSecond = Math.max(
+  const baseAttacksPerSecond = Math.max(
     ARENA_COMBAT_RULES.minAttackSpeed,
     Math.min(ARENA_COMBAT_RULES.maxAttackSpeed, effectiveAttackSpeed / 10),
   );
+  const attacksPerSecond = Math.min(ARENA_COMBAT_RULES.maxAttackSpeed, baseAttacksPerSecond * (1 + attackSpeedBonus));
   const tilesPerSecond = Math.max(
     ARENA_COMBAT_RULES.minMovementSpeed,
-    Math.min(ARENA_COMBAT_RULES.maxMovementSpeed, 0.9 + rawSpeed * 0.075),
+    Math.min(ARENA_COMBAT_RULES.maxMovementSpeed, 0.9 + rawSpeed * 0.075 + movementSpeedBonus),
   );
   return Object.freeze({
     sourceSpeed: rawSpeed,
@@ -87,23 +84,15 @@ export function arenaSpeedProfile(speed, { slowestSpeed = speed, combatantId = '
 }
 
 export function arenaCombatRole(combatant = {}) {
-  const explicit = String(combatant.combatRole || '').trim().toLowerCase();
-  if (explicit) {
-    const normalized = explicit === 'front' ? 'frontline' : explicit;
-    if (!ROLES.has(normalized)) throw new Error(`Unsupported combat role: ${explicit}.`);
-    return normalized;
+  const explicitCombatRole = String(combatant.combatRole || '').trim().toLowerCase();
+  if (explicitCombatRole && !['front', 'frontline', 'ranged', 'support', 'healer', 'mana-support'].includes(explicitCombatRole)) {
+    throw new Error(`Unsupported combat role: ${explicitCombatRole}.`);
   }
-  const legacyRole = String(combatant.role || '').trim().toLowerCase();
-  if (legacyRole) {
-    const normalized = legacyRole === 'front' ? 'frontline' : legacyRole;
-    if (ROLES.has(normalized)) return normalized;
-  }
-
-  const skill = skillFor(combatant);
-  if (isSupportSkill(skill)) return 'support';
-  if (RANGED_WEAPONS.has(weaponFamilyFor(combatant))) return 'ranged';
-  if (['fire-area', 'poison', 'poison-control', 'frost-control'].includes(skill?.effect?.kind)) return 'ranged';
-  return 'frontline';
+  return projectCombatLoadout({
+    equipment: combatant.equipment || {},
+    equippedItem: combatant.equippedItem || null,
+    combatant,
+  }).role;
 }
 
 export function arenaRanges(combatant, role = arenaCombatRole(combatant)) {
@@ -113,9 +102,15 @@ export function arenaRanges(combatant, role = arenaCombatRole(combatant)) {
       throw new Error(`${combatant.id || 'Combatant'} rangeTiles must be between 1 and ${ARENA_COMBAT_RULES.boardSize}.`);
     }
   }
+  const loadout = projectCombatLoadout({
+    equipment: combatant.equipment || {},
+    equippedItem: combatant.equippedItem || null,
+    combatant,
+  });
   return Object.freeze({
-    attack: configured ?? (role === 'frontline' ? ARENA_COMBAT_RULES.meleeAttackDistance : ARENA_COMBAT_RULES.rangedAttackDistance),
-    support: ARENA_COMBAT_RULES.supportDistance,
+    attack: configured ?? loadout.attackRangeTiles
+      ?? (role === 'frontline' ? ARENA_COMBAT_RULES.meleeAttackDistance : ARENA_COMBAT_RULES.rangedAttackDistance),
+    support: combatant.supportRangeTiles ?? loadout.supportRangeTiles ?? ARENA_COMBAT_RULES.supportDistance,
   });
 }
 

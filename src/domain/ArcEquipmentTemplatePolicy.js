@@ -1,6 +1,7 @@
 import { EQUIPMENT_SLOTS, normalizeEquipmentSlot } from './EquipmentSlotPolicy.js';
 import { EQUIPMENT_BATTLE_EFFECT_RULES, EQUIPMENT_EFFECT_CATALOG } from './EquipmentBattleEffectPolicy.js';
 import { ITEM_RARITIES, ITEM_RARITY_IDS } from './ItemRarityPolicy.js';
+import { COMBAT_LOADOUT_PROFILES } from './CombatLoadoutPolicy.js';
 
 export const ARC_EQUIPMENT_STAT_KEYS = Object.freeze([
   'attackBonus',
@@ -8,6 +9,9 @@ export const ARC_EQUIPMENT_STAT_KEYS = Object.freeze([
   'maxHpBonus',
   'speedBonus',
   'critChanceBonus',
+  'healingPowerBonus',
+  'attackSpeedBonus',
+  'movementSpeedBonus',
 ]);
 
 export const ARC_EQUIPMENT_TEMPLATE_FIELDS = Object.freeze([
@@ -21,6 +25,7 @@ export const ARC_EQUIPMENT_TEMPLATE_FIELDS = Object.freeze([
   'requiredLevel',
   'areaNumber',
   'visualAssetId',
+  'combatProfileCode',
 ]);
 
 export const ARC_EQUIPMENT_TEMPLATE_RULES = Object.freeze({
@@ -36,6 +41,9 @@ export const ARC_EQUIPMENT_TEMPLATE_RULES = Object.freeze({
     maxHpBonus: 0.25,
     speedBonus: 1,
     critChanceBonus: 100,
+    healingPowerBonus: 2,
+    attackSpeedBonus: 20,
+    movementSpeedBonus: 4,
   }),
 });
 
@@ -87,10 +95,16 @@ function normalizeStats(template, slot, extended) {
     maxHpBonus: nonNegativeInteger(raw.maxHpBonus, 'Equipment Max HP bonus'),
     speedBonus: nonNegativeInteger(raw.speedBonus, 'Equipment Speed bonus'),
     critChanceBonus: boundedNumber(raw.critChanceBonus, 'Equipment Crit Chance bonus', 0, ARC_EQUIPMENT_TEMPLATE_RULES.maxCritChanceBonus),
+    healingPowerBonus: nonNegativeInteger(raw.healingPowerBonus, 'Equipment Healing Power bonus'),
+    attackSpeedBonus: boundedNumber(raw.attackSpeedBonus, 'Equipment Attack Speed bonus', 0, 0.5),
+    movementSpeedBonus: boundedNumber(raw.movementSpeedBonus, 'Equipment Movement Speed bonus', 0, 2),
   });
 
   if (slot !== 'weapon' && stats.attackBonus > 0) {
     throw new Error('Only Weapon templates may currently grant Attack bonus because canonical Attack reads the equipped Weapon.');
+  }
+  if (slot !== 'weapon' && Object.hasOwn(template, 'combatProfileCode')) {
+    throw new Error('Only Weapon templates may define a combat profile.');
   }
   if (extended && Object.hasOwn(template, 'attackBonus') && Number(template.attackBonus) !== stats.attackBonus) {
     throw new Error('Extended equipment template attackBonus must match stats.attackBonus for migration compatibility.');
@@ -133,6 +147,9 @@ export function arcEquipmentBudgetUsed({ stats, effects }) {
     + (stats.maxHpBonus * weights.maxHpBonus)
     + (stats.speedBonus * weights.speedBonus)
     + (stats.critChanceBonus * weights.critChanceBonus)
+    + (stats.healingPowerBonus * weights.healingPowerBonus)
+    + (stats.attackSpeedBonus * weights.attackSpeedBonus)
+    + (stats.movementSpeedBonus * weights.movementSpeedBonus)
     + nonPlainEffects;
   return Math.round(used * 1000) / 1000;
 }
@@ -151,6 +168,13 @@ export function normalizeArcEquipmentTemplate(template = {}) {
   }
 
   const slot = normalizeEquipmentSlot(extended ? template.slot : 'weapon');
+  const combatProfileCode = template.combatProfileCode == null
+    ? null
+    : String(template.combatProfileCode).trim().toLowerCase();
+  if (combatProfileCode && !Object.hasOwn(COMBAT_LOADOUT_PROFILES, combatProfileCode)) {
+    throw new Error(`Unsupported combat loadout profile: ${combatProfileCode || '(empty)'}.`);
+  }
+  if (combatProfileCode && slot !== 'weapon') throw new Error('Only Weapon templates may define a combat profile.');
   const rarity = String(template.rarity || '').trim().toLowerCase();
   if (!RARITY_SET.has(rarity)) throw new Error(`Unsupported equipment rarity: ${rarity || '(empty)'}.`);
   const requiredLevel = extended
@@ -174,6 +198,7 @@ export function normalizeArcEquipmentTemplate(template = {}) {
     requiredLevel,
     areaNumber,
     stats,
+    combatProfileCode,
     effects,
     budget: Object.freeze({ used: budgetUsed, limit: budgetLimit }),
   });

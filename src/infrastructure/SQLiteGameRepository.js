@@ -259,6 +259,39 @@ export class SQLiteGameRepository {
     this.db.prepare('UPDATE party_members SET ready = ? WHERE party_id = ? AND player_id = ?').run(ready ? 1 : 0, partyId, playerId);
   }
 
+  resetPartyReadiness(partyId) {
+    this.db.prepare("UPDATE party_members SET ready = 0 WHERE party_id = ? AND EXISTS (SELECT 1 FROM parties WHERE id = ? AND status = 'forming')").run(partyId, partyId);
+  }
+
+  getArenaFormation(playerId) {
+    const row = this.db.prepare('SELECT x, y, version, updated_at FROM player_arena_formations WHERE player_id = ?').get(String(playerId));
+    return row ? { position: { x: row.x, y: row.y }, version: row.version, updatedAt: row.updated_at } : { position: null, version: 0, updatedAt: null };
+  }
+
+  saveArenaFormation(playerId, position, expectedVersion, { resetPartyId = null } = {}) {
+    return this.withTransaction(() => {
+      const current = this.getArenaFormation(playerId);
+      if (current.version !== expectedVersion) {
+        const error = new Error('Your saved formation changed before this placement could be saved. Refresh and retry.');
+        error.code = 'stale_formation_version';
+        throw error;
+      }
+      if (current.position?.x !== position.x || current.position?.y !== position.y) {
+        this.db.prepare(`
+          INSERT INTO player_arena_formations (player_id, x, y, version, updated_at)
+          VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT(player_id) DO UPDATE SET
+            x = excluded.x,
+            y = excluded.y,
+            version = player_arena_formations.version + 1,
+            updated_at = CURRENT_TIMESTAMP
+        `).run(String(playerId), position.x, position.y);
+      }
+      if (resetPartyId) this.resetPartyReadiness(resetPartyId);
+      return this.getArenaFormation(playerId);
+    });
+  }
+
   removePartyMember(partyId, playerId) {
     this.db.prepare('DELETE FROM party_members WHERE party_id = ? AND player_id = ?').run(partyId, playerId);
   }
@@ -700,6 +733,13 @@ export class SQLiteGameRepository {
         ready INTEGER NOT NULL DEFAULT 0 CHECK(ready IN (0, 1)),
         joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (party_id, player_id)
+      );
+      CREATE TABLE IF NOT EXISTS player_arena_formations (
+        player_id TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+        x INTEGER NOT NULL CHECK(x >= 0 AND x < 8),
+        y INTEGER NOT NULL CHECK(y >= 5 AND y < 8),
+        version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE IF NOT EXISTS dungeon_runs (
         id TEXT PRIMARY KEY,

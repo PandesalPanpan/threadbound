@@ -26,12 +26,19 @@ test('shop browse projects server-owned equipment and potion stock in Gold with 
   assert.deepEqual(shop.currency, { code: 'gold', label: 'Gold', balance: 7 });
   assert.deepEqual(shop.offers.map(({ sku, kind, cost, affordable }) => ({ sku, kind, cost, affordable })), [
     { sku: 'bronze-sword', kind: 'equipment', cost: 8, affordable: false },
+    { sku: 'ashstring-bow', kind: 'equipment', cost: 8, affordable: false },
     { sku: 'bronzeweave-coat', kind: 'equipment', cost: 8, affordable: false },
+    { sku: 'copper-sparkstaff', kind: 'equipment', cost: 12, affordable: false },
     { sku: 'single', kind: 'health_potion', cost: 5, affordable: true },
     { sku: 'satchel', kind: 'health_potion', cost: 12, affordable: false },
   ]);
   assert.equal(shop.offers[0].visualAssetId, 'item.bronze-wardblade.v1');
-  assert.deepEqual(shop.offers[1].item, {
+  assert.deepEqual(shop.offers[1].item.combatLoadout, {
+    role: 'Ranged',
+    basicAction: 'Ranged attack · 80% Attack damage',
+    signatureSkill: 'Thornwake',
+  });
+  assert.deepEqual(shop.offers[2].item, {
     slot: 'armor',
     rarity: 'common',
     attackBonus: 0,
@@ -39,8 +46,14 @@ test('shop browse projects server-owned equipment and potion stock in Gold with 
     maxHpBonus: 4,
     speedBonus: 0,
     critChanceBonus: 0,
+    healingPowerBonus: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
+    combatProfileCode: null,
     effect: { code: 'none', name: 'Plain', description: 'Reliable starter protection.' },
   });
+  assert.match(shop.offers[3].item.combatLoadout.basicAction, /Heal an injured ally/);
+  assert.equal(shop.offers[3].item.combatLoadout.role, 'Healer');
   assert.equal('itemTemplate' in shop.offers[0], false, 'private item construction data is not projected to the browser');
 });
 
@@ -77,6 +90,7 @@ test('shop equipment purchase atomically spends Gold and persists a normal owned
   assert.equal(items[0].name, 'Bronze Sword');
   assert.equal(items[0].slot, 'weapon');
   assert.equal(items[0].rarity, 'common');
+  assert.equal(items[0].attackBonus, 1);
   assert.equal(items[0].visualAssetId, 'item.bronze-wardblade.v1');
   assert.equal(repository.getPlayer(player.id).threadDust, 2);
   assert.equal(events.at(-2).type, 'ShopEquipmentPurchased');

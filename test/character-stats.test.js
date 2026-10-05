@@ -12,6 +12,9 @@ test('canonical character stats are readable and preserve existing baseline comb
     speed: 10,
     critChance: 0.05,
     critChancePercent: 5,
+    healingPower: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   });
 });
 
@@ -31,6 +34,9 @@ test('Weapon Attack remains migration-compatible while explicit stat bonuses der
     speed: 13,
     critChance: 0.15000000000000002,
     critChancePercent: 15,
+    healingPower: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   });
 
   const character = new Character({

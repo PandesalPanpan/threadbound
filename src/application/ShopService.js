@@ -5,6 +5,7 @@ import { SQLiteShopRepository } from '../infrastructure/SQLiteShopRepository.js'
 import { SQLiteArcManifestRepository } from '../infrastructure/SQLiteArcManifestRepository.js';
 import { SQLiteAreaRepository } from '../infrastructure/SQLiteAreaRepository.js';
 import { BankService } from './BankService.js';
+import { projectCombatLoadout } from '../domain/CombatLoadoutPolicy.js';
 
 function goldBalance(player) {
   return Math.max(0, Math.floor(Number(player?.gold ?? player?.threadDust ?? 0)) || 0);
@@ -64,6 +65,22 @@ export class ShopService {
           maxHpBonus: Number(itemTemplate.maxHpBonus ?? itemTemplate.maxHealthBonus ?? 0),
           speedBonus: Number(itemTemplate.speedBonus || 0),
           critChanceBonus: Number(itemTemplate.critChanceBonus || 0),
+          healingPowerBonus: Number(itemTemplate.healingPowerBonus || itemTemplate.effect?.equipmentTemplate?.stats?.healingPowerBonus || 0),
+          attackSpeedBonus: Number(itemTemplate.attackSpeedBonus || itemTemplate.effect?.equipmentTemplate?.stats?.attackSpeedBonus || 0),
+          movementSpeedBonus: Number(itemTemplate.movementSpeedBonus || itemTemplate.effect?.equipmentTemplate?.stats?.movementSpeedBonus || 0),
+          combatProfileCode: itemTemplate.combatProfileCode || itemTemplate.effect?.equipmentTemplate?.combatProfileCode || null,
+          ...(itemTemplate.slot === 'weapon' ? (() => {
+            const loadout = projectCombatLoadout({
+              equipment: { weapon: itemTemplate },
+              equippedItem: itemTemplate,
+              combatant: {},
+            });
+            return { combatLoadout: {
+              role: loadout.roleLabel,
+              basicAction: loadout.basicActionLabel,
+              signatureSkill: loadout.signatureSkill?.name || null,
+            } };
+          })() : {}),
           effect: itemTemplate.effect ? {
             code: itemTemplate.effect.code || itemTemplate.effectCode || null,
             name: itemTemplate.effect.name || null,

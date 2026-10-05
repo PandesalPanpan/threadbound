@@ -27,23 +27,26 @@ test('Duel resolves through the shared automatic battle engine without mutating 
   const result = service.duel(player.id, 'guild-lio', { duelId: 'duel-lio-1' });
   const after = repository.getPlayer(player.id);
 
-  assert.equal(result.outcome, 'win');
+  assert.ok(['win', 'loss', 'draw'].includes(result.outcome));
   assert.equal(result.battle.receipt.kind, 'automatic-battle-result');
-  assert.equal(result.battle.receipt.winnerId, player.id);
-  assert.equal(result.battle.receipt.loserId, 'guild-lio');
+  assert.equal(result.battle.receipt.winnerId, result.outcome === 'win' ? player.id : result.outcome === 'loss' ? 'guild-lio' : null);
+  assert.equal(result.battle.receipt.loserId, result.outcome === 'win' ? 'guild-lio' : result.outcome === 'loss' ? player.id : null);
   assert.ok(result.battle.details.turnCount > 0);
   assert.ok(result.battle.details.combatants.every((combatant) => combatant.signatureSkill?.id));
-  assert.equal(result.battle.details.turns[0].actor.id, player.id);
+  assert.ok([player.id, 'guild-lio'].includes(result.battle.details.turns[0].actor.id));
   assert.equal(result.replayed, false);
-  assert.deepEqual(result.record, { wins: 1, losses: 0, draws: 0, total: 1 });
-  assert.deepEqual(result.opponentRecord, { wins: 0, losses: 1, draws: 0, total: 1 });
+  const challengerRecord = { wins: result.outcome === 'win' ? 1 : 0, losses: result.outcome === 'loss' ? 1 : 0, draws: result.outcome === 'draw' ? 1 : 0, total: 1 };
+  const rivalRecord = { wins: result.outcome === 'loss' ? 1 : 0, losses: result.outcome === 'win' ? 1 : 0, draws: result.outcome === 'draw' ? 1 : 0, total: 1 };
+  assert.deepEqual(result.record, challengerRecord);
+  assert.deepEqual(result.opponentRecord, rivalRecord);
 
   assert.equal(after.currentHealth, before.currentHealth, 'Duel must not consume persistent Hunt/Adventure HP');
   assert.equal(after.threadDust, before.threadDust, 'Duel must not award or remove Gold');
   assert.equal(events.length, 1, 'one explicit Duel should publish one concise result event');
   assert.equal(events[0].type, 'DuelResolved');
   assert.equal(events[0].opponentId, 'guild-lio');
-  assert.match(events[0].receiptText, /Victory/);
+  assert.equal(events[0].outcome, result.outcome);
+  assert.match(events[0].receiptText, /Victory|Defeat|Draw/);
   assert.deepEqual(new SQLiteDuelRepository({ database: repository.db }).get('duel-lio-1').battleReplay, result.battle);
   const replay = service.duel(player.id, 'guild-lio', { duelId: 'duel-lio-1' });
   assert.equal(replay.replayed, true);

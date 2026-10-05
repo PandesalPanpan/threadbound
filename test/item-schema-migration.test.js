@@ -169,6 +169,9 @@ test('equipped non-Weapon extended stats survive SQLite close and reopen', () =>
       speed: 11,
       critChance: 0.07,
       critChancePercent: 7,
+      healingPower: 0,
+      attackSpeedBonus: 0,
+      movementSpeedBonus: 0,
     });
   } finally {
     repository?.close();

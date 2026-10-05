@@ -36,7 +36,7 @@ function normalizeArea(areaNumber) {
   return Math.max(1, Math.min(100, Math.floor(Number(areaNumber)) || 1));
 }
 
-function generatedStats({ slot, rarity, areaNumber, effectCode, rng }) {
+function generatedStats({ slot, rarity, areaNumber, effectCode, combatProfileCode = null, rng }) {
   const requiredLevel = 1;
   const budgetLimit = arcEquipmentBudgetLimit({ rarity: rarity.id, requiredLevel, areaNumber });
   const points = Math.max(1, budgetLimit - (effectCode === 'none' ? 0 : 1));
@@ -46,12 +46,20 @@ function generatedStats({ slot, rarity, areaNumber, effectCode, rng }) {
     maxHpBonus: 0,
     speedBonus: 0,
     critChanceBonus: 0,
+    healingPowerBonus: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   };
 
   if (slot === 'weapon') {
     const maximum = Math.min(rarity.maxAttack, points);
     const minimum = Math.min(rarity.minAttack, maximum);
-    stats.attackBonus = minimum + Math.floor(randomFraction(rng) * (maximum - minimum + 1));
+    if (combatProfileCode === 'healer') {
+      stats.healingPowerBonus = points >= 2 ? 1 + Math.floor((points - 2) / 4) : 0;
+      stats.attackBonus = Math.max(0, points - (stats.healingPowerBonus * 2));
+    } else {
+      stats.attackBonus = minimum + Math.floor(randomFraction(rng) * (maximum - minimum + 1));
+    }
   } else if (slot === 'helmet') {
     stats.defenseBonus = Math.max(1, Math.floor(points * 0.6));
     stats.maxHpBonus = Math.max(0, (points - stats.defenseBonus) * 4);
@@ -59,12 +67,19 @@ function generatedStats({ slot, rarity, areaNumber, effectCode, rng }) {
     stats.defenseBonus = Math.max(1, Math.floor(points * 0.4));
     stats.maxHpBonus = Math.max(0, (points - stats.defenseBonus) * 4);
   } else if (slot === 'boots') {
-    stats.speedBonus = Math.max(1, Math.ceil(points * 0.6));
-    const remainder = Math.max(0, points - stats.speedBonus);
-    if (remainder > 0 && randomFraction(rng) < 0.5) stats.defenseBonus = remainder;
-    else stats.maxHpBonus = remainder * 4;
+    if (randomFraction(rng) < 0.35) {
+      stats.movementSpeedBonus = Math.min(2, points * 0.25);
+    } else {
+      stats.speedBonus = Math.max(1, Math.ceil(points * 0.6));
+      const remainder = Math.max(0, points - stats.speedBonus);
+      if (remainder > 0 && randomFraction(rng) < 0.5) stats.defenseBonus = remainder;
+      else stats.maxHpBonus = remainder * 4;
+    }
   } else if (slot === 'accessory') {
-    stats.critChanceBonus = points / 100;
+    const specialization = randomFraction(rng);
+    if (specialization < 0.18) stats.attackSpeedBonus = Math.min(0.5, points * 0.05);
+    else if (specialization < 0.36 && points >= 2) stats.healingPowerBonus = Math.floor(points / 2);
+    else stats.critChanceBonus = points / 100;
   }
 
   const budgetUsed = arcEquipmentBudgetUsed({ stats, effects: [effectCode] });
@@ -86,6 +101,7 @@ function serializableEffect(definition, equipmentTemplate) {
     equipmentTemplate: {
       effectCodes: [...equipmentTemplate.effects],
       weaponFamily: equipmentTemplate.weaponFamily,
+      combatProfileCode: equipmentTemplate.combatProfileCode || null,
       itemFamily: equipmentTemplate.itemFamily,
       materialFamily: equipmentTemplate.materialFamily,
       requiredLevel: equipmentTemplate.requiredLevel,
@@ -139,7 +155,8 @@ export class ItemGenerator {
     }
     const family = visual.family || null;
     const materialFamily = visual.materialFamily || null;
-    const { stats, requiredLevel, budget } = generatedStats({ slot: itemSlot, rarity, areaNumber: area, effectCode, rng: this.rng });
+    const combatProfileCode = itemSlot === 'weapon' ? visual.combatProfileCode || null : null;
+    const { stats, requiredLevel, budget } = generatedStats({ slot: itemSlot, rarity, areaNumber: area, effectCode, combatProfileCode, rng: this.rng });
     const template = normalizeArcEquipmentTemplate({
       id: `generated-${itemSlot}-${area}`,
       namePattern: visual.label,
@@ -151,6 +168,7 @@ export class ItemGenerator {
       requiredLevel,
       areaNumber: area,
       visualAssetId: visual.visualAssetId,
+      ...(combatProfileCode ? { combatProfileCode } : {}),
     });
     const weaponFamily = itemSlot === 'weapon' ? family : null;
     const itemFamily = family;
@@ -167,6 +185,7 @@ export class ItemGenerator {
       effect: serializableEffect(ITEM_EFFECTS[effectCode], {
         effects: template.effects,
         weaponFamily,
+        combatProfileCode: template.combatProfileCode || combatProfileCode,
         itemFamily,
         materialFamily,
         requiredLevel: template.requiredLevel,
@@ -175,6 +194,7 @@ export class ItemGenerator {
         budget: template.budget,
       }),
       weaponFamily,
+      combatProfileCode: template.combatProfileCode || combatProfileCode,
       itemFamily,
       materialFamily,
       requiredLevel,

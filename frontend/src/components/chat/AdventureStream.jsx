@@ -5,6 +5,7 @@ import { PanelButton, RichCard } from '../common/RichCard.jsx';
 import { BlackjackSurface } from '../games/BlackjackSurface.jsx';
 import { SharedBattleSurface } from './SharedBattleSurface.jsx';
 import { ShopSurface } from './ShopSurface.jsx';
+import { ArenaFormationPicker } from '../panels/GameplayPanels.jsx';
 
 const EQUIPMENT_SLOTS = Object.freeze(['weapon', 'helmet', 'armor', 'boots', 'accessory']);
 const EQUIPMENT_SLOT_LABELS = Object.freeze({ weapon: 'Weapon', helmet: 'Helmet', armor: 'Armor', boots: 'Boots', accessory: 'Accessory' });
@@ -14,6 +15,9 @@ const ITEM_STAT_FIELDS = Object.freeze([
   ['maxHpBonus', 'Max HP', 'number'],
   ['speedBonus', 'Speed', 'number'],
   ['critChanceBonus', 'Crit', 'percent'],
+  ['healingPowerBonus', 'Healing Power', 'number'],
+  ['attackSpeedBonus', 'Attack Speed', 'percent'],
+  ['movementSpeedBonus', 'Movement (tiles/s)', 'number'],
 ]);
 
 function itemStatValue(item, key) {
@@ -46,7 +50,8 @@ function itemStatSummary(item) {
 
 function EquipmentSlot({ slot, item, assets }) {
   const asset = item ? resolveShellAsset(item, assets, ['item', 'icon']) : null;
-  return <div className={`shell-slot stream-equipment-slot${item ? ' has-item' : ''}`} data-testid={`equipment-slot-${slot}`}><span>{EQUIPMENT_SLOT_LABELS[slot]}</span>{item ? <>{asset ? <img src={asset.src} alt="" data-visual-asset-id={asset.id} /> : null}<strong>{item.name || 'Equipment'}</strong><small>{itemStatSummary(item) || 'No listed bonuses'}</small></> : <strong>Empty</strong>}</div>;
+  const combatLoadout = item?.combatLoadout || null;
+  return <div className={`shell-slot stream-equipment-slot${item ? ' has-item' : ''}`} data-testid={`equipment-slot-${slot}`}><span>{EQUIPMENT_SLOT_LABELS[slot]}</span>{item ? <>{asset ? <img src={asset.src} alt="" data-visual-asset-id={asset.id} /> : null}<strong>{item.name || 'Equipment'}</strong><small>{combatLoadout ? `${combatLoadout.role} · ${combatLoadout.basicAction}` : itemStatSummary(item) || 'No listed bonuses'}</small></> : <strong>Empty</strong>}</div>;
 }
 
 function actorLabel(entry) {
@@ -186,7 +191,8 @@ function ItemTile({ item, equipped = false, comparison = null, assets, owner = f
   const slot = item.itemSlot || item.slot || source.slot || 'Equipment';
   const effect = source.effect?.description || source.effect?.name || null;
   const stats = itemStatSummary(item) || 'No listed bonuses';
-  return <article className={`stream-item-tile stream-item-tile--${rarity}${open ? ' is-open' : ''}`} data-testid={offer ? 'stream-shop-item' : 'stream-inventory-item'} data-item-id={item.id || item.sku}><button type="button" className="stream-item-tile__button" aria-label={`Inspect ${itemName}`} aria-describedby={id} aria-controls={id} aria-expanded={open} onClick={() => setOpen((current) => !current)}>{asset ? <img className="stream-item-tile__asset" src={asset.src} alt="" data-visual-asset-id={asset.id} /> : <span className="stream-item-tile__asset stream-item-tile__asset--fallback" aria-hidden="true">✦</span>}<span className="stream-item-tile__name">{itemName}</span><span className={`rarity-chip rarity-chip--${rarity}`}>{rarity}</span>{equipped ? <span className="shell-equipped-badge">EQUIPPED</span> : null}{item.cost != null ? <span className="stream-item-tile__cost">{item.cost} Gold</span> : null}</button><div className="stream-item-tooltip" id={id} role="tooltip"><strong>{itemName}</strong><span className="stream-item-tooltip__meta">{rarity} · {EQUIPMENT_SLOT_LABELS[slot] || slot}{equipped ? ' · Equipped' : ''}</span><span>{stats}</span>{comparison ? <span>Compared with {comparison}</span> : null}{effect ? <span>Effect · {effect}</span> : null}{item.cost != null ? <span>{item.affordable ? 'Affordable' : 'Need more Gold'}</span> : null}</div>{owner && open && !offer ? <div className="stream-item-tile__actions">{equipped ? <PanelButton disabled>Equipped</PanelButton> : <PanelButton primary disabled={busy} onClick={() => onRequest(`equip ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/equip`, { method: 'POST' })}>Equip</PanelButton>}<PanelButton disabled={busy} onClick={() => onRequest(`upgrade ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/upgrade`, { method: 'POST' })}>Upgrade</PanelButton>{equipped ? null : <PanelButton danger disabled={busy} onClick={() => onRequest(`sell ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/salvage`, { method: 'POST' })}>Sell</PanelButton>}</div> : null}{owner && open && offer ? <div className="stream-item-tile__actions"><PanelButton primary disabled={busy || !item.available || !item.affordable} onClick={() => onRequest(`buy ${item.name}`, `/api/shop/purchases/${encodeURIComponent(item.sku)}`, { method: 'POST' })}>{item.affordable ? 'Buy' : 'Need Gold'}</PanelButton></div> : null}</article>;
+  const combatLoadout = item.combatLoadout || source.combatLoadout || null;
+  return <article className={`stream-item-tile stream-item-tile--${rarity}${open ? ' is-open' : ''}`} data-testid={offer ? 'stream-shop-item' : 'stream-inventory-item'} data-item-id={item.id || item.sku}><button type="button" className="stream-item-tile__button" aria-label={`Inspect ${itemName}`} aria-describedby={id} aria-controls={id} aria-expanded={open} onClick={() => setOpen((current) => !current)}>{asset ? <img className="stream-item-tile__asset" src={asset.src} alt="" data-visual-asset-id={asset.id} /> : <span className="stream-item-tile__asset stream-item-tile__asset--fallback" aria-hidden="true">✦</span>}<span className="stream-item-tile__name">{itemName}</span><span className={`rarity-chip rarity-chip--${rarity}`}>{rarity}</span>{equipped ? <span className="shell-equipped-badge">EQUIPPED</span> : null}{item.cost != null ? <span className="stream-item-tile__cost">{item.cost} Gold</span> : null}</button><div className="stream-item-tooltip" id={id} role="tooltip"><strong>{itemName}</strong><span className="stream-item-tooltip__meta">{rarity} · {EQUIPMENT_SLOT_LABELS[slot] || slot}{equipped ? ' · Equipped' : ''}</span><span>{stats}</span>{combatLoadout ? <span data-testid={`item-loadout-${item.id || item.sku}`}>{combatLoadout.role} · {combatLoadout.basicAction}{combatLoadout.signatureSkill ? ` · ${combatLoadout.signatureSkill}` : ''}</span> : null}{comparison ? <span>Compared with {comparison}</span> : null}{effect ? <span>Effect · {effect}</span> : null}{item.cost != null ? <span>{item.affordable ? 'Affordable' : 'Need more Gold'}</span> : null}</div>{owner && open && !offer ? <div className="stream-item-tile__actions">{equipped ? <PanelButton disabled>Equipped</PanelButton> : <PanelButton primary disabled={busy} onClick={() => onRequest(`equip ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/equip`, { method: 'POST' })}>Equip</PanelButton>}<PanelButton disabled={busy} onClick={() => onRequest(`upgrade ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/upgrade`, { method: 'POST' })}>Upgrade</PanelButton>{equipped ? null : <PanelButton danger disabled={busy} onClick={() => onRequest(`sell ${item.name}`, `/api/items/${encodeURIComponent(item.id)}/salvage`, { method: 'POST' })}>Sell</PanelButton>}</div> : null}{owner && open && offer ? <div className="stream-item-tile__actions"><PanelButton primary disabled={busy || !item.available || !item.affordable} onClick={() => onRequest(`buy ${item.name}`, `/api/shop/purchases/${encodeURIComponent(item.sku)}`, { method: 'POST' })}>{item.affordable ? 'Buy' : 'Need Gold'}</PanelButton></div> : null}</article>;
 }
 
 function InventorySharedCard({ entry, viewerId, assets, onRequest, busy }) {
@@ -215,10 +221,12 @@ function StatusSharedCard({ entry, viewerId, assets }) {
   const equipment = metadata.equipment || {};
   const stats = character.stats || {};
   const signatureSkill = character.signatureSkill || null;
+  const combatLoadout = character.combatLoadout || null;
   const owner = isOwner(entry, viewerId);
   return <RichCard kind="profile" kicker={sharedKicker(entry, viewerId, 'status')} title={`${character.displayName || actorLabel(entry)} · Status`} subtitle="A public snapshot from the same authoritative character state." className={`stream-shared-card ${owner ? 'is-owner' : 'is-observer'}`} testId="stream-player-status">
     <div className="stream-status-hero"><span className="shell-profile-avatar">{String(character.displayName || actorLabel(entry) || 'W').slice(0, 1)}</span><div><span className="shell-kicker">LEVEL {character.level || 1}</span><strong>{character.currentHealth ?? 0}/{character.maxHealth ?? 1} HP</strong><small>{character.experience ?? 0} XP · {character.gold ?? 0} Gold</small></div></div>
     <div className="shell-stat-grid shell-stat-grid--five"><div className="shell-stat"><span>Attack</span><strong>{stats.attack ?? 0}</strong></div><div className="shell-stat"><span>Defense</span><strong>{stats.defense ?? 0}</strong></div><div className="shell-stat"><span>Max HP</span><strong>{character.maxHealth ?? 1}</strong></div><div className="shell-stat"><span>Speed</span><strong>{stats.speed ?? 0}</strong></div><div className="shell-stat"><span>Crit</span><strong>{stats.critChancePercent ?? 0}%</strong></div></div>
+    {combatLoadout ? <div className="stream-card-detail" data-testid="status-combat-loadout"><strong>{combatLoadout.role}</strong><span> · Basic action: {combatLoadout.basicAction}</span></div> : null}
     {signatureSkill ? <div className="stream-card-detail" data-testid="status-signature-skill"><strong>Signature Skill · {signatureSkill.name}</strong><span> · {signatureSkill.manaCost} Mana · {signatureSkill.description}</span></div> : null}
     <div className="stream-equipment-grid stream-equipment-grid--compact">{EQUIPMENT_SLOTS.map((slot) => <EquipmentSlot key={slot} slot={slot} item={equipment[slot] || null} assets={assets} />)}</div>
     {metadata.activeBuffs?.length ? <div className="stream-card-detail"><strong>Active buffs</strong> · {metadata.activeBuffs.map((buff) => buff.name).join(' · ')}</div> : null}
@@ -254,10 +262,28 @@ function DungeonSharedCard({ entry, viewerId, assets, onRequest, busy, dashboard
   const personalHp = Number(personalParticipant?.hp ?? dashboard?.character?.currentHealth ?? 0);
   const personalMaxHp = Number(personalParticipant?.maxHp ?? dashboard?.character?.maxHealth ?? dashboard?.character?.maxHp ?? 0);
   const canHeal = interactive && betweenEncounters && !intermissionConsumed && Boolean(defaultPotion) && personalHp < personalMaxHp;
-  const canContinue = runLeader && interactive && betweenEncounters && replayComplete;
+  const runParticipants = activeRun?.participants || [];
+  const formationReady = activeRun?.formationReady || null;
+  const allFormationReady = !formationReady || runParticipants.every((participant) => formationReady[String(participant.playerId)] === true);
+  const ownFormationReady = !formationReady || formationReady[String(viewerId)] === true;
+  const readyCount = runParticipants.length > 1 ? {
+    ready: runParticipants.filter((participant) => !formationReady || formationReady[String(participant.playerId)] === true).length,
+    total: runParticipants.length,
+  } : null;
+  const canContinue = runLeader && interactive && betweenEncounters && replayComplete && allFormationReady;
   const canRetreat = runLeader && interactive && betweenEncounters && replayComplete;
   const intermissionStatus = betweenEncounters ? <div className="stream-intermission-state" data-testid="intermission-heal-status" aria-live="polite">{intermissionConsumed ? <><strong>Shared intermission Heal used</strong><span>{claimantName || 'A party member'} claimed the party’s one Heal. Continue is a separate action.</span></> : <><strong>One shared intermission Heal available</strong><span>{defaultPotion ? `${personalHp}/${personalMaxHp} HP · your potion will heal only you.` : 'No available Health Potion on this character.'}</span></>}</div> : null;
-  const intermissionActions = betweenEncounters && interactive ? <><div className="stream-shared-actions stream-shared-actions--intermission">{runLeader ? <PanelButton primary disabled={busy || !canContinue} onClick={() => onRequest('continue dungeon', `/api/runs/${encodeURIComponent(activeRun.id)}/continue`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('stream-continue') } })} testId="stream-run-continue">Continue</PanelButton> : null}<PanelButton disabled={busy || !canHeal} onClick={() => onRequest(`use ${defaultPotion?.name || 'Health Potion'} in Dungeon`, `/api/runs/${encodeURIComponent(activeRun.id)}/potion`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('stream-potion') }, ...(defaultPotion ? { body: JSON.stringify({ potion: defaultPotion.id }) } : {}) })} testId="stream-run-potion">{intermissionConsumed ? 'Heal · Used' : `Heal · ${defaultPotion?.shortName || defaultPotion?.name || 'Potion'}`}</PanelButton>{runLeader ? <PanelButton danger disabled={busy || !canRetreat} onClick={() => onRequest('leave dungeon', `/api/runs/${encodeURIComponent(activeRun.id)}/retreat`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('stream-retreat') } })} testId="stream-run-retreat">Leave Dungeon</PanelButton> : null}</div>{intermissionStatus}</> : null;
+  const intermissionActions = betweenEncounters && interactive ? <><ArenaFormationPicker
+    playerId={viewerId}
+    runId={activeRun.id}
+    version={Number(activeRun.formationRevision || 0)}
+    position={activeRun.arenaFormation?.[String(viewerId)] || null}
+    members={runParticipants.map((participant) => ({ playerId: participant.playerId, name: participant.displayName, position: activeRun.arenaFormation?.[String(participant.playerId)] || null }))}
+    ready={runParticipants.length > 1 ? ownFormationReady : null}
+    readyCount={readyCount}
+    onRequest={onRequest}
+    busy={busy}
+  /><div className="stream-shared-actions stream-shared-actions--intermission">{runLeader ? <PanelButton primary disabled={busy || !canContinue} onClick={() => onRequest('continue dungeon', `/api/runs/${encodeURIComponent(activeRun.id)}/continue`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('stream-continue') } })} testId="stream-run-continue">Continue</PanelButton> : null}<PanelButton disabled={busy || !canHeal} onClick={() => onRequest(`use ${defaultPotion?.name || 'Health Potion'} in Dungeon`, `/api/runs/${encodeURIComponent(activeRun.id)}/potion`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('stream-potion') }, ...(defaultPotion ? { body: JSON.stringify({ potion: defaultPotion.id }) } : {}) })} testId="stream-run-potion">{intermissionConsumed ? 'Heal · Used' : `Heal · ${defaultPotion?.shortName || defaultPotion?.name || 'Potion'}`}</PanelButton>{runLeader ? <PanelButton danger disabled={busy || !canRetreat} onClick={() => onRequest('leave dungeon', `/api/runs/${encodeURIComponent(activeRun.id)}/retreat`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('stream-retreat') } })} testId="stream-run-retreat">Leave Dungeon</PanelButton> : null}</div>{intermissionStatus}</> : null;
   if (replay) {
     const roomClear = replay.status === 'room_clear' && replay.finalPhase === 'between_encounter';
     const unlockedArea = replay.areaUnlocks?.find((candidate) => candidate.playerId === entry.actorPlayerId)?.areaNumber || replay.areaUnlocks?.[0]?.areaNumber || null;

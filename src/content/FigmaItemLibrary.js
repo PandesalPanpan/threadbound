@@ -1472,6 +1472,13 @@ function weaponFamily(label) {
   return 'sword';
 }
 
+function weaponCombatProfile(label, family) {
+  if (label === 'Copper Sparkstaff') return 'healer';
+  if (family === 'bow' || family === 'crossbow') return 'ranged';
+  if (family === 'staff') return 'mana-support';
+  return 'frontline';
+}
+
 function itemFamily(category, label, slot, section) {
   const name = label.toLowerCase();
   if (category === 'Weapon') return weaponFamily(label);
@@ -1520,6 +1527,7 @@ export const FIGMA_ITEM_LIBRARY = Object.freeze(SOURCE_ROWS.map(([sourceNodeId, 
     section,
     slot,
     family,
+    ...(slot === 'weapon' ? { combatProfileCode: weaponCombatProfile(sourceName, family) } : {}),
     tags: tagsFor(category, section, family, slot),
   });
 }));

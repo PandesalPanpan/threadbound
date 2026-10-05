@@ -27,7 +27,7 @@ function positiveInteger(value, label) {
  * Hunt owns encounter selection/reward projection while AutomaticBattleSimulator
  * owns HP mutation, initiative, Crit, effects, resistances, and turn history.
  */
-export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, encounter = null, context = {}, random = Math.random } = {}) {
+export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, encounter = null, context = {}, placements = {}, random = Math.random } = {}) {
   if (!player || typeof player !== 'object') throw new Error('Hunt requires a player combatant.');
   const playerId = String(player.id || '').trim();
   if (!playerId) throw new Error('Hunt requires a player id.');
@@ -65,7 +65,8 @@ export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, enc
   const battle = simulateArenaCombat({
     players: [playerCombatant],
     enemies: [enemyCombatant],
-    context: { ...context, activity: 'hunt', playerId, enemyId: enemy.id },
+    placements,
+    context: { ...context, activity: 'hunt', playerId, enemyId: enemy.id, formationSnapshot: placements },
   });
 
   const playerAfter = battle.combatants.find((combatant) => combatant.id === playerId);

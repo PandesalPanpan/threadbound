@@ -72,9 +72,41 @@ function BankActions({ bank, onRequest, busy }) {
 export function PartyPanel({ dashboard, onRequest, busy = false }) {
   const [joinCode, setJoinCode] = useState('');
   const party = dashboard?.party;
-  if (!party) return <RichCard kind="party" kicker="YOUR VIEW · /party" title="Adventure Party" subtitle="Co-op is optional; the thread is ready for another Weaver."><StateMessage title="Solo thread" copy="Create a party, then share the invite code with a friend." action={<div className="shell-card-actions"><PanelButton primary disabled={busy} onClick={() => onRequest('create party', '/api/party/create', { method: 'POST' })}>Create Party</PanelButton><div className="shell-join-form"><input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="JOIN CODE" maxLength={12} aria-label="Party join code" data-testid="party-join-code" /><PanelButton disabled={busy || !joinCode.trim()} onClick={() => onRequest(`join party ${joinCode}`, '/api/party/join', { method: 'POST', body: JSON.stringify({ joinCode }) })}>Join</PanelButton></div></div>} /></RichCard>;
+  const playerId = dashboard?.character?.id;
+  const ownFormation = dashboard?.arenaFormation || { position: null, version: 0 };
+  const picker = <ArenaFormationPicker
+    playerId={playerId}
+    position={ownFormation.position}
+    members={(party?.members || []).map((member) => ({ ...member, name: member.displayName }))}
+    onRequest={onRequest}
+    busy={busy}
+    version={ownFormation.version}
+  />;
+  if (!party) return <RichCard kind="party" kicker="YOUR VIEW · /party" title="Adventure Party" subtitle="Co-op is optional; save an opening position for Hunt, Adventure, Duel, and future Dungeon runs.">{picker}<StateMessage title="Solo thread" copy="Create a party, then share the invite code with a friend." action={<div className="shell-card-actions"><PanelButton primary disabled={busy} onClick={() => onRequest('create party', '/api/party/create', { method: 'POST' })}>Create Party</PanelButton><div className="shell-join-form"><input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="JOIN CODE" maxLength={12} aria-label="Party join code" data-testid="party-join-code" /><PanelButton disabled={busy || !joinCode.trim()} onClick={() => onRequest(`join party ${joinCode}`, '/api/party/join', { method: 'POST', body: JSON.stringify({ joinCode }) })}>Join</PanelButton></div></div>} /></RichCard>;
   const viewer = party.members?.find((member) => member.playerId === dashboard.character?.id);
-  return <RichCard kind="party" kicker="YOUR VIEW · /party" title="Adventure Party" subtitle={`${party.members?.length || 1} Weaver${party.members?.length === 1 ? '' : 's'} · invite ${party.joinCode}`}><div className="shell-party-list">{(party.members || []).map((member) => <div className="shell-party-member" key={member.playerId} data-testid={`party-member-${member.playerId}`}><span className="shell-profile-avatar shell-profile-avatar--small">{String(member.displayName || 'W').slice(0, 1)}</span><div><strong>{member.displayName}</strong><small>{member.playerId === party.leaderPlayerId ? 'Leader · ' : ''}{member.ready ? 'Ready' : 'Not ready'}</small></div><i className={member.ready ? 'is-ready' : ''} /></div>)}</div><div className="shell-card-actions"><PanelButton primary disabled={busy} onClick={() => onRequest(viewer?.ready ? 'unready' : 'ready party', '/api/party/ready', { method: 'POST', body: JSON.stringify({ ready: !viewer?.ready }) })}>{viewer?.ready ? 'Unready' : 'Ready Up'}</PanelButton><PanelButton disabled={busy} onClick={() => onRequest('leave party', '/api/party/leave', { method: 'POST' })}>Leave Party</PanelButton></div></RichCard>;
+  return <RichCard kind="party" kicker="YOUR VIEW · /party" title="Adventure Party" subtitle={`${party.members?.length || 1} Weaver${party.members?.length === 1 ? '' : 's'} · invite ${party.joinCode}`}>{picker}<div className="shell-party-list">{(party.members || []).map((member) => <div className="shell-party-member" key={member.playerId} data-testid={`party-member-${member.playerId}`}><span className="shell-profile-avatar shell-profile-avatar--small">{String(member.displayName || 'W').slice(0, 1)}</span><div><strong>{member.displayName}</strong><small>{member.playerId === party.leaderPlayerId ? 'Leader · ' : ''}{member.ready ? 'Ready' : 'Not ready'}{member.formation ? ` · Row ${member.formation.y + 1}, column ${member.formation.x + 1}` : ' · Role default'}</small></div><i className={member.ready ? 'is-ready' : ''} /></div>)}</div><div className="shell-card-actions"><PanelButton primary disabled={busy} onClick={() => onRequest(viewer?.ready ? 'unready' : 'ready party', '/api/party/ready', { method: 'POST', body: JSON.stringify({ ready: !viewer?.ready }) })}>{viewer?.ready ? 'Unready' : 'Ready Up'}</PanelButton><PanelButton disabled={busy} onClick={() => onRequest('leave party', '/api/party/leave', { method: 'POST' })}>Leave Party</PanelButton></div></RichCard>;
+}
+
+export function ArenaFormationPicker({ playerId, position = null, version = 0, members = [], runId = null, ready = null, readyCount = null, onRequest, busy = false }) {
+  const occupied = new Map();
+  for (const member of members) {
+    const tile = member.position || member.formation;
+    if (tile && member.playerId !== playerId) occupied.set(`${tile.x},${tile.y}`, member.name || member.displayName || 'Party member');
+  }
+  const rows = [5, 6, 7];
+  return <section className="arena-formation-picker" aria-label="Starting formation" data-testid={runId ? 'dungeon-formation-picker' : 'saved-formation-picker'}>
+    <div className="arena-formation-picker__heading"><strong>{runId ? 'Next room position' : 'Opening position'}</strong><span>{position ? `Row ${position.y + 1} · Column ${position.x + 1}` : 'Using role default'}</span></div>
+    <p>Choose one of the marked tiles. Your position is saved and visible to your party.</p>
+    <div className="arena-formation-picker__board" role="group" aria-label="Choose a deployment tile">
+      {rows.flatMap((y) => Array.from({ length: 8 }, (_, x) => {
+        const key = `${x},${y}`;
+        const occupant = occupied.get(key);
+        const selected = position?.x === x && position?.y === y;
+        return <button key={key} type="button" className={`arena-formation-picker__tile${selected ? ' is-selected' : ''}${occupant ? ' is-occupied' : ''}`} data-testid={`formation-tile-${x}-${y}`} aria-label={occupant ? `Row ${y + 1}, column ${x + 1}, occupied by ${occupant}` : `Place on row ${y + 1}, column ${x + 1}`} aria-pressed={selected} disabled={busy || Boolean(occupant)} onClick={() => onRequest('change arena formation', runId ? `/api/runs/${encodeURIComponent(runId)}/formation` : '/api/arena/formation', { method: 'POST', headers: { 'Idempotency-Key': commandKey('formation') }, body: JSON.stringify({ x, y, version }) })}>{selected ? 'YOU' : occupant ? occupant.slice(0, 1).toUpperCase() : ''}</button>;
+      }))}
+    </div>
+    {runId && readyCount ? <div className="arena-formation-picker__ready" aria-live="polite"><span>{readyCount.ready}/{readyCount.total} ready</span>{ready === null ? null : <PanelButton primary={ready} disabled={busy || ready} onClick={() => onRequest('ready next-room formation', `/api/runs/${encodeURIComponent(runId)}/formation/ready`, { method: 'POST', headers: { 'Idempotency-Key': commandKey('formation-ready') } })} testId="dungeon-formation-ready">{ready ? 'Position Ready' : 'Ready Position'}</PanelButton>}</div> : null}
+  </section>;
 }
 
 export function DungeonPanel({ dashboard, onRequest, onCommand, onClose, dungeonChooserDisabled = false, busy = false }) {

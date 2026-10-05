@@ -22,6 +22,9 @@ test('mobile Inventory context exposes the authoritative five readable stats wit
     speed: 10,
     critChance: 0.05,
     critChancePercent: 5,
+    healingPower: 0,
+    attackSpeedBonus: 0,
+    movementSpeedBonus: 0,
   });
   expect(data.character.attackPower).toBe(data.character.stats.attack);
   expect(data.character.maxHealth).toBe(data.character.stats.maxHp);

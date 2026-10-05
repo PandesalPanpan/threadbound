@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+const port = Number(process.env.THREADBOUND_E2E_PORT || 3101);
+const baseURL = `http://127.0.0.1:${port}`;
+
 export default defineConfig({
   testDir: './test/e2e',
   // The player-facing contract is intentionally small now. Tactical-era journeys remain
@@ -10,7 +13,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-threaded' }]] : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3001',
+    baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -23,12 +26,12 @@ export default defineConfig({
     },
     {
       command: 'node src/server.js',
-      url: 'http://127.0.0.1:3001/health',
+      url: `${baseURL}/health`,
       reuseExistingServer: false,
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        PORT: '3001',
+        PORT: String(port),
         SESSION_SECRET: 'threadbound-e2e-session-secret',
         THREADBOUND_DB_PATH: ':memory:',
         THREADBOUND_AUTH_MODE: 'threaded',
@@ -39,7 +42,7 @@ export default defineConfig({
         THREADBOUND_HUNT_COOLDOWN_SECONDS: '0',
         THREADED_BASE_URL: 'http://127.0.0.1:4100',
         THREADED_CLIENT_ID: 'threadbound-e2e',
-        THREADED_REDIRECT_URI: 'http://127.0.0.1:3001/oauth/callback',
+        THREADED_REDIRECT_URI: `${baseURL}/oauth/callback`,
       },
     },
   ],

@@ -206,6 +206,60 @@ This owner-approved implementation track proceeded while the Phase K human revie
 - [x] **PV2-M06** Persist versioned replay data atomically and render it in existing Battle cards/details with semantic assets, pause/speed/reduced-motion/accessibility, reconnect, and finish/skip controls.
 - [x] **PV2-M07** Complete domain/service/repository/migration/replay-contract and full player-journey coverage; inspect mobile/desktop playback; merge green work, verify `main` CI, and leave a handoff with any human acceptance gates still open.
 
+### Phase N — live arena parity and loadout-based Equipment (parallel to Phase K)
+
+This owner-approved repair and Equipment expansion proceeds alongside Phase K's
+human reviews. It builds on Phase M's shared authoritative engine and the
+accepted Arena Lab commits `20c9c27` / `f98694d`; it does not replace the lab,
+add a second live simulator, mark a human gate complete, or authorize new Arc
+content generation. Existing Arc templates remain validated data and must stay
+compatible with any revised item contract.
+
+- [ ] **PV2-N01** Compare the accepted lab commits, current `/arena-combat`, and
+  running live playback at 390×844 and 1440×960; publish a behavior-by-behavior
+  parity matrix and reproduce the reported timing, choreography, support-action,
+  and retreat-scheduling gaps before changing them.
+- [ ] **PV2-N02** Define a canonical combat-loadout projection from owned
+  Weapon, Helmet, Armor, Boots, and Accessory, with explicit role, basic action,
+  range, skill, bounded derived stats, and effects; define safe compatibility
+  for owned item identities, upgrades, active runs, and historical replays.
+- [ ] **PV2-N03** Add authoritative, persisted starting-formation commands with
+  ownership, legal deployment, unique tiles, concurrency/idempotency, concise
+  receipts, and encounter snapshots; support per-player readiness, leader start
+  after both co-op players are ready, solo encounters, saved/default Hunt
+  placement, and between-room Dungeon adjustment without restoring resources.
+- [ ] **PV2-N04** Repair the shared engine's autonomous spatial behavior: distinct
+  attack and movement clocks; frontline approach; ranged attacks and safe
+  repositioning between attacks without retreat starvation; healer ally/self
+  support and follow behavior; legal reservations/pathing, interruption,
+  retargeting, deterministic resolution, defeat, and bounded timeout.
+- [ ] **PV2-N05** Rebalance authoritative item families, formulas, budgets,
+  generation, Shops, drops, upgrades, sell values, derived stats, skills/effects,
+  and Arc template validation/compatibility so frontline, ranged, healer, and
+  Mana-support choices are obtainable and legible without a dominant build,
+  unlimited healing, speed runaway, or formation becoming irrelevant.
+- [ ] **PV2-N06** Extend the versioned replay contract and existing shared
+  renderer for true 1× simulation-time playback, remembered 1×/2×/4× preference,
+  pause, replay, and immediate skip; animate interpolated movement, facing,
+  depth/shadows, attacks/projectiles/impacts, damage, healing/shields/skills, and
+  defeat on an event clock without final-state leakage; keep reduced-motion
+  playback understandable and server outcomes authoritative.
+- [ ] **PV2-N07** Make Inventory/equipment previews show role, basic action,
+  skill, and meaningful before/after stat changes through semantic asset
+  catalogs; preserve one concise result receipt and the Adventure Stream shell.
+- [ ] **PV2-N08** Add deterministic balance and authority coverage for healing,
+  kiting attack opportunities, formation sensitivity, safe range/pathing, solo
+  healer viability, bounded battles, activity-specific rules, representative
+  progression/enemy compositions, reconnect, retries, stale requests, migrations,
+  and readable historical replays; add Playwright journeys at both canonical
+  viewports and inspect live animation plus mobile/desktop captures against the
+  lab.
+- [ ] **PV2-N09** Document implemented rules, item migration, parity matrix,
+  balance method/results/limitations, visual evidence, verification, CI, and
+  remaining human-review needs; run all required gates, merge only green work,
+  verify green `main` CI, keep Phase K/L gates honest, and name the next
+  unchecked master-plan task.
+
 ### Phase L — production lifecycle gates
 
 - [ ] **PV2-L01** Define abandon/expiry semantics for unfinished party/progression activities.

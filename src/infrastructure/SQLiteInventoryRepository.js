@@ -129,6 +129,9 @@ export class SQLiteInventoryRepository {
         maxHpBonus: finiteNonNegative(oldStats.maxHpBonus ?? oldStats.maxHealthBonus),
         speedBonus: finiteNonNegative(oldStats.speedBonus),
         critChanceBonus: Math.min(1, finiteNonNegative(oldStats.critChanceBonus)),
+        healingPowerBonus: finiteNonNegative(oldStats.healingPowerBonus),
+        attackSpeedBonus: Math.min(0.5, finiteNonNegative(oldStats.attackSpeedBonus)),
+        movementSpeedBonus: Math.min(2, finiteNonNegative(oldStats.movementSpeedBonus)),
       };
       stats[statUpgrade.statKey] += statUpgrade.statIncrease;
       const effects = Array.isArray(oldTemplate.effectCodes)

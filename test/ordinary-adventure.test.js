@@ -117,7 +117,7 @@ test('AdventureService reads persisted Area, commits rewards/progression, and pu
 test('Adventure grants level Max HP after damage, uses Area loot options, and carries its replay', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'adventure-growth-player' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'adventure-growth', displayName: 'Leveling Adventurer' });
-  repository.db.prepare('UPDATE players SET base_attack = 4, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
+  repository.db.prepare('UPDATE players SET base_attack = 5, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
   const progressionRepository = new SQLitePlayerProgressionRepository({ database: repository.db });
   progressionRepository.grantExperience(player.id, 49);
   const events = [];
@@ -141,6 +141,9 @@ test('Adventure grants level Max HP after damage, uses Area loot options, and ca
     maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
     speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
     critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
+    healingPowerBonus: Number(item.healingPowerBonus || item.stats?.healingPowerBonus || 0),
+    attackSpeedBonus: Number(item.attackSpeedBonus || item.stats?.attackSpeedBonus || 0),
+    movementSpeedBonus: Number(item.movementSpeedBonus || item.stats?.movementSpeedBonus || 0),
   };
 
   assert.equal(result.enemy.id, pickAreaAdventureEncounter(1, 0.99).id);
