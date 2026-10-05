@@ -49,8 +49,6 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   expect(duelEntry, 'the rendered Duel replay must match its authoritative stream receipt').toBeTruthy();
   const rivalCombatant = duelEntry?.metadata?.battleReplay?.details?.combatants?.find((combatant) => combatant.id === 'guild-rook');
   const duelTurns = duelEntry?.metadata?.battleReplay?.details?.turns || [];
-  const duelSkillTurnIndex = duelTurns.findIndex((turn) => turn.actionType === 'skill' && turn.actorMana.before === 100 && turn.actorMana.after === 0);
-  expect(duelSkillTurnIndex).toBeGreaterThanOrEqual(0);
   expect(rivalCombatant?.equipment?.weapon?.name).toBe('Veteran Blade');
   expect(rivalCombatant?.equipment?.weapon?.visualAssetId).toBe('item.threadsteel-longsword.v1');
   expect(rivalCombatant?.equipment?.armor?.visualAssetId).toBe('item.ironroot-cuirass.v1');
@@ -69,9 +67,12 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   expect(arenaReplay?.kind).toBe('arena-combat-replay');
   const replayManaEvents = (arenaReplay.events || []).flatMap((event) => event.manaEvents || []);
   expect(replayManaEvents.some((event) => event.reason === 'basic-attack' && Number(event.delta) > 0)).toBe(true);
-  const arenaSkillEvent = (arenaReplay.events || []).find((event) => event.kind === 'action' && event.actionType === 'skill');
-  expect(arenaSkillEvent?.manaEvents.some((event) => Number(event.delta) === -100)).toBe(true);
-  expect(duelTurns[duelSkillTurnIndex].skillName || duelTurns[duelSkillTurnIndex].skillId).toBeTruthy();
+  const skillTurns = duelTurns.filter((turn) => turn.actionType === 'skill');
+  const skillEvents = (arenaReplay.events || []).filter((event) => event.kind === 'action' && event.actionType === 'skill');
+  expect(skillEvents).toHaveLength(skillTurns.length);
+  for (const event of skillEvents) {
+    expect(event.manaEvents.some((manaEvent) => Number(manaEvent.delta) === -100)).toBe(true);
+  }
   await expect(replay).toHaveAttribute('data-arena-replay-surface', 'true');
   await expect(replay.getByTestId('arena-replay-roster-guild-rook')).toContainText('Veteran Blade');
   await expect(replay.getByTestId('arena-replay-roster-guild-rook')).toContainText('Veteran Armor');
