@@ -14,6 +14,12 @@ The fantasy remains simple: Hunt, gain XP and Gold, improve Equipment, take Ques
 
 Use obvious player language: Gold, Inventory, Equipment, Upgrade, Heal, Bank, Area, Town, Quest, Adventure, Duel, Profile, Leaderboard, Blackjack, Slots, and Coinflip. Preserve legacy persistence/API names only where migration safety requires them.
 
+### Approved combat foundation — 2026-10-05
+
+The owner selected the overhead Arena Lab as the foundation for future combat simulation. Build on its autonomous movement, formation, targeting, role behavior, Mana skills, and deterministic replay, using existing upright semantic character art on an overhead battlefield. The active-timing lab remains a comparison experiment.
+
+The next foundation improvement gives units independent attack and movement speeds so they do not move or strike in lockstep. This explicitly authorized combat work may proceed alongside the open human experience gates. It does not check those gates or replace the Adventure Stream shell. Live integration must retain server-authoritative outcomes, persisted replay projections, concise receipts, and party/reconnect correctness; browser-local simulation remains confined to the lab until that integration is implemented and verified. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md).
+
 ## 2. Canonical Figma scope
 
 Use Figma MCP design context and fresh node screenshots for implementation and review. Screenshots are comparison references, never shipped UI.

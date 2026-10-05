@@ -4,18 +4,19 @@ test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
 
 const arenaTestId = 'active-timing-arena';
 
-async function waitForTimingTarget(page) {
+async function waitForTargetWindow(page) {
   const arena = page.getByTestId(arenaTestId);
   const startedAt = Number(await arena.getAttribute('data-start-at-ms'));
   const targetMs = Number(await arena.getAttribute('data-target-ms'));
   expect(Number.isFinite(startedAt)).toBe(true);
   expect(Number.isFinite(targetMs)).toBe(true);
-  await page.waitForFunction(({ start, target }) => performance.now() >= start + target, { start: startedAt, target: targetMs });
+  // Give the touch command its protocol round trip while keeping the pointer event near the target.
+  await page.waitForFunction(({ start, target }) => performance.now() >= start + target - 45, { start: startedAt, target: targetMs });
 }
 
 async function tapAtTarget(page) {
   const arena = page.getByTestId(arenaTestId);
-  await waitForTimingTarget(page);
+  await waitForTargetWindow(page);
   await arena.tap();
 }
 
@@ -23,7 +24,7 @@ async function holdSkillAtTarget(page) {
   const arena = page.getByTestId(arenaTestId);
   await arena.dispatchEvent('pointerdown', { pointerId: 7, pointerType: 'touch', isPrimary: true, buttons: 1 });
   await expect.poll(() => arena.getAttribute('data-start-at-ms')).not.toBe('');
-  await waitForTimingTarget(page);
+  await waitForTargetWindow(page);
   await arena.dispatchEvent('pointerup', { pointerId: 7, pointerType: 'touch', isPrimary: true, buttons: 0 });
 }
 
@@ -58,6 +59,7 @@ test('mobile active timing fight uses touch for attack, defense, Skill, Item, an
   await tapAtTarget(page);
   await expect(page.getByTestId('active-timing-hit')).toContainText('PERFECT');
   await expect(page.getByTestId('active-timing-hit')).toContainText('−19 HP');
+  await page.screenshot({ path: 'test-results/active-timing-impact-mobile-390x844.png', fullPage: true });
   await defendCurrentHit(page);
   await expect(page.getByTestId('active-timing-hit')).toContainText('PERFECT GUARD');
 
@@ -116,4 +118,34 @@ test('combat actions stay visible, tappable, and within phone widths', async ({ 
     if (viewport.width === 390) await page.screenshot({ path: 'test-results/active-timing-mobile-390x844.png', fullPage: true });
     await page.reload();
   }
+});
+
+test('reduced motion keeps the timing cue and rapid attack input resolves once', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/active-timing?view=timing');
+  await expect(page.locator('.active-timing-page')).toHaveAttribute('data-reduced-motion', 'true');
+
+  const player = page.locator('.active-timing-unit--player');
+  const idleTransform = await player.evaluate((element) => getComputedStyle(element).transform);
+  await page.waitForTimeout(420);
+  await expect.poll(() => player.evaluate((element) => getComputedStyle(element).transform)).toBe(idleTransform);
+
+  await page.getByTestId('active-timing-start').tap();
+  const arena = page.getByTestId(arenaTestId);
+  await expect(arena).toHaveAttribute('data-phase', 'PLAYER_CHOICE');
+  await page.getByTestId('active-timing-action-attack').tap();
+  const initialProgress = Number(await arena.getAttribute('data-progress'));
+  await page.waitForTimeout(180);
+  expect(Number(await arena.getAttribute('data-progress'))).toBeGreaterThan(initialProgress + 5);
+  await waitForTargetWindow(page);
+  await arena.dispatchEvent('pointerdown', { pointerId: 17, pointerType: 'touch', isPrimary: true, buttons: 1 });
+  await arena.dispatchEvent('pointerdown', { pointerId: 18, pointerType: 'touch', isPrimary: true, buttons: 1 });
+
+  await expect(arena).toHaveAttribute('data-phase', 'PLAYER_IMPACT');
+  await expect(page.getByTestId('active-timing-enemy-health')).toContainText('129/148 HP');
+  await expect.poll(() => page.locator('.active-timing-fx > *').count()).toBeGreaterThan(0);
+  await expect(arena).toHaveAttribute('data-phase', 'ENEMY_TIMING', { timeout: 2000 });
+  await tapAtTarget(page);
+  await expect(page.getByTestId('active-timing-hit')).toContainText('PERFECT GUARD');
+  expect(page.url()).toContain('/active-timing');
 });

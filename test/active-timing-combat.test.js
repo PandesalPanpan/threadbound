@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ACTIVE_TIMING_CONFIG as CONFIG } from '../frontend/src/battle/activeTimingConfig.js';
+import { createActiveTimingChoreography, impactHitStopMs } from '../frontend/src/battle/activeTimingChoreography.js';
 import {
   ACTIVE_TIMING_PHASE as PHASE,
   activeTimingReducer,
@@ -19,6 +20,77 @@ function reduce(state, type, now = 0, extra = {}) {
 function started(now = 0) {
   return reduce(createInitialCombatState(), 'START_FIGHT', now);
 }
+
+test('impact hit-stop scales with timing quality and heavy actions', () => {
+  assert.equal(impactHitStopMs({ grade: 'MISS' }), 52);
+  assert.equal(impactHitStopMs({ grade: 'NORMAL' }), 70);
+  assert.equal(impactHitStopMs({ grade: 'GOOD' }), 82);
+  assert.equal(impactHitStopMs({ grade: 'PERFECT' }), 82);
+  assert.equal(impactHitStopMs({ grade: 'PERFECT', action: 'SKILL' }), 100);
+  assert.equal(impactHitStopMs({ grade: 'PERFECT_GUARD' }), 100);
+});
+
+function choreographyTestHarness() {
+  const createdTimelines = [];
+  const killedTimelines = [];
+  const gsap = {
+    timeline(options) {
+      let killed = false;
+      const timeline = {
+        options,
+        kill() {
+          if (killed) return;
+          killed = true;
+          killedTimelines.push(timeline);
+        },
+        addLabel() { return timeline; },
+        to() { return timeline; },
+        fromTo() { return timeline; },
+        call() { return timeline; },
+        delay() { return timeline; },
+      };
+      createdTimelines.push(timeline);
+      return timeline;
+    },
+    set() {},
+  };
+  const box = (left, right) => ({ left, right, top: 0, bottom: 100, width: right - left, height: 100 });
+  const playerImage = { getBoundingClientRect: () => box(80, 120) };
+  const enemyImage = { getBoundingClientRect: () => box(460, 500) };
+  const player = { querySelector: (selector) => selector === 'img' ? playerImage : {} };
+  const enemy = { querySelector: (selector) => selector === 'img' ? enemyImage : {} };
+  const scene = { getBoundingClientRect: () => box(0, 600) };
+  const root = {
+    querySelector(selector) {
+      if (selector === '.active-timing-arena') return {};
+      if (selector === '.active-timing-scene') return scene;
+      if (selector === '.active-timing-fx') return {};
+      if (selector === '.active-timing-unit--player') return player;
+      if (selector === '.active-timing-unit--enemy') return enemy;
+      return {};
+    },
+  };
+  return { gsap, root, createdTimelines, killedTimelines };
+}
+
+test('choreography cancels replaced idle motion and destroys outstanding timelines once', () => {
+  const harness = choreographyTestHarness();
+  const choreography = createActiveTimingChoreography(harness);
+
+  choreography.playIdle();
+  assert.equal(harness.createdTimelines.length, 2);
+  choreography.playAttack({ timing: { targetMs: 900 } });
+  assert.equal(harness.createdTimelines.length, 3);
+  assert.equal(harness.killedTimelines.length, 1);
+
+  choreography.destroy();
+  assert.equal(harness.killedTimelines.length, 3);
+  choreography.destroy();
+  choreography.playIdle();
+  choreography.playAttack({ timing: { targetMs: 900 } });
+  assert.equal(harness.killedTimelines.length, 3);
+  assert.equal(harness.createdTimelines.length, 3);
+});
 
 function finishPerfectEnemyTurn(state, now) {
   const pattern = state.currentPattern;

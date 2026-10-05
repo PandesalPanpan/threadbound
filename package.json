@@ -26,9 +26,11 @@
     "node": ">=22.5"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "gsap": "^3.15.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "ws": "^8.18.3"

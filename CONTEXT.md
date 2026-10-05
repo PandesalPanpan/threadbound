@@ -1,5 +1,13 @@
 # Threadbound Glossary
 
+## Arena combat prototype
+
+An experimental battle where the player arranges a team before combat, then units automatically choose targets, move, attack, and use skills on an arena battlefield.
+
+## Overhead arena
+
+A battlefield viewed from above, with upright character art anchored to ground positions by shadows. Characters retain their existing front-facing appearance while moving in two dimensions.
+
 ## Arc Manifest
 
 A portable, untrusted content contract that may define narrative, encounters, rewards, and exact allowlisted visual asset references. Publication is explicit and validation remains authoritative.

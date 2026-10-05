@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { resolveThreadboundCharacterVisual } from '../../public/character-asset-policy.js';
 import { ACTIVE_TIMING_CONFIG as CONFIG } from './battle/activeTimingConfig.js';
 import { ACTIVE_TIMING_PHASE as PHASE, activeTimingReducer, combatSummary, createInitialCombatState } from './battle/activeTimingCombat.js';
+import { createActiveTimingChoreography } from './battle/activeTimingChoreography.js';
 import './ActiveTimingCombatPrototypeApp.css';
+
+gsap.registerPlugin(useGSAP);
 
 const PLAYER_ART = resolveThreadboundCharacterVisual({ visualAssetId: 'character.road-sellsword.v1' }, 'character');
 const ENEMY_ART = resolveThreadboundCharacterVisual({ visualAssetId: 'mob.brown-boar.v1' }, 'mob');
@@ -68,22 +73,54 @@ function controlsStatusFor(state) {
   return { label: 'NEXT TURN', detail: 'The next move is close.' };
 }
 
-function Meter({ timing, elapsedMs, guardReady }) {
+function Meter({ timing, guardReady, arenaRef }) {
+  const meterRef = useRef(null);
+  const cursorRef = useRef(null);
+
+  useGSAP(() => {
+    const cursor = cursorRef.current;
+    if (!cursor) return;
+    if (timing.startedAt == null) {
+      gsap.set(cursor, { scaleX: 0 });
+      if (arenaRef.current) arenaRef.current.dataset.progress = '0.0';
+      return;
+    }
+
+    const duration = Math.max(1, timing.durationMs);
+    const elapsed = Math.max(0, performance.now() - timing.startedAt);
+    const initialProgress = Math.min(1, elapsed / duration);
+    gsap.set(cursor, { scaleX: initialProgress });
+    if (arenaRef.current) arenaRef.current.dataset.progress = (initialProgress * 100).toFixed(1);
+    if (initialProgress >= 1) return;
+
+    gsap.to(cursor, {
+      scaleX: 1,
+      duration: (duration - elapsed) / 1000,
+      ease: 'none',
+      overwrite: 'auto',
+      onUpdate() {
+        if (arenaRef.current) {
+          const progress = initialProgress + this.progress() * (1 - initialProgress);
+          arenaRef.current.dataset.progress = (progress * 100).toFixed(1);
+        }
+      },
+    });
+  }, { scope: meterRef, dependencies: [timing.startedAt, timing.durationMs], revertOnUpdate: true });
+
   if (!timing) return null;
   const target = timing.durationMs > 0 ? (timing.targetMs / timing.durationMs) * 100 : 0;
-  const progress = timing.startedAt == null ? 0 : Math.min(100, Math.max(0, (elapsedMs / timing.durationMs) * 100));
   const windows = timing.windows;
   const outside = timing.type === 'defense' ? windows.goodMs : windows.normalMs;
   const width = timing.durationMs > 0 ? (outside * 2 / timing.durationMs) * 100 : 0;
   const perfectWidth = timing.durationMs > 0 ? (windows.perfectMs * 2 / timing.durationMs) * 100 : 0;
   return (
-    <div className={`active-timing-meter active-timing-meter--${timing.type}`} aria-hidden="true" data-testid="active-timing-meter">
+    <div ref={meterRef} className={`active-timing-meter active-timing-meter--${timing.type}`} aria-hidden="true" data-testid="active-timing-meter">
       <div className="active-timing-meter__labels"><span>{timing.type === 'defense' ? 'TAP TO GUARD' : timing.type === 'skill' ? 'HOLD → RELEASE' : 'TAP TO STRIKE'}</span><span>{guardReady && timing.type === 'defense' ? 'GUARD BOOST' : 'TIMING ZONE'}</span></div>
       <div className="active-timing-meter__track">
         <span className="active-timing-meter__good" style={{ left: `${target - width / 2}%`, width: `${width}%` }} />
         <span className="active-timing-meter__perfect" style={{ left: `${target - perfectWidth / 2}%`, width: `${perfectWidth}%` }} />
         <span className="active-timing-meter__target" style={{ left: `${target}%` }} />
-        {timing.startedAt != null ? <span className="active-timing-meter__cursor" style={{ left: `${progress}%` }} /> : null}
+        {timing.startedAt != null ? <span ref={cursorRef} className="active-timing-meter__cursor" /> : null}
       </div>
     </div>
   );
@@ -94,13 +131,25 @@ function HealthReadout({ label, unit, side }) {
     <div className={`active-timing-health active-timing-health--${side}`} data-testid={`active-timing-${side}-health`}>
       <div className="active-timing-health__line"><span>{label}</span><strong>{unit.hp}/{unit.maxHp} HP</strong></div>
       <div className="active-timing-health__track" role="meter" aria-label={`${label} Health`} aria-valuenow={unit.hp} aria-valuemin="0" aria-valuemax={unit.maxHp}>
-        <span style={{ width: `${hpPercent(unit)}%` }} />
+        <span style={{ transform: `scaleX(${hpPercent(unit) / 100})` }} />
       </div>
     </div>
   );
 }
 
-function TimingDebug({ state, timing, elapsedMs }) {
+function TimingDebug({ state, timing }) {
+  const [elapsedMs, setElapsedMs] = useState(0);
+  useEffect(() => {
+    if (timing?.startedAt == null) {
+      setElapsedMs(0);
+      return undefined;
+    }
+    const update = () => setElapsedMs(Math.max(0, performance.now() - timing.startedAt));
+    update();
+    const interval = window.setInterval(update, 80);
+    return () => window.clearInterval(interval);
+  }, [timing?.startedAt]);
+
   const offset = timing?.startedAt == null ? null : Math.round(elapsedMs - timing.targetMs);
   return (
     <aside className="active-timing-debug" data-testid="active-timing-debug">
@@ -149,30 +198,49 @@ function ResultSummary({ state, rating, onRate, onAgain }) {
   );
 }
 
+function useReducedMotionPreference() {
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = (event) => setReducedMotion(event.matches);
+    preference.addEventListener?.('change', update);
+    return () => preference.removeEventListener?.('change', update);
+  }, []);
+  return reducedMotion;
+}
+
 export function ActiveTimingCombatPrototypeApp() {
   const [state, dispatch] = useReducer(activeTimingReducer, undefined, createInitialCombatState);
-  const [clockMs, setClockMs] = useState(() => performance.now());
   const [debugOpen, setDebugOpen] = useState(false);
   const [rating, setRating] = useState(null);
+  const prefersReducedMotion = useReducedMotionPreference();
+  const rootRef = useRef(null);
   const arenaRef = useRef(null);
+  const previousStateRef = useRef(state);
+  const transitionRef = useRef(() => {});
   const heldPointerRef = useRef(null);
   const heldKeyboardRef = useRef(false);
 
   const timing = useMemo(() => currentTiming(state), [state]);
-  const elapsedMs = timing?.startedAt == null ? 0 : Math.max(0, clockMs - timing.startedAt);
-  const progress = timing?.durationMs ? Math.max(0, Math.min(100, (elapsedMs / timing.durationMs) * 100)) : 0;
   const prompt = promptFor(state);
 
-  useEffect(() => {
-    if (![PHASE.PLAYER_TIMING, PHASE.ENEMY_TELEGRAPH, PHASE.ENEMY_TIMING].includes(state.phase)) return undefined;
-    let frame = 0;
-    const tick = () => {
-      setClockMs(performance.now());
-      frame = window.requestAnimationFrame(tick);
+  useGSAP((_, contextSafe) => {
+    const choreography = createActiveTimingChoreography({ root: rootRef.current, gsap, reducedMotion: prefersReducedMotion });
+    transitionRef.current = contextSafe((previous, next, nextTiming) => choreography.transition(previous, next, nextTiming, CONFIG.feedback.hitStopMs));
+    choreography.playIdle();
+    return () => {
+      transitionRef.current = () => {};
+      choreography.destroy();
     };
-    frame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame);
-  }, [state.phase, state.timingStartedAt, state.telegraphStartedAt]);
+  }, { scope: rootRef, dependencies: [prefersReducedMotion], revertOnUpdate: true });
+
+  useLayoutEffect(() => {
+    const previous = previousStateRef.current;
+    if (previous !== state) {
+      transitionRef.current(previous, state, timing);
+      previousStateRef.current = state;
+    }
+  }, [state, timing]);
 
   useEffect(() => {
     let delay;
@@ -293,12 +361,13 @@ export function ActiveTimingCombatPrototypeApp() {
     `is-${state.phase.toLowerCase().replaceAll('_', '-')}`,
     state.action === 'ATTACK' ? 'is-player-attacking' : '',
     state.action === 'SKILL' && state.timingStartedAt != null ? 'is-skill-held' : '',
+    state.guardReady ? 'is-guard-ready' : '',
     state.feedback?.kind === 'player' ? 'has-player-impact' : '',
     state.feedback?.kind === 'enemy' ? 'has-enemy-impact' : '',
   ].filter(Boolean).join(' ');
 
   return (
-    <div className="active-timing-page" data-prototype="active-timing">
+    <div ref={rootRef} className="active-timing-page" data-prototype="active-timing" data-reduced-motion={prefersReducedMotion ? 'true' : 'false'}>
       <header className="active-timing-topbar">
         <a className="active-timing-brand" href="/game" aria-label="Return to Threadbound Adventure Stream"><span>✦</span> THREADBOUND</a>
         <div className="active-timing-topbar__tag"><span>GAMEPLAY EXPERIMENT</span><strong>ACTIVE TIMING · 1V1</strong></div>
@@ -325,8 +394,7 @@ export function ActiveTimingCombatPrototypeApp() {
           data-start-at-ms={dataTiming}
           data-target-ms={timing ? target : ''}
           data-duration-ms={timing?.durationMs || ''}
-          data-progress={progress.toFixed(1)}
-          style={{ '--hitstop-duration': `${CONFIG.feedback.hitStopMs}ms` }}
+          data-progress="0.0"
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
@@ -337,18 +405,27 @@ export function ActiveTimingCombatPrototypeApp() {
           <HealthReadout label="YOUR WEAVER" unit={state.player} side="player" />
           <div className="active-timing-scene" aria-hidden="true">
             <div className="active-timing-threadline"><span /><i /><b /></div>
-            <div className="active-timing-unit active-timing-unit--player">
-              <div className="active-timing-unit__halo" />
-              {PLAYER_ART ? <img src={PLAYER_ART.src} alt="" data-visual-asset-id={PLAYER_ART.id} /> : <span className="active-timing-unit__fallback">✦</span>}
+            <div className="active-timing-stage-slot active-timing-stage-slot--player">
+              <div className="active-timing-unit__shadow active-timing-unit__shadow--player" />
+              <div className="active-timing-unit active-timing-unit--player">
+                <div className="active-timing-unit__halo" />
+                <span className="active-timing-unit__flash" />
+                {PLAYER_ART ? <img src={PLAYER_ART.src} alt="" data-visual-asset-id={PLAYER_ART.id} fetchPriority="high" /> : <span className="active-timing-unit__fallback">✦</span>}
+              </div>
             </div>
-            <div className="active-timing-unit active-timing-unit--enemy">
-              <div className="active-timing-unit__halo" />
-              {ENEMY_ART ? <img src={ENEMY_ART.src} alt="" data-visual-asset-id={ENEMY_ART.id} /> : <span className="active-timing-unit__fallback">◈</span>}
+            <div className="active-timing-stage-slot active-timing-stage-slot--enemy">
+              <div className="active-timing-unit__shadow active-timing-unit__shadow--enemy" />
+              <div className="active-timing-unit active-timing-unit--enemy">
+                <div className="active-timing-unit__halo" />
+                <span className="active-timing-unit__flash" />
+                {ENEMY_ART ? <img src={ENEMY_ART.src} alt="" data-visual-asset-id={ENEMY_ART.id} fetchPriority="high" /> : <span className="active-timing-unit__fallback">◈</span>}
+              </div>
             </div>
+            <div className="active-timing-fx" data-testid="active-timing-fx" />
           </div>
-          {timing ? <Meter timing={timing} elapsedMs={elapsedMs} guardReady={state.guardReady} /> : null}
+          {timing ? <Meter timing={timing} guardReady={state.guardReady} arenaRef={arenaRef} /> : null}
           {state.feedback?.kind === 'player' || state.feedback?.kind === 'enemy' || state.feedback?.kind === 'item' || state.feedback?.kind === 'guard'
-            ? <div className={`active-timing-hit active-timing-hit--${state.feedback.kind}`} data-testid="active-timing-hit" aria-live="assertive"><strong>{state.feedback.label}</strong><span>{state.feedback.kind === 'item' ? `+${state.feedback.healing} HP` : state.feedback.kind === 'guard' ? 'NEXT HIT REDUCED' : `−${state.feedback.damage} HP`}</span></div>
+            ? <div className={`active-timing-hit active-timing-hit--${state.feedback.kind} ${state.feedback.grade === 'PERFECT_GUARD' || state.feedback.grade === 'PERFECT' ? 'is-perfect' : ''} ${state.feedback.grade === 'GOOD' ? 'is-strong' : ''}`} data-testid="active-timing-hit" aria-live="assertive"><strong>{state.feedback.label}</strong><span>{state.feedback.kind === 'item' ? `+${state.feedback.healing} HP` : state.feedback.kind === 'guard' ? 'NEXT HIT REDUCED' : `−${state.feedback.damage} HP`}</span></div>
             : null}
           {state.phase === PHASE.ENEMY_TELEGRAPH ? <div className={`active-timing-telegraph active-timing-telegraph--${state.currentPattern?.id || ''}`} data-testid="active-timing-telegraph"><span>INCOMING</span><strong>{state.currentPattern?.name}</strong><small>{state.currentPattern?.telegraph}</small></div> : null}
           <div className="active-timing-prompt" data-testid="active-timing-prompt" aria-live="polite">
@@ -384,7 +461,7 @@ export function ActiveTimingCombatPrototypeApp() {
 
         <p className="active-timing-footnote">Prototype combat is local to this page. Refresh to reset. No rewards or character data are read or changed.</p>
       </main>
-      {debugOpen ? <TimingDebug state={state} timing={timing} elapsedMs={elapsedMs} /> : null}
+      {debugOpen ? <TimingDebug state={state} timing={timing} /> : null}
     </div>
   );
 }

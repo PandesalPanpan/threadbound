@@ -173,6 +173,19 @@ Local auth has two hard boundaries:
 
 For the real integration path, use `THREADBOUND_AUTH_MODE=threaded` and configure `THREADED_BASE_URL`, `THREADED_CLIENT_ID`, and `THREADED_REDIRECT_URI`.
 
+## Combat prototypes
+
+The current branch includes two isolated local experiments: `/active-timing`
+for manual attack/defense timing and `/arena-combat` for an overhead 3v3 arena.
+In the Arena Lab, select teammates, place them in the deployment zone, and
+watch automatic movement, targeting, attacks, and skills. Pause, playback speed,
+replay, and reposition controls help compare formations. These prototypes do
+not grant rewards or save player progress. See `docs/ARENA_COMBAT_PROTOTYPE.md`.
+
+The overhead Arena Lab is the owner-approved foundation for future combat
+simulation. Subsequent combat work builds on this direction while preserving
+server authority when integrating it into the live game.
+
 ## Tests
 
 ```bash
