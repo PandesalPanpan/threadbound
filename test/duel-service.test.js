@@ -32,6 +32,12 @@ test('Duel resolves through the shared automatic battle engine without mutating 
   assert.equal(result.battle.receipt.winnerId, result.outcome === 'win' ? player.id : result.outcome === 'loss' ? 'guild-lio' : null);
   assert.equal(result.battle.receipt.loserId, result.outcome === 'win' ? 'guild-lio' : result.outcome === 'loss' ? player.id : null);
   assert.ok(result.battle.details.turnCount > 0);
+  const skillTurn = result.battle.details.turns.find((turn) => turn.actionType === 'skill');
+  assert.ok(skillTurn, 'a ready Duel combatant spends Mana on its signature skill');
+  assert.equal(skillTurn.actorMana.before, 100);
+  assert.equal(skillTurn.actorMana.after, 0);
+  const skillEvent = result.battle.arenaReplay.events.find((event) => event.kind === 'action' && event.actionType === 'skill');
+  assert.ok(skillEvent?.manaEvents.some((event) => event.reason === 'skill-cast' && event.delta === -100));
   assert.ok(result.battle.details.combatants.every((combatant) => combatant.signatureSkill?.id));
   assert.ok([player.id, 'guild-lio'].includes(result.battle.details.turns[0].actor.id));
   assert.equal(result.replayed, false);

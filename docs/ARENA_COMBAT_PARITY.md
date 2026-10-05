@@ -1,13 +1,14 @@
 # Live arena parity and loadout overhaul
 
-Status: implementation and verification in progress on
-`feat/arena-combat-parity-loadouts`. This compares the accepted Arena Lab
+Status: implemented and merged to `main` by
+[PR #116](https://github.com/PandesalPanpan/threadbound/pull/116) as commit
+`123b92c` on 2026-10-05. [Post-merge main CI run 37317322994](https://github.com/PandesalPanpan/threadbound/actions/runs/37317322994)
+passed both required jobs. This compares the accepted Arena Lab
 (`20c9c27`, `f98694d`), the current `/arena-combat` implementation, and the
 live arena replay on `main` (`3fc82f3`, with `feat/active-timing-combat-prototype`
 at `edd1a82`). The Lab is a browser-local reference; only the shared server
 engine and committed replay may resolve live outcomes. The matrix below records
-the as-found baseline; the implementation record follows it. Merge and green
-`main` CI are still required before Phase N can be closed.
+the as-found baseline; the implementation record follows it.
 
 ## Baseline parity matrix
 
@@ -171,16 +172,18 @@ Local verification on 2026-10-05 passed all required gates:
   replay checks also passed before the full matrix.
 
 Representative mobile and desktop journeys and inspected captures are included
-above. Green `main` CI remains a delivery condition and will be recorded after
-the merge; it is not inferred from a local pass.
+above. The PR-head CI run [37316096087](https://github.com/PandesalPanpan/threadbound/actions/runs/37316096087)
+and post-merge `main` run [37317322994](https://github.com/PandesalPanpan/threadbound/actions/runs/37317322994)
+both passed `unit-and-contract` and `browser-e2e`.
 
 ## Remaining acceptance and handoff
 
-Phase K human acceptance remains open. Automation cannot decide whether the
-first hour is understandable, Hunts remain satisfying over a long session, or
-the chat cards outperform separate pages. Phase L lifecycle gates remain open.
-No Phase N checkbox should be marked until its acceptance is implemented,
-tested, documented, merged, and green on `main`.
+Phase N is complete: its nine implementation and delivery items were implemented,
+tested, documented, merged in PR #116, and verified by the green post-merge `main`
+run above. Phase K human acceptance remains open. Automation cannot decide
+whether the first hour is understandable, Hunts remain satisfying over a long
+session, or the chat cards outperform separate pages. Phase L lifecycle gates
+also remain open.
 
 The current master plan's next unchecked task is **PV2-K01 HUMAN**: confirm two
 humans understand the first hour without developer documentation. See
