@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { stripArenaReplayFromEntry } from './legacy-replay-fixture.js';
+import { replayMoments, SHARED_REPLAY_BEAT_MS } from '../../frontend/src/battle/sharedReplay.js';
 
 async function sharedBattleMotionSnapshot(surface) {
   return surface.evaluate((node) => {
@@ -276,7 +277,13 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
 });
 
 test('shared battle trajectories stay art-relative on mobile and desktop, including reverse attacks', async ({ page }) => {
-  await page.addInitScript(() => { window.__THREADBOUND_FAST_TEST__ = true; });
+  const replayEpoch = Date.now();
+  await page.addInitScript((epoch) => {
+    window.__THREADBOUND_FAST_TEST__ = true;
+    window.__threadboundReplayClock = epoch;
+    Date.now = () => window.__threadboundReplayClock;
+  }, replayEpoch);
+  await page.routeWebSocket('**/ws*', (socket) => socket.close());
   await page.goto('/');
   await page.getByTestId('local-login-i').click();
   await page.context().request.post('/api/party/leave');
@@ -285,8 +292,11 @@ test('shared battle trajectories stay art-relative on mobile and desktop, includ
     const response = await route.fetch();
     const payload = await response.json();
     const latestHuntId = [...(payload.entries || [])].reverse().find((entry) => entry.eventType === 'HuntResolved')?.id;
-    const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId
-      ? { ...stripArenaReplayFromEntry(entry), createdAt: new Date(Date.now() - 100).toISOString() }
+    const entries = (payload.entries || []).map((entry) => entry.eventType === 'HuntResolved'
+      ? {
+        ...stripArenaReplayFromEntry(entry),
+        ...(entry.id === latestHuntId ? { createdAt: new Date(replayEpoch).toISOString() } : {}),
+      }
       : entry);
     await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
   });
@@ -305,20 +315,42 @@ test('shared battle trajectories stay art-relative on mobile and desktop, includ
       && turn.targetId === player.id
       && Number(turn.targetDamage || 0) > 0
     ))).toBe(true);
+    const moments = replayMoments(payload.hunt.battleReplay);
+    const forwardMomentIndex = moments.findIndex((moment) => moment.actorId === player.id && moment.targetId === enemy.id && moment.damage > 0);
+    const reverseMomentIndex = moments.findIndex((moment) => moment.actorId === enemy.id && moment.targetId === player.id && moment.damage > 0);
+    expect(forwardMomentIndex).toBeGreaterThanOrEqual(0);
+    expect(reverseMomentIndex).toBeGreaterThanOrEqual(0);
+
+    const streamResponse = await page.context().request.get('/api/stream');
+    expect(streamResponse.ok()).toBe(true);
+    const streamPayload = await streamResponse.json();
+    const huntEntryId = [...(streamPayload.entries || [])].reverse().find((entry) => entry.eventType === 'HuntResolved')?.id;
+    expect(huntEntryId).toBeTruthy();
 
     await page.goto('/game');
     await page.reload();
-    const surface = page.getByTestId('stream-hunt-rich-card').last().getByTestId('shared-battle-surface');
+    const surface = page.locator(`[data-entry-id="${huntEntryId}"]`).getByTestId('stream-hunt-rich-card').getByTestId('shared-battle-surface');
     await expect(surface).toBeVisible();
+    await expect(surface).toHaveAttribute('data-replay-phase', 'windup');
     await expect(surface.locator('.trajectory__core, .trajectory__beam, .trajectory__burst, .trajectory__ring')).toHaveCount(0);
+    const seekReplayMoment = async (momentIndex) => page.evaluate(({ epoch, offset }) => {
+      window.__threadboundReplayClock = epoch + offset;
+    }, { epoch: replayEpoch, offset: momentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS * 0.3 });
 
     let forward;
-    await expect.poll(async () => {
-      const snapshot = await sharedBattleMotionSnapshot(surface);
-      if (snapshot.phase !== 'trajectory' || snapshot.actorId !== player.id || snapshot.targetId !== enemy.id || !snapshot.line) return false;
-      forward = snapshot;
-      return true;
-    }, { timeout: 3500, intervals: [25] }).toBe(true);
+    await seekReplayMoment(forwardMomentIndex);
+    let lastForwardSnapshot;
+    try {
+      await expect.poll(async () => {
+        const snapshot = await sharedBattleMotionSnapshot(surface);
+        lastForwardSnapshot = snapshot;
+        if (snapshot.phase !== 'trajectory' || snapshot.actorId !== player.id || snapshot.targetId !== enemy.id || !snapshot.line) return false;
+        forward = snapshot;
+        return true;
+      }, { timeout: 3500, intervals: [25] }).toBe(true);
+    } catch (error) {
+      throw new Error(`${error.message}\nExpected forward ${player.id} -> ${enemy.id} at moment ${forwardMomentIndex}; last snapshot: ${JSON.stringify(lastForwardSnapshot)}`);
+    }
 
     expect(Math.abs(forward.line.x1 - forward.actor.center.x)).toBeLessThan(1.5);
     expect(Math.abs(forward.line.y1 - forward.actor.center.y)).toBeLessThan(1.5);
@@ -328,6 +360,7 @@ test('shared battle trajectories stay art-relative on mobile and desktop, includ
     expect(forward.lineTransform).toBe('none');
 
     let reverse;
+    await seekReplayMoment(reverseMomentIndex);
     await expect.poll(async () => {
       const snapshot = await sharedBattleMotionSnapshot(surface);
       if (snapshot.phase !== 'trajectory' || snapshot.actorId !== enemy.id || snapshot.targetId !== player.id || !snapshot.line) return false;
@@ -339,6 +372,10 @@ test('shared battle trajectories stay art-relative on mobile and desktop, includ
     expect(Math.abs(reverse.line.x2 - reverse.target.center.x)).toBeLessThan(1.5);
     expect(Math.abs(reverse.line.y2 - reverse.target.center.y)).toBeLessThan(1.5);
     expect(reverse.lineTransform).toBe('none');
+    await page.evaluate(({ epoch, duration }) => { window.__threadboundReplayClock = epoch + duration; }, {
+      epoch: replayEpoch,
+      duration: moments.length * SHARED_REPLAY_BEAT_MS + 1,
+    });
     await expect(surface).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
   }
 });

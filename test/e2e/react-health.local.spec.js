@@ -49,7 +49,7 @@ test('Hunt and Dungeon share the same persistent HP across entry, damage, exit, 
 });
 
 test('Dungeon potion uses the shared Minor inventory with a fixed bounded heal and persistent checkpoint', async ({ page }) => {
-  await login(page, 'j');
+  await login(page, 'n');
   const first = await page.context().request.post('/api/hunt');
   expect(first.ok()).toBe(true);
   const second = await page.context().request.post('/api/hunt');

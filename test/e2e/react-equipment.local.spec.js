@@ -42,13 +42,29 @@ test('Hunts earn Gold for official-art armor that equips into Defense and Max HP
   test.setTimeout(120_000);
   await login(page);
 
+  for (let satchel = 0; satchel < 6; satchel += 1) {
+    const purchase = await context.request.post('/api/shop/purchases/satchel');
+    expect(purchase.ok()).toBe(true);
+  }
   let state = await dashboard(context);
-  for (let attempt = 0; state.character.gold < 8 && attempt < 10; attempt += 1) {
+  let earnedGold = false;
+  for (let attempt = 0; !earnedGold && attempt < 10; attempt += 1) {
     await command(page, 'hunt');
     const hunt = page.getByTestId('stream-hunt-rich-card').last();
     await expect(hunt.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30_000 });
     state = await dashboard(context);
+    const huntStream = await context.request.get('/api/stream');
+    expect(huntStream.ok()).toBe(true);
+    const latestHunt = [...(await huntStream.json()).entries].reverse().find((entry) => entry.eventType === 'HuntResolved');
+    earnedGold = Number(latestHunt?.metadata?.gold || 0) > 0;
+    const potions = Number(state.character.potions.find((candidate) => candidate.id === 'minor-health-potion')?.quantity || 0);
+    if (state.character.currentHealth < state.character.maxHealth && potions > 0) {
+      const recovery = await context.request.post('/api/recovery/potion');
+      expect(recovery.ok()).toBe(true);
+      state = await dashboard(context);
+    }
   }
+  expect(earnedGold).toBe(true);
   expect(state.character.gold).toBeGreaterThanOrEqual(8);
   const hunts = await context.request.get('/api/stream');
   expect(hunts.ok()).toBe(true);

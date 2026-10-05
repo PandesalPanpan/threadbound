@@ -47,9 +47,10 @@ const LOCAL_PROFILES = Object.freeze({
     h: Object.freeze({ id: 'local:h', name: 'Local Weaver H', username: 'local-h', capabilities: Object.freeze({ arcWorkshop: false }) }),
     i: Object.freeze({ id: 'local:i', name: 'Local Weaver I', username: 'local-i', capabilities: Object.freeze({ arcWorkshop: false }) }),
     j: Object.freeze({ id: 'local:j', name: 'Local Weaver J', username: 'local-j', startingGold: 300, capabilities: Object.freeze({ arcWorkshop: false }) }),
-    k: Object.freeze({ id: 'local:k', name: 'Local Weaver K', username: 'local-k', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    k: Object.freeze({ id: 'local:k', name: 'Local Weaver K', username: 'local-k', startingGold: 120, capabilities: Object.freeze({ arcWorkshop: false }) }),
     l: Object.freeze({ id: 'local:l', name: 'Local Weaver L', username: 'local-l', capabilities: Object.freeze({ arcWorkshop: false }) }),
     m: Object.freeze({ id: 'local:m', name: 'Local Weaver M', username: 'local-m', capabilities: Object.freeze({ arcWorkshop: false }) }),
+    n: Object.freeze({ id: 'local:n', name: 'Local Weaver N', username: 'local-n', capabilities: Object.freeze({ arcWorkshop: false }) }),
   } : {}),
 });
 const INITIAL_STREAM_LIMIT = 30;
