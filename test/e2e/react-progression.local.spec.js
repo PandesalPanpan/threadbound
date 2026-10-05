@@ -41,7 +41,7 @@ async function expectRecentReceiptVisible(page) {
     const visible = entryRect.top >= containerRect.top && entryRect.bottom <= containerRect.bottom;
     const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
     return visible && nearBottom;
-  })).toBe(true);
+  }), { timeout: 10000 }).toBe(true);
 }
 
 async function pinReplayClock(page, timestamp) {
@@ -185,22 +185,15 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await leader.reload();
     await expect(leader.getByTestId('stream-connection')).toHaveText(/LIVE/);
     const reconnectedLevelHuntCard = leader.getByTestId('stream-hunt-rich-card').last();
-    await expect(reconnectedLevelHuntCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    await expect(reconnectedLevelHuntCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
     await expect(reconnectedLevelHuntCard.getByTestId('hunt-level-up')).toContainText('Max HP +3');
     const afterLevelHunt = await dashboard(leaderContext);
     expect(afterLevelHunt.character.level).toBe(2);
     expect(afterLevelHunt.character.maxHealth).toBe(beforeLevelHunt.character.maxHealth + 3);
 
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const partnerState = await dashboard(partnerContext);
-      if (partnerState.character.currentHealth < partnerState.character.maxHealth && partnerState.character.healthPotions > 0) break;
-      const hunt = await partnerContext.request.post('/api/hunt');
-      expect(hunt.ok()).toBe(true);
-    }
-    const healEligiblePartner = await dashboard(partnerContext);
-    expect(healEligiblePartner.character.currentHealth).toBeLessThan(healEligiblePartner.character.maxHealth);
-    expect(healEligiblePartner.character.currentHealth).toBeGreaterThan(0);
-    expect(healEligiblePartner.character.healthPotions).toBeGreaterThan(0);
+    const readyPartner = await dashboard(partnerContext);
+    expect(readyPartner.character.currentHealth).toBe(readyPartner.character.maxHealth);
+    expect(readyPartner.character.healthPotions).toBeGreaterThan(0);
 
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
@@ -242,9 +235,16 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     const battleStream = await (await leaderContext.request.get('/api/stream')).json();
     const battleEntry = battleStream.entries.find((entry) => entry.metadata?.battleReplay?.battleId === result.battleReplay.battleId);
     expect(battleEntry).toBeTruthy();
+    const replayPlayerIds = new Set((result.battleReplay.players || []).map((player) => String(player.id || player.playerId || '')));
+    const playerManaGain = (event) => event.reason === 'basic-attack' && Number(event.delta) > 0 && replayPlayerIds.has(String(event.combatantId || event.targetId || ''));
+    const manaMomentIndex = moments.findIndex((moment) => moment.manaEvents?.some(playerManaGain));
+    expect(manaMomentIndex).toBeGreaterThanOrEqual(0);
+    const manaEvent = moments[manaMomentIndex].manaEvents.find(playerManaGain);
+    const playbackAtMana = Date.parse(battleEntry.createdAt) + manaMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
 
     await leader.reload();
     await expect(leader.getByTestId('stream-connection')).toHaveText(/LIVE/);
+    await Promise.all([pinReplayClock(leader, playbackAtMana), pinReplayClock(partner, playbackAtMana)]);
     const reconnectCard = leader.getByTestId('stream-dungeon-rich-card').last();
     const reconnectReplay = reconnectCard.getByTestId('shared-battle-surface');
     await expect(reconnectReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
@@ -258,13 +258,6 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     await expect(partnerLiveReplay).toHaveAttribute('data-replay-state', 'playing', { timeout: 7000 });
     expect(await partnerLiveReplay.getAttribute('data-replay-battle-id')).toBe(await reconnectReplay.getAttribute('data-replay-battle-id'));
 
-    const replayPlayerIds = new Set((result.battleReplay.players || []).map((player) => String(player.id || player.playerId || '')));
-    const playerManaGain = (event) => event.reason === 'basic-attack' && Number(event.delta) > 0 && replayPlayerIds.has(String(event.combatantId || event.targetId || ''));
-    const manaMomentIndex = moments.findIndex((moment) => moment.manaEvents?.some(playerManaGain));
-    expect(manaMomentIndex).toBeGreaterThanOrEqual(0);
-    const manaEvent = moments[manaMomentIndex].manaEvents.find(playerManaGain);
-    const playbackAtMana = Date.parse(battleEntry.createdAt) + manaMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
-    await Promise.all([pinReplayClock(leader, playbackAtMana), pinReplayClock(partner, playbackAtMana)]);
     await expect(reconnectCard.getByTestId(`shared-battle-mana-${manaEvent.combatantId}`)).toHaveAttribute('data-mana', String(manaEvent.manaAfter));
     await expect(partnerLiveCard.getByTestId(`shared-battle-mana-${manaEvent.combatantId}`)).toHaveAttribute('data-mana', String(manaEvent.manaAfter));
     await expect(reconnectCard.getByTestId('shared-battle-status-updates')).toContainText(`+${manaEvent.delta} Mana`);

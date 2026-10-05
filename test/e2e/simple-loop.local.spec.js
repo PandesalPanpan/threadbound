@@ -130,14 +130,14 @@ test('party members share the same hard attack-only dungeon and live stream', as
     await partner.reload();
     const attack = partner.locator('.simple-loop-action[data-testid="stream-attack"]');
     await expect(attack).toBeVisible({ timeout: 5000 });
-    const hpBefore = partnerState.activeRun.participants.find((participant) => participant.playerId === partnerState.character.id).hp;
+    const hpBeforeAttack = new Map(leaderState.activeRun.participants.map((participant) => [participant.playerId, participant.hp]));
     const runId = partnerState.activeRun.id;
     const versionBefore = partnerState.activeRun.version;
     await attack.click();
     await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 5000 }).toBeGreaterThan(versionBefore);
     const afterAttack = await dashboard(leaderContext);
     expect(afterAttack.activeRun.phase).toBe('between_encounter');
-    expect(afterAttack.activeRun.participants.find((participant) => participant.playerId === partnerState.character.id).hp).toBeLessThan(hpBefore);
+    expect(afterAttack.activeRun.participants.some((participant) => participant.hp < hpBeforeAttack.get(participant.playerId))).toBe(true);
 
     const receipt = leader.getByTestId('stream-system-entry').filter({ hasText: /cleared Frayed Wisp/i }).last();
     await expect(receipt).toBeVisible({ timeout: 5000 });

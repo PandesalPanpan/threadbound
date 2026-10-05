@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+import { earnGoldWithWelcomeQuest } from './helpers/earn-gold.js';
 
 const REVIEW_DIR = 'ux-review';
 
@@ -28,18 +29,6 @@ async function buyTrainingCache(context, key) {
   return response.json();
 }
 
-async function earnUpgradeGold(context, minimum = 8) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const current = await dashboard(context);
-    if (current.character.gold >= minimum) return current;
-    const response = await context.request.post('/api/hunt');
-    expect(response.ok()).toBe(true);
-  }
-  const current = await dashboard(context);
-  expect(current.character.gold).toBeGreaterThanOrEqual(minimum);
-  return current;
-}
-
 async function openInventory(page) {
   const input = page.getByTestId('stream-message');
   await input.fill('inventory');
@@ -54,10 +43,10 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
   await login(page);
 
   // Seed one durable equipment item through the authoritative Honey boundary, then earn
-  // Upgrade Gold through normal authoritative Hunts. Honey purchase grants are intentionally
-  // not sold: their durable grant record must remain referentially intact.
+  // Upgrade Gold through the renewable Welcome to Bellbloom Quest. Honey purchase grants
+  // are intentionally not sold: their durable grant record must remain referentially intact.
   const keeper = await buyTrainingCache(context, 'inventory-card-seed');
-  const before = await earnUpgradeGold(context, 8);
+  const before = await earnGoldWithWelcomeQuest(context, 8);
   expect(before.inventory.some((item) => item.id === keeper.item.id)).toBe(true);
   expect(before.character.gold).toBeGreaterThanOrEqual(8);
 
@@ -133,7 +122,7 @@ test('Inventory rich card exposes canonical slots, stats, sprites and actions in
 
 test('Inventory Sell confirms, commits Gold atomically, removes the item, and posts one canonical receipt', async ({ page, context }) => {
   await login(page);
-  await earnUpgradeGold(context, 8);
+  await earnGoldWithWelcomeQuest(context, 8);
 
   const purchaseResponse = await context.request.post('/api/shop/purchases/bronze-sword');
   expect(purchaseResponse.ok()).toBe(true);

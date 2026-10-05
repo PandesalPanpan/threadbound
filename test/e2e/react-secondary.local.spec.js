@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { earnGoldWithWelcomeQuest } from './helpers/earn-gold.js';
 
 async function login(page, slot = 'd') {
   await page.goto('/');
@@ -111,12 +112,9 @@ test('plain talk and speak commands resolve current-Town NPCs into shared receip
 test('React shell embeds Gold games and server-backed Blackjack state', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, 'b');
-  // Seed enough carried Gold for both the Blackjack wager and the follow-up
-  // Coinflip even when the Blackjack hand loses its wager.
-  for (let index = 0; index < 3; index += 1) {
-    const hunt = await page.context().request.post('/api/hunt');
-    expect(hunt.ok()).toBe(true);
-  }
+  // Complete the repeatable Welcome Quest for enough Gold to fund both games
+  // without turning setup into a sequence of attrition-heavy Hunts.
+  await earnGoldWithWelcomeQuest(page.context(), 8);
 
   await command(page, 'gambling');
   const helpCard = page.getByTestId('gambling-rich-card');

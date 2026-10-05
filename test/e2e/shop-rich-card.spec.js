@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+import { earnGoldWithWelcomeQuest } from './helpers/earn-gold.js';
 
 const REVIEW_DIR = 'ux-review';
 
@@ -18,23 +19,6 @@ async function dashboard(context) {
   const response = await context.request.get('/api/dashboard');
   expect(response.ok()).toBe(true);
   return response.json();
-}
-
-async function earnGold(context, minimum) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    let state = await dashboard(context);
-    if (state.character.gold >= minimum) return state;
-    if (state.character.currentHealth <= 12 && state.character.healthPotions > 0) {
-      const heal = await context.request.post('/api/recovery/potion');
-      expect(heal.ok()).toBe(true);
-      state = await dashboard(context);
-    }
-    const hunt = await context.request.post('/api/hunt');
-    expect(hunt.ok()).toBe(true);
-  }
-  const state = await dashboard(context);
-  expect(state.character.gold).toBeGreaterThanOrEqual(minimum);
-  return state;
 }
 
 async function openShop(page) {
@@ -63,7 +47,7 @@ test('Shop rich card presents equipment and potions with sprites, affordability,
   await expect(card.getByRole('img', { name: 'Health Potion' })).toBeVisible();
   await expect(card.getByTestId('stream-shop-sell-equipment')).toBeVisible();
 
-  await earnGold(context, 8);
+  await earnGoldWithWelcomeQuest(context, 8);
   card = await openShop(page);
   const before = await dashboard(context);
   await expect(card.getByTestId('stream-shop-bronze-sword')).toBeEnabled();

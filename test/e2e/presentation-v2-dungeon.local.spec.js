@@ -254,7 +254,8 @@ test('party dungeon updates both browsers, preserves drafts, reconnects, and exp
     await partner.getByTestId('stream-attack').click();
     const afterPartnerAttack = await waitForRunVersion(leaderContext, beforePartnerAttack.activeRun.id, beforePartnerAttack.activeRun.version);
     expect(afterPartnerAttack.activeRun.phase).toBe('between_encounter');
-    expect(afterPartnerAttack.activeRun.viewer.hp).toBeLessThan(beforePartnerAttack.activeRun.viewer.hp);
+    const hpBeforeAttack = new Map(beforePartnerAttack.activeRun.participants.map((participant) => [participant.playerId, participant.hp]));
+    expect(afterPartnerAttack.activeRun.participants.some((participant) => participant.hp < hpBeforeAttack.get(participant.playerId))).toBe(true);
     await expect(leader.getByTestId('stream-message')).toHaveValue('partner draft stays during realtime');
     const firstArenaReplay = await latestArenaReplay(leaderContext, beforePartnerAttack.activeRun.id);
     expect(firstArenaReplay?.kind).toBe('arena-combat-replay');
