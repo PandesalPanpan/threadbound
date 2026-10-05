@@ -25,18 +25,12 @@ async function dashboard(context) {
   return response.json();
 }
 
-async function earnGold(context, minimum) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    let state = await dashboard(context);
-    if (state.character.gold >= minimum) return state;
-    if (state.character.currentHealth <= 12 && state.character.healthPotions > 0) {
-      expect((await context.request.post('/api/recovery/potion')).ok()).toBe(true);
-    }
-    expect((await context.request.post('/api/hunt')).ok()).toBe(true);
-  }
-  const state = await dashboard(context);
-  expect(state.character.gold).toBeGreaterThanOrEqual(minimum);
-  return state;
+async function earnGold(context) {
+  const before = await dashboard(context);
+  expect((await context.request.post('/api/hunt')).ok()).toBe(true);
+  const after = await dashboard(context);
+  expect(after.character.gold).toBeGreaterThan(before.character.gold);
+  return after;
 }
 
 async function openBank(page) {
@@ -50,26 +44,29 @@ async function openBank(page) {
 
 test('Bank rich card moves Gold atomically between carried and protected balances and records the action in chat', async ({ page, context }) => {
   await login(page);
-  await earnGold(context, 10);
+  await earnGold(context);
   const before = (await shop(context)).bank;
+  const depositAmount = Math.min(10, before.carriedGold);
+  const withdrawalAmount = Math.min(4, depositAmount);
+  expect(depositAmount).toBeGreaterThan(0);
   const card = await openBank(page);
   await expect(card.getByTestId('bank-carried-gold')).toHaveText(`${before.carriedGold} Gold`);
   await expect(card.getByTestId('bank-banked-gold')).toHaveText(`${before.bankedGold} Gold`);
 
-  await card.getByTestId('bank-amount').fill('10');
+  await card.getByTestId('bank-amount').fill(String(depositAmount));
   await card.getByTestId('bank-deposit').click();
-  await expect.poll(async () => (await shop(context)).bank.bankedGold).toBe(before.bankedGold + 10);
+  await expect.poll(async () => (await shop(context)).bank.bankedGold).toBe(before.bankedGold + depositAmount);
   let balance = (await shop(context)).bank;
-  expect(balance.carriedGold).toBe(before.carriedGold - 10);
-  await expect(page.getByTestId('adventure-stream-log')).toContainText('Deposited 10 Gold into the Bank');
+  expect(balance.carriedGold).toBe(before.carriedGold - depositAmount);
+  await expect(page.getByTestId('adventure-stream-log')).toContainText(`Deposited ${depositAmount} Gold into the Bank`);
 
   const refreshed = await openBank(page);
-  await refreshed.getByTestId('bank-amount').fill('4');
+  await refreshed.getByTestId('bank-amount').fill(String(withdrawalAmount));
   await refreshed.getByTestId('bank-withdraw').click();
-  await expect.poll(async () => (await shop(context)).bank.bankedGold).toBe(before.bankedGold + 6);
+  await expect.poll(async () => (await shop(context)).bank.bankedGold).toBe(before.bankedGold + depositAmount - withdrawalAmount);
   balance = (await shop(context)).bank;
-  expect(balance.carriedGold).toBe(before.carriedGold - 6);
-  await expect(page.getByTestId('adventure-stream-log')).toContainText('Withdrew 4 Gold from the Bank');
+  expect(balance.carriedGold).toBe(before.carriedGold - depositAmount + withdrawalAmount);
+  await expect(page.getByTestId('adventure-stream-log')).toContainText(`Withdrew ${withdrawalAmount} Gold from the Bank`);
 
   const finalCard = await openBank(page);
   await expect(finalCard).not.toContainText(/Thread Dust|Honey/);

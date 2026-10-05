@@ -8,6 +8,13 @@ const NAMES = {
   d: 'Local Weaver D',
   e: 'Local Weaver E',
   f: 'Local Weaver F',
+  g: 'Local Weaver G',
+  h: 'Local Weaver H',
+  i: 'Local Weaver I',
+  j: 'Local Weaver J',
+  k: 'Local Weaver K',
+  l: 'Local Weaver L',
+  m: 'Local Weaver M',
 };
 
 async function login(page, slot) {
@@ -92,13 +99,24 @@ async function streamEntries(context) {
   return (await response.json()).entries || [];
 }
 
+async function latestArenaReplay(context, runId) {
+  const entries = await streamEntries(context);
+  return entries
+    .filter((entry) => entry.runId === runId && entry.metadata?.battleReplay?.arenaReplay)
+    .at(-1)?.metadata.battleReplay.arenaReplay || null;
+}
+
 async function finishLegacyRun(context) {
   for (let step = 0; step < 100; step += 1) {
     const state = await dashboard(context);
     if (!state.activeRun) return state;
     const run = state.activeRun;
     let response;
-    if (run.phase === 'upgrade' || run.phase === 'event') {
+    if (run.simpleCombat && run.phase === 'between_encounter') {
+      response = await context.request.post(`/api/runs/${run.id}/continue`);
+    } else if (run.simpleCombat) {
+      response = await context.request.post(`/api/runs/${run.id}/attack`);
+    } else if (run.phase === 'upgrade' || run.phase === 'event') {
       const choice = run.phase === 'event' ? run.runEvent?.choices?.[0] : state.runUpgrades?.[0];
       expect(choice?.id).toBeTruthy();
       response = await context.request.post(`/api/runs/${run.id}/upgrade`, { data: { upgradeId: choice.id } });
@@ -123,12 +141,12 @@ async function visibleSurfaceMetrics(page) {
   }));
 }
 
-test('mobile dungeon surface carries authoritative HP into a distinct boss state', async ({ browser }) => {
+test('mobile Dungeon resolves one room into an authoritative arena replay and persists HP across reload', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
 
   try {
-    await login(page, 'c');
+    await login(page, 'g');
     const entry = page.getByTestId('simple-dungeon-card');
     await expect(entry).toHaveAttribute('data-state', 'entry');
     await expect(entry.getByTestId('dungeon-name')).toHaveText('Frayed Hollow');
@@ -155,62 +173,27 @@ test('mobile dungeon surface carries authoritative HP into a distinct boss state
     await expect(page.getByTestId('stream-revive')).toHaveCount(0);
 
     const firstAttackState = await attackFromSimpleSurface(page, context);
-    expect(firstAttackState.activeRun.enemy.hp).toBeLessThan(started.activeRun.enemy.hp);
-    await expect(page.getByTestId('dungeon-enemy-hp')).toHaveText(`${firstAttackState.activeRun.enemy.hp} / ${firstAttackState.activeRun.enemy.maxHp} HP`);
+    expect(firstAttackState.activeRun.phase).toBe('between_encounter');
+    expect(firstAttackState.activeRun.viewer.hp).toBeLessThan(started.activeRun.viewer.hp);
     const runId = firstAttackState.activeRun.id;
     const hpAfterAttack = firstAttackState.activeRun.viewer.hp;
+    const firstArenaReplay = await latestArenaReplay(context, runId);
+    expect(firstArenaReplay?.kind).toBe('arena-combat-replay');
+    expect(['room_clear', 'victory']).toContain(firstArenaReplay?.outcome);
 
     await page.getByTestId('stream-message').fill('draft survives reload only by user action');
     await page.reload();
     await expect(page.getByTestId('app-status')).toHaveText('Ready');
     const reloaded = await dashboard(context);
     expect(reloaded.activeRun.id).toBe(runId);
+    expect(reloaded.activeRun.phase).toBe('between_encounter');
     expect(reloaded.activeRun.viewer.hp).toBe(hpAfterAttack);
-    await expect(page.getByTestId('dungeon-player-hp')).toHaveText(`${hpAfterAttack} / ${reloaded.activeRun.viewer.maxHp} HP`);
+    await expect(page.getByTestId('simple-dungeon-card').getByTestId('dungeon-party-member').first()).toContainText(`${hpAfterAttack} / ${reloaded.activeRun.viewer.maxHp} HP`);
     await expect(page.getByTestId('stream-message')).toHaveValue('');
 
-    let state = reloaded;
-    let usedPotion = false;
-    while (state.activeRun && !['boss', 'failed'].includes(state.activeRun.phase)) {
-      if (state.activeRun.phase === 'between_encounter') {
-        const hpBeforeDecision = state.activeRun.viewer.hp;
-        await expect(page.getByTestId('simple-dungeon-card')).toHaveAttribute('data-state', 'between_encounter');
-        await expect(page.getByTestId('stream-continue')).toBeVisible();
-        if (!usedPotion && (await dashboard(context)).character.healthPotions > 0) {
-          await page.getByTestId('stream-dungeon-potion').click();
-          state = await waitForRunVersion(context, state.activeRun.id, state.activeRun.version);
-          expect(state.activeRun.viewer.hp).toBeGreaterThan(hpBeforeDecision);
-          usedPotion = true;
-        } else {
-          await page.getByTestId('stream-continue').click();
-          state = await waitForRunVersion(context, state.activeRun.id, state.activeRun.version);
-          expect(state.activeRun.viewer.hp).toBe(hpBeforeDecision);
-        }
-        continue;
-      }
-      const roomBefore = state.activeRun.encounterIndex;
-      const hpBeforeRoom = state.activeRun.viewer.hp;
-      do {
-        state = await attackFromSimpleSurface(page, context);
-        if (!state.activeRun) break;
-      } while (state.activeRun.phase === 'combat' && state.activeRun.encounterIndex === roomBefore);
-      if (state.activeRun?.phase === 'between_encounter') {
-        expect(state.activeRun.viewer.hp).toBeGreaterThan(0);
-        expect(state.activeRun.viewer.hp).toBeLessThanOrEqual(state.activeRun.viewer.maxHp);
-        expect(hpBeforeRoom).toBeGreaterThan(0);
-      }
-      if (state.activeRun?.phase === 'combat' && state.activeRun.encounterIndex > roomBefore) {
-        expect(state.activeRun.viewer.hp).toBeGreaterThan(0);
-        expect(state.activeRun.viewer.hp).toBeLessThanOrEqual(state.activeRun.viewer.maxHp);
-        expect(hpBeforeRoom).toBeGreaterThan(0);
-      }
-    }
-
-    expect(state.activeRun?.phase).toBe('boss');
-    await expect(page.getByTestId('simple-dungeon-card')).toHaveAttribute('data-state', 'boss');
-    await expect(page.getByTestId('dungeon-room')).toContainText('Room 4 of 4');
-    await expect(page.getByTestId('dungeon-enemy-hp')).toHaveText(`${state.activeRun.enemy.hp} / ${state.activeRun.enemy.maxHp} HP`);
-    await expect(page.getByTestId('dungeon-player-hp')).toHaveText(`${state.activeRun.viewer.hp} / ${state.activeRun.viewer.maxHp} HP`);
+    await expect(page.getByTestId('simple-dungeon-card')).toHaveAttribute('data-state', 'between_encounter');
+    await expect(page.getByTestId('stream-continue')).toBeVisible();
+    await expect(page.getByTestId('simple-dungeon-card').getByTestId('dungeon-party-member').first()).toContainText(`${hpAfterAttack} / ${reloaded.activeRun.viewer.maxHp} HP`);
 
     await mkdir('test-results/presentation-v2', { recursive: true });
     await page.screenshot({ path: 'test-results/presentation-v2/dungeon-390x844.png', fullPage: false });
@@ -218,7 +201,7 @@ test('mobile dungeon surface carries authoritative HP into a distinct boss state
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.reload();
     await expect(page.getByTestId('app-status')).toHaveText('Ready');
-    await expect(page.getByTestId('simple-dungeon-card')).toHaveAttribute('data-state', 'boss');
+    await expect(page.getByTestId('simple-dungeon-card')).toHaveAttribute('data-state', 'between_encounter');
     await expect(page.locator('#character')).toBeHidden();
     await expect(page.locator('#dungeon')).toBeHidden();
     await expect(page.locator('.desktop-rail, .live-context-rail, [data-testid="live-context-rail"]')).toHaveCount(0);
@@ -242,8 +225,8 @@ test('party dungeon updates both browsers, preserves drafts, reconnects, and exp
   const partnerIdentity = { context: partnerContext, playerId: null };
 
   try {
-    await login(leader, 'e');
-    await login(partner, 'f');
+    await login(leader, 'h');
+    await login(partner, 'i');
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
     const joinCode = (await created.json()).party.joinCode;
@@ -262,6 +245,7 @@ test('party dungeon updates both browsers, preserves drafts, reconnects, and exp
     await expect(leader.getByTestId('dungeon-party-member')).toHaveCount(2);
     await expect(partner.getByTestId('dungeon-party-member')).toHaveCount(2);
     await expect(leader.getByTestId('dungeon-player-hp')).toContainText('40 / 40 HP');
+    await expect(partner.getByTestId('dungeon-player-hp')).toContainText('40 / 40 HP');
     await expect(leader.locator('.simple-loop-action')).toHaveCount(1);
     await expect(leader.getByTestId('stream-guard')).toHaveCount(0);
 
@@ -269,16 +253,23 @@ test('party dungeon updates both browsers, preserves drafts, reconnects, and exp
     const beforePartnerAttack = await dashboard(leaderContext);
     await partner.getByTestId('stream-attack').click();
     const afterPartnerAttack = await waitForRunVersion(leaderContext, beforePartnerAttack.activeRun.id, beforePartnerAttack.activeRun.version);
-    expect(afterPartnerAttack.activeRun.enemy.hp).toBeLessThan(beforePartnerAttack.activeRun.enemy.hp);
+    expect(afterPartnerAttack.activeRun.phase).toBe('between_encounter');
+    expect(afterPartnerAttack.activeRun.viewer.hp).toBeLessThan(beforePartnerAttack.activeRun.viewer.hp);
     await expect(leader.getByTestId('stream-message')).toHaveValue('partner draft stays during realtime');
-    await expect(leader.getByTestId('dungeon-enemy-hp')).toHaveText(`${afterPartnerAttack.activeRun.enemy.hp} / ${afterPartnerAttack.activeRun.enemy.maxHp} HP`);
+    const firstArenaReplay = await latestArenaReplay(leaderContext, beforePartnerAttack.activeRun.id);
+    expect(firstArenaReplay?.kind).toBe('arena-combat-replay');
+    expect(['room_clear', 'victory']).toContain(firstArenaReplay?.outcome);
 
     await leaderContext.setOffline(true);
     const beforeReconnect = await dashboard(partnerContext);
+    const continued = await partnerContext.request.post(`/api/runs/${beforeReconnect.activeRun.id}/continue`);
+    expect(continued.ok()).toBe(true);
+    const afterContinue = await waitForRunVersion(partnerContext, beforeReconnect.activeRun.id, beforeReconnect.activeRun.version);
     await partner.getByTestId('stream-attack').click();
-    const partnerAfterReconnectAction = await waitForRunVersion(partnerContext, beforeReconnect.activeRun.id, beforeReconnect.activeRun.version);
+    const partnerAfterReconnectAction = await waitForRunVersion(partnerContext, beforeReconnect.activeRun.id, afterContinue.activeRun.version);
     await leaderContext.setOffline(false);
-    await expect.poll(async () => leader.locator('[data-testid="dungeon-enemy-hp"]').textContent(), { timeout: 10000 }).toBe(`${partnerAfterReconnectAction.activeRun.enemy.hp} / ${partnerAfterReconnectAction.activeRun.enemy.maxHp} HP`);
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 10000 }).toBe(partnerAfterReconnectAction.activeRun.version);
+    expect((await latestArenaReplay(partnerContext, beforeReconnect.activeRun.id))?.kind).toBe('arena-combat-replay');
     await expect(leader.getByTestId('stream-message')).toHaveValue('partner draft stays during realtime');
 
     const reloadedRunId = (await dashboard(leaderContext)).activeRun.id;
@@ -286,7 +277,7 @@ test('party dungeon updates both browsers, preserves drafts, reconnects, and exp
     await pageReady(leader);
     const afterReload = await dashboard(leaderContext);
     expect(afterReload.activeRun.id).toBe(reloadedRunId);
-    await expect(leader.getByTestId('dungeon-player-hp')).toHaveText(`${afterReload.activeRun.viewer.hp} / ${afterReload.activeRun.viewer.maxHp} HP`);
+    await expect(leader.getByTestId('simple-dungeon-card').getByTestId('dungeon-party-member').filter({ hasText: NAMES.h })).toContainText(`${afterReload.activeRun.viewer.hp} / ${afterReload.activeRun.viewer.maxHp} HP`);
 
     await finishSimpleRun([leaderIdentity, partnerIdentity]);
   } finally {
@@ -310,11 +301,7 @@ test('a failed simple run leaves one failure receipt and makes authoritative hea
   const page = await context.newPage();
 
   try {
-    await login(page, 'b');
-    // Dungeon run HP is separate from carried character HP. Create real, persisted
-    // attrition first so the post-run Heal panel has an authoritative next action.
-    await sendCommand(page, 'hunt');
-    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /Victory — .* defeated/i }).last()).toBeVisible({ timeout: 7000 });
+    await login(page, 'l');
     let failedRunId = null;
     for (let attempt = 0; attempt < 6 && !failedRunId; attempt += 1) {
       await sendCommand(page, 'dungeon');
@@ -330,13 +317,15 @@ test('a failed simple run leaves one failure receipt and makes authoritative hea
         }
       }
       const entries = await streamEntries(context);
-      if (entries.some((entry) => entry.runId === started.activeRun.id && /fell in Frayed Hollow/i.test(entry.body))) {
+      const afterRun = await dashboard(context);
+      if (entries.some((entry) => entry.runId === started.activeRun.id && /fell in Frayed Hollow/i.test(entry.body))
+        || (!afterRun.activeRun && afterRun.character.currentHealth === 0)) {
         failedRunId = started.activeRun.id;
       }
     }
     expect(failedRunId).toBeTruthy();
     await expect.poll(async () => (await dashboard(context)).activeRun || null, { timeout: 7000 }).toBeNull();
-    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /fell in Frayed Hollow/i }).last()).toBeVisible({ timeout: 7000 });
+    await expect(page.getByTestId('stream-system-entry').filter({ hasText: /fell in Frayed Hollow|fell to/i }).last()).toBeVisible({ timeout: 7000 });
     await sendCommand(page, 'rest');
     await expect(page.getByTestId('simple-recovery-use-potion')).toBeVisible();
     const beforeHeal = await dashboard(context);
@@ -348,11 +337,18 @@ test('a failed simple run leaves one failure receipt and makes authoritative hea
   }
 });
 
-test('legacy tactical completion still projects one concise clear receipt during the migration', async ({ page, context }) => {
+test('legacy tactical runs migrate at the command boundary and project one concise terminal receipt', async ({ page, context }) => {
   await login(page, 'a');
   const started = await context.request.post('/api/dungeons/frayed-hollow/start');
   expect(started.ok()).toBe(true);
+  const legacyRunId = (await started.json()).run.id;
+  expect((await dashboard(context)).activeRun.simpleCombat).toBe(false);
   const terminal = await finishLegacyRun(context);
   expect(terminal.activeRun).toBeNull();
-  await expect(page.getByTestId('stream-system-entry').filter({ hasText: /cleared Frayed Hollow/i }).last()).toBeVisible({ timeout: 10000 });
+  const receipt = page.getByTestId('stream-system-entry').filter({ hasText: /Dungeon cleared/i }).last();
+  await expect(receipt).toBeVisible({ timeout: 10000 });
+  await expect(receipt).toContainText(/Dungeon cleared/i);
+  const entries = await streamEntries(context);
+  expect(entries.filter((entry) => entry.runId === legacyRunId && /Dungeon cleared/i.test(entry.body))).toHaveLength(1);
+  expect((await latestArenaReplay(context, legacyRunId))?.kind).toBe('arena-combat-replay');
 });

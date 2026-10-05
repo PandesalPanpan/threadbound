@@ -225,6 +225,40 @@ export class DungeonRun {
     return { state: this.toJSON(), events, damage: effectiveDamage, retaliation, critical: critical.critical, criticalMultiplier: critical.multiplier };
   }
 
+  /**
+   * Commit an encounter resolved by the shared arena policy while keeping the
+   * legacy run aggregate's encounter, event, upgrade, and reward lifecycle.
+   */
+  resolveArenaEncounter({ participants, enemy, outcome, actorPlayerId = null, now = new Date().toISOString() } = {}) {
+    this.#assertCombat();
+    if (!Array.isArray(participants) || !participants.length) throw new Error('Arena encounter requires persisted participants.');
+    if (!enemy || typeof enemy !== 'object') throw new Error('Arena encounter requires its persisted enemy.');
+    if (!['victory', 'defeat', 'draw'].includes(outcome)) throw new Error('Arena encounter outcome is invalid.');
+    this.state.participants = structuredClone(participants);
+    this.state.enemy = structuredClone(enemy);
+    this.state.enemyIntent = null;
+    this.state.attacksSinceIntent = 0;
+    this.state.intentCount = 0;
+    const events = [];
+    if (outcome === 'victory') {
+      this.state.enemy.hp = 0;
+      this.#defeatCurrentEnemy(events, actorPlayerId || undefined, now);
+    } else if (outcome === 'defeat') {
+      this.state.phase = 'failed';
+      this.state.completedAt = now;
+      events.push({
+        type: 'DungeonFailed',
+        runId: this.state.id,
+        dungeonId: this.state.dungeonId,
+        participantIds: this.state.participants.map((participant) => participant.playerId),
+      });
+    } else {
+      this.#maybeAdvanceBossPhase(events);
+      events.push({ type: 'ArenaEncounterTimedOut', runId: this.state.id, dungeonId: this.state.dungeonId, enemyId: this.state.enemy.id });
+    }
+    return { state: this.toJSON(), events, arenaOutcome: outcome };
+  }
+
   guard({ playerId, now = new Date().toISOString() }) {
     this.#assertCombat();
     const participant = this.#actingParticipant(playerId);

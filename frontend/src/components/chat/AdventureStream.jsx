@@ -101,6 +101,7 @@ function finalBattleDetail(metadata, victory) {
 function HuntSharedCard({ entry, viewerId, assets }) {
   const metadata = entry.metadata || {};
   const victory = Boolean(metadata.victory);
+  const draw = metadata.battleOutcome === 'draw';
   const gold = Number(metadata.gold ?? metadata.threadDust ?? 0) || 0;
   const xp = Number(metadata.experienceGained ?? metadata.xp ?? 0) || 0;
   const goldLost = Number(metadata.goldLost || 0) || 0;
@@ -108,7 +109,6 @@ function HuntSharedCard({ entry, viewerId, assets }) {
   const replay = sharedBattleReplay(entry);
   const itemAsset = metadata.itemName ? resolveShellAsset({ id: metadata.itemId, name: metadata.itemName, visualAssetId: metadata.itemVisualAssetId }, assets, ['item', 'icon']) : null;
   const [replayComplete, setReplayComplete] = useState(!replay);
-  useEffect(() => setReplayComplete(!replay), [entry.id, replay?.battleId]);
   const revealFinal = !replay || replayComplete;
   return (
     <RichCard
@@ -119,7 +119,7 @@ function HuntSharedCard({ entry, viewerId, assets }) {
       className={`stream-shared-card ${isOwner(entry, viewerId) ? 'is-owner' : 'is-observer'}`}
       testId="stream-hunt-rich-card"
     >
-      {replay ? <SharedBattleSurface replay={replay} createdAt={entry.createdAt} metadata={metadata} assets={assets} onComplete={() => setReplayComplete(true)} finalTitle={victory ? `Defeated ${metadata.enemyName || 'the encounter'}` : `Fell to ${metadata.enemyName || 'the encounter'}`} finalDetail={finalBattleDetail(metadata, victory)} /> : <div className={`stream-outcome-banner ${victory ? 'is-win' : 'is-loss'}`}><span>{victory ? 'VICTORY' : 'DEFEAT'}</span><strong>{victory ? `Defeated ${metadata.enemyName || 'the encounter'}` : `Fell to ${metadata.enemyName || 'the encounter'}`}</strong><b>{victory ? `+${gold} GOLD · +${xp} XP` : goldLost > 0 ? `−${goldLost} GOLD` : 'NO REWARD'}</b></div>}
+      {replay ? <SharedBattleSurface replay={replay} createdAt={entry.createdAt} metadata={metadata} assets={assets} onComplete={() => setReplayComplete(true)} finalTitle={draw ? 'The battle timed out' : victory ? `Defeated ${metadata.enemyName || 'the encounter'}` : `Fell to ${metadata.enemyName || 'the encounter'}`} finalDetail={draw ? 'Both sides remain standing · No reward' : finalBattleDetail(metadata, victory)} /> : <div className={`stream-outcome-banner ${draw ? 'is-push' : victory ? 'is-win' : 'is-loss'}`}><span>{draw ? 'DRAW' : victory ? 'VICTORY' : 'DEFEAT'}</span><strong>{draw ? 'The battle timed out' : victory ? `Defeated ${metadata.enemyName || 'the encounter'}` : `Fell to ${metadata.enemyName || 'the encounter'}`}</strong><b>{draw ? 'NO REWARD · TRY AGAIN' : victory ? `+${gold} GOLD · +${xp} XP` : goldLost > 0 ? `−${goldLost} GOLD` : 'NO REWARD'}</b></div>}
       {revealFinal ? <>
         <div className="stream-card-facts" data-testid="hunt-final-facts"><span>HP <strong>{metadata.remainingHp ?? 0}/{metadata.maxHp ?? 0}</strong></span><span>Turns <strong>{metadata.battleTurnCount ?? metadata.battle?.turns?.length ?? 0}</strong></span><span>Enemy <strong>{metadata.enemyName || 'Unknown'}</strong></span></div>
         {metadata.leveledUp ? <div className="stream-card-facts" data-testid="hunt-level-up"><span>Level <strong>+{metadata.levelsGained || 1} · {metadata.level}</strong></span>{Number(metadata.maxHealthIncrease) > 0 ? <span>Max HP <strong>+{metadata.maxHealthIncrease} · {metadata.maxHp}</strong></span> : null}</div> : null}
@@ -264,7 +264,7 @@ function DungeonSharedCard({ entry, viewerId, assets, onRequest, busy, dashboard
     const victoryDetail = unlockedArea ? `Clear reward secured · Area ${unlockedArea} unlocked.` : 'Clear reward secured.';
     const enemyLabel = (replay.enemies || [replay.enemy]).filter(Boolean).map((enemy) => enemy.name || 'Enemy').join(' + ') || 'Room';
     const stateClasses = [replayComplete && 'is-replay-complete', roomClear && 'is-room-clear', betweenEncounters && 'is-intermission', interactive && 'is-interactive'].filter(Boolean).join(' ');
-    return <RichCard kind="dungeon" kicker={sharedKicker(entry, viewerId, 'dungeon')} title="Dungeon" subtitle="The room resolved on the server. The same battle surface is visible to every Weaver." className={`stream-shared-card ${owner ? 'is-owner' : 'is-observer'} ${stateClasses}`} testId="stream-dungeon-rich-card"><SharedBattleSurface replay={replay} createdAt={entry.createdAt} metadata={metadata} assets={assets} onComplete={() => { setCompletedReplayIds((current) => current.has(replayIdentity) ? current : new Set([...current, replayIdentity])); onReplayComplete?.(replayIdentity); }} finalTitle={replay.status === 'victory' ? 'Dungeon cleared' : replay.status === 'defeat' ? 'The party fell' : `${enemyLabel} cleared`} finalDetail={replay.status === 'victory' ? victoryDetail : replay.status === 'defeat' ? 'Carried Gold is handled by the server.' : 'Choose the next room action.'} />{roomClear && replayComplete ? <>{intermissionActions}</> : null}</RichCard>;
+    return <RichCard kind="dungeon" kicker={sharedKicker(entry, viewerId, 'dungeon')} title="Dungeon" subtitle="The room resolved on the server. The same battle surface is visible to every Weaver." className={`stream-shared-card ${owner ? 'is-owner' : 'is-observer'} ${stateClasses}`} testId="stream-dungeon-rich-card"><SharedBattleSurface replay={replay} createdAt={entry.createdAt} metadata={metadata} assets={assets} onComplete={() => { setCompletedReplayIds((current) => current.has(replayIdentity) ? current : new Set([...current, replayIdentity])); onReplayComplete?.(replayIdentity); }} finalTitle={replay.status === 'victory' ? 'Dungeon cleared' : replay.status === 'defeat' ? 'The party fell' : replay.status === 'draw' ? 'The room battle timed out' : `${enemyLabel} cleared`} finalDetail={replay.status === 'victory' ? victoryDetail : replay.status === 'defeat' ? 'Carried Gold is handled by the server.' : replay.status === 'draw' ? 'Both sides remain standing · Resolve the room again.' : 'Choose the next room action.'} />{roomClear && replayComplete ? <>{intermissionActions}</> : null}</RichCard>;
   }
 
   const defeated = metadata.defeatedEnemyName || metadata.defeatedEnemyId || null;

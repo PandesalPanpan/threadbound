@@ -34,8 +34,11 @@ const SUPPORTED_AREAS = [
       // lets the authored room, boss, and add skills contribute to the run.
       normalEnemyHpMultiplier: 1.2,
       enemyRetaliationMultiplier: 1.1,
+      enemySpeedByEnemy: {
+        'ribbon-boar': 12,
+      },
       skillStartingManaByEnemy: {
-        'ribbon-boar': 80,
+        'ribbon-boar': 100,
         'meadow-breeze': 50,
         'parade-golem': 35,
       },

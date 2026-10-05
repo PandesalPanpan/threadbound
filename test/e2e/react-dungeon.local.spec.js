@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { replayMoments } from '../../frontend/src/battle/sharedReplay.js';
+import { fulfillLegacyReplay } from './legacy-replay-fixture.js';
 
 async function dashboard(context) {
   const response = await context.request.get('/api/dashboard');
@@ -65,6 +66,8 @@ function rectDistance(first, second) {
 
 test('Multi-enemy replay moves the committed actor and target without moving combatant rows', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/dungeons/frayed-hollow/start-shared', fulfillLegacyReplay);
+  await page.route(/\/api\/stream(?:\?.*)?$/, fulfillLegacyReplay);
   await page.goto('/');
   await page.getByTestId('local-login-a').click();
   await page.context().request.post('/api/party/leave');
@@ -173,10 +176,10 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     const started = await startResponse;
     expect(started.ok()).toBe(true);
     const startedPayload = await started.json();
+    const runId = startedPayload.run.id;
     expect(startedPayload.run.participants).toHaveLength(2);
     expect(startedPayload.battleReplay.enemies).toHaveLength(2);
-    expect(startedPayload.battleReplay.actions.some((action) => action.actionType === 'skill' && action.manaBefore === 100 && action.manaAfter === 0)).toBe(true);
-    runId = startedPayload.run.id;
+    expect(startedPayload.battleReplay.arenaReplay?.events.some((event) => event.kind === 'action' && event.actionType === 'skill')).toBe(true);
 
     const firstLeaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
     const firstPartnerCard = partner.getByTestId('stream-dungeon-rich-card').last();
@@ -303,8 +306,29 @@ test('Two-player shared Dungeon keeps its multi-enemy replay across mobile and d
     await expect(thirdPartnerCard.getByTestId('shared-battle-enemy')).toHaveCount(3);
     const partnerThirdIds = await thirdPartnerCard.getByTestId('shared-battle-enemy').evaluateAll((nodes) => nodes.map((node) => node.dataset.combatantId));
     expect(partnerThirdIds).toEqual(thirdIds);
+
+    // The visual assertions cover room three. Finish the authored boss stage as
+    // well so the shared party is released for later browser journeys.
+    let finishingRun = (await dashboard(leaderContext)).activeRun;
+    for (let room = 0; finishingRun?.id === runId && finishingRun.phase === 'between_encounter' && room < 2; room += 1) {
+      const livingParticipant = finishingRun.participants.find((participant) => participant.hp > 0);
+      if (!livingParticipant) {
+        await leaderContext.request.post(`/api/runs/${encodeURIComponent(runId)}/retreat`);
+        finishingRun = null;
+        break;
+      }
+      const leaderId = (await dashboard(leaderContext)).character.id;
+      const nextActor = livingParticipant.playerId === leaderId ? leaderContext : partnerContext;
+      const continued = await nextActor.request.post(`/api/runs/${encodeURIComponent(runId)}/continue`);
+      expect(continued.ok()).toBe(true);
+      finishingRun = (await dashboard(leaderContext)).activeRun;
+    }
+    expect((await dashboard(leaderContext)).activeRun).toBeNull();
   } finally {
-    if (runId) await leaderContext.request.post(`/api/runs/${encodeURIComponent(runId)}/retreat`).catch(() => {});
+    const activeRun = (await dashboard(leaderContext).catch(() => null))?.activeRun;
+    if (runId && activeRun?.id === runId && activeRun.phase === 'between_encounter') {
+      await leaderContext.request.post(`/api/runs/${encodeURIComponent(runId)}/retreat`).catch(() => {});
+    }
     await leaderContext.request.post('/api/party/leave').catch(() => {});
     await partnerContext.request.post('/api/party/leave').catch(() => {});
     await leaderContext.close();

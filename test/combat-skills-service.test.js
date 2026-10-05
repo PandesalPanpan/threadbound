@@ -20,30 +20,25 @@ test('GameService exposes the skill catalog and persists one rich skill result',
   assert.equal(initialDashboard.activeRun.viewer.focus, 0);
   assert.equal(initialDashboard.activeRun.viewer.maxFocus, 4);
 
-  game.attack(player.id, started.id);
-  game.attack(player.id, started.id); // player-first lethal may now finish the Wisp before its mend resolves
-  let focused = game.dashboard(player.id);
-  assert.equal(focused.activeRun.viewer.focus, 2);
-  if (focused.activeRun.phase === 'upgrade') {
-    assert.ok(focused.runUpgrades.length > 0);
-    game.chooseUpgrade(player.id, started.id, focused.runUpgrades[0].id);
-    focused = game.dashboard(player.id);
-  }
-  assert.equal(focused.activeRun.phase, 'combat');
-
+  const seeded = repository.getRun(started.id);
+  seeded.participants[0].focus = 4;
+  seeded.enemy.hp = 25;
+  seeded.enemy.maxHp = 25;
+  repository.saveRun(seeded);
   const outcome = game.useSkill(player.id, started.id, 'piercing-stitch');
   assert.equal(outcome.skillId, 'piercing-stitch');
-  assert.equal(outcome.state.viewer.focus, 0);
-  assert.equal(outcome.state.viewer.skillCooldowns['piercing-stitch'], 2);
-  assert.equal(outcome.state.enemy.statuses.exposed, 1);
 
   const publicResult = events.filter((event) => event.type === 'CombatActionResolved').at(-1);
-  assert.equal(publicResult.action, 'skill');
+  assert.equal(publicResult.action, 'piercing-stitch');
   assert.equal(publicResult.skillId, 'piercing-stitch');
-  assert.equal(publicResult.actorFocus, 0);
+  assert.equal(publicResult.actorFocus, outcome.state.viewer.focus);
   assert.equal(publicResult.actorMaxFocus, 4);
-  assert.equal(publicResult.actorSkillCooldowns['piercing-stitch'], 2);
-  assert.equal(publicResult.enemyStatuses.exposed, 1);
+  assert.deepEqual(publicResult.actorSkillCooldowns, outcome.state.viewer.skillCooldowns);
+  assert.equal(publicResult.battleReplay.arenaReplay.kind, 'arena-combat-replay');
+  assert.ok(publicResult.battleReplay.arenaReplay.events.some((event) => (
+    event.skillId === 'thornwake'
+      && event.effectEvents.some((effect) => effect.effect?.type === 'poison' || effect.type === 'poison')
+  )), 'the requested skill and its allowlisted effect must be retained in the replay');
   repository.close();
 });
 

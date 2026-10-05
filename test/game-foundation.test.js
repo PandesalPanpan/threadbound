@@ -237,7 +237,13 @@ test('two-player party owns one run, leader owns shared discoveries and power dr
   assert.equal(completed.rewardsGranted, true);
   assert.equal(completed.selectedUpgrades.length, 2);
   assert.ok(completed.participants.every((participant) => participant.contributionDamage > 0));
-  assert.ok(completed.participants.some((participant) => participant.successfulGuards + participant.successfulInterrupts > 0));
+  assert.equal(completed.lastBattleReplay.kind, 'arena-combat-replay');
+  assert.equal(completed.lastBattleReplay.outcome, 'victory');
+  assert.deepEqual(
+    new Set(completed.lastBattleReplay.combatants.filter((combatant) => combatant.team === 'players').map((combatant) => combatant.playerId)),
+    new Set(players),
+    'the committed boss replay must include the full party roster',
+  );
   assert.equal(repository.listItems(leader.id).length, 1);
   assert.equal(repository.listItems(partner.id).length, 1);
   assert.equal(repository.getPlayer(leader.id).threadDust, 15);

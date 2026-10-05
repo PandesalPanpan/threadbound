@@ -1,6 +1,4 @@
-import { simulateAutomaticBattle } from './AutomaticBattleSimulator.js';
-import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
-import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
+import { simulateArenaCombat } from './ArenaCombatEngine.js';
 import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
 
@@ -55,7 +53,7 @@ function combatant(value, label) {
  * effects and resistance handling, and the battle does not mutate either
  * combatant's normal Hunt/Adventure health or economy state.
  */
-export function resolveDuelBattle({ challenger, opponent, random = Math.random } = {}) {
+export function resolveDuelBattle({ challenger, opponent, duelId = null, random = Math.random } = {}) {
   const left = combatant(challenger, 'challenger');
   const right = combatant(opponent, 'opponent');
   if (left.id === right.id) {
@@ -64,17 +62,11 @@ export function resolveDuelBattle({ challenger, opponent, random = Math.random }
     throw error;
   }
 
-  const battle = simulateAutomaticBattle(
-    {
-      resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }),
-      resolveSkill: resolveAutomaticBattleSkill,
-    },
-    {
-      players: [left],
-      enemies: [right],
-      context: { activity: 'duel', challengerId: left.id, opponentId: right.id },
-    },
-  );
+  const battle = simulateArenaCombat({
+    players: [left],
+    enemies: [right],
+    context: { activity: 'duel', battleId: duelId || null, challengerId: left.id, opponentId: right.id },
+  });
 
   const outcome = battle.outcome === 'draw'
     ? 'draw'

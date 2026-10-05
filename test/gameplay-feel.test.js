@@ -37,7 +37,11 @@ test('combat preview simulates the authoritative aggregate without mutating the 
 
   const result = game.attack(player.id, run.id);
   assert.equal(result.damage, preview.actions.attack.damage);
-  assert.equal(result.state.enemy.hp, preview.actions.attack.enemyHpAfter);
+  assert.equal(result.battleReplay.arenaReplay.kind, 'arena-combat-replay');
+  assert.equal(
+    result.battleReplay.arenaReplay.finalCombatants.find((combatant) => combatant.team === 'enemies').hp,
+    preview.actions.attack.enemyHpAfter,
+  );
   assert.equal(result.state.viewer.hp, preview.actions.attack.actorHpAfter);
   repository.close();
 });

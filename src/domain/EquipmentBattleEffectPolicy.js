@@ -182,7 +182,7 @@ function targetHasTag(target, tag) {
 
 function triggerMatches({ mechanic, actor, target, turns, baseAction }) {
   if (mechanic.trigger === 'first-action') {
-    return !turns.some((turn) => turn.actorId === actor.id && turn.targetId !== null);
+    return !turns.some((turn) => turn.actorId === actor.id && turn.targetId !== null && Number(turn.targetDamage || 0) > 0);
   }
   if (mechanic.trigger === 'target-tag') return targetHasTag(target, mechanic.targetTag);
   if (mechanic.trigger === 'on-hit') return Number(baseAction.targetDamage || 0) > 0;
@@ -216,6 +216,17 @@ export function applyEquipmentBattleEffects({ actor, target, turns = [], baseAct
         appliedEffect: mechanic.kind === 'apply-effect' ? mechanic.effect.type : undefined,
       }));
     }
+  }
+
+  const firstActionDamageBonus = Math.max(0, Math.floor(Number(actor.firstActionDamageBonus || 0)));
+  if (firstActionDamageBonus > 0 && !turns.some((turn) => turn.actorId === actor.id && turn.targetId !== null && Number(turn.targetDamage || 0) > 0)) {
+    bonusDamage += firstActionDamageBonus;
+    triggered.push(Object.freeze({
+      effectCode: 'run-action-bonus',
+      kind: 'bonus-damage',
+      trigger: 'first-action',
+      amount: firstActionDamageBonus,
+    }));
   }
 
   return {

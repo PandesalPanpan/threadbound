@@ -62,31 +62,36 @@ export class SQLiteFightBuffRepository {
   consumeFight(playerId) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const before = this.listActive(playerId);
-      for (const buff of before) {
-        if (buff.remainingFights <= 1) {
-          this.db.prepare('DELETE FROM player_fight_buffs WHERE player_id = ? AND buff_code = ?').run(playerId, buff.code);
-        } else {
-          this.db.prepare(`
-            UPDATE player_fight_buffs
-            SET remaining_fights = remaining_fights - 1
-            WHERE player_id = ? AND buff_code = ? AND remaining_fights > 0
-          `).run(playerId, buff.code);
-        }
-      }
+      const consumed = this.consumeFightInTransaction(playerId);
       this.db.exec('COMMIT');
-      const after = new Map(this.listActive(playerId).map((buff) => [buff.code, buff]));
-      return Object.freeze(before.map((buff) => Object.freeze({
-        code: buff.code,
-        name: buff.name,
-        beforeFights: buff.remainingFights,
-        remainingFights: after.get(buff.code)?.remainingFights || 0,
-        expired: !after.has(buff.code),
-      })));
+      return consumed;
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
     }
+  }
+
+  consumeFightInTransaction(playerId) {
+    const before = this.listActive(playerId);
+    for (const buff of before) {
+      if (buff.remainingFights <= 1) {
+        this.db.prepare('DELETE FROM player_fight_buffs WHERE player_id = ? AND buff_code = ?').run(playerId, buff.code);
+      } else {
+        this.db.prepare(`
+          UPDATE player_fight_buffs
+          SET remaining_fights = remaining_fights - 1
+          WHERE player_id = ? AND buff_code = ? AND remaining_fights > 0
+        `).run(playerId, buff.code);
+      }
+    }
+    const after = new Map(this.listActive(playerId).map((buff) => [buff.code, buff]));
+    return Object.freeze(before.map((buff) => Object.freeze({
+      code: buff.code,
+      name: buff.name,
+      beforeFights: buff.remainingFights,
+      remainingFights: after.get(buff.code)?.remainingFights || 0,
+      expired: !after.has(buff.code),
+    })));
   }
 
   #migrate() {

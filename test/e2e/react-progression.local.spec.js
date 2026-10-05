@@ -5,6 +5,7 @@ import { resolveShellAsset } from '../../frontend/src/shell/presentation.js';
 import { isLegacyGenericItemAsset, legacyItemVisualAssetId } from '../../public/item-asset-policy.js';
 import { VISUAL_ASSETS } from '../../public/visual-asset-catalog.js';
 import { AREA_CONTENT } from '../../src/content/AreaContentCatalog.js';
+import { fulfillLegacyReplay } from './legacy-replay-fixture.js';
 
 const REVIEW_DIR = 'ux-review';
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -85,6 +86,9 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
   try {
     await login(leader, 'l');
     await login(partner, 'm');
+    await leader.route('**/api/dungeons/brightbell-trial/start-shared', fulfillLegacyReplay);
+    await leader.route(/\/api\/stream(?:\?.*)?$/, fulfillLegacyReplay);
+    await partner.route(/\/api\/stream(?:\?.*)?$/, fulfillLegacyReplay);
 
     await command(leader, 'inventory');
     await expect(leader.getByTestId('stream-inventory-rich-card').last()).toBeVisible();
@@ -178,7 +182,11 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
     const levelHuntStream = await (await leaderContext.request.get('/api/stream')).json();
     const levelHuntEntry = levelHuntStream.entries.filter((entry) => entry.eventType === 'HuntResolved').at(-1);
     expect(levelHuntEntry?.metadata?.leveledUp).toBe(true);
-    await expect(levelHuntCard.getByTestId('hunt-level-up')).toContainText('Max HP +3');
+    await leader.reload();
+    await expect(leader.getByTestId('stream-connection')).toHaveText(/LIVE/);
+    const reconnectedLevelHuntCard = leader.getByTestId('stream-hunt-rich-card').last();
+    await expect(reconnectedLevelHuntCard.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete');
+    await expect(reconnectedLevelHuntCard.getByTestId('hunt-level-up')).toContainText('Max HP +3');
     const afterLevelHunt = await dashboard(leaderContext);
     expect(afterLevelHunt.character.level).toBe(2);
     expect(afterLevelHunt.character.maxHealth).toBe(beforeLevelHunt.character.maxHealth + 3);
@@ -301,16 +309,25 @@ test('two Weavers clear the first Area gate, travel, and meet a stronger Area 2 
       if (run.phase === 'between_encounter') {
         const needsHeal = run.participants.some((participant) => participant.hp < participant.maxHp);
         if (needsHeal && !run.intermissionPotionClaimedWindowId) {
-          const partnerDashboard = await dashboard(partnerContext);
-          if (partnerDashboard.character.healthPotions > 0) {
-            const partnerCard = partner.getByTestId('stream-dungeon-rich-card').last();
-            const heal = partnerCard.getByTestId('stream-run-potion');
+          const healers = await Promise.all([
+            { page: leader, context: leaderContext },
+            { page: partner, context: partnerContext },
+          ].map(async (candidate) => ({ ...candidate, dashboard: await dashboard(candidate.context) })));
+          const claimant = healers.find(({ dashboard: playerState }) => {
+            const participant = run.participants.find((entry) => entry.playerId === playerState.character.id);
+            return participant?.hp > 0 && playerState.character.healthPotions > 0;
+          });
+          if (claimant) {
+            const claimantCard = claimant.page.getByTestId('stream-dungeon-rich-card').last();
+            const heal = claimantCard.getByTestId('stream-run-potion');
             if (await heal.isEnabled()) {
-              const healResponse = partner.waitForResponse((response) => response.url().endsWith(`/api/runs/${encodeURIComponent(runId)}/potion`) && response.request().method() === 'POST');
+              const healResponse = claimant.page.waitForResponse((response) => response.url().endsWith(`/api/runs/${encodeURIComponent(runId)}/potion`) && response.request().method() === 'POST');
               await heal.click();
               expect((await healResponse).ok()).toBe(true);
-              const partnerId = partnerDashboard.character.id;
-              await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.intermissionPotionClaimedByPlayerId || null, { timeout: 7000 }).toBe(partnerId);
+              const claimantId = claimant.dashboard.character.id;
+              await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.intermissionPotionClaimedByPlayerId || null, { timeout: 7000 }).toBe(claimantId);
+              const leaderCard = leader.getByTestId('stream-dungeon-rich-card').last();
+              const partnerCard = partner.getByTestId('stream-dungeon-rich-card').last();
               await expect(leaderCard.getByTestId('stream-run-potion')).toBeDisabled({ timeout: 7000 });
               await expect(partnerCard.getByTestId('stream-run-potion')).toBeDisabled({ timeout: 7000 });
               await expect(leaderCard.getByTestId('intermission-heal-status')).toContainText('Shared intermission Heal used');

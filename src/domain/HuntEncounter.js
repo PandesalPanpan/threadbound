@@ -1,7 +1,4 @@
-import { simulateAutomaticBattle } from './AutomaticBattleSimulator.js';
-import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
-import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
-import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
+import { simulateArenaCombat } from './ArenaCombatEngine.js';
 
 export const HUNT_ENEMIES = Object.freeze([
   Object.freeze({ id: 'frayed-mite', name: 'Frayed Mite', hp: 8, attack: 4, defense: 0, speed: 10, critChance: 0, retaliation: 2, gold: 1, experience: 10, dropChance: 0.24, visualAssetId: 'mob.mold-mite.v1' }),
@@ -30,7 +27,7 @@ function positiveInteger(value, label) {
  * Hunt owns encounter selection/reward projection while AutomaticBattleSimulator
  * owns HP mutation, initiative, Crit, effects, resistances, and turn history.
  */
-export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, encounter = null, random = Math.random } = {}) {
+export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, encounter = null, context = {}, random = Math.random } = {}) {
   if (!player || typeof player !== 'object') throw new Error('Hunt requires a player combatant.');
   const playerId = String(player.id || '').trim();
   if (!playerId) throw new Error('Hunt requires a player id.');
@@ -45,32 +42,31 @@ export function resolveAutomaticHunt({ player, currentHealth, enemyRoll = 0, enc
     || player.weaponFamily
     || player.equipment?.weapon?.weaponFamily
     || player.equippedItem?.weaponFamily);
-  const playerCombatant = prepareAutomaticBattleCombatant({
+  const playerCombatant = {
     ...player,
     id: playerId,
     hp: currentHealth,
     maxHp,
-  }, { defaultSkill: signatureSkillsEnabled ? 'threadsong' : null });
-  const enemyCombatant = prepareAutomaticBattleCombatant({
+    ...(signatureSkillsEnabled && !player.skillCode && !player.signatureSkillId && !player.weaponFamily
+      && !player.equipment?.weapon?.weaponFamily && !player.equippedItem?.weaponFamily
+      ? { skillCode: 'threadsong' }
+      : {}),
+  };
+  const enemyCombatant = {
     ...enemy,
     id: enemyId,
     name: enemy.name,
     displayName: enemy.name,
     hp: enemy.hp,
-    maxHp: enemy.hp,
+    maxHp: enemy.maxHp || enemy.hp,
     tags: ['hunt-enemy'],
-  }, { defaultSkill: signatureSkillsEnabled ? 'threadsong' : null });
-  const battle = simulateAutomaticBattle(
-    {
-      resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }),
-      ...(signatureSkillsEnabled ? { resolveSkill: resolveAutomaticBattleSkill } : {}),
-    },
-    {
-      players: [playerCombatant],
-      enemies: [enemyCombatant],
-      context: { activity: 'hunt', enemyId: enemy.id },
-    },
-  );
+    ...(!enemy.skillCode && signatureSkillsEnabled ? { skillCode: 'threadsong' } : {}),
+  };
+  const battle = simulateArenaCombat({
+    players: [playerCombatant],
+    enemies: [enemyCombatant],
+    context: { ...context, activity: 'hunt', playerId, enemyId: enemy.id },
+  });
 
   const playerAfter = battle.combatants.find((combatant) => combatant.id === playerId);
   const remainingHp = Math.max(0, Number(playerAfter?.hp || 0));

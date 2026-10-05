@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { replayFrameAt, replayMoments, sharedReplayKind } from '../../battle/sharedReplay.js';
 import { resolveShellAsset } from '../../shell/presentation.js';
+
+gsap.registerPlugin(useGSAP);
 
 const DUEL_EQUIPMENT_SLOTS = Object.freeze([
   ['weapon', 'Weapon'],
@@ -185,7 +189,7 @@ function formatDamage(moment) {
   return numberOr(moment?.damage) > 0 ? `−${numberOr(moment.damage)} HP` : 'MISS';
 }
 
-export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets = [], className = '', finalTitle = '', finalDetail = '', battleLabel = null, onComplete = null }) {
+function LegacySharedBattleSurface({ replay, createdAt, metadata = {}, assets = [], className = '', finalTitle = '', finalDetail = '', battleLabel = null, onComplete = null }) {
   const kind = sharedReplayKind(replay);
   const moments = useMemo(() => replayMoments(replay), [replay]);
   const frame = usePlayback(replay, createdAt);
@@ -371,4 +375,232 @@ export function SharedBattleSurface({ replay, createdAt, metadata = {}, assets =
       <span className="sr-only">{allUnits.map((unit) => `${unit.displayName || unit.name || 'Combatant'} ${currentHp(unit, replay, moments, frame)} HP`).join('. ')}</span>
     </section>
   );
+}
+
+function arenaUnitAt(unit, replay, timeMs, complete) {
+  if (complete) return replay.finalCombatants?.find((candidate) => candidate.id === unit.id) || unit;
+  const next = { ...unit };
+  for (const event of replay.events || []) {
+    if (Number(event.atMs || 0) > timeMs) break;
+    if (event.kind === 'move' && event.unitId === unit.id) {
+      const elapsed = timeMs - Number(event.atMs || 0);
+      const duration = Math.max(1, Number(event.durationMs || 1));
+      const ratio = Math.max(0, Math.min(1, elapsed / duration));
+      next.x = Number(event.fromX) + (Number(event.toX) - Number(event.fromX)) * ratio;
+      next.y = Number(event.fromY) + (Number(event.toY) - Number(event.fromY)) * ratio;
+    }
+    const update = event.updates?.find((candidate) => candidate.id === unit.id);
+    if (update) Object.assign(next, update);
+  }
+  return next;
+}
+
+function arenaActionSummary(event, units) {
+  if (!event) return 'The battle is resolving…';
+  const byId = new Map(units.map((unit) => [unit.id, unit]));
+  const actor = byId.get(event.actorId)?.displayName || 'A combatant';
+  const target = byId.get(event.targetId)?.displayName || 'the opposing line';
+  if (event.kind === 'move') return `${byId.get(event.unitId)?.displayName || 'A combatant'} moved into position.`;
+  const damage = (event.damageEvents || []).reduce((sum, entry) => sum + Number(entry.damage || 0), 0);
+  const healing = (event.healingEvents || []).reduce((sum, entry) => sum + Number(entry.healing || 0), 0);
+  if (event.actionType === 'skill') return `${actor} used ${titleCase(event.skillName || event.skillId || 'a skill')}${damage ? ` · −${damage} HP` : ''}${healing ? ` · +${healing} HP` : ''}.`;
+  return damage ? `${actor} hit ${target} · −${damage} HP.` : `${actor} acted.`;
+}
+
+function ArenaReplaySurface({ replay, legacyReplay, createdAt, metadata = {}, assets = [], className = '', finalTitle = '', finalDetail = '', battleLabel = null, onComplete = null }) {
+  const scope = useRef(null);
+  const timelineRef = useRef(null);
+  const unitRefs = useRef(new Map());
+  const completionNotifiedRef = useRef(false);
+  const reducedMotion = useReducedMotion();
+  const [progress, setProgress] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const durationMs = Math.max(1, Number(replay.durationMs || 1));
+  const detailedCombatants = legacyReplay?.details?.combatants || [];
+  const detailsById = new Map(detailedCombatants.map((unit) => [String(unit.id), unit]));
+  const roster = (replay.combatants || []).map((unit) => {
+    const detail = detailsById.get(String(unit.id));
+    return {
+      ...unit,
+      equipment: unit.equipment && Object.values(unit.equipment).some(Boolean)
+        ? unit.equipment
+        : detail?.equipment || unit.equipment || {},
+    };
+  });
+  const replayId = replay.context?.battleId || legacyReplay?.battleId || legacyReplay?.runId || createdAt || 'arena-replay';
+  const timelineDuration = Math.max(2, Math.min(8, durationMs / 1000 * 0.12));
+
+  useGSAP(() => {
+    if (!replay || reducedMotion) {
+      setProgress(1);
+      setPlaying(false);
+      return undefined;
+    }
+    const cursor = { progress: 0 };
+    const timeline = gsap.timeline({
+      paused: true,
+      onUpdate: () => setProgress(cursor.progress),
+      onComplete: () => setPlaying(false),
+    });
+    timeline.to(cursor, { progress: 1, duration: timelineDuration, ease: 'none' });
+    timelineRef.current = timeline;
+    setProgress(0);
+    setPlaying(true);
+    timeline.play(0);
+    return () => {
+      timeline.kill();
+      if (timelineRef.current === timeline) timelineRef.current = null;
+    };
+  }, { scope, dependencies: [replayId, reducedMotion, timelineDuration], revertOnUpdate: true });
+
+  useEffect(() => {
+    timelineRef.current?.timeScale(speed);
+  }, [speed]);
+
+  useEffect(() => {
+    completionNotifiedRef.current = false;
+  }, [replayId]);
+
+  useEffect(() => {
+    if (progress >= 1 && !completionNotifiedRef.current) {
+      completionNotifiedRef.current = true;
+      onComplete?.();
+    }
+  }, [progress, onComplete]);
+
+  const complete = reducedMotion || progress >= 1;
+  const timeMs = complete ? durationMs : progress * durationMs;
+  const units = roster.map((unit) => arenaUnitAt(unit, replay, timeMs, complete));
+  const finalById = new Map((replay.finalCombatants || []).map((unit) => [unit.id, unit]));
+  const players = units.filter((unit) => unit.team === 'players');
+  const enemies = units.filter((unit) => unit.team === 'enemies');
+  const events = replay.events || [];
+  const currentEvent = [...events].reverse().find((event) => Number(event.atMs || 0) <= timeMs) || null;
+  const actionEvent = [...events].reverse().find((event) => event.kind === 'action' && Number(event.atMs || 0) <= timeMs) || null;
+  const manaUpdates = (currentEvent?.manaEvents || []).map((event) => {
+    const delta = Number(event.delta ?? (Number(event.manaAfter) - Number(event.manaBefore)));
+    if (!Number.isFinite(delta) || delta === 0) return null;
+    const recipient = units.find((unit) => unit.id === String(event.combatantId || event.targetId || ''));
+    return `${recipient?.displayName || recipient?.name || 'Combatant'} · ${delta > 0 ? '+' : ''}${delta} Mana`;
+  }).filter(Boolean);
+  const outcome = legacyReplay?.status || replay.outcome || 'draw';
+  const status = outcome === 'room_clear' ? 'room_clear' : outcome === 'victory' ? 'victory' : outcome === 'defeat' ? 'defeat' : 'draw';
+  const statusLabel = status === 'room_clear' ? 'ROOM CLEAR' : status.toUpperCase();
+  const targetId = actionEvent?.targetId || null;
+
+  useLayoutEffect(() => {
+    for (const unit of units) {
+      const node = unitRefs.current.get(unit.id);
+      const start = roster.find((candidate) => candidate.id === unit.id);
+      if (!node || !start) continue;
+      gsap.set(node, {
+        xPercent: (Number(unit.x || 0) - Number(start.x || 0)) * 100,
+        yPercent: (Number(unit.y || 0) - Number(start.y || 0)) * 100,
+      });
+    }
+  }, [progress, complete, roster]);
+
+  const togglePlayback = () => {
+    const timeline = timelineRef.current;
+    if (!timeline || reducedMotion) return;
+    if (timeline.paused()) {
+      if (timeline.progress() >= 1) timeline.restart();
+      else timeline.play();
+      setPlaying(true);
+    } else {
+      timeline.pause();
+      setPlaying(false);
+    }
+  };
+  const restart = () => {
+    if (reducedMotion) { setProgress(1); return; }
+    timelineRef.current?.restart();
+    setPlaying(true);
+  };
+  const skip = () => {
+    timelineRef.current?.progress(1);
+    setProgress(1);
+    setPlaying(false);
+  };
+  const teamSummary = (team, label, enemy = false) => <div className={`arena-replay-team ${enemy ? 'arena-replay-team--enemy' : ''}`} key={label}>
+    <strong>{label}</strong>
+    <div>{team.map((unit) => {
+      const final = finalById.get(unit.id) || unit;
+      const asset = resolveShellAsset(unit, assets, enemy ? ['mob', 'boss'] : ['character']);
+      const duelGear = replay.context?.activity === 'duel'
+        ? DUEL_EQUIPMENT_SLOTS.map(([slot, slotLabel]) => [slot, slotLabel, unit.equipment?.[slot]])
+          .filter(([, , item]) => item && (item.name || item.visualAssetId))
+        : [];
+      return <div className="arena-replay-roster-unit" key={unit.id} data-testid={`arena-replay-roster-${unit.id}`}>
+        {asset ? <img src={asset.src} alt="" data-visual-asset-id={asset.id} /> : <span aria-hidden="true">✦</span>}
+        <div><b>{unit.displayName || unit.name}</b><small>{unit.role || 'combatant'} · {Number(final.hp || 0)}/{unit.maxHp} HP</small>
+          <div className={`arena-replay-meter ${enemy ? 'is-enemy' : ''}`}><i style={{ width: `${percentage(final.hp, unit.maxHp)}%` }} /></div>
+          <small>{Number(final.mana || 0)}/{unit.maxMana} Mana</small>
+          {duelGear.length ? <div className="shared-battle-loadout" data-testid={`duel-loadout-${unit.id}`} aria-label={`${unit.displayName || unit.name} equipped items`}>
+            {duelGear.map(([slot, slotLabel, item]) => {
+              const gearAsset = resolveShellAsset(item, assets, ['item', 'icon']);
+              return <span className="shared-battle-loadout__item" key={slot} aria-label={`${slotLabel}: ${item.name || slotLabel}`} title={`${slotLabel}: ${item.name || slotLabel}`} data-testid={`duel-loadout-${unit.id}-${slot}`}>
+                {gearAsset ? <img src={gearAsset.src} alt="" data-visual-asset-id={gearAsset.id} /> : <i aria-hidden="true">✦</i>}
+                <small>{item.name || slotLabel}</small>
+              </span>;
+            })}
+          </div> : null}
+        </div>
+      </div>;
+    })}</div>
+  </div>;
+
+  if (!replay?.combatants?.length) return null;
+  return <section ref={scope} className={`shared-battle-surface arena-replay-surface ${complete ? 'is-complete' : 'is-playing'} ${className}`.trim()} data-testid="shared-battle-surface" data-arena-replay-surface="true" data-replay-state={complete ? 'complete' : 'playing'} data-replay-battle-id={replayId}>
+    <header className="arena-replay-header"><div><span className="shell-kicker">{complete ? statusLabel : 'ARENA REPLAY'}</span><strong>{battleLabel || replay.context?.activity?.replaceAll('-', ' ') || 'Battle'}</strong></div><span>{Math.round(progress * 100)}%</span></header>
+    <div className="arena-replay-board" role="img" aria-label={`8 by 8 battle arena. ${players.length} players and ${enemies.length} enemies.`}>
+      <div className="arena-replay-grid" aria-hidden="true" />
+      {roster.map((start) => {
+        const unit = units.find((candidate) => candidate.id === start.id) || start;
+        const enemy = unit.team === 'enemies';
+        const asset = resolveShellAsset(unit, assets, enemy ? (unit.isBoss ? ['boss', 'mob'] : ['mob', 'boss']) : ['character']);
+        const hp = Number(unit.hp || 0);
+        const mana = Number(unit.mana || 0);
+        const defeated = hp <= 0;
+        const active = actionEvent?.actorId === unit.id && currentEvent === actionEvent;
+        const targeted = targetId === unit.id && currentEvent === actionEvent;
+        return <div className={`arena-replay-unit shared-battle-unit ${enemy ? 'is-enemy' : 'is-player'} ${defeated ? 'is-defeated' : ''} ${active ? 'is-active' : ''} ${targeted ? 'is-targeted' : ''}`}
+          key={unit.id} data-combatant-id={unit.id} data-testid={`arena-replay-unit-${unit.id}`}
+          style={{ left: `${Number(start.x || 0) * 12.5}%`, top: `${Number(start.y || 0) * 12.5}%` }}
+          ref={(node) => { if (node) unitRefs.current.set(unit.id, node); else unitRefs.current.delete(unit.id); }}>
+          <div className="arena-replay-unit__bars"><span className="hp"><i style={{ transform: `scaleX(${percentage(hp, unit.maxHp) / 100})` }} /></span><span className="mana"><i style={{ transform: `scaleX(${percentage(mana, unit.maxMana) / 100})` }} /></span></div>
+          {asset ? <img src={asset.src} alt="" data-visual-asset-id={asset.id} /> : <span className="arena-replay-unit__fallback" aria-hidden="true">✦</span>}
+          <small>{unit.displayName || unit.name}</small>
+          {targeted && Number((actionEvent?.damageEvents || []).reduce((sum, entry) => sum + Number(entry.damage || 0), 0)) > 0 ? <b className="arena-replay-impact">−{(actionEvent.damageEvents || []).reduce((sum, entry) => sum + Number(entry.damage || 0), 0)}</b> : null}
+          <span className="sr-only" aria-hidden="true" data-testid={enemy ? 'shared-battle-enemy' : 'shared-battle-player'} data-combatant-id={unit.id}>
+            {unit.displayName || unit.name}
+            <small className="shared-battle-signature">{unit.signatureSkill?.name || unit.skills?.[0] || unit.skillCode || 'Attack pattern'}</small>
+          </span>
+          <div className="sr-only shared-battle-hp" data-testid={`shared-battle-hp-${unit.id}`}><span /><b>{hp}/{unit.maxHp} HP</b></div>
+          <div className="sr-only shared-battle-mana" data-testid={`shared-battle-mana-${unit.id}`} data-mana={mana} aria-label={`${unit.displayName || unit.name} Mana ${mana}/${unit.maxMana}`}><span /><b>{mana}/{unit.maxMana} Mana</b></div>
+          <div className="sr-only shared-battle-effects" data-testid={`shared-battle-effects-${unit.id}`}>{(unit.effects || []).map((effect) => effect.name || effect.type).join(', ')}</div>
+        </div>;
+      })}
+      <span className="arena-replay-time">{(timeMs / 1000).toFixed(1)}s</span>
+    </div>
+    <div className="arena-replay-rosters">{teamSummary(players, 'PARTY')}{teamSummary(enemies, 'ENEMIES', true)}</div>
+    <div className="arena-replay-feed" aria-live="polite"><span className="shell-kicker">{complete ? 'FINAL RESULT' : actionEvent?.actionType === 'skill' ? <span className="shared-battle-action-label">{titleCase(actionEvent.skillName || actionEvent.skillId || 'Skill')}</span> : 'BATTLE MOMENT'}</span><p>{complete ? finalDetail || finalTitle || `${statusLabel} · ${Number(replay.finalCombatants?.length || 0)} combatants` : arenaActionSummary(currentEvent, units)}</p>{manaUpdates.length ? <div className="shared-battle-status-updates" data-testid="shared-battle-status-updates">{manaUpdates.map((update, index) => <span key={`${update}-${index}`}>{update}</span>)}</div> : null}</div>
+    {complete ? <div className={`arena-replay-result shared-battle-result is-${status}`} data-testid="shared-battle-result"><b>{finalTitle || (status === 'room_clear' || status === 'victory' ? 'Victory' : status === 'defeat' ? 'Defeat' : 'Draw')}</b><span>{finalDetail || `${Number(finalById.get(players[0]?.id)?.hp || 0)} HP remaining`}</span></div> : null}
+    <div className="arena-replay-controls" aria-label="Battle replay controls">
+      <button type="button" onClick={togglePlayback} disabled={reducedMotion} aria-label={playing ? 'Pause battle replay' : 'Play battle replay'}>{playing ? 'Pause' : 'Play'}</button>
+      <button type="button" onClick={restart} aria-label="Restart battle replay">Replay</button>
+      <button type="button" onClick={skip} disabled={complete} aria-label="Skip to battle result">Skip</button>
+      <div role="group" aria-label="Replay speed">{[1, 2, 4].map((value) => <button type="button" key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}>{value}×</button>)}</div>
+      {reducedMotion ? <span>Reduced motion</span> : null}
+    </div>
+    <span className="sr-only">{[...players, ...enemies].map((unit) => `${unit.displayName || unit.name}, ${Number((finalById.get(unit.id) || unit).hp || 0)} of ${unit.maxHp} HP`).join('. ')}</span>
+  </section>;
+}
+
+export function SharedBattleSurface(props) {
+  const arenaReplay = props.replay?.arenaReplay
+    || (props.replay?.kind === 'arena-combat-replay' ? props.replay : null);
+  if (arenaReplay) return <ArenaReplaySurface {...props} replay={arenaReplay} legacyReplay={props.replay} />;
+  return <LegacySharedBattleSurface {...props} />;
 }

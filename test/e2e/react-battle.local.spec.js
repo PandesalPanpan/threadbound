@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stripArenaReplayFromEntry } from './legacy-replay-fixture.js';
 
 async function sharedBattleMotionSnapshot(surface) {
   return surface.evaluate((node) => {
@@ -153,6 +154,11 @@ test('Hunt replays the committed roster inline without browser-side simulation',
   await expect(sharedHunt).toContainText(`${hunt.battle.turns.length}`);
   await expect(sharedHunt.getByTestId('shared-battle-surface')).toBeVisible();
   await expect(sharedHunt.getByTestId('shared-battle-enemy')).toContainText(hunt.enemy.name);
+  const replay = sharedHunt.getByTestId('shared-battle-surface');
+  await expect(replay).toHaveAttribute('data-arena-replay-surface', 'true');
+  await expect(replay.getByRole('img', { name: /8 by 8 battle arena/ })).toBeVisible();
+  await expect(replay.getByTestId(`arena-replay-unit-${player.id}`)).toBeVisible();
+  await expect(replay.getByTestId(`arena-replay-unit-${enemy.id}`)).toBeVisible();
   await expect(sharedHunt.getByTestId('stream-watch-hunt-battle')).toHaveCount(0);
   await expect(sharedHunt.getByTestId('hunt-replay-pending')).toBeVisible();
   await expect(sharedHunt.getByTestId('hunt-final-facts')).toHaveCount(0);
@@ -164,10 +170,22 @@ test('Hunt replays the committed roster inline without browser-side simulation',
     if (request.url().endsWith('/api/hunt') && request.method() === 'POST') huntRequests.push(request.url());
   });
   await expect(sharedHunt.getByTestId('shared-battle-player')).toContainText(player.displayName);
-  await expect(sharedHunt.locator('[data-visual-asset-id]')).toHaveCount(2);
+  await expect(replay.locator('.arena-replay-board [data-visual-asset-id]')).toHaveCount(2);
+  const speedTwo = replay.getByRole('group', { name: 'Replay speed' }).getByRole('button', { name: '2×' });
+  await speedTwo.click();
+  await expect(speedTwo).toHaveAttribute('aria-pressed', 'true');
+  await replay.getByRole('button', { name: 'Pause battle replay' }).click();
+  await expect(replay.getByRole('button', { name: 'Play battle replay' })).toBeVisible();
+  await replay.getByRole('button', { name: 'Play battle replay' }).click();
+  await replay.getByRole('button', { name: 'Restart battle replay' }).click();
+  await page.screenshot({ path: 'test-results/arena-replay-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.screenshot({ path: 'test-results/arena-replay-desktop.png', fullPage: true });
+  await replay.getByRole('button', { name: 'Skip to battle result' }).click();
+  await expect(replay.getByTestId('shared-battle-result')).toBeVisible();
   expect(simulationRequests).toEqual([]);
   expect(huntRequests).toEqual([]);
-  await expect(sharedHunt.getByTestId('shared-battle-surface')).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
+  await expect(replay).toHaveAttribute('data-replay-state', 'complete', { timeout: 10000 });
   await expect(sharedHunt.getByTestId('hunt-final-facts')).toBeVisible();
 });
 
@@ -191,7 +209,9 @@ test('shared battle motion stays on the artwork while the HUD and art anchors re
     const payload = await response.json();
     const latestHuntId = [...(payload.entries || [])].reverse().find((entry) => entry.eventType === 'HuntResolved')?.id;
     const now = new Date().toISOString();
-    const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId ? { ...entry, createdAt: now } : entry);
+    const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId
+      ? { ...stripArenaReplayFromEntry(entry), createdAt: now }
+      : entry);
     await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
   });
   await page.goto('/game');
@@ -266,7 +286,7 @@ test('shared battle trajectories stay art-relative on mobile and desktop, includ
     const payload = await response.json();
     const latestHuntId = [...(payload.entries || [])].reverse().find((entry) => entry.eventType === 'HuntResolved')?.id;
     const entries = (payload.entries || []).map((entry) => entry.id === latestHuntId
-      ? { ...entry, createdAt: new Date(Date.now() - 100).toISOString() }
+      ? { ...stripArenaReplayFromEntry(entry), createdAt: new Date(Date.now() - 100).toISOString() }
       : entry);
     await route.fulfill({ response, body: JSON.stringify({ ...payload, entries }) });
   });

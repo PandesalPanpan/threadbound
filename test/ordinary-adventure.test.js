@@ -117,7 +117,7 @@ test('AdventureService reads persisted Area, commits rewards/progression, and pu
 test('Adventure grants level Max HP after damage, uses Area loot options, and carries its replay', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'adventure-growth-player' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'adventure-growth', displayName: 'Leveling Adventurer' });
-  repository.db.prepare('UPDATE players SET base_attack = 30, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
+  repository.db.prepare('UPDATE players SET base_attack = 4, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
   const progressionRepository = new SQLitePlayerProgressionRepository({ database: repository.db });
   progressionRepository.grantExperience(player.id, 49);
   const events = [];
@@ -165,25 +165,27 @@ test('Adventure grants level Max HP after damage, uses Area loot options, and ca
   repository.close();
 });
 
-test('Adventure cooldown rejects immediate repeats with exact server next-ready projection', () => {
+test('Adventure persists its versioned result while cooldown rejects a second reward command', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'player-1' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'cooldown-adventure-user', displayName: 'Adventurer' });
+  const events = [];
   const service = new AdventureService({
     repository,
-    eventBus: { publish() {} },
+    eventBus: { publish: (event) => events.push(event) },
     rng: () => 0.99,
     rewardRng: () => 0.99,
     storyRng: () => 0.99,
     now: () => new Date('2026-09-13T00:00:00.000Z'),
   });
-
-  service.adventure(player.id);
-  assert.throws(
-    () => service.adventure(player.id),
-    (error) => error.code === 'adventure_cooldown'
-      && error.remainingSeconds === ADVENTURE_COOLDOWN_SECONDS
-      && error.nextReadyAt === '2026-09-13T00:00:45.000Z',
-  );
+  const first = service.adventure(player.id);
+  const goldAfterFirst = repository.getPlayer(player.id).gold;
+  const saved = repository.getCombatResult(`adventure:${player.id}:2026-09-13T00:00:45.000Z`);
+  assert.ok(saved.result.battleReplay.arenaReplay, 'the versioned arena replay is stored beside the result');
+  assert.deepEqual(saved.result.battleReplay, first.battleReplay);
+  assert.equal(first.cooldown.nextReadyAt, '2026-09-13T00:00:45.000Z');
+  assert.throws(() => service.adventure(player.id), (error) => error.code === 'adventure_cooldown');
+  assert.equal(repository.getPlayer(player.id).gold, goldAfterFirst);
+  assert.equal(events.filter((event) => event.type === 'AdventureResolved').length, 1);
 });
 
 test('AdventureService refuses ordinary Adventure while the player is wounded to zero', () => {

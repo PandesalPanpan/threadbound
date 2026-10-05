@@ -1,8 +1,14 @@
 # Arena combat prototype
 
-## Selected combat foundation — 2026-10-05
+## Approved direction and isolated lab — 2026-10-05
 
-The owner approved this arena as the base foundation for future combat simulation. Preserve formation-driven autonomous combat and the overhead presentation with upright existing art. The first refinement adds independent attack and movement timing. This is the chosen direction for subsequent combat work; integration into authoritative live gameplay is still a separate implementation step, not accomplished by this designation.
+The owner approved the overhead arena as the authoritative combat system for
+every Threadbound encounter. Preserve formation-driven autonomous combat and
+the overhead presentation with upright semantic art. Independent attack and
+movement timing is part of the selected foundation. This route remains a
+browser-local comparison lab; the server-side integration work and its release
+gates are tracked in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md)
+and Phase M of the master plan.
 
 Open `/arena-combat` (or `/react-battle/?view=arena`) on the current branch. This is a separate, public, browser-local experiment alongside `/active-timing`, explicitly requested for evaluating an alternative combat direction. It does not complete or reorder any master-plan milestone. Phase K human reviews remain the earliest open gates.
 
@@ -18,7 +24,11 @@ The simulator alternates tie initiative, searches paths around living units and 
 
 The React presentation replays immutable frames on a scoped GSAP timeline. Pause and speed affect playback only. Existing semantic character art is resolved through `public/sprite-catalog.js`; upright sprites stand on an overhead grid with ground shadows, team rings, depth ordering, facing flips, walking bounce, attack motion, projectiles, hit flashes, damage numbers, and heal/shield effects. Single images do not supply directional walk/attack frames: this is transform animation, not a new spritesheet. Reduced motion uses discrete positions and omits nonessential motion.
 
-This module has no live gameplay, player, reward, economy, persistence, or game-command integration. The browser-local simulation is an explicit prototype exception, not a new source of authoritative Threadbound combat. Integrating this direction into Hunt/Dungeon would require a separate product decision, moving the simulation to the authoritative domain/service boundary, committed replay projections, and shared replay/reconnect coverage. No framework or dependency was added.
+This lab has no live gameplay, player, reward, economy, persistence, or
+game-command integration. Its browser-local simulation is an explicit
+comparison exception; production combat authority belongs to the server-side
+domain engine being built under the approved Phase M integration track. No
+framework or dependency was added.
 
 ## Verification
 
@@ -30,7 +40,7 @@ Human playtesting still needs to judge readability, pacing, and whether position
 
 `npm run check` passed, `npm test` passed (509 tests), and full `npm run test:e2e` passed (24 threaded, 21 simple-local, 28 React-local, 7 Workshop). The three arena Playwright journeys passed again after the final accessibility labels and effect-boundary adjustments were rebuilt. Mobile and desktop placement/fighting screenshots were inspected; six retained images are in `ux-review/arena-{placement,fighting,result}-{390,1440}.png`. An 80-formation deterministic sample produced 65 victories, 12 defeats, and 3 timeout draws; this establishes formation sensitivity, not balance or fun.
 
-The local preview is served on port 3001 using an in-memory local-auth development server. The accepted baseline is checkpointed on `feat/active-timing-combat-prototype`, alongside the timing comparison lab. It has not been merged or verified on `main`; no master-plan boxes changed. The owner explicitly authorized subsequent combat-foundation improvements. The next canonical unchecked experience gate remains PV2-K01, requiring two human reviewers.
+The local preview is served on port 3001 using an in-memory local-auth development server. The accepted baseline is checkpointed on `feat/active-timing-combat-prototype`, alongside the timing comparison lab. It has not been merged or verified on `main`; no master-plan boxes changed. Phase K still requires two human reviewers; the owner separately authorized the Phase M live integration to proceed in parallel.
 
 ### Independent timing follow-up — 2026-10-05
 

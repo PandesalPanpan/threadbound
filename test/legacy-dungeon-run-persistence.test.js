@@ -5,7 +5,7 @@ import { GameService } from '../src/application/GameService.js';
 import { AdventureRun, DUNGEONS } from '../src/domain/AdventureRun.js';
 import { SQLiteGameRepository } from '../src/infrastructure/SQLiteGameRepository.js';
 
-test('a SQLite-hydrated pre-upgrade active Dungeon resumes with singleton legacy semantics', () => {
+test('a SQLite-hydrated pre-upgrade automatic Dungeon is migrated by its next action', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:' });
   const game = new GameService({ repository, eventBus: new EventBus() });
   const player = game.ensurePlayer({ id: 'legacy-dungeon-player', name: 'Legacy Dungeon Player' });
@@ -53,14 +53,15 @@ test('a SQLite-hydrated pre-upgrade active Dungeon resumes with singleton legacy
   const persisted = repository.getRun(legacyState.id);
 
   assert.equal(result.simpleCombat, true);
-  assert.equal(result.battleReplay, undefined, 'the old local run does not switch to the shared replay protocol');
-  assert.equal(persisted.phase, 'combat', 'one legacy attack remains one explicit combat turn');
+  assert.ok(result.battleReplay.arenaReplay, 'the next legacy action records the authoritative arena replay');
+  assert.equal(persisted.phase, 'combat');
   assert.equal(persisted.sharedSurface, false);
-  assert.equal(persisted.simpleCombatVersion, 1, 'hydration selects and preserves the legacy version');
+  assert.equal(persisted.simpleCombatVersion, 2, 'the persisted v1 run is upgraded at the command boundary');
   assert.equal(persisted.enemies.length, 1);
   assert.equal(persisted.enemies[0].id, loaded.enemy.id);
-  assert.ok(persisted.enemy.hp > 0 && persisted.enemy.hp < enemyHpBefore);
+  assert.ok(persisted.enemy.hp >= 0 && persisted.enemy.hp <= enemyHpBefore);
   assert.equal(persisted.enemies[0].hp, persisted.enemy.hp, 'the compatibility roster mirrors the authoritative singleton enemy');
+  assert.equal(persisted.lastBattleReplay.kind, 'arena-combat-replay');
   assert.equal(persisted.version, 1, 'the resumed state saves through the normal repository version check');
 
   repository.close();

@@ -9,7 +9,7 @@ import {
   prepareSimpleDungeon,
   simpleStageFor,
 } from './SimpleDungeonPolicy.js';
-import { resolveSimpleEncounter as resolveSimpleEncounterPolicy } from './SimpleEncounterBattle.js';
+import { resolveArenaDungeonEncounter } from './ArenaDungeonEncounter.js';
 
 export { DUNGEONS, RUN_UPGRADES };
 
@@ -55,7 +55,7 @@ function compatibilityCombatant(enemy, encounterIndex = 0) {
 function simpleCompatibilityProjection(state, roster, encounterIndex = 0) {
   const primary = roster.find((enemy) => Number(enemy.hp || 0) > 0) || roster[0] || null;
   if (!primary) return null;
-  if (Number(state.simpleCombatVersion || 1) < 2) return primary;
+  if (Number(state.simpleCombatVersion || 1) < 2 || roster.length === 1) return primary;
   const legacyDefinition = state.dungeonDefinition?.encounters?.[encounterIndex]
     || (Number(encounterIndex) === Number(state.simpleStageCount) ? state.dungeonDefinition?.boss : null)
     || primary;
@@ -243,15 +243,13 @@ export class AdventureRun {
    * resulting atomic action list is retained for the shared replay projection.
    */
   resolveSimpleEncounter({ playerActions = {}, signatureSkills = false, now = new Date().toISOString() } = {}) {
-    if (!this.state.simpleCombat || Number(this.state.simpleCombatVersion || 1) < 2) {
-      throw new Error('This run uses the legacy single-enemy combat resolver.');
-    }
+    if (!this.state.simpleCombat) throw new Error('This run does not use the automatic Dungeon combat resolver.');
     if (!['combat', 'boss'].includes(this.state.phase)) {
       throw new Error('The run is not currently in combat.');
     }
 
     const roomIndex = Number(this.state.encounterIndex || 0);
-    const result = resolveSimpleEncounterPolicy({
+    const result = resolveArenaDungeonEncounter({
       runId: this.state.id,
       roomIndex,
       participants: this.state.participants,
@@ -261,6 +259,8 @@ export class AdventureRun {
     });
     this.state.participants = result.participants;
     this.state.enemies = result.enemies;
+    this.state.simpleCombatVersion = 2;
+    this.state.lastBattleReplay = structuredClone(result.arenaReplay);
     this.state.simpleRoundIndex = Number(this.state.simpleRoundIndex || 0) + Number(result.rounds || 0);
     this.state.enemyIntent = null;
     this.state.attacksSinceIntent = 0;
@@ -347,11 +347,131 @@ export class AdventureRun {
       events,
       actions: structuredClone(result.actions),
       rounds: result.rounds,
-      damage: signatureSkills
-        ? result.events.filter((event) => event.type === 'EnemyDamaged').reduce((sum, event) => sum + Number(event.damage || 0), 0)
-        : result.actions.filter((action) => action.phase === 'player').reduce((sum, action) => sum + Number(action.damage || 0), 0),
-      retaliation: result.events.filter((event) => event.type === 'PlayerDamaged').reduce((sum, event) => sum + Number(event.damage || 0), 0),
+      damage: result.damage,
+      retaliation: result.retaliation,
+      arenaReplay: structuredClone(result.arenaReplay),
       simpleCombat: true,
+    };
+  }
+
+  /** Upgrade an in-flight tactical-era room at its next public action boundary. */
+  resolveLegacyArenaEncounter({ playerActions = {}, actorPlayerId, command = {}, now = new Date().toISOString() } = {}) {
+    if (this.state.simpleCombat) throw new Error('Simple Dungeon rooms already use the arena combat resolver.');
+    if (!['combat', 'boss'].includes(this.state.phase) || !this.state.enemy) {
+      throw new Error('The legacy run is not currently in combat.');
+    }
+    const before = this.toJSON();
+    const enemy = structuredClone(this.state.enemy);
+    const result = resolveArenaDungeonEncounter({
+      runId: this.state.id,
+      roomIndex: Number(this.state.encounterIndex || 0),
+      participants: this.state.participants,
+      enemies: [enemy],
+      playerActions,
+      legacyIntent: this.state.enemyIntent,
+    });
+    const events = [...(command.events || []), ...result.events];
+    const commandAction = String(command.action || 'attack');
+    const commandSkill = command.skillId || null;
+    const mappedSkill = command.skillCode || null;
+    const commandCast = mappedSkill && result.battle.turns.some((turn) => (
+      String(turn.actorId) === String(actorPlayerId)
+      && turn.metadata?.actionType === 'skill'
+      && turn.metadata?.skillId === mappedSkill
+    ));
+    const actor = result.participants.find((participant) => String(participant.playerId) === String(actorPlayerId));
+    if (commandCast && commandSkill && actor) {
+      const cost = Math.max(0, Number(command.focusCost || 0));
+      const beforeFocus = Number(actor.focus || 0);
+      actor.focus = Math.max(0, beforeFocus - cost);
+      events.push({ type: 'CombatSkillUsed', playerId: actorPlayerId, runId: this.state.id, skillId: commandSkill, focusCost: cost });
+      if (actor.focus !== beforeFocus) events.push({ type: 'FocusChanged', playerId: actorPlayerId, runId: this.state.id, focus: actor.focus, maxFocus: actor.maxFocus });
+    }
+    if (commandCast && commandAction === 'guard') {
+      events.push({ type: 'PlayerGuarded', playerId: actorPlayerId, runId: this.state.id });
+      if (command.pendingIntent?.reaction === 'guard') {
+        events.push({ type: 'CombatReactionSucceeded', playerId: actorPlayerId, runId: this.state.id, reaction: 'guard' });
+        if (actor) actor.successfulGuards = Number(actor.successfulGuards || 0) + 1;
+      }
+    }
+    if (commandCast && commandAction === 'interrupt') {
+      events.push({ type: 'CombatReactionSucceeded', playerId: actorPlayerId, runId: this.state.id, reaction: 'interrupt' });
+      if (command.pendingIntent?.id) events.push({ type: 'EnemyInterrupted', playerId: actorPlayerId, runId: this.state.id, intentId: command.pendingIntent.id, enemyId: enemy.id });
+      if (actor) actor.successfulInterrupts = Number(actor.successfulInterrupts || 0) + 1;
+    }
+    if (commandCast && commandAction === 'mend' && actor) {
+      actor.mendCharges = Math.max(0, Number(actor.mendCharges || 0) - 1);
+      actor.healingDone = Number(actor.healingDone || 0) + events
+        .filter((event) => event.type === 'PlayerHealed' && event.playerId === actorPlayerId)
+        .reduce((sum, event) => sum + Number(event.amount || 0), 0);
+    }
+    const actionsByPlayer = new Map();
+    for (const turn of result.battle.turns) {
+      if (turn.actorPlayerId || result.participants.some((participant) => String(participant.playerId) === String(turn.actorId))) {
+        const id = String(turn.actorPlayerId || turn.actorId);
+        const actions = actionsByPlayer.get(id) || [];
+        actions.push(turn);
+        actionsByPlayer.set(id, actions);
+      }
+    }
+    for (const participant of result.participants) {
+      const actions = actionsByPlayer.get(String(participant.playerId)) || [];
+      participant.skillCooldowns = { ...(participant.skillCooldowns || {}) };
+      for (const turn of actions) {
+        for (const [skillId, remaining] of Object.entries(participant.skillCooldowns)) {
+          if (Number(remaining) > 0) participant.skillCooldowns[skillId] = Number(remaining) - 1;
+        }
+        if (turn.metadata?.actionType === 'basic-attack') {
+          const beforeFocus = Number(participant.focus || 0);
+          participant.focus = Math.min(Number(participant.maxFocus || 4), beforeFocus + 1);
+          if (participant.focus !== beforeFocus) events.push({
+            type: 'FocusChanged', playerId: participant.playerId, runId: this.state.id,
+            focus: participant.focus, maxFocus: participant.maxFocus,
+          });
+        }
+        if (String(participant.playerId) === String(actorPlayerId) && commandCast
+          && command.skillId && turn.metadata?.skillId === command.skillCode) {
+          participant.skillCooldowns[command.skillId] = Number(command.skillCooldown || 0);
+        }
+      }
+      if (actions.some((turn) => Number(turn.targetDamage || 0) > 0)) participant.reactionDamageBonus = 0;
+    }
+    const transition = new CombatDungeonRun(this.state).resolveArenaEncounter({
+      participants: result.participants,
+      enemy: result.enemies[0],
+      outcome: result.outcome === 'room_clear' ? 'victory' : result.outcome,
+      actorPlayerId,
+      now: now instanceof Date ? now.toISOString() : now,
+    });
+    this.state = transition.state;
+    this.state.lastBattleReplay = structuredClone(result.arenaReplay);
+    this.state.arenaCombatVersion = 1;
+    events.push(...transition.events);
+    const attuned = applyRelicCombatAttunement({
+      state: this.state,
+      events,
+      method: command.method || commandAction,
+      args: { playerId: actorPlayerId, skillId: commandSkill },
+      attunementCode: command.attunementCode || null,
+    });
+    this.state = attuned.state;
+    if (attuned.triggered?.effect === 'bonus_healing') command.healed = Number(command.healed || 0) + Number(attuned.triggered.amount || 0);
+    this.#pauseForRunEvent(before, events);
+    this.#pauseForRunPowerDraft(before, events);
+    if (this.state.phase === 'upgrade') this.#snapshotRunUpgradeOffers();
+    return {
+      state: this.toJSON(),
+      events,
+      actions: structuredClone(result.actions),
+      rounds: result.rounds,
+      damage: result.damage,
+      retaliation: result.retaliation,
+      arenaReplay: structuredClone(result.arenaReplay),
+      relicTrigger: attuned.triggered,
+      skillId: commandCast ? commandSkill : null,
+      healed: Number(command.healed || 0),
+      restoredHp: Number(command.restoredHp || 0),
+      simpleCombat: false,
     };
   }
 

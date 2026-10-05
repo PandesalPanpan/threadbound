@@ -9,7 +9,7 @@ import { SQLiteAreaRepository } from '../src/infrastructure/SQLiteAreaRepository
 import { AreaProgression } from '../src/domain/AreaProgression.js';
 import { ItemGenerator } from '../src/domain/ItemGenerator.js';
 
-test('automatic Hunt preserves the familiar baseline while shared simulator owns turn history and HP', () => {
+test('automatic Hunt resolves movement and action timing in the shared arena engine', () => {
   const result = resolveAutomaticHunt({
     player: {
       id: 'hero',
@@ -28,13 +28,13 @@ test('automatic Hunt preserves the familiar baseline while shared simulator owns
 
   assert.equal(result.enemy.id, 'thread-wolf');
   assert.equal(result.victory, true);
-  assert.equal(result.remainingHp, 32);
-  assert.equal(result.damageTaken, 8);
+  assert.equal(result.remainingHp, 28);
+  assert.equal(result.damageTaken, 12);
   assert.equal(result.attacksRequired, 3);
   assert.equal(result.battle.context.activity, 'hunt');
   assert.equal(result.battle.winnerId, 'hero');
   assert.deepEqual(result.battle.turns.map((turn) => turn.actorId), [
-    'hero', 'hunt-enemy:thread-wolf', 'hero', 'hunt-enemy:thread-wolf', 'hero',
+    'hunt-enemy:thread-wolf', 'hero', 'hunt-enemy:thread-wolf', 'hero', 'hunt-enemy:thread-wolf', 'hero',
   ]);
   assert.equal(result.battle.turns[0].metadata.kind, 'basic-attack');
 });
@@ -60,8 +60,10 @@ test('Hunt consumes shared Speed and constrained equipment-effect semantics', ()
 
   assert.equal(result.battle.turns[0].metadata.equipmentBonusDamage, 2);
   assert.equal(result.battle.turns[0].targetDamage, 8);
-  assert.equal(result.battle.turns[1].actorId, 'fast-hero', 'Speed can grant a consecutive Hunt action');
-  assert.equal(result.battle.turns[1].metadata.equipmentBonusDamage, 0, 'opening strike only applies to the first action');
+  const playerTurns = result.battle.turns.filter((turn) => turn.actorId === 'fast-hero');
+  const enemyTurns = result.battle.turns.filter((turn) => turn.actorId !== 'fast-hero');
+  assert.ok(playerTurns.length > enemyTurns.length, 'higher Speed advances the player action clock');
+  assert.equal(playerTurns[1].metadata.equipmentBonusDamage, 0, 'opening strike only applies to the first action');
 });
 
 test('HuntService persists the shared simulator result while retaining one-command rewards and event compatibility', () => {
@@ -104,7 +106,7 @@ test('HuntService persists the shared simulator result while retaining one-comma
 test('Hunt applies level Max HP after combat damage and publishes the post-growth Health snapshot', () => {
   const repository = new SQLiteGameRepository({ filename: ':memory:', idFactory: () => 'hunt-growth-player' });
   const player = repository.getOrCreatePlayer({ threadedUserId: 'hunt-growth', displayName: 'Leveling Hunter' });
-  repository.db.prepare('UPDATE players SET base_attack = 30, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
+  repository.db.prepare('UPDATE players SET base_attack = 8, max_health = 40, current_health = 30 WHERE id = ?').run(player.id);
   const progressionRepository = new SQLitePlayerProgressionRepository({ database: repository.db });
   progressionRepository.grantExperience(player.id, 49);
   const events = [];

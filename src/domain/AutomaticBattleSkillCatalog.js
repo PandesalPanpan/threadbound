@@ -34,7 +34,7 @@ export const AUTOMATIC_BATTLE_SKILLS = Object.freeze({
   'ember-burst': freezeSkill({
     id: 'ember-burst', name: 'Ember Burst', label: 'Ember Burst', manaCost: 100,
     description: 'Splash fire across every enemy.',
-    effect: { kind: 'fire-area', damageBonus: 4, splashBonus: 1, splash: 'all', targetEffectsAll: true, targetEffects: [{ type: 'fire', potency: 3, remainingTurns: 2 }] },
+    effect: { kind: 'fire-area', damageBonus: 4, splashBonus: 1, splash: 'all', targetEffectsAll: true, targetEffects: [{ type: 'fire', potency: 2, remainingTurns: 2 }] },
   }),
   'mire-song': freezeSkill({
     id: 'mire-song', name: 'Mire Song', label: 'Mire Song', manaCost: 100,

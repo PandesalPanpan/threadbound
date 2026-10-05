@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { SHARED_REPLAY_BEAT_MS, replayMoments } from '../../frontend/src/battle/sharedReplay.js';
 
 async function login(page, slot = 'd') {
   await page.goto('/');
@@ -13,19 +12,6 @@ async function command(page, value) {
   const composer = page.getByTestId('stream-message');
   await composer.fill(value);
   await composer.press('Enter');
-}
-
-async function pinReplayClock(page, timestamp) {
-  await page.evaluate((value) => {
-    window.__threadboundNativeDateNow ||= Date.now.bind(Date);
-    Date.now = () => value;
-  }, timestamp);
-}
-
-async function restoreReplayClock(page) {
-  await page.evaluate(() => {
-    if (window.__threadboundNativeDateNow) Date.now = window.__threadboundNativeDateNow;
-  });
 }
 
 test('React shell embeds the server-ranked Guild Hall with profile and Duel receipts', async ({ page }) => {
@@ -78,31 +64,21 @@ test('React shell embeds the server-ranked Guild Hall with profile and Duel rece
   await expect(duelCard.locator('[data-testid^="duel-loadout-guild-rook-weapon"] img')).toHaveAttribute('data-visual-asset-id', 'item.threadsteel-longsword.v1');
   await expect(duelCard.locator('[data-testid^="duel-loadout-guild-rook-armor"] img')).toHaveAttribute('data-visual-asset-id', 'item.ironroot-cuirass.v1');
   const duelReplay = duelEntry.metadata.battleReplay;
-  const duelMoments = replayMoments(duelReplay);
-  const duelPlayerIds = new Set((duelReplay.details?.teams?.players || []).map((player) => String(player.id || player.playerId || '')));
-  const playerManaGain = (event) => event.reason === 'basic-attack'
-    && Number(event.delta) > 0
-    && duelPlayerIds.has(String(event.combatantId || event.targetId || ''));
-  const manaGainMomentIndex = duelMoments.findIndex((moment) => moment.manaEvents?.some(playerManaGain));
-  expect(manaGainMomentIndex).toBeGreaterThanOrEqual(0);
-  const manaGain = duelMoments[manaGainMomentIndex].manaEvents.find(playerManaGain);
-  const playbackAtManaGain = Date.parse(duelEntry.createdAt) + manaGainMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
-  await pinReplayClock(page, playbackAtManaGain);
-  await expect(replay.getByTestId(`shared-battle-mana-${manaGain.combatantId}`)).toHaveAttribute('data-mana', String(manaGain.manaAfter));
-  await expect(replay.getByTestId('shared-battle-status-updates')).toContainText(`+${manaGain.delta} Mana`);
-
-  const skillMomentIndex = duelMoments.findIndex((moment) => moment.actionType === 'skill');
-  expect(skillMomentIndex).toBeGreaterThanOrEqual(0);
-  const skillTurn = duelTurns[duelSkillTurnIndex];
-  const playbackAtSkill = Date.parse(duelEntry.createdAt) + skillMomentIndex * SHARED_REPLAY_BEAT_MS + SHARED_REPLAY_BEAT_MS / 2;
-  await pinReplayClock(page, playbackAtSkill);
-  await expect(replay.locator('.shared-battle-action-label')).toContainText(skillTurn.skillName || skillTurn.skillId);
-  await expect(replay.getByTestId(`shared-battle-mana-${skillTurn.actor.id}`)).toHaveAttribute('data-mana', '0');
-  await expect(replay.getByTestId('shared-battle-status-updates')).toContainText('-100 Mana');
-  await restoreReplayClock(page);
-  await expect(replay).toHaveAttribute('data-replay-state', 'complete', { timeout: 30000 });
-  await expect(replay.getByTestId('shared-battle-result')).toContainText(/VICTORY|DEFEAT|DRAW/);
+  const arenaReplay = duelReplay.arenaReplay;
+  expect(arenaReplay?.kind).toBe('arena-combat-replay');
+  const replayManaEvents = (arenaReplay.events || []).flatMap((event) => event.manaEvents || []);
+  expect(replayManaEvents.some((event) => event.reason === 'basic-attack' && Number(event.delta) > 0)).toBe(true);
+  const arenaSkillEvent = (arenaReplay.events || []).find((event) => event.kind === 'action' && event.actionType === 'skill');
+  expect(arenaSkillEvent?.manaEvents.some((event) => Number(event.delta) === -100)).toBe(true);
+  expect(duelTurns[duelSkillTurnIndex].skillName || duelTurns[duelSkillTurnIndex].skillId).toBeTruthy();
+  await expect(replay).toHaveAttribute('data-arena-replay-surface', 'true');
+  await expect(replay.getByTestId('arena-replay-roster-guild-rook')).toContainText('Veteran Blade');
+  await expect(replay.getByTestId('arena-replay-roster-guild-rook')).toContainText('Veteran Armor');
+  await replay.getByRole('button', { name: 'Skip to battle result' }).click();
+  await expect(replay).toHaveAttribute('data-replay-state', 'complete');
+  await expect(replay.getByTestId('shared-battle-result')).toContainText(/Victory|Defeat|Draw|VICTORY|DEFEAT|DRAW/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: 'ux-review/react-duel-replay-mobile.png' });
   await page.setViewportSize({ width: 1440, height: 960 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
   await page.screenshot({ path: 'ux-review/react-duel-replay-desktop.png' });

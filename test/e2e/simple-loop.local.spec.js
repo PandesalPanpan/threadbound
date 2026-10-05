@@ -6,6 +6,9 @@ const NAMES = {
   g: 'Local Weaver G',
   h: 'Local Weaver H',
   i: 'Local Weaver I',
+  j: 'Local Weaver J',
+  k: 'Local Weaver K',
+  m: 'Local Weaver M',
 };
 
 async function login(page, slot) {
@@ -22,12 +25,21 @@ async function dashboard(context) {
   return response.json();
 }
 
+async function arenaReplayFor(context, runId) {
+  const response = await context.request.get('/api/stream?limit=100');
+  expect(response.ok()).toBe(true);
+  const entries = (await response.json()).entries || [];
+  return entries
+    .filter((entry) => entry.runId === runId && entry.metadata?.battleReplay?.arenaReplay)
+    .at(-1)?.metadata.battleReplay.arenaReplay || null;
+}
+
 test('command results scroll fully into view as their content grows', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 500 } });
   const page = await context.newPage();
 
   try {
-    await login(page, 'g');
+    await login(page, 'j');
     await expect(page.getByTestId('thread-dust').locator('..')).toContainText('Gold');
     await page.getByTestId('stream-message').fill('help');
     await page.getByTestId('stream-send').click();
@@ -88,8 +100,8 @@ test('party members share the same hard attack-only dungeon and live stream', as
   const partner = await partnerContext.newPage();
 
   try {
-    await login(leader, 'h');
-    await login(partner, 'i');
+    await login(leader, 'k');
+    await login(partner, 'm');
 
     const created = await leaderContext.request.post('/api/party/create');
     expect(created.ok()).toBe(true);
@@ -118,13 +130,19 @@ test('party members share the same hard attack-only dungeon and live stream', as
     await partner.reload();
     const attack = partner.locator('.simple-loop-action[data-testid="stream-attack"]');
     await expect(attack).toBeVisible({ timeout: 5000 });
-    const hpBefore = partnerState.activeRun.enemy.hp;
+    const hpBefore = partnerState.activeRun.participants.find((participant) => participant.playerId === partnerState.character.id).hp;
+    const runId = partnerState.activeRun.id;
+    const versionBefore = partnerState.activeRun.version;
     await attack.click();
-    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.enemy?.hp ?? -1, { timeout: 5000 }).not.toBe(hpBefore);
+    await expect.poll(async () => (await dashboard(leaderContext)).activeRun?.version || -1, { timeout: 5000 }).toBeGreaterThan(versionBefore);
+    const afterAttack = await dashboard(leaderContext);
+    expect(afterAttack.activeRun.phase).toBe('between_encounter');
+    expect(afterAttack.activeRun.participants.find((participant) => participant.playerId === partnerState.character.id).hp).toBeLessThan(hpBefore);
 
-    const receipt = leader.getByTestId('stream-system-entry').filter({ hasText: /attacked Frayed Wisp/i }).last();
+    const receipt = leader.getByTestId('stream-system-entry').filter({ hasText: /cleared Frayed Wisp/i }).last();
     await expect(receipt).toBeVisible({ timeout: 5000 });
     await expect(receipt.locator('.stream-app-badge')).toHaveText('APP');
+    expect((await arenaReplayFor(leaderContext, runId))?.kind).toBe('arena-combat-replay');
     await expect(leader.getByTestId('stream-guard')).toHaveCount(0);
     await expect(partner.getByTestId('stream-interrupt')).toHaveCount(0);
     await expect(leader.getByText(/PRIVATE THREAD REPLY/i)).toHaveCount(0);

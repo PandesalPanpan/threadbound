@@ -445,6 +445,7 @@ export class AutomaticBattleSimulator {
     resolveSkill = null,
     selectActor = selectActorBySpeed,
     selectTarget = defaultTargetSelector,
+    selectSkill = ({ actor }) => readySkill(actor),
     shouldStop = null,
     maxTurns = 200,
   } = {}) {
@@ -454,12 +455,14 @@ export class AutomaticBattleSimulator {
     if (resolveSkill !== null && typeof resolveSkill !== 'function') throw new Error('resolveSkill must be a function when provided.');
     if (typeof selectActor !== 'function') throw new Error('selectActor must be a function.');
     if (typeof selectTarget !== 'function') throw new Error('selectTarget must be a function.');
+    if (typeof selectSkill !== 'function') throw new Error('selectSkill must be a function.');
     if (shouldStop !== null && typeof shouldStop !== 'function') throw new Error('shouldStop must be a function when provided.');
 
     this.resolveAction = resolveAction;
     this.resolveSkill = resolveSkill;
     this.selectActor = selectActor;
     this.selectTarget = selectTarget;
+    this.selectSkill = selectSkill;
     this.shouldStop = shouldStop;
     this.maxTurns = requirePositiveInteger(maxTurns, 'maxTurns');
   }
@@ -616,7 +619,19 @@ export class AutomaticBattleSimulator {
         targetId: target.id,
       });
 
-      const skill = readySkill(actor);
+      const selectedSkill = this.selectSkill({
+        turnNumber,
+        actor: cloneCombatant(actor),
+        combatants: cloneCombatants(state),
+        players: cloneCombatants(teamMembers(state, PLAYER_TEAM)),
+        enemies: cloneCombatants(teamMembers(state, ENEMY_TEAM)),
+        turns: turns.map(cloneTurn),
+        context,
+      });
+      const skill = selectedSkill ? normalizeSkill(selectedSkill, 0) : null;
+      if (skill && !actor.skills.some((candidate) => candidate.id === skill.id) ) {
+        throw new Error(`Turn ${turnNumber} selected a skill the actor does not own.`);
+      }
       const actionType = skill ? 'skill' : 'basic-attack';
       if (skill) {
         appendEvent('SkillCastStarted', {

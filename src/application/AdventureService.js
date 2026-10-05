@@ -91,17 +91,19 @@ export class AdventureService {
       equipment,
       buffCodes: activeBuffCodes,
     });
-    const cooldown = this.cooldownRepository.claim(playerId, {
-      now: this.now(),
-      cooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
-    });
-    if (!cooldown.claimed) {
-      const error = new Error(`Adventure is recharging. Ready in ${cooldown.remainingSeconds}s (${cooldown.nextReadyAt}).`);
+    const rawNow = this.now();
+    const now = rawNow instanceof Date ? new Date(rawNow.getTime()) : new Date(rawNow);
+    if (Number.isNaN(now.getTime())) throw new Error('Adventure time must be a valid date.');
+    const storedCooldown = this.cooldownRepository.get(playerId, { now });
+    if (!storedCooldown.ready) {
+      const error = new Error(`Adventure is recharging. Ready in ${storedCooldown.remainingSeconds}s (${storedCooldown.nextReadyAt}).`);
       error.code = 'adventure_cooldown';
-      error.nextReadyAt = cooldown.nextReadyAt;
-      error.remainingSeconds = cooldown.remainingSeconds;
+      error.nextReadyAt = storedCooldown.nextReadyAt;
+      error.remainingSeconds = storedCooldown.remainingSeconds;
       throw error;
     }
+    const expectedReadyAt = new Date(now.getTime() + cooldownPolicy.effectiveCooldownSeconds * 1000).toISOString();
+    let cooldown = null;
 
     const stats = fightBuffs.stats;
     const result = resolveOrdinaryAdventure({
@@ -120,6 +122,11 @@ export class AdventureService {
       currentHealth: player.currentHealth,
       areaNumber: area.currentAreaNumber,
       encounter: pickAreaAdventureEncounter(area.currentAreaNumber, this.rng()),
+      context: {
+        battleId: `adventure:${playerId}:${expectedReadyAt}`,
+        areaId: area.currentArea?.id || null,
+        areaNumber: area.currentAreaNumber,
+      },
       random: this.rng,
     });
     const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
@@ -133,45 +140,106 @@ export class AdventureService {
     });
 
     let item = null;
-    let deathPenalty = null;
-    let growth = null;
-    if (result.victory) {
-      this.repository.addThreadDust(playerId, rewards.gold);
-      growth = this.progressionRepository.grantExperience(playerId, rewards.experience, {
-        currentHealthAfterCombat: result.remainingHp,
-      });
-      if (rewards.drop) {
-        item = capAdventureLoot(this.itemGenerator.generateReward({
-          source: 'adventure',
-          ...itemRewardProfileForArea(area.currentAreaNumber),
-        }));
-        this.repository.addItem(playerId, item);
-      }
-    } else if (result.remainingHp <= 0) {
-      const balance = this.bankRepository.getBalance(playerId);
-      const plannedPenalty = resolveNormalDeathPenalty({ carriedGold: balance.carriedGold });
-      const applied = this.bankRepository.loseCarriedGold(playerId, plannedPenalty.goldLost);
-      deathPenalty = Object.freeze({
-        ...plannedPenalty,
-        carriedGoldAfter: applied.carriedGold,
-        bankedGold: applied.bankedGold,
-        goldLost: applied.goldLost,
-      });
+    if (result.victory && rewards.drop) {
+      item = capAdventureLoot(this.itemGenerator.generateReward({
+        source: 'adventure',
+        ...itemRewardProfileForArea(area.currentAreaNumber),
+      }));
     }
 
-    if (!growth) this.repository.setPlayerHealth(playerId, result.remainingHp);
-    const fightBuffsConsumed = this.fightBuffRepository.consumeFight(playerId);
-    const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
-    const levelsGained = growth?.levelsGained || 0;
-    const remainingHp = growth?.currentHealth ?? result.remainingHp;
-    const maxHp = growth?.maxHealth ?? result.maxHealth;
-    const itemStats = item ? {
-      attackBonus: Number(item.attackBonus || item.stats?.attackBonus || 0),
-      defenseBonus: Number(item.defenseBonus || item.stats?.defenseBonus || 0),
-      maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
-      speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
-      critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
-    } : null;
+    let committed;
+    try {
+      committed = this.repository.withTransaction(() => {
+        cooldown = this.cooldownRepository.claimInTransaction(playerId, {
+          now,
+          cooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
+        });
+        if (!cooldown.claimed) {
+          const error = new Error(`Adventure is recharging. Ready in ${cooldown.remainingSeconds}s (${cooldown.nextReadyAt}).`);
+          error.code = 'adventure_cooldown';
+          error.nextReadyAt = cooldown.nextReadyAt;
+          error.remainingSeconds = cooldown.remainingSeconds;
+          throw error;
+        }
+
+        let growth = null;
+        let deathPenalty = null;
+        if (result.victory) {
+          this.repository.addThreadDust(playerId, rewards.gold);
+          growth = this.progressionRepository.grantExperienceInTransaction(playerId, rewards.experience, {
+            currentHealthAfterCombat: result.remainingHp,
+          });
+          if (item) this.repository.addItem(playerId, item);
+        } else if (result.remainingHp <= 0) {
+          const balance = this.bankRepository.getBalance(playerId);
+          const plannedPenalty = resolveNormalDeathPenalty({ carriedGold: balance.carriedGold });
+          const applied = this.bankRepository.loseCarriedGoldInTransaction(playerId, plannedPenalty.goldLost);
+          deathPenalty = Object.freeze({
+            ...plannedPenalty,
+            carriedGoldAfter: applied.carriedGold,
+            bankedGold: applied.bankedGold,
+            goldLost: applied.goldLost,
+          });
+        }
+
+        if (!growth) this.repository.setPlayerHealth(playerId, result.remainingHp);
+        const fightBuffsConsumed = this.fightBuffRepository.consumeFightInTransaction(playerId);
+        const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
+        const levelsGained = growth?.levelsGained || 0;
+        const remainingHp = growth?.currentHealth ?? result.remainingHp;
+        const maxHp = growth?.maxHealth ?? result.maxHealth;
+        const itemSnapshot = item ? this.repository.getItem(item.id) : null;
+        const itemStats = itemSnapshot ? {
+          attackBonus: Number(itemSnapshot.attackBonus || itemSnapshot.stats?.attackBonus || 0),
+          defenseBonus: Number(itemSnapshot.defenseBonus || itemSnapshot.stats?.defenseBonus || 0),
+          maxHpBonus: Number(itemSnapshot.maxHpBonus || itemSnapshot.stats?.maxHpBonus || 0),
+          speedBonus: Number(itemSnapshot.speedBonus || itemSnapshot.stats?.speedBonus || 0),
+          critChanceBonus: Number(itemSnapshot.critChanceBonus || itemSnapshot.stats?.critChanceBonus || 0),
+        } : null;
+        const response = Object.freeze({
+          ...result,
+          remainingHp,
+          battleReplay,
+          area: area.currentArea,
+          rewards: Object.freeze({ ...rewards, item: itemSnapshot }),
+          progression,
+          levelsGained,
+          leveledUp: levelsGained > 0,
+          maxHealthIncrease: growth?.maxHealthIncrease || 0,
+          currentHealth: remainingHp,
+          maxHealth: maxHp,
+          deathPenalty,
+          fightBuffs: Object.freeze({ modifiers: fightBuffs.modifiers, consumed: fightBuffsConsumed }),
+          cooldown: Object.freeze({
+            ready: false,
+            remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
+            nextReadyAt: cooldown.nextReadyAt,
+            baseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
+            reductionPercent: cooldownPolicy.appliedReductionPercent,
+            modifiers: cooldownPolicy.modifiers,
+          }),
+          replayed: false,
+        });
+        this.repository.recordCombatResultInTransaction({
+          battleId: `adventure:${playerId}:${cooldown.nextReadyAt}`,
+          activity: 'adventure',
+          playerId,
+          result: response,
+          createdAt: now.toISOString(),
+        });
+        return { response, growth, deathPenalty, fightBuffsConsumed, progression, levelsGained, remainingHp, maxHp, itemSnapshot, itemStats };
+      });
+    } catch (error) {
+      if (error?.code === 'adventure_cooldown') {
+        const currentCooldown = this.cooldownRepository.get(playerId, { now });
+        error.nextReadyAt = currentCooldown.nextReadyAt || error.nextReadyAt;
+        error.remainingSeconds = currentCooldown.remainingSeconds;
+        error.message = `Adventure is recharging. Ready in ${error.remainingSeconds}s (${error.nextReadyAt}).`;
+      }
+      throw error;
+    }
+
+    const { growth, deathPenalty, fightBuffsConsumed, progression, levelsGained, remainingHp, maxHp, itemSnapshot, itemStats } = committed;
     this.eventBus.publish({
       type: 'AdventureResolved',
       playerId,
@@ -200,11 +268,11 @@ export class AdventureService {
       goldLost: deathPenalty?.goldLost || 0,
       carriedGold: deathPenalty?.carriedGoldAfter ?? null,
       bankedGold: deathPenalty?.bankedGold ?? null,
-      itemId: item?.id || null,
-      itemName: item?.name || null,
-      itemRarity: item?.rarity || null,
-      itemSlot: item?.slot || null,
-      itemVisualAssetId: item?.visualAssetId || null,
+      itemId: itemSnapshot?.id || null,
+      itemName: itemSnapshot?.name || null,
+      itemRarity: itemSnapshot?.rarity || null,
+      itemSlot: itemSnapshot?.slot || null,
+      itemVisualAssetId: itemSnapshot?.visualAssetId || null,
       itemStats,
       storyEvent: rewards.storyEvent,
       adventureCooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
@@ -217,33 +285,7 @@ export class AdventureService {
       battleReplay,
       fightBuffsConsumed,
     });
-    if (item) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: 'adventure', silentStream: true });
-
-    return Object.freeze({
-      ...result,
-      remainingHp,
-      battleReplay,
-      area: area.currentArea,
-      rewards: Object.freeze({ ...rewards, item: item ? this.repository.getItem(item.id) : null }),
-      progression,
-      levelsGained,
-      leveledUp: levelsGained > 0,
-      maxHealthIncrease: growth?.maxHealthIncrease || 0,
-      currentHealth: remainingHp,
-      maxHealth: maxHp,
-      deathPenalty,
-      fightBuffs: Object.freeze({
-        modifiers: fightBuffs.modifiers,
-        consumed: fightBuffsConsumed,
-      }),
-      cooldown: Object.freeze({
-        ready: false,
-        remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
-        nextReadyAt: cooldown.nextReadyAt,
-        baseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
-        reductionPercent: cooldownPolicy.appliedReductionPercent,
-        modifiers: cooldownPolicy.modifiers,
-      }),
-    });
+    if (itemSnapshot) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: itemSnapshot.id, source: 'adventure', silentStream: true });
+    return committed.response;
   }
 }

@@ -121,18 +121,18 @@ export class HuntService {
       equipment,
       buffCodes: activeBuffCodes,
     });
-    const now = this.now();
-    const cooldown = this.cooldownRepository.claim(playerId, {
-      now,
-      cooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
-    });
-    if (!cooldown.claimed) {
-      const error = new Error(`Hunt is recharging. Ready in ${cooldown.remainingSeconds}s (${cooldown.nextReadyAt}).`);
+    const rawNow = this.now();
+    const now = rawNow instanceof Date ? new Date(rawNow.getTime()) : new Date(rawNow);
+    if (Number.isNaN(now.getTime())) throw new Error('Hunt time must be a valid date.');
+    const storedCooldown = this.cooldownRepository.get(playerId, { now });
+    if (!storedCooldown.ready) {
+      const error = new Error(`Hunt is recharging. Ready in ${storedCooldown.remainingSeconds}s (${storedCooldown.nextReadyAt}).`);
       error.code = 'hunt_cooldown';
-      error.nextReadyAt = cooldown.nextReadyAt;
-      error.remainingSeconds = cooldown.remainingSeconds;
+      error.nextReadyAt = storedCooldown.nextReadyAt;
+      error.remainingSeconds = storedCooldown.remainingSeconds;
       throw error;
     }
+    let cooldown = null;
 
     const stats = fightBuffs.stats;
     const encounter = pickAreaHuntEncounter(area.currentAreaNumber, this.rng());
@@ -152,6 +152,11 @@ export class HuntService {
       },
       currentHealth: player.currentHealth,
       encounter,
+      context: {
+        battleId: `hunt:${playerId}:${new Date(now.getTime() + cooldownPolicy.effectiveCooldownSeconds * 1000).toISOString()}`,
+        areaId: area.currentArea?.id || null,
+        areaNumber: area.currentAreaNumber,
+      },
       random: this.rng,
     });
     const battleReplay = projectAutomaticBattleResult(result.battle, { viewerId: player.id });
@@ -160,48 +165,119 @@ export class HuntService {
     let healthPotionsFound = 0;
     let deathPenalty = null;
     let growth = null;
-    if (result.victory) {
-      // SQLite still stores this balance in the legacy thread_dust column during migration.
-      this.repository.addThreadDust(playerId, result.gold);
-      growth = this.progressionRepository.grantExperience(playerId, result.experience, {
-        currentHealthAfterCombat: result.remainingHp,
-      });
-      if (this.rng() < result.dropChance) {
-        item = capAdventureLoot(this.itemGenerator.generateReward({
-          source: 'hunt',
-          ...itemRewardProfileForArea(area.currentAreaNumber),
-        }));
-        this.repository.addItem(playerId, item);
-      }
-      if (this.rng() < 0.2) {
-        healthPotionsFound = 1;
-        this.repository.addConsumable(playerId, 'minor-health-potion', 1);
-      }
-    } else if (result.remainingHp <= 0) {
-      const balance = this.bankRepository.getBalance(playerId);
-      const plannedPenalty = resolveNormalDeathPenalty({ carriedGold: balance.carriedGold });
-      const applied = this.bankRepository.loseCarriedGold(playerId, plannedPenalty.goldLost);
-      deathPenalty = Object.freeze({
-        ...plannedPenalty,
-        carriedGoldAfter: applied.carriedGold,
-        bankedGold: applied.bankedGold,
-        goldLost: applied.goldLost,
-      });
+    if (result.victory && this.rng() < result.dropChance) {
+      item = capAdventureLoot(this.itemGenerator.generateReward({
+        source: 'hunt',
+        ...itemRewardProfileForArea(area.currentAreaNumber),
+      }));
     }
-    if (!growth) this.repository.setPlayerHealth(playerId, result.remainingHp);
-    const fightBuffsConsumed = this.fightBuffRepository.consumeFight(playerId);
+    if (result.victory && this.rng() < 0.2) healthPotionsFound = 1;
 
-    const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
-    const levelsGained = growth?.levelsGained || 0;
-    const remainingHp = growth?.currentHealth ?? result.remainingHp;
-    const maxHp = growth?.maxHealth ?? result.maxHealth;
-    const itemStats = item ? {
-      attackBonus: Number(item.attackBonus || item.stats?.attackBonus || 0),
-      defenseBonus: Number(item.defenseBonus || item.stats?.defenseBonus || 0),
-      maxHpBonus: Number(item.maxHpBonus || item.stats?.maxHpBonus || 0),
-      speedBonus: Number(item.speedBonus || item.stats?.speedBonus || 0),
-      critChanceBonus: Number(item.critChanceBonus || item.stats?.critChanceBonus || 0),
-    } : null;
+    let committed;
+    try {
+      committed = this.repository.withTransaction(() => {
+      cooldown = this.cooldownRepository.claimInTransaction(playerId, {
+        now,
+        cooldownSeconds: cooldownPolicy.effectiveCooldownSeconds,
+      });
+      if (!cooldown.claimed) {
+        const error = new Error(`Hunt is recharging. Ready in ${cooldown.remainingSeconds}s (${cooldown.nextReadyAt}).`);
+        error.code = 'hunt_cooldown';
+        error.nextReadyAt = cooldown.nextReadyAt;
+        error.remainingSeconds = cooldown.remainingSeconds;
+        throw error;
+      }
+      if (result.victory) {
+        // SQLite still stores this balance in the legacy thread_dust column during migration.
+        this.repository.addThreadDust(playerId, result.gold);
+        growth = this.progressionRepository.grantExperienceInTransaction(playerId, result.experience, {
+          currentHealthAfterCombat: result.remainingHp,
+        });
+        if (item) this.repository.addItem(playerId, item);
+        if (healthPotionsFound) this.repository.addConsumable(playerId, 'minor-health-potion', healthPotionsFound);
+      } else if (result.remainingHp <= 0) {
+        const balance = this.bankRepository.getBalance(playerId);
+        const plannedPenalty = resolveNormalDeathPenalty({ carriedGold: balance.carriedGold });
+        const applied = this.bankRepository.loseCarriedGoldInTransaction(playerId, plannedPenalty.goldLost);
+        deathPenalty = Object.freeze({
+          ...plannedPenalty,
+          carriedGoldAfter: applied.carriedGold,
+          bankedGold: applied.bankedGold,
+          goldLost: applied.goldLost,
+        });
+      }
+      if (!growth) this.repository.setPlayerHealth(playerId, result.remainingHp);
+      const fightBuffsConsumed = this.fightBuffRepository.consumeFightInTransaction(playerId);
+      const progression = progressionForExperience(this.progressionRepository.get(playerId).experience);
+      const levelsGained = growth?.levelsGained || 0;
+      const remainingHp = growth?.currentHealth ?? result.remainingHp;
+      const maxHp = growth?.maxHealth ?? result.maxHealth;
+      const itemSnapshot = item ? this.repository.getItem(item.id) : null;
+      const itemStats = itemSnapshot ? {
+        attackBonus: Number(itemSnapshot.attackBonus || itemSnapshot.stats?.attackBonus || 0),
+        defenseBonus: Number(itemSnapshot.defenseBonus || itemSnapshot.stats?.defenseBonus || 0),
+        maxHpBonus: Number(itemSnapshot.maxHpBonus || itemSnapshot.stats?.maxHpBonus || 0),
+        speedBonus: Number(itemSnapshot.speedBonus || itemSnapshot.stats?.speedBonus || 0),
+        critChanceBonus: Number(itemSnapshot.critChanceBonus || itemSnapshot.stats?.critChanceBonus || 0),
+      } : null;
+      const refreshed = this.repository.getPlayer(playerId) || player;
+      const gold = Number(refreshed.gold ?? refreshed.threadDust ?? character.gold ?? 0);
+      const response = {
+        ...result,
+        remainingHp,
+        maxHealth: maxHp,
+        progression,
+        battleReplay,
+        battleLoadout,
+        levelsGained,
+        leveledUp: levelsGained > 0,
+        maxHealthIncrease: growth?.maxHealthIncrease || 0,
+        deathPenalty,
+        fightBuffs: { modifiers: fightBuffs.modifiers, consumed: fightBuffsConsumed },
+        cooldown: {
+          ready: false,
+          remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
+          nextReadyAt: cooldown.nextReadyAt,
+          baseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
+          reductionPercent: cooldownPolicy.appliedReductionPercent,
+          modifiers: cooldownPolicy.modifiers,
+        },
+        item: itemSnapshot,
+        character: {
+          attackPower: stats.attack,
+          maxHealth: maxHp,
+          currentHealth: remainingHp,
+          healthPotions: refreshed.healthPotions ?? player.healthPotions,
+          potions: this.repository.listConsumables(playerId),
+          gold,
+          experience: progression.experience,
+          xp: progression.experience,
+          level: progression.level,
+          levelProgression: progression,
+          threadDust: gold,
+        },
+        replayed: false,
+      };
+      this.repository.recordCombatResultInTransaction({
+        battleId: `hunt:${playerId}:${cooldown.nextReadyAt}`,
+        activity: 'hunt',
+        playerId,
+        result: response,
+        createdAt: now.toISOString(),
+      });
+      return { response, item: itemSnapshot, deathPenalty, growth, fightBuffsConsumed, progression, levelsGained, remainingHp, maxHp, itemStats, refreshed, gold };
+      });
+    } catch (error) {
+      if (error?.code === 'hunt_cooldown') {
+        const currentCooldown = this.cooldownRepository.get(playerId, { now });
+        error.nextReadyAt = currentCooldown.nextReadyAt || error.nextReadyAt;
+        error.remainingSeconds = currentCooldown.remainingSeconds;
+        error.message = `Hunt is recharging. Ready in ${error.remainingSeconds}s (${error.nextReadyAt}).`;
+      }
+      throw error;
+    }
+    ({ item, deathPenalty, growth } = committed);
+    const { fightBuffsConsumed, progression, levelsGained, remainingHp, maxHp, itemStats } = committed;
     this.eventBus.publish({
       type: 'HuntResolved',
       playerId,
@@ -259,47 +335,7 @@ export class HuntService {
     });
     if (item) this.eventBus.publish({ type: 'ItemGenerated', playerId, itemId: item.id, source: 'hunt', silentStream: true });
 
-    const refreshed = this.repository.getPlayer(playerId) || player;
-    const gold = Number(refreshed.gold ?? refreshed.threadDust ?? character.gold ?? 0);
-    return {
-      ...result,
-      remainingHp,
-      maxHealth: maxHp,
-      progression,
-      battleReplay,
-      battleLoadout,
-      levelsGained,
-      leveledUp: levelsGained > 0,
-      maxHealthIncrease: growth?.maxHealthIncrease || 0,
-      deathPenalty,
-      fightBuffs: {
-        modifiers: fightBuffs.modifiers,
-        consumed: fightBuffsConsumed,
-      },
-      cooldown: {
-        ready: false,
-        remainingSeconds: cooldownPolicy.effectiveCooldownSeconds,
-        nextReadyAt: cooldown.nextReadyAt,
-        baseCooldownSeconds: cooldownPolicy.baseCooldownSeconds,
-        reductionPercent: cooldownPolicy.appliedReductionPercent,
-        modifiers: cooldownPolicy.modifiers,
-      },
-      item: item ? this.repository.getItem(item.id) : null,
-      character: {
-        attackPower: stats.attack,
-        maxHealth: maxHp,
-        currentHealth: remainingHp,
-        healthPotions: refreshed.healthPotions ?? player.healthPotions,
-        potions: this.repository.listConsumables(playerId),
-        gold,
-        experience: progression.experience,
-        xp: progression.experience,
-        level: progression.level,
-        levelProgression: progression,
-        // Backward-compatible API alias while clients migrate to gold.
-        threadDust: gold,
-      },
-    };
+    return committed.response;
   }
 
   heal(playerId, potionSelection = null) {

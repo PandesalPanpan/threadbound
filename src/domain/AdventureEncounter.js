@@ -1,7 +1,4 @@
-import { simulateAutomaticBattle } from './AutomaticBattleSimulator.js';
-import { createEquipmentAwareAutomaticBasicAttackResolver } from './EquipmentBattleEffectPolicy.js';
-import { prepareAutomaticBattleCombatant } from './AutomaticBattleSkillCatalog.js';
-import { resolveAutomaticBattleSkill } from './AutomaticBattleSkillPolicy.js';
+import { simulateArenaCombat } from './ArenaCombatEngine.js';
 
 // M5-04 deliberately reuses existing world identities instead of introducing a new Arc.
 // Encounter definitions are Area snapshots: they do not scale to the player's level.
@@ -39,7 +36,7 @@ export function ordinaryAdventureEncounterForArea(areaNumber, roll = 0) {
  * used by Hunt. Area selection stays outside the generic simulator so world/content
  * identity remains an Area policy instead of player-level scaling.
  */
-export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, encounterRoll = 0, encounter: authoredEncounter = null, random = Math.random } = {}) {
+export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, encounterRoll = 0, encounter: authoredEncounter = null, context = {}, random = Math.random } = {}) {
   if (!player || typeof player !== 'object') throw new Error('Adventure requires a player combatant.');
   const playerId = String(player.id || '').trim();
   if (!playerId) throw new Error('Adventure requires a player id.');
@@ -54,32 +51,31 @@ export function resolveOrdinaryAdventure({ player, currentHealth, areaNumber, en
     || player.weaponFamily
     || player.equipment?.weapon?.weaponFamily
     || player.equippedItem?.weaponFamily);
-  const playerCombatant = prepareAutomaticBattleCombatant({
+  const playerCombatant = {
     ...player,
     id: playerId,
     hp: currentHealth,
     maxHp,
-  }, { defaultSkill: signatureSkillsEnabled ? 'threadsong' : null });
-  const enemyCombatant = prepareAutomaticBattleCombatant({
+    ...(signatureSkillsEnabled && !player.skillCode && !player.signatureSkillId && !player.weaponFamily
+      && !player.equipment?.weapon?.weaponFamily && !player.equippedItem?.weaponFamily
+      ? { skillCode: 'threadsong' }
+      : {}),
+  };
+  const enemyCombatant = {
     ...encounter,
     id: enemyId,
     name: encounter.name,
     displayName: encounter.name,
     hp: encounter.hp,
-    maxHp: encounter.hp,
+    maxHp: encounter.maxHp || encounter.hp,
     tags: ['ordinary-adventure-enemy', `area-${Number(areaNumber)}`],
-  }, { defaultSkill: signatureSkillsEnabled ? 'threadsong' : null });
-  const battle = simulateAutomaticBattle(
-    {
-      resolveAction: createEquipmentAwareAutomaticBasicAttackResolver({ random }),
-      ...(signatureSkillsEnabled ? { resolveSkill: resolveAutomaticBattleSkill } : {}),
-    },
-    {
-      players: [playerCombatant],
-      enemies: [enemyCombatant],
-      context: { activity: 'adventure', areaNumber: Number(areaNumber), enemyId: encounter.id },
-    },
-  );
+    ...(!encounter.skillCode && signatureSkillsEnabled ? { skillCode: 'threadsong' } : {}),
+  };
+  const battle = simulateArenaCombat({
+    players: [playerCombatant],
+    enemies: [enemyCombatant],
+    context: { ...context, activity: 'adventure', areaNumber: Number(areaNumber), enemyId: encounter.id },
+  });
 
   const playerAfter = battle.combatants.find((combatant) => combatant.id === playerId);
   const remainingHp = Math.max(0, Number(playerAfter?.hp || 0));

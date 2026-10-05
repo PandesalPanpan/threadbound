@@ -55,10 +55,14 @@ test('Duel resolves through the shared automatic battle engine without mutating 
 test('strong Guild Hall rival can defeat the human using the same stat/equipment battle rules', () => {
   const { repository, player, service } = setup();
   const result = service.duel(player.id, 'guild-rook', { duelId: 'duel-rook-1' });
+  const replayRival = result.battle.arenaReplay.combatants.find((combatant) => combatant.id === 'guild-rook');
 
   assert.equal(result.outcome, 'loss');
   assert.equal(result.battle.receipt.outcomeLabel, 'Defeat');
   assert.equal(result.battle.receipt.winnerId, 'guild-rook');
+  assert.equal(replayRival.equipment.weapon.name, 'Veteran Blade');
+  assert.equal(replayRival.equipment.weapon.visualAssetId, 'item.threadsteel-longsword.v1');
+  assert.equal(replayRival.equipment.armor.visualAssetId, 'item.ironroot-cuirass.v1');
   assert.deepEqual(result.record, { wins: 0, losses: 1, draws: 0, total: 1 });
   repository.close();
 });
@@ -102,15 +106,25 @@ test('Duel persistence is immutable/idempotent and rejects a mismatched replay',
 
 test('Guild Hall leaderboard projects authoritative human and simulated Duel records', () => {
   const { repository, player, service } = setup();
-  service.duel(player.id, 'guild-lio', { duelId: 'duel-leaderboard-1' });
+  const result = service.duel(player.id, 'guild-lio', { duelId: 'duel-leaderboard-1' });
   const simulatedRepository = new SQLiteSimulatedAdventurerRepository({ database: repository.db });
   const guildHall = new GuildHallService({ repository: simulatedRepository, gameRepository: repository });
   const leaderboard = guildHall.browse('area-1-town').leaderboard;
   const human = leaderboard.find((entry) => entry.id === player.id);
   const lio = leaderboard.find((entry) => entry.id === 'guild-lio');
 
-  assert.deepEqual(human.duelRecord, { wins: 1, losses: 0, draws: 0, total: 1 });
-  assert.deepEqual(lio.duelRecord, { wins: 0, losses: 1, draws: 0, total: 1 });
+  const expectedHuman = result.outcome === 'win'
+    ? { wins: 1, losses: 0, draws: 0, total: 1 }
+    : result.outcome === 'draw'
+      ? { wins: 0, losses: 0, draws: 1, total: 1 }
+      : { wins: 0, losses: 1, draws: 0, total: 1 };
+  const expectedLio = result.outcome === 'win'
+    ? { wins: 0, losses: 1, draws: 0, total: 1 }
+    : result.outcome === 'draw'
+      ? { wins: 0, losses: 0, draws: 1, total: 1 }
+      : { wins: 1, losses: 0, draws: 0, total: 1 };
+  assert.deepEqual(human.duelRecord, expectedHuman);
+  assert.deepEqual(lio.duelRecord, expectedLio);
   repository.close();
 });
 

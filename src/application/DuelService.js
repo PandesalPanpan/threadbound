@@ -127,6 +127,7 @@ export class DuelService {
         visualAssetId: resolveVisualAssetId({ id: opponentState.id, spriteVariant: seeded.spriteVariant }, 'character'),
         spriteVariant: seeded.spriteVariant,
       },
+      duelId: identity,
       random: this.random,
     });
     const readModel = projectAutomaticBattleResult(result.battle, { viewerId: playerId });

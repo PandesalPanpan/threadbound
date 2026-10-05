@@ -14,11 +14,13 @@ The fantasy remains simple: Hunt, gain XP and Gold, improve Equipment, take Ques
 
 Use obvious player language: Gold, Inventory, Equipment, Upgrade, Heal, Bank, Area, Town, Quest, Adventure, Duel, Profile, Leaderboard, Blackjack, Slots, and Coinflip. Preserve legacy persistence/API names only where migration safety requires them.
 
-### Approved combat foundation — 2026-10-05
+### Approved authoritative combat direction — 2026-10-05
 
-The owner selected the overhead Arena Lab as the foundation for future combat simulation. Build on its autonomous movement, formation, targeting, role behavior, Mana skills, and deterministic replay, using existing upright semantic character art on an overhead battlefield. The active-timing lab remains a comparison experiment.
+The owner selected the overhead Arena Lab as the authoritative combat system for every Threadbound encounter: Hunt, ordinary Adventure, Duel, Dungeon rooms and bosses, multi-enemy rooms, Arc-authored encounters, and any other combat path found by the integration audit. Its autonomous movement, formation, targeting, differentiated roles, Mana skills, and deterministic replay become the shared server-side combat foundation. The browser renders committed outcomes and replay data; it never decides combat results. Existing semantic upright character art remains on the overhead battlefield inside the Adventure Stream's existing battle cards/details.
 
-The foundation now has branch-local independent attack and movement speeds, continuous travel, collision reservations, and teammate speed controls so units do not move or strike in lockstep. This explicitly authorized combat work may proceed alongside the open human experience gates. It does not check those gates or replace the Adventure Stream shell. Live integration must retain server-authoritative outcomes, persisted replay projections, concise receipts, and party/reconnect correctness; browser-local simulation remains confined to the lab until that integration is implemented and verified. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md).
+This is an explicit product decision to integrate live combat alongside the still-open Phase K human experience gates. It does not check those gates or change the chat-first shell. Extract the arena simulator into reusable domain code, use the real participants/enemies/equipment/stats/abilities for each encounter, and provide explicit encounter configuration instead of copied simulators. Preserve existing combat and progression mechanics where they fit; document and resolve conflicts with the spatial timeline, including sparse explicit boss decisions. Define bounded domain-owned stat-to-attack/movement-speed mappings, deterministic timing/ties/randomness, movement interruption, defeat, and timeout behavior. Commit outcomes and versioned replay data through existing authoritative persistence boundaries, keep old saved runs and historical replays readable, and preserve concise receipts, idempotency, optimistic concurrency, and party/reconnect correctness.
+
+The independent attack and movement speed refinement is checkpointed locally in `f98694d` after the accepted arena baseline `20c9c27`; it adds continuous travel and destination reservations to the comparison lab. These checkpoints are implementation inputs, not merged milestones. The active-timing lab and fixed-roster Arena Lab remain explicitly isolated comparison experiments and never supply live combat rosters or results. See [ARENA_COMBAT_PROTOTYPE.md](ARENA_COMBAT_PROTOTYPE.md) and the implementation checklist in [ARENA_COMBAT_INTEGRATION.md](ARENA_COMBAT_INTEGRATION.md).
 
 ## 2. Canonical Figma scope
 
@@ -191,6 +193,18 @@ Never mark these from automation or agent judgment alone.
 - [ ] **PV2-K05 HUMAN** Mobile and desktop feel like one coherent chat game.
 
 Use the two-reviewer guide and worksheet in [PLAYER_EXPERIENCE_ACCEPTANCE.md](PLAYER_EXPERIENCE_ACCEPTANCE.md) to review these gates. The boxes remain open until two people have completed the review and their evidence has been assessed.
+
+### Phase M — approved authoritative arena combat integration (parallel to Phase K)
+
+This owner-approved implementation track may proceed while the Phase K human reviews are arranged. It does not replace or satisfy any Phase K gate. Keep every box open until the scope-specific acceptance work is implemented, tested, documented, merged, and green on `main`.
+
+- [ ] **PV2-M01** Audit and inventory every live combat entry point, simulator, replay contract, renderer, and persisted battle format; document compatibility and conflict decisions.
+- [ ] **PV2-M02** Extract the arena simulator into bounded, deterministic server-side domain code with authoritative character/equipment stat mappings and explicit encounter configuration.
+- [ ] **PV2-M03** Integrate Hunt, ordinary Adventure, and Duel using their real participants, authored enemies, equipment, skills, effects, progression, cooldowns, rewards, death rules, and PvP boundaries.
+- [ ] **PV2-M04** Integrate single/multi-enemy Dungeon rooms, bosses, progression challenges, and published Arc encounters while retaining attrition, intermission healing, gates, and sparse explicit boss commands.
+- [ ] **PV2-M05** Migrate or safely hydrate active legacy runs and retain saved-run, idempotency, optimistic-concurrency, and historical replay compatibility; retire replaced live resolvers only after coverage is green.
+- [ ] **PV2-M06** Persist versioned replay data atomically and render it in existing Battle cards/details with semantic assets, pause/speed/reduced-motion/accessibility, reconnect, and finish/skip controls.
+- [ ] **PV2-M07** Complete domain/service/repository/migration/replay-contract and full player-journey coverage; inspect mobile/desktop playback; merge green work, verify `main` CI, and leave a handoff with any human acceptance gates still open.
 
 ### Phase L — production lifecycle gates
 

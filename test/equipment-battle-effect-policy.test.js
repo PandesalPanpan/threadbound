@@ -65,7 +65,7 @@ test('legacy opening strike and boss bane resolve through authoritative data', (
   const laterOpening = applyEquipmentBattleEffects({
     actor,
     target: normalTarget,
-    turns: [{ actorId: 'hero', targetId: 'wolf' }],
+    turns: [{ actorId: 'hero', targetId: 'wolf', targetDamage: 3 }],
     baseAction: baseAction(),
     effectCodes: ['opening_strike'],
   });

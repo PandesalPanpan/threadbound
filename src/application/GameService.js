@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Character } from '../domain/Character.js';
-import { publicCombatSkills } from '../domain/CombatSkillCatalog.js';
+import { combatSkill, publicCombatSkills } from '../domain/CombatSkillCatalog.js';
 import { AdventureRun as DungeonRun, DUNGEONS, RUN_UPGRADES } from '../domain/AdventureRun.js';
 import { resolveNormalDeathPenalty } from '../domain/DeathPenaltyPolicy.js';
 import { DUNGEON_REWARD_RULES, projectDungeonRisk } from '../domain/DungeonRiskPolicy.js';
@@ -8,6 +8,7 @@ import { resolveDungeonPotionAction } from '../domain/HealingPolicy.js';
 import { ItemGenerator } from '../domain/ItemGenerator.js';
 import { automaticBattleSkillForCombatant } from '../domain/AutomaticBattleSkillCatalog.js';
 import { progressionForExperience } from '../domain/LevelProgressionPolicy.js';
+import { runBuildModifiers } from '../domain/RunBuildPolicy.js';
 import { Party } from '../domain/Party.js';
 import { publicRelicAttunements, relicProgression } from '../domain/RelicProgressionPolicy.js';
 import { BATTLE_FIGMA_VISUAL_ASSET_IDS, resolveVisualAssetId } from '../content/VisualAssetCatalog.js';
@@ -489,14 +490,8 @@ export class GameService {
 
   attack(playerId, runId) {
     const { run, character, equipped } = this.#combatContext(playerId, runId);
-    if (run.state.simpleCombat && run.state.sharedSurface) return this.resolveSimpleEncounter(playerId, runId);
-    const outcome = run.attack({
-      playerId,
-      attackPower: character.attackPower,
-      equipmentEffect: equipped?.effectCode ?? 'none',
-      attunementCode: equipped?.effect?.attunementCode ?? null,
-    });
-    return this.#persistCombatOutcome(playerId, run, outcome, 'attack');
+    if (run.state.simpleCombat) return this.resolveSimpleEncounter(playerId, runId);
+    return this.resolveLegacyArenaEncounter(playerId, runId, { action: 'attack' });
   }
 
   resolveSimpleEncounter(playerId, runId, { recovery = null } = {}) {
@@ -509,7 +504,7 @@ export class GameService {
       };
     }
 
-    if (Number(run.state.simpleCombatVersion || 1) >= 2) {
+    if (Number(run.state.simpleCombatVersion || 1) >= 1) {
       const initial = run.toJSON();
       const playerActions = {};
       for (const participant of run.state.participants.filter((candidate) => candidate.hp > 0)) {
@@ -544,6 +539,8 @@ export class GameService {
         runId,
         actorPlayerId: playerId,
       });
+      battleReplay.arenaReplay = structuredClone(outcome.arenaReplay);
+      if (outcome.arenaReplay?.outcome === 'draw') battleReplay.status = 'draw';
       battleReplay.recovery = recovery ? structuredClone(recovery) : null;
       return this.#persistCombatOutcome(playerId, run, {
         ...outcome,
@@ -619,6 +616,137 @@ export class GameService {
       battleReplay,
       simpleCombat: true,
     }, 'auto-attack');
+  }
+
+  resolveLegacyArenaEncounter(playerId, runId, { action = 'attack', targetPlayerId = null, skillId = null } = {}) {
+    const { run } = this.#combatContext(playerId, runId);
+    if (run.state.simpleCombat) {
+      if (action !== 'attack') return run[action]?.({ playerId, targetPlayerId });
+      return this.resolveSimpleEncounter(playerId, runId);
+    }
+    const commandAction = String(action || 'attack').trim().toLowerCase();
+    const initial = run.toJSON();
+    const actor = run.participant(playerId);
+    if (!actor || actor.hp <= 0) throw new Error('A downed player cannot act until revived.');
+    const pendingIntent = run.state.enemyIntent ? structuredClone(run.state.enemyIntent) : null;
+    let mappedSkillCode = null;
+    let legacySkill = null;
+    let preferredSupportTargetId = null;
+    let commandEvents = [];
+    let focusCost = 0;
+    let skillCooldown = 0;
+
+    if (commandAction === 'guard') {
+      mappedSkillCode = 'iron-bloom';
+      actor.threat = Number(actor.threat || 0) + 10;
+    } else if (commandAction === 'interrupt') {
+      if (!pendingIntent) throw new Error('There is no enemy action to interrupt.');
+      mappedSkillCode = 'frost-bind';
+      actor.threat = Number(actor.threat || 0) + 3;
+      run.state.enemy.effects = [...(run.state.enemy.effects || []), { type: 'attack-down', potency: 2, remainingTurns: 1 }];
+    } else if (commandAction === 'mend') {
+      const target = run.participant(targetPlayerId);
+      if (!target) throw new Error('Mend target is not a participant in this run.');
+      if (target.hp <= 0) throw new Error('Mend cannot heal a downed player; use Revive.');
+      if (target.hp >= target.maxHp) throw new Error('Mend target is already at full health.');
+      if (Number(actor.mendCharges || 0) <= 0) throw new Error('Mend has already been used this encounter.');
+      mappedSkillCode = 'mending-chorus';
+      preferredSupportTargetId = target.playerId;
+      actor.threat = Number(actor.threat || 0) + 2;
+    } else if (commandAction === 'revive') {
+      const target = run.participant(targetPlayerId);
+      if (!target) throw new Error('Revive target is not a participant in this run.');
+      if (target.playerId === playerId) throw new Error('Players cannot revive themselves.');
+      if (target.hp > 0) throw new Error('Revive target is not downed.');
+      if (Number(actor.reviveCharges || 0) <= 0) throw new Error('Revive has already been used this run.');
+      const participants = structuredClone(run.state.participants);
+      const acting = participants.find((candidate) => candidate.playerId === playerId);
+      const revived = participants.find((candidate) => candidate.playerId === targetPlayerId);
+      revived.hp = Math.max(1, Math.ceil(revived.maxHp * 0.3));
+      revived.threat = 0;
+      revived.guarding = false;
+      acting.reviveCharges = Math.max(0, Number(acting.reviveCharges || 0) - 1);
+      acting.revives = Number(acting.revives || 0) + 1;
+      acting.threat = Number(acting.threat || 0) + 4;
+      run.state.participants = participants;
+      commandEvents.push({ type: 'PlayerRevived', playerId, targetPlayerId, runId, restoredHp: revived.hp });
+    } else if (commandAction === 'skill') {
+      legacySkill = combatSkill(skillId);
+      const remaining = Number(actor.skillCooldowns?.[legacySkill.id] || 0);
+      if (remaining > 0) throw new Error(`${legacySkill.name} is on cooldown for ${remaining} more action${remaining === 1 ? '' : 's'}.`);
+      if (Number(actor.focus || 0) < legacySkill.cost) throw new Error(`${legacySkill.name} requires ${legacySkill.cost} Focus.`);
+      mappedSkillCode = legacySkill.id === 'piercing-stitch' ? 'thornwake'
+        : legacySkill.id === 'severing-knot' ? 'shadow-lunge'
+          : 'mending-chorus';
+      focusCost = legacySkill.cost;
+      skillCooldown = legacySkill.cooldown;
+      if (mappedSkillCode === 'mending-chorus') {
+        preferredSupportTargetId = run.state.participants.find((candidate) => candidate.hp > 0 && candidate.hp < candidate.maxHp)?.playerId || playerId;
+      }
+    } else if (commandAction !== 'attack') {
+      throw new Error(`Unsupported Dungeon action: ${commandAction}.`);
+    }
+
+    const build = runBuildModifiers(run.state);
+    const exposed = Number(run.state.enemy?.statuses?.exposed || 0) > 0;
+    let commandCounterBonus = 0;
+    if (commandAction === 'guard' && pendingIntent?.reaction === 'guard') {
+      commandCounterBonus = (run.state.reactionStyle === 'guard' ? 3 : 0) + Number(build.guardCounterBonus || 0);
+    } else if ((commandAction === 'interrupt' && pendingIntent)
+      || (commandAction === 'skill' && legacySkill?.interrupts && pendingIntent)) {
+      commandCounterBonus = 4 + Number(build.interruptCounterBonus || 0);
+    }
+    const playerActions = {};
+    for (const participant of run.state.participants.filter((candidate) => candidate.hp > 0)) {
+      const player = this.repository.getPlayer(participant.playerId);
+      if (!player) throw new Error('Player not found.');
+      const equipment = this.equipmentRepository.getLoadout(participant.playerId);
+      const equipped = equipment.weapon;
+      const character = new Character({ ...player, equippedItem: equipped, equipment });
+      const actorCommand = participant.playerId === playerId && mappedSkillCode;
+      playerActions[participant.playerId] = {
+        attackPower: character.stats.attack + Number(run.state.runAttackBonus || 0),
+        attackBonus: exposed ? Number(build.exposedDamageBonus || 0) : 0,
+        firstActionDamageBonus: Number(participant.reactionDamageBonus || 0) + (participant.playerId === playerId ? commandCounterBonus : 0),
+        defense: character.stats.defense,
+        speed: character.stats.speed,
+        critChance: Math.min(1, character.stats.critChance + (exposed ? Number(build.exposedCritChanceBonus || 0) : 0)),
+        startingMana: actorCommand ? 100 : Number(participant.mana ?? (Number(participant.focus || 0) * 25)),
+        maxHp: participant.maxHp,
+        equipment,
+        equippedItem: equipped,
+        weaponFamily: equipped?.weaponFamily || equipped?.family || null,
+        visualAssetId: playerVisualAssetId(participant.playerId),
+        ...(actorCommand ? { skillCode: mappedSkillCode, forceSkillCast: true, ...(preferredSupportTargetId ? { preferredSupportTargetId } : {}) } : {}),
+      };
+    }
+    const outcome = run.resolveLegacyArenaEncounter({
+      playerActions,
+      actorPlayerId: playerId,
+      command: {
+        action: commandAction,
+        method: commandAction === 'skill' ? 'useSkill' : commandAction,
+        skillId: legacySkill?.id || null,
+        skillCode: mappedSkillCode,
+        focusCost,
+        skillCooldown,
+        pendingIntent,
+        attunementCode: this.equipmentRepository.getLoadout(playerId).weapon?.effect?.attunementCode || null,
+        events: commandEvents,
+      },
+      now: new Date().toISOString(),
+    });
+    const battleReplay = simpleBattleReplay({
+      repository: this.repository,
+      initial,
+      final: outcome.state,
+      actions: outcome.actions,
+      runId,
+      actorPlayerId: playerId,
+    });
+    battleReplay.arenaReplay = structuredClone(outcome.arenaReplay);
+    if (outcome.arenaReplay?.outcome === 'draw') battleReplay.status = 'draw';
+    return this.#persistCombatOutcome(playerId, run, { ...outcome, battleReplay }, commandAction === 'skill' ? skillId : commandAction);
   }
 
   continueDungeon(playerId, runId) {
@@ -697,26 +825,31 @@ export class GameService {
 
   guard(playerId, runId) {
     const { run, equipped } = this.#combatContext(playerId, runId);
+    if (!run.state.simpleCombat) return this.resolveLegacyArenaEncounter(playerId, runId, { action: 'guard' });
     return this.#persistCombatOutcome(playerId, run, run.guard({ playerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'guard');
   }
 
   interrupt(playerId, runId) {
     const { run, equipped } = this.#combatContext(playerId, runId);
+    if (!run.state.simpleCombat) return this.resolveLegacyArenaEncounter(playerId, runId, { action: 'interrupt' });
     return this.#persistCombatOutcome(playerId, run, run.interrupt({ playerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'interrupt');
   }
 
   mend(playerId, runId, targetPlayerId) {
     const { run, equipped } = this.#combatContext(playerId, runId);
+    if (!run.state.simpleCombat) return this.resolveLegacyArenaEncounter(playerId, runId, { action: 'mend', targetPlayerId });
     return this.#persistCombatOutcome(playerId, run, run.mend({ playerId, targetPlayerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'mend');
   }
 
   revive(playerId, runId, targetPlayerId) {
     const { run, equipped } = this.#combatContext(playerId, runId);
+    if (!run.state.simpleCombat) return this.resolveLegacyArenaEncounter(playerId, runId, { action: 'revive', targetPlayerId });
     return this.#persistCombatOutcome(playerId, run, run.revive({ playerId, targetPlayerId, attunementCode: equipped?.effect?.attunementCode ?? null }), 'revive');
   }
 
   useSkill(playerId, runId, skillId) {
     const { run, character, equipped } = this.#combatContext(playerId, runId);
+    if (!run.state.simpleCombat) return this.resolveLegacyArenaEncounter(playerId, runId, { action: 'skill', skillId });
     const outcome = run.useSkill({ playerId, skillId, attackPower: character.attackPower, attunementCode: equipped?.effect?.attunementCode ?? null });
     return this.#persistCombatOutcome(playerId, run, outcome, 'skill');
   }

@@ -310,6 +310,7 @@ export function projectAutomaticBattleResult(result, { viewerId = null } = {}) {
   });
 
   return Object.freeze({
+    arenaReplay: result.replay?.kind === 'arena-combat-replay' ? result.replay : null,
     receipt,
     details: Object.freeze({
       outcome: result.outcome,

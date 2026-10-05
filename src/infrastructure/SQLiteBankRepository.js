@@ -36,26 +36,31 @@ export class SQLiteBankRepository {
   }
 
   loseCarriedGold(playerId, value) {
-    const requested = normalizeLoss(value);
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const before = this.getBalance(playerId);
-      const goldLost = Math.min(before.carriedGold, requested);
-      if (goldLost > 0) {
-        this.db.prepare('UPDATE players SET thread_dust = thread_dust - ? WHERE id = ?').run(goldLost, playerId);
-      }
-      const after = this.getBalance(playerId);
+      const result = this.loseCarriedGoldInTransaction(playerId, value);
       this.db.exec('COMMIT');
-      return {
-        carriedGoldBefore: before.carriedGold,
-        carriedGold: after.carriedGold,
-        bankedGold: after.bankedGold,
-        goldLost,
-      };
+      return result;
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch {}
       throw error;
     }
+  }
+
+  loseCarriedGoldInTransaction(playerId, value) {
+    const requested = normalizeLoss(value);
+    const before = this.getBalance(playerId);
+    const goldLost = Math.min(before.carriedGold, requested);
+    if (goldLost > 0) {
+      this.db.prepare('UPDATE players SET thread_dust = thread_dust - ? WHERE id = ?').run(goldLost, playerId);
+    }
+    const after = this.getBalance(playerId);
+    return {
+      carriedGoldBefore: before.carriedGold,
+      carriedGold: after.carriedGold,
+      bankedGold: after.bankedGold,
+      goldLost,
+    };
   }
 
   deposit(playerId, value) {

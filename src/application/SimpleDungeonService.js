@@ -76,6 +76,8 @@ function progressionBalanceEnemy(enemy, balance, { boss = false, bossAdd = false
   if (retaliationMultiplier !== 1 && Number.isFinite(Number(enemy.retaliation))) {
     next.retaliation = Math.max(1, Math.ceil(Number(enemy.retaliation) * retaliationMultiplier));
   }
+  const speed = balance.enemySpeedByEnemy?.[id];
+  if (Number.isInteger(speed) && speed > 0) next.speed = speed;
   const skillMana = bossAdd
     ? balance.bossAddManaByEnemy?.[id]
     : balance.skillStartingManaByEnemy?.[id];

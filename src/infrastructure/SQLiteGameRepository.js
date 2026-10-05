@@ -11,9 +11,59 @@ export class SQLiteGameRepository {
     this.idFactory = idFactory;
     this.db.exec('PRAGMA foreign_keys = ON;');
     this.#migrate();
+    this.#migrateCombatResults();
   }
 
   close() { this.db.close(); }
+
+  withTransaction(operation) {
+    if (typeof operation !== 'function') throw new Error('SQLiteGameRepository transaction requires an operation.');
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = operation();
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
+  }
+
+  recordCombatResultInTransaction({ battleId, activity, playerId, result, createdAt = new Date().toISOString() } = {}) {
+    const id = String(battleId || '').trim();
+    const type = String(activity || '').trim().toLowerCase();
+    if (!id) throw new Error('Combat result requires a battle id.');
+    if (!['hunt', 'adventure'].includes(type)) throw new Error('Combat result activity is not supported.');
+    if (!String(playerId || '').trim()) throw new Error('Combat result requires a player id.');
+    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Combat result payload must be an object.');
+    const resultJson = JSON.stringify(result);
+    if (resultJson.length > 1_000_000) throw new Error('Combat result payload must not exceed 1 MB.');
+    const existing = this.db.prepare('SELECT activity, player_id, result_json FROM combat_results WHERE battle_id = ?').get(id);
+    if (existing) {
+      if (existing.activity !== type || existing.player_id !== String(playerId) || existing.result_json !== resultJson) {
+        const error = new Error('Combat battle id was already used for a different result.');
+        error.code = 'combat_result_replay_mismatch';
+        throw error;
+      }
+      return Object.freeze({ replayed: true, result: JSON.parse(existing.result_json) });
+    }
+    this.db.prepare(`
+      INSERT INTO combat_results (battle_id, activity, player_id, result_json, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, type, String(playerId), resultJson, String(createdAt));
+    return Object.freeze({ replayed: false, result: structuredClone(result) });
+  }
+
+  getCombatResult(battleId) {
+    const row = this.db.prepare('SELECT battle_id, activity, player_id, result_json, created_at FROM combat_results WHERE battle_id = ?').get(String(battleId || ''));
+    return row ? Object.freeze({
+      battleId: row.battle_id,
+      activity: row.activity,
+      playerId: row.player_id,
+      result: JSON.parse(row.result_json),
+      createdAt: row.created_at,
+    }) : null;
+  }
 
   getOrCreatePlayer({ threadedUserId, displayName }) {
     const existing = this.db.prepare('SELECT * FROM players WHERE threaded_user_id = ?').get(String(threadedUserId));
@@ -586,6 +636,20 @@ export class SQLiteGameRepository {
 
   #decodeGrant(row) {
     return { playerId: row.player_id, threadedUserId: row.threaded_user_id, idempotencyKey: row.idempotency_key, threadedTransactionId: row.threaded_transaction_id, itemInstanceId: row.item_instance_id, createdAt: row.created_at };
+  }
+
+  #migrateCombatResults() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS combat_results (
+        battle_id TEXT PRIMARY KEY,
+        activity TEXT NOT NULL CHECK(activity IN ('hunt', 'adventure')),
+        player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        result_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_combat_results_player_created
+        ON combat_results(player_id, created_at DESC);
+    `);
   }
 
   #migrate() {
